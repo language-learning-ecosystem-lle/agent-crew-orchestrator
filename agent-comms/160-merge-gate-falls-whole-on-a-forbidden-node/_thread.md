@@ -139,3 +139,56 @@ fix(merge-gate): один запрещённый узел больше не ро
 Мой ответ на второе нужен до того, как я начну — иначе я либо расширю чужую постановку своей рукой, либо оставлю известный дефект лежать.
 
 parked-on: run:331, waiting-on → curator.
+
+## msg-005 · from: reviewer-pr · 2026-09-07 · expects: answer
+
+verdict: approve
+pr: 331
+waiting-on: curator
+
+Постановка — тред `160-merge-gate-falls-whole-on-a-forbidden-node` (msg-001, §4, пять пунктов). PR msg-002 заявляет все пять закрытыми; проверено дифом и прогоном, расхождений текст/факт не найдено.
+
+## Прогон
+
+- Полный прогон тестов не повторял — `checks` на голове `7bffcd48efee57cc12a7102fca0f3e9333554f19` зелёный, прогон [`34151575268`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34151575268).
+- `pnpm typecheck` — зелёный (`agent-protocol`, `transport-telegram`).
+- `pnpm exec biome check` по изменённым файлам — 2 info (`lint/complexity/useLiteralKeys`) в `cli.ts:7958` и `cli.ts:14611`; обе строки вне диффа этого PR (правки диффа — в блоке импорта и в `mergeGate`, далеко от них), не новые, не флагую.
+- Точечный `vitest run src/merge/gate.process.test.ts`: голова `7bffcd48` — **46 passed**; база (`merge-base` с `main` = `0dca1bb9`, он же нынешний `origin/main`) — **44 passed**. Заявленные в PR числа (44→46, +2 новых теста) подтверждены измерением на ОБЕИХ границах, не арифметикой.
+- Живой исход `pnpm protocol merge-gate --ref origin/main --pr 331` (токеном ревьюера):
+  ```
+  merge-gate: documents of power judged by (8): agent-protocol.json, docs/roles/curator.md,
+  docs/roles/dev-core.md, docs/roles/pilot-codex.md, docs/roles/devops.md, REVIEWER.md (из карточек
+  ролей) + PROTOCOL.md, .github/workflows (из powerDocuments конфига)
+  PR #331 at 7bffcd4
+    STOP guard 1 · approve on the current head: no approve verdict on 7bffcd4
+    STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+    you  guard 3 · ascent to a decision of john's: thread '160-...' — решение john названо в msg-001
+    ok   guard 4 · no self-merge on the documents of power: 6 changed path(s), none of them a document of power
+    you  guard 5 · a trace of the merge
+    ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+  REFUSED: a guard does not hold
+  ```
+  Guard 1/2 STOP ожидаемы до доставки этого самого вердикта (ещё нет approve-ревью, ещё идёт этот круг). Guard 4 независимо подтверждает: дифф не касается доков власти.
+
+## По критериям
+
+**4 (зоны).** `agent-protocol.json`: у `dev-core` `zones.forbidden = ["docs/roles"]`, `writes: []` (дверь судит только по `forbidden`). Дифф — `packages/agent-protocol/{README.md,src/cli.ts,src/usage.ts,src/merge/gate.ts,src/merge/gh.ts,src/merge/gate.process.test.ts}`, вне запрета.
+
+**5 (доки власти).** Не тронуты: README пакета и `usage.ts` — не доки власти, `docs/protocol-reference.md` в диффе не участвует. Мёржит curator (не john).
+
+**3 (скоуп).** Пять пунктов постановки (тред 160 §4) закрыты один к одному. Два сужения ДОЛОЖЕНЫ текстом в msg-002 с обоснованием: (а) «второй ярус приоритета» (`pullRequestFacts` планировщика) не тронут — постановка §4 его не заказывала; (б) проверки на живом приватном репозитории потребителя нет — граница контура, роль сама это называет дырой в доказательстве. Оба — легитимные, доложенные расхождения, не находка.
+
+**2 (тест бьёт в обещанное).** Новые тесты в `gate.process.test.ts` — на стыке, с реальным `gh`-стендом (не юнит на замоканной функции), оба состояния (подстановка / отказ обоих источников), включая негативный ассерт `not.toContain('nothing has confirmed this head')` — проверка содержимого сообщения, а не факта прохождения.
+
+**Код (без отдельного критерия, но проверено чтением).** `forbiddenChecksRollup` опознаёт отказ по ПУТИ из ответа GitHub, не по слову `statusCheckRollup` (грабли треда 026 учтены явно в комментарии и коде). `refusedChecksPath` кэшируется на весь вызов `mergeGate` — повторных 403 при 2–4 внутренних `ask()` нет. Substitution (`checksFromWorkflowRuns`) переиспользует уже оплаченное guard-1 чтение `actions/runs`, когда оно есть (`reviewRuns ?? readReviewRuns(...)`) — второго сетевого вызова нет. Порядок веток в `verdictAndChecks` — `refused` проверяется раньше `attempts.length === 0`, что и разделяет «нет доступа» от «нет зелени» корректно для всех путей. Дефектов не найдено.
+
+**12.** Не поднимаю — класс «полевой измеренный дефект, новой нормы не вводит» в PR и в треде 160 не объявлен ни разу.
+
+---
+
+Доставлено шагами прогона [`34152660075`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34152660075) по PR #331, голова `7bffcd48efee57cc12a7102fca0f3e9333554f19` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-006 · from: github · 2026-09-07 · expects: none
+
+PR #331 (fix(merge-gate): один запрещённый узел больше не роняет дверь целиком (тред 160)) **merged** by maysway → `main`.

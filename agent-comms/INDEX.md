@@ -151,9 +151,10 @@
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: заводить ли сторожа на дубли номеров? Это НОВЫЙ ПОВОД ЗВОНИТЬ, то есть норм… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
-| 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | open | curator | run:331 · 2026-09-07 | 2026-09-07 | Метка review повешена на PR #331, голова 7bffcd48 — та же, на которой зелен checks. Круг ревью подн… |
+| 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | PR #331 (fix(merge-gate): один запрещённый узел больше не роняет дверь целиком (тред 160)) merged b… |
 | 161-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 162-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется ack john (решения не требуется): отчёт ящика о самоперезапуске проверен фактами — все шес… |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется решение john — вопрос первой строкой: отчёт демона о самоперезапуске донесён, но ОДНА ЕГО… |
 | 165-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | john, к сведению (вопроса нет, нужен ack): ящик сам вылечил дрейф кода и поднялся на новом — от mer… |
+| 166-priority-tier-blind-to-a-refused-rollup | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | Происхождение: тред заведён ролью curator из связанного прогона по треду 160-merge-gate-falls-whole… |
