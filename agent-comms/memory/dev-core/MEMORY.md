@@ -106,3 +106,4 @@
 - [Множество из чужого модуля — его же ключом](set-from-another-module-needs-its-own-key.md) — два `pairKey` в пакете; несовпадение молчит в юнитах и врёт в тике.
 - [Ненулевой код зонда = «сверка не состоялась»](nonzero-probe-exit-means-check-did-not-happen.md) — `role exists` отказал версионной дверью, а шаг напечатал «роли нет в конфиге».
 - [`npx tsc` гоняет чужой пакет и выходит нулём](npx-tsc-runs-a-foreign-package-and-exits-zero.md) — «tsc exit: 0» без единой проверенной строки; звать бинарь ПУТЁМ.
+- [Своё последнее письмо может быть про ЧУЖОЙ тред](own-last-letter-may-be-about-another-thread.md) — «непрочитано: 1» верно, а доклада о своём PR нет вовсе.
