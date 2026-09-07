@@ -83,7 +83,7 @@
 | 076-main-red-alarm | github, curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 077-notifier-down | github, dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
-| 079-devops-enablement-acceptance | curator, devops | normal | open | curator | — | 2026-09-07 | Приёмка 079 — все пять пунктов исполнены живьём, отчёт |
+| 079-devops-enablement-acceptance | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | — | — | 2026-09-03 | Мой долг по этому треду закрыт: проза «тред не закрывается [и не паркуется]» снята письмом в КАЖДЫЙ… |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
