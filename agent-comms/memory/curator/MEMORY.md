@@ -36,7 +36,7 @@
 - [Стоячий адрес — это СЛАГ](standing-address-threads-076-077.md) — `--ensure-thread`: дверь берёт открытый приёмник или открывает следующий; закрытие нормально
 - [Стык мерится на реальной ленте даром](seam-measured-on-real-feed-for-free.md) — фикстура покрывает функцию, путь и имена — нет: `git show origin/main:` + `git archive origin/comms`
 - [Безголовый тред красит ВСЮ почту](headless-thread-reddens-all-mail.md) — тред без `_meta.md` роняет `Comms Derived`; чинится `thread status --repair --write`
-- [Номера тредов плоские](thread-ids-are-flat.md) — `NNN.M` дверь принимает, обходчик (`^\d{3}-`) не видит; после `new-thread` — контрольное `mail --role`
+- [Номера тредов плоские](thread-ids-are-flat.md) — `NNN.M` дверь принимает, обходчик (`^\d{3}-`) не видит; голый номер в слаг не разрешается ничем
 - [Системный пользователь не читает чужой аккаунт](system-user-role-cannot-read-shared-account.md) — роль под `systemUser` умирает за 0 с; полка кредов АККАУНТНАЯ
 - [Решение может предполагать несуществующий механизм](decision-may-presuppose-a-missing-mechanism.md) — сверяй кодом/`usage` В ОБЕ стороны: «недостающее» бывает уже дверью
 - [Расширение предмета внутри PR двери — по двум проверкам](scope-widening-inside-a-door-pr.md) — дверь отказала бы И норм не вводит
