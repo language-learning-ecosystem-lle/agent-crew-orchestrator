@@ -84,7 +84,7 @@
 | 077-notifier-down | github, dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | — | 2026-09-07 | ХОД НАЗНАЧЕН РУКОЙ ИЗВНЕ. Последнее письмо этого треда (03.09 22:50:06Z) само отказывается закрыват… |
+| 080-standing-address-catalog | curator, john, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
