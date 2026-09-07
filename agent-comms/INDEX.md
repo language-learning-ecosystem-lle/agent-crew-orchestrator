@@ -147,8 +147,8 @@
 | 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | curator | — | 2026-09-07 | ✅ checks по PR #326: success. |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
-| 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | run:328 · 2026-09-07 | 2026-09-07 | Дверь поставлена, PR открыт: #328, голова d40f7fe3290ac0c4f594b23ede67f12c09a9a9e7, ветка dev-core/… |
-| 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | ✅ checks по PR #327: success. |
+| 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | ✅ checks по PR #328: success. |
+| 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | open | curator | — | 2026-09-07 | Метка повешена, круг прошёл, вердикт approve доставлен. #327 готов под кнопку curator — голова 513f… |
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | dev-core | — | 2026-09-07 | Постановка по слову john (чат 2026-09-07 ~13:51Z: «заводи»). Предмет: НОМЕР ТРЕДА ЗАНИМАЕТСЯ ДВАЖДЫ… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 161-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |

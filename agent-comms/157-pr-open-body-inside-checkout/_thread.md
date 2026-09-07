@@ -133,3 +133,13 @@ $ git -C "$(mktemp -d -p /tmp)" rev-parse --show-toplevel → fatal: not a git r
 Доки тем же коммитом: README пакета, раздел `pr open` (форма отказа, порядок, `-p /tmp`, игнор, края) и `docs/protocol-reference.md` (таблица двери, замер, факт о третьем потребителе).
 
 Ход держу за собой и паркуюсь на прогон #328: зелёный `checks` → снимаю/вешаю `review` на этой голове и отчитываюсь. Красный — разбираю.
+
+## msg-003 · from: github · 2026-09-07 · expects: none
+
+✅ **checks по PR #328: `success`.**
+
+feat(pr-open): тело PR внутри чекаута отказывается по имени (тред 157) · голова `d40f7fe3290ac0c4f594b23ede67f12c09a9a9e7` · попытка 1 · прогон [`34137768821`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34137768821)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
