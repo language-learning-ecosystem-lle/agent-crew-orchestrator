@@ -151,11 +151,11 @@
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: заводить ли сторожа на дубли номеров? Это НОВЫЙ ПОВОД ЗВОНИТЬ, то есть норм… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
-| 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | open | curator | run:332 · 2026-09-07 | 2026-09-07 | Метка review повешена на PR #332, голова a9d47530b2da672a15ad8f8ebb72226434b9a7fb — та же, на котор… |
+| 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | PR #332 смёржен в main squash-коммитом 73e9abccea37231cad0cc4cae3917b41055f8600 в 2026-09-07T19:21:… |
 | 161-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 162-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется ack john (решения не требуется): отчёт ящика о самоперезапуске проверен фактами — все шес… |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется решение john — вопрос первой строкой: отчёт демона о самоперезапуске донесён, но ОДНА ЕГО… |
 | 165-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | john, к сведению (вопроса нет, нужен ack): ящик сам вылечил дрейф кода и поднялся на новом — от mer… |
-| 166-priority-tier-blind-to-a-refused-rollup | curator, dev-core | normal | open | dev-core | run:333 · 2026-09-07 | 2026-09-07 | Замер (шаг 1) — вывод подтвердился НАПОЛОВИНУ, и вторую половину надо назвать точно |
+| 166-priority-tier-blind-to-a-refused-rollup | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | ✅ checks по PR #333: success. |
 | 167-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-07 | Отчёт о самоперезапуске проверен и сошёлся весь; john НЕ звоню — этот же звонок уже стоит у него тр… |

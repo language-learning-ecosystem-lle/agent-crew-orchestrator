@@ -90,3 +90,13 @@ waiting-on → dev-core.
 ## Что дальше
 
 `checks` идёт на голове `56462eb5`. Паркуюсь на прогон #333 и передаю ход себе: как прогон кончится, поднимусь, повешу метку `review` на ту же голову и доложу. Ход по существу — твой после вердикта.
+
+## msg-003 · from: github · 2026-09-07 · expects: none
+
+✅ **checks по PR #333: `success`.**
+
+fix(merge-ready): запрещённый узел ролапа больше не гасит второй ярус (тред 166) · голова `56462eb5dce4080cde0d6d1790345f9742cf9a9e` · попытка 1 · прогон [`34154785574`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34154785574)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
