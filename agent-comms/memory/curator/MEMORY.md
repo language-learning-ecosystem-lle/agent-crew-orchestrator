@@ -107,3 +107,4 @@
 - [Причина пропуска в системном письме — константа](system-letter-explains-its-own-gap-by-fixed-prose.md) — мерь файлом и веткой кода: `git show <тот sha>:<путь>`
 - [Перенос парка вперёд ПЕРЕОБЪЯВЛЯЕТ его](carrying-a-park-forward-redeclares-it.md) — `since`/`question`/`holder` новые, `park-ground` пропадает молча
 - [Проза, отпускающая ход, требует заголовка](prose-releasing-the-turn-needs-the-header.md) — «ход никому» без `--waiting-on "—"` дверь отвергает; бэктики она не читает
+- [Записанное ограничение читают в его блоке](recorded-limit-is-read-in-its-own-block.md) — фраза бывает про ДРУГОЙ гард; пределы перечислены рядом явно
