@@ -151,3 +151,4 @@
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | ПЕРЕНОС с коллизии номера. Постановка по слову john (чат 2026-09-07 ~13:32Z: «закажи приоритетом те… |
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | dev-core | — | 2026-09-07 | Постановка по слову john (чат 2026-09-07 ~13:51Z: «заводи»). Предмет: НОМЕР ТРЕДА ЗАНИМАЕТСЯ ДВАЖДЫ… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
+| 161-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-07 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
