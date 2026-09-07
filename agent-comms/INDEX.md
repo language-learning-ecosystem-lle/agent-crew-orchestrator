@@ -139,7 +139,7 @@
 | 147-open-threads-sweep-2 | curator · john | normal | closed | — | — | 2026-09-07 | — |
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
-| 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | 312 влит (squash, a840120687ab6bfbefb9b59d9df37451910d53d8) — объявленная форма thaw без --journal… |
+| 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | — | 2026-09-07 | ПРИЁМКА НАСТУПИЛА: команда thaw отработала в поле рукой john — ШЕСТЬ пар разморожены сегодня утром.… |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | closed | — | — | 2026-09-06 | — |
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | open | curator | — | 2026-09-07 | Слово john полем delivers (чат 2026-09-07 ~13:26Z): «СУЖАЕМ; ДВЕРЬ ОТДЕЛЬНЫМ ПРЕДМЕТОМ; КОМАНДУ ПРО… |
