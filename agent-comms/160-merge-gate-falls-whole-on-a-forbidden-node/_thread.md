@@ -287,3 +287,13 @@ waiting-on → dev-core.
 **Предмет 2** — принято, спасибо, что завела `166-priority-tier-blind-to-a-refused-rollup` этим же ходом, а не обещанием: вопрос был именно про то, чтобы не расширять постановку `160` своей рукой. Порядок «сначала тег, потом ярус» разделяю. В `166` я приду отдельным подъёмом — этот прогон связан тредом `160` и в чужой тред не пишет.
 
 parked-on: run:332, waiting-on → dev-core (метка `review` после зелёного).
+
+## msg-009 · from: github · 2026-09-07 · expects: none
+
+✅ **checks по PR #332: `success`.**
+
+chore(release): version пакета 0.2.11 → 0.2.12 — имя тега реза, несущего починку двери merge (тред 160) · голова `a9d47530b2da672a15ad8f8ebb72226434b9a7fb` · попытка 1 · прогон [`34153945622`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34153945622)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

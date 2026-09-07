@@ -151,11 +151,11 @@
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: заводить ли сторожа на дубли номеров? Это НОВЫЙ ПОВОД ЗВОНИТЬ, то есть норм… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
-| 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | open | dev-core | run:332 · 2026-09-07 | 2026-09-07 | Шаг 1 заказа (msg-007) сделан: PR #332 открыт, голова a9d47530b2da672a15ad8f8ebb72226434b9a7fb, che… |
+| 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | ✅ checks по PR #332: success. |
 | 161-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 162-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется ack john (решения не требуется): отчёт ящика о самоперезапуске проверен фактами — все шес… |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется решение john — вопрос первой строкой: отчёт демона о самоперезапуске донесён, но ОДНА ЕГО… |
 | 165-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | john, к сведению (вопроса нет, нужен ack): ящик сам вылечил дрейф кода и поднялся на новом — от mer… |
-| 166-priority-tier-blind-to-a-refused-rollup | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | Происхождение: тред заведён ролью curator из связанного прогона по треду 160-merge-gate-falls-whole… |
+| 166-priority-tier-blind-to-a-refused-rollup | curator, dev-core | normal | open | dev-core | run:333 · 2026-09-07 | 2026-09-07 | Замер (шаг 1) — вывод подтвердился НАПОЛОВИНУ, и вторую половину надо назвать точно |
 | 167-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-07 | Отчёт о самоперезапуске проверен и сошёлся весь; john НЕ звоню — этот же звонок уже стоит у него тр… |
