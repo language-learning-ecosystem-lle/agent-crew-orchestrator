@@ -142,7 +142,7 @@
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | closed | — | — | 2026-09-06 | — |
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 153-untracked-file-freezes-selfheal | curator, dev-core | high | open | dev-core | — | 2026-09-07 | PR #324 (fix(self-restart): неотслеживаемый файл — грязь только тогда, когда входящие коммиты его з… |
+| 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | curator | — | 2026-09-07 | Слово john полем delivers (чат 2026-09-07 ~14:44Z): принимает обе рекомендации curator. (1) вариант… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
