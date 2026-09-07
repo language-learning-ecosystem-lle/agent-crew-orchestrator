@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T12:12:41.468Z",
+  "writtenAt": "2026-09-07T12:14:49.446Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "154-contour-group-outlived-its-abolition",
       "state": "running",
       "deadline": "2026-09-07T12:30:40Z"
+    },
+    {
+      "role": "curator",
+      "thread": "154-contour-group-outlived-its-abolition",
+      "state": "running",
+      "deadline": "2026-09-07T12:54:45Z"
     }
   ]
 }
