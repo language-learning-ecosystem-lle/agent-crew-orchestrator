@@ -14,7 +14,7 @@
 - [Треды, должные после #160](threads-owed-after-160.md) — реестр бесхозных предметов; `new-thread` из связанного прогона john разрешил
 - [`await-input` будит любой записью](await-input-wakes-on-any-write.md) — снять блокировку может объявление бота; перечитывать `--for` ПЕРЕД отправкой
 - [Нота о переезде базы — замером, не ребейзом](base-move-note-answered-by-measure.md) — дерево мержа + полная сюита на обоих деревьях; нормой не объявлен
-- [Класс полевого дефекта требует ДВУХ писем](field-defect-class-needs-two-letters.md) — класс объявляется РАНЬШЕ следа гарда 5; «Вопрос ревьюеру» закрывает только условие 3
+- [Класс полевого дефекта требует ДВУХ писем](field-defect-class-needs-two-letters.md) — объявляется РАНЬШЕ следа гарда 5
 - [Приёмка укладывается в объявленный `launch`](acceptance-must-fit-declared-launch-params.md) — чужие `--model`/`--effort` = право `launch-params`, которого у curator нет
 - [Цена такта — это очередь, а не проза](tick-cost-is-the-queue-not-prose.md) — медиана такта 6.3 мин, ход ждёт 19.9; 84% ожидания роль занята другим
 - [«0 of those new» = уже позвонило](notify-zero-new-means-already-rang.md) — парк проверяют БЛОКОМ своего треда в `notify.state`, и ключей ДВА (`asked`/`parked`)
@@ -39,7 +39,7 @@
 - [Номера тредов плоские](thread-ids-are-flat.md) — `NNN.M` дверь принимает, обходчик (`^\d{3}-`) не видит; после `new-thread` — контрольное `mail --role`
 - [Системный пользователь не читает чужой аккаунт](system-user-role-cannot-read-shared-account.md) — роль под `systemUser` умирает за 0 с; полка кредов АККАУНТНАЯ
 - [Решение может предполагать несуществующий механизм](decision-may-presuppose-a-missing-mechanism.md) — сверяй кодом/`usage` В ОБЕ стороны: «недостающее» бывает уже дверью
-- [Расширение предмета внутри PR двери — по двум проверкам](scope-widening-inside-a-door-pr.md) — законно, если без починки дверь отказала бы И починка не вводит нормы
+- [Расширение предмета внутри PR двери — по двум проверкам](scope-widening-inside-a-door-pr.md) — дверь отказала бы И норм не вводит
 - [Названный случай — образец, а не класс](reported-instance-is-a-sample.md) — чужая находка перечисляется скриптом по всему предмету ДО постановки
 - [Машинный конфиг — в `$HOME`, не в репозитории](machine-config-is-instance-file.md) — `~/.config/agent-protocol/instances/hetzner.json`, его `secrets.envFile`
 - [Хвост PR требует своего треда](pr-tail-sweep-needs-the-owning-thread.md) — след гарда 5 обязан лечь в ленту ЕГО треда, а владелец бывает ЗАКРЫТ — сверять `status:`
@@ -50,8 +50,8 @@
 - [Пришпиленный блоб протухает в круге](pinned-blob-rots-in-the-review-circle.md) — три стадии `merge-tree --write-tree` называют блобы базы/main/PR
 - [Круги ревьюера считаются точно](review-circles-are-countable.md) — осиротевшая голова — `gh api …/commits/<sha>`, голова круга — `reviewed.commit_id`
 - [Прошедшее время меряют `date`, а не числом ходов](elapsed-time-is-measured-not-estimated.md) — `date -u` в той же команде, что снимает факт
-- [Полевой критерий уступает перечислению](field-sample-criterion-yields-to-enumeration.md) — «материал появится сам» жжёт слот каждый такт; перечисление сильнее образца
-- [Хвост письма протухает молча](carried-tail-items-rot.md) — пункты «остаётся рука john» переезжают копированием и никем не судятся — перемерять перед переносом
+- [Полевой критерий уступает перечислению](field-sample-criterion-yields-to-enumeration.md) — перечисление сильнее образца
+- [Хвост письма протухает молча](carried-tail-items-rot.md) — перемерять перед переносом в новое письмо
 - [Кнопка merge жмётся с `--match-head-commit`](merge-with-match-head-commit.md) — sha берут из вывода самой `merge-gate`; пишется в след
 - [Годность тега среза — это поиск по линии](cut-tag-validity-is-a-line-search.md) — дерево реза встречается у коммита линии `main`; сравнение с `origin/main:` врёт
 - [Креды мерятся пушем](credentials-measured-by-push.md) — `ls-remote` проходит анонимно; сессия без токена умирает уже на ЧТЕНИИ почты
@@ -73,7 +73,7 @@
 - [Каталог учётки называет свой аккаунт и тариф](config-dir-names-its-account-and-tier.md) — `.claude.json` → `oauthAccount.organizationRateLimitTier`
 - [Группы приезжают от менеджера пользователя](groups-come-from-the-user-manager.md) — рестарт юнита группу не подтягивает: креды держит `systemd --user` (PPID 1)
 - [Голый `mktemp -d` — внутри чекаута](bare-mktemp-lands-inside-the-checkout.md) — `TMPDIR` роли в `.orchestrator/sessions/`; «вне дерева» — только `mktemp -d -p /tmp`
-- [Перечисленные формы могут не обязывать](named-forms-in-a-statement-may-not-bind.md) — постановка связывает требованием-исходом; не сказать вслух — три письма с вопросом
+- [Перечисленные формы могут не обязывать](named-forms-in-a-statement-may-not-bind.md) — связывает требование-ИСХОД, а не форма
 - [PR по `claude-review.yml` не мерит НИКТО](review-yml-pr-is-unmeasured-before-merge.md) — круг самопропускается, actionlint'а нет: YAML и `bash -n` — рука curator
 - [«Кредов не нужно» с ящика не мерится](no-credentials-needed-is-unmeasured-on-the-box.md) — токен стоит в среде молча; приёмка — прогон с `env -u GH_TOKEN`
 - [Полевой класс гарда 3 умирает на `claude-review.yml`](guard3-field-class-dies-on-review-yml.md) — «ревьюер подтвердил» невыполнимо → слово john ДО работы
