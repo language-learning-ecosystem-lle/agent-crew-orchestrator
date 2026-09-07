@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T11:33:41.948Z",
+  "writtenAt": "2026-09-07T11:36:06.909Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "044-selfheal-blind-spots",
       "state": "draining",
       "deadline": "2026-09-07T12:07:36Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "153-untracked-file-freezes-selfheal",
+      "state": "running",
+      "deadline": "2026-09-07T12:36:03Z"
     }
   ]
 }
