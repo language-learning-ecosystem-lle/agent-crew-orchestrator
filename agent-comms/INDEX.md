@@ -147,7 +147,7 @@
 | 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать кнопку merge на [#326](https://github.com/language-learning-ecosyste… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
-| 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | ✅ checks по PR #328: success. |
+| 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | run:328 · 2026-09-07 | 2026-09-07 | Метка review повешена на голову 207b460361a297331613f084e4a42db828672ad7 — ту самую, что несёт зелё… |
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | — | 2026-09-07 | Дверь на уникальность номера СТОЯЛА всё это время — она спрашивала не то и не там. PR #329, голова… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
