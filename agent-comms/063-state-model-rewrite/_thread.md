@@ -4087,3 +4087,11 @@ the package writes 26 — run 'agent-protocol schema migrate' (a dry run first, 
 пару под идущий прогон — жечь такт.
 
 waiting-on → dev-core.
+
+## msg-068 · from: github · 2026-09-07 · expects: none
+
+❌ **checks по PR #322: `failure`.**
+
+feat(orchestrator): «ждёт круг ревью» — состояние кадра и ключ конфига review (v26) · голова `0e66f0f573e662852ce7307c41e16c4b734a940c` · попытка 1 · прогон [`34127384968`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34127384968)
+
+- `checks` — **failure**

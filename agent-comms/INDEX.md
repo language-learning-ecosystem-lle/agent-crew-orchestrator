@@ -67,7 +67,7 @@
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | run:322 · 2026-09-07 | 2026-09-07 | Ветка перебазирована, сюита зелена, PR открыт — #322, голова 0e66f0f5 |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | ❌ checks по PR #322: failure. |
 | 064-forget-the-consumer | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
@@ -139,7 +139,7 @@
 | 147-open-threads-sweep-2 | curator · john | normal | closed | — | — | 2026-09-07 | — |
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
-| 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | — | 2026-09-07 | ПРИЁМКА НАСТУПИЛА: команда thaw отработала в поле рукой john — ШЕСТЬ пар разморожены сегодня утром.… |
+| 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | closed | — | — | 2026-09-06 | — |
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | open | dev-core | — | 2026-09-07 | ПОСТАНОВКА dev-core. Слово john получено — СУЖАЕМ; работай по нему. Гард 3 закрывается письмом 2026… |
