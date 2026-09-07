@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T16:45:42.548Z",
+  "writtenAt": "2026-09-07T16:46:45.698Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "163-daemon-self-restart",
+      "state": "running",
+      "deadline": "2026-09-07T17:26:42Z"
+    }
+  ]
 }
