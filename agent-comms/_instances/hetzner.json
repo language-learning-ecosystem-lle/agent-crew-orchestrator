@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T15:29:47.927Z",
+  "writtenAt": "2026-09-07T15:36:02.802Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "158-cut-the-tag-for-the-consumer",
+      "state": "running",
+      "deadline": "2026-09-07T16:15:58Z"
+    }
+  ]
 }
