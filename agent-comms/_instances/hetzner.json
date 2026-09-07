@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T12:24:50.439Z",
+  "writtenAt": "2026-09-07T12:25:33.989Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "devops",
       "thread": "154-contour-group-outlived-its-abolition",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-07T12:44:46Z"
     }
   ]
