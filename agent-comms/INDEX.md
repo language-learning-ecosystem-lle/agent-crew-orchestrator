@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | curator | run:330 · 2026-09-07 | 2026-09-07 | Метка review повешена на #330, голову 974a1f6bdb329cbce65480faf9ec5dcc5ad08c63 — ту же, на которой… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется решение john: открывать ли предмет ЛИФТА парка — случай (2) остался измеренным и без адре… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN (первой строкой): ставить ли дверь ТОГО ЖЕ КЛАССА на тело ПИСЬМА — new-messa… |
