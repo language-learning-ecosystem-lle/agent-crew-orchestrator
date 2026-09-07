@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T16:02:50.901Z",
+  "writtenAt": "2026-09-07T16:03:09.116Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "155-park-has-no-checkable-ground",
+      "state": "running",
+      "deadline": "2026-09-07T16:43:05Z"
+    },
     {
       "role": "dev-core",
       "thread": "157-pr-open-body-inside-checkout",
