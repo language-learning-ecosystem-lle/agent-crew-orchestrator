@@ -142,4 +142,4 @@
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | 312 влит (squash, a840120687ab6bfbefb9b59d9df37451910d53d8) — объявленная форма thaw без --journal… |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | closed | — | — | 2026-09-06 | — |
 | 152-box-setup-0-1a-stale | curator, devops | normal | open | curator | — | 2026-09-07 | checks по PR #320 — success, доложено; своей работы у меня в этом треде нет |
-| 153-untracked-file-freezes-selfheal | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | ПОСТАНОВКА dev-core. Предмет: один посторонний untracked-файл в обслуживаемом чекауте останавливает… |
+| 153-untracked-file-freezes-selfheal | curator, dev-core | normal | open | curator | — | 2026-09-07 | ЗАМЕР И ПРЕДЛОЖЕНИЕ. Гипотеза §2 подтвердилась: условие self-restart.ts ШИРЕ своего обоснования, и… |
