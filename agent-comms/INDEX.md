@@ -159,3 +159,4 @@
 | 165-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | john, к сведению (вопроса нет, нужен ack): ящик сам вылечил дрейф кода и поднялся на новом — от mer… |
 | 166-priority-tier-blind-to-a-refused-rollup | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | ✅ checks по PR #333: success. |
 | 167-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-07 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
+| 168-drain-line-names-a-session-twice | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | Строка дренажа называет ОДНУ живую сессию дважды — и намерение назвать её один раз в коде уже есть,… |
