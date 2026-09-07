@@ -2022,7 +2022,7 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             (--thread <id> | --ensure-thread <slug> --title <t> --participants <a,b>) \
                             --from <role> \
                             --expects answer|ack|none [--waiting-on <role>] \
-                            --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
+                            --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--park-ground <fact>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
                             # --ensure-thread <slug>: A STANDING ADDRESS INSTEAD OF ONE THREAD (thread 080,
                             # decision of john 2026-09-03). It says WHICH ADDRESS the letter is for and lets
                             # the command find the thread currently playing that address's receiver: the one
@@ -2234,6 +2234,22 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # refusal is said apart from "no run at all" because the repair differs:
                             # there the round has not been born (wait seconds, park then), here it has
                             # already died (read the outcome and report it)
+                            # --park-ground <fact>: THE FACT THE PARK IS TAKEN AGAINST (thread 155) —
+                            # OPTIONAL, and its absence is never refused: a park waiting for a decision
+                            # of a person names no fact and behaves exactly as it always has. What it
+                            # buys is an ADDRESS for a ground that until now lived in the prose of the
+                            # body and in the memory of whoever set it: measured over two days — a park
+                            # standing 21 h 23 m over a ready PR after its question had been answered,
+                            # and a park asking john to unfreeze a pair HIS OWN HAND had unfrozen that
+                            # morning, which then locked both pairs of the thread over five commits
+                            # already on `origin`. One form today, `frozen:<role>×<thread>` ("stands
+                            # while that pair is frozen", ASCII `*` for the `×`), and it is the one the
+                            # box can answer out of the journal it already reads every tick. The daemon
+                            # then NAMES a park whose pair is no longer frozen — once per park, not once
+                            # per tick — and lifts NOTHING: the park stands and a hand ends it, because
+                            # a thread may have grown a second reason while nobody was reading. Refused
+                            # at the door in two cases only: a value this version cannot ask, and a
+                            # ground on a message that parks nothing
                             # --park-mover <participant>: WHO MAKES THAT MERGE HAPPEN (thread 061, by the
                             # word of john 2026-08-30) — DEMANDED on `--parked-on pr:<n>`, refused with
                             # anything else. A merge park waits for A HAND on a button, and a parked
@@ -2338,7 +2354,7 @@ agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id>
                             # beside the question. code 0 — the answer arrived; code 3 — the wait ran out
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
-                            [--waiting-on <role>] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--verdict <approve|needs-fixes> --pr <n>] --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--write] [--no-push]
+                            [--waiting-on <role>] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--park-ground <fact>] [--verdict <approve|needs-fixes> --pr <n>] --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--write] [--no-push]
                             # --delivers: THE SAME FIELD TOO (thread 030), by the same door and with the
                             # same two refusals — a thread is often OPENED by the courier of a decision,
                             # and the park that word lifts stands in ANOTHER thread. Written here on the

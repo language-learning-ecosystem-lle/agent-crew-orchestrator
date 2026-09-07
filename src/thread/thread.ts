@@ -456,6 +456,14 @@ export type Parking = {
   readonly pr?: number;
   /** The stamp of the message that declared it — the identity of the event, not of the thread. */
   readonly since: string;
+  /**
+   * THE FACT THE PARK WAS TAKEN AGAINST, raw as the writer typed it (`park-ground`, thread 155) —
+   * absent from almost every park, and that is the design: a park on a person's decision names no
+   * fact. Carried here rather than re-read from the declaring message because every reader that
+   * judges a ground already holds this object, and two walks over the feed for one park are two
+   * answers waiting to disagree. Whether the value can be READ at all is `park-ground.ts`.
+   */
+  readonly ground?: string;
   /** The first line of the parking message: the question, in the words it was asked in. */
   readonly question: string;
   /**
@@ -510,6 +518,9 @@ export const parkingOf = (
   // a call to a human unless the message that declared it asks nobody for anything. Both legal
   // parks (`answer` and `ack`) require an action of the person; only `none` is mute.
   const asks = at.fields.expects !== "none";
+  // The named ground travels with the park it qualifies and is never re-decided here: this
+  // reader says WHAT was declared, and `park-ground.ts` says whether it is still true.
+  const ground = at.fields.parkGround;
   const named = parkedOnKind(on);
   // The turn the park was declared on, carried for the readers that print it (`notify.ts` tells
   // a pair the park is ABOUT from one that merely stands in the same thread). Whether the park
@@ -522,6 +533,7 @@ export const parkingOf = (
       since,
       question,
       asks,
+      ...(ground === undefined ? {} : { ground }),
       ...(typeof holder === "string" ? { holder } : {}),
     };
   const { pr } = named;
@@ -547,9 +559,8 @@ export const parkingOf = (
   // caller happens to hold.
   const merged = thread.messages.some((message) => message.fields.mergedPr === pr);
   if (merged) return undefined;
-  return named.kind === "run"
-    ? { kind: "run", pr, since, question, asks }
-    : { kind: "event", pr, since, question, asks };
+  const event = { pr, since, question, asks, ...(ground === undefined ? {} : { ground }) };
+  return named.kind === "run" ? { kind: "run", ...event } : { kind: "event", ...event };
 };
 
 /**

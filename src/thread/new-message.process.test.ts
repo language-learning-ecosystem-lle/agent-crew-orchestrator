@@ -868,6 +868,58 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(written(contest.root).fields.parkedOn).toBe("john");
   });
 
+  // THREAD 155 — THE GROUND OF THE PARK, at the door that writes it. The unit tests judge the
+  // wording and the reading; what only this level can say is that the flag reaches the header
+  // at all, and the lesson of 075 is why it is asserted here: a flag one command parses and
+  // another swallows goes into an append-only feed without a word.
+  it("writes the NAMED GROUND of the park beside it, in the canonical spelling of the pair", () => {
+    const contest = contour();
+
+    const result = direct(
+      contest,
+      "curator",
+      "--parked-on",
+      "john",
+      // The ASCII spelling is what a shell types; the header keeps the `×` every reader prints.
+      "--park-ground",
+      "frozen:dev-core*063-slug",
+    );
+
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.parkGround).toBe("frozen:dev-core×063-slug");
+    expect(written(contest.root).fields.parkedOn).toBe("john");
+  });
+
+  it("a park with NO ground is written exactly as it always was — the field obliges nobody", () => {
+    const contest = contour();
+
+    const result = direct(contest, "curator", "--parked-on", "john");
+
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.parkGround).toBeUndefined();
+  });
+
+  it("a ground the box cannot ask is refused BY NAME, and nothing is written", () => {
+    const contest = contour();
+
+    const result = direct(contest, "curator", "--parked-on", "john", "--park-ground", "john says");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("frozen:<role>×<thread>");
+    expect(result.out).toContain("needs no ground at all");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("a ground on a message that parks NOTHING is refused — it qualifies nothing", () => {
+    const contest = contour();
+
+    const result = direct(contest, "curator", "--park-ground", "frozen:dev-core×063-slug");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("without '--parked-on'");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
   it("a role the circuit CAN wake is refused — that is a turn to pass, not a person to wait for", () => {
     const contest = contour();
 
