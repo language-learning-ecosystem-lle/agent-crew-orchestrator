@@ -158,6 +158,6 @@
 | 164-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется решение john — вопрос первой строкой: отчёт демона о самоперезапуске донесён, но ОДНА ЕГО… |
 | 165-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | john, к сведению (вопроса нет, нужен ack): ящик сам вылечил дрейф кода и поднялся на новом — от mer… |
 | 166-priority-tier-blind-to-a-refused-rollup | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
-| 167-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-07 | Третий отчёт на стоячий адрес сошёлся весь; адрес доставил ВТОРОЙ раз подряд. Попутно замерена цена… |
+| 167-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-07 | Приписка к письму 20:02:06Z: три ссылки в нём даны ОРДИНАЛОМ — пиню их автором, штампом и фактом |
 | 168-drain-line-names-a-session-twice | curator, dev-core | normal | open | curator | — | 2026-09-07 | verdict: approve |
 | 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | open | curator | — | 2026-09-07 | verdict: approve |
