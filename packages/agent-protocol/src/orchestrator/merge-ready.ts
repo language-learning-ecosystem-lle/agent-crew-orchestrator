@@ -35,6 +35,13 @@
  * is slowed, and the order is bit-for-bit the order of a circuit without merge-ready at
  * all. A silent failure that reordered the queue would be worse than the feature is good.
  *
+ * AND SILENCE IS THE REPORT FOR "NOT READY", WHICH IS WHY "NOT READ" MUST BREAK IT (thread
+ * 166). A pull request whose checks could not be seen at all fails guard 2 like a red one,
+ * and its place in the queue is rightly unchanged — but leaving it at that made a contour
+ * where NOTHING can ever be ready (a token refused `statusCheckRollup` on a private
+ * repository) look exactly like a queue with nothing ready in it. So the reader says that
+ * case out loud, in the door's own words: 'no access', NOT 'not ready'.
+ *
  * THE PRICE IS BOUNDED BY TWO LIMITS, both named in the statement of work:
  *  · only threads that are ALREADY waiting for a raise are asked about — the queue this
  *    tick is about to order, not the repository's whole PR list;
@@ -218,6 +225,19 @@ export const readMergeReady = async (input: {
       if (holds) input.cache.set(key, holds);
     }
     if (!holds) {
+      // NO ACCESS IS NOT NOT-READY, AND THE TIER HAS TO SAY WHICH (thread 166). A pull
+      // request whose checks could not be read at all fails guard 2 exactly like a red one
+      // — the tier is right to leave it in its ordinary place — but until now the two left
+      // the same trace, which is no trace: "not ready" is silence here. Silence is the
+      // correct report for a PR that is genuinely not ready and the WRONG one for a
+      // contour where nothing will EVER be ready, because the token cannot see the checks.
+      // The door already says these two apart in its verdict (`gate.ts`, guard 2); this is
+      // the same sentence at the reader that ranks a queue.
+      if (facts?.checksReading?.state === "refused") {
+        notes.push(
+          `merge-ready: PR #${pr.number} (${thread}) — the checks were NOT READ: GitHub refused '${facts.checksReading.refusedPath}' on this token and the substitute source answered nothing either — ${facts.checksReading.reason}. This is 'no access', NOT 'not ready': the thread keeps its ordinary place, and nothing here says the pull request is unready`,
+        );
+      }
       // WAITING FOR A ROUND OF REVIEW (thread `063`, §5 state 2) — the state the frame had
       // no word for: the role hung the label, passed the turn, and the pair read as
       // `released (completed)`, "finished", with its pull request open.
