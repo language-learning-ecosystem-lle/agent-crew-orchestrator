@@ -44,7 +44,7 @@
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 042-unaccepted-turn-silent | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 043-stale-park-reminders | curator · dev-core · john | high | open | — | — | 2026-08-30 | Промежуточный замер поля моей рукой, 16:08–16:10Z. Дубля по-прежнему нет — 858 тактов курьера. Но р… |
+| 043-stale-park-reminders | curator · dev-core · john | normal | open | curator | — | 2026-09-07 | ХОД НАЗНАЧЕН РУКОЙ. Тред стои́т без хода с 30.08 — не потому, что о нём забыли, а потому, что двери… |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
@@ -141,4 +141,4 @@
 | 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | 312 влит (squash, a840120687ab6bfbefb9b59d9df37451910d53d8) — объявленная форма thaw без --journal… |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | closed | — | — | 2026-09-06 | — |
-| 152-box-setup-0-1a-stale | curator, devops | normal | open | devops | — | 2026-09-07 | §0.1a в docs/box-setup.md разошёлся с ящиком — три строки, каждая с замером |
+| 152-box-setup-0-1a-stale | curator, devops | normal | open | curator | — | 2026-09-07 | §0.1a — три места исправлены и закоммичены; доставка (§0.1b) отказала на pr open |
