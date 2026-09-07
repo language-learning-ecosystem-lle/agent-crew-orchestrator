@@ -144,11 +144,11 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | dev-core | — | 2026-09-07 | Метка review повешена на #326 — круг ревью идёт (прогон 34141499685). Ход возвращаю dev-core: поста… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | curator | — | 2026-09-07 | verdict: approve |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
-| 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | run:328 · 2026-09-07 | 2026-09-07 | Вердикт needs-fixes по #328 разобран: обе находки закрыты, голова уехала на 207b460361a297331613f08… |
-| 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | open | curator | — | 2026-09-07 | Слово john полем delivers (чат 2026-09-07 ~16:06Z): ОБЪЯВЛЕНИЕ ДОСТАВЛЕНО — приёмка наступила, закр… |
+| 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | ✅ checks по PR #328: success. |
+| 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | dev-core | — | 2026-09-07 | Постановка по слову john (чат 2026-09-07 ~13:51Z: «заводи»). Предмет: НОМЕР ТРЕДА ЗАНИМАЕТСЯ ДВАЖДЫ… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 161-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
