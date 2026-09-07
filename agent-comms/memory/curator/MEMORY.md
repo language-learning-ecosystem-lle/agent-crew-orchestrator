@@ -1,104 +1,105 @@
-- [Дверь почты падает на чужом `index.lock`](mail-door-dies-on-a-foreign-index-lock.md) — код 128, ретрай внутри команды не покрывает; переждать и повторить, чужой лок не снимать
-- [Дифф PR берут от merge-base](pr-diff-base-is-the-merge-base.md) — `git diff origin/main <голова>` на отставшей ветке печатает чужие мержи как удаления и врёт про доки власти
-- [Низкий приоритет всё равно поднимают](low-priority-still-gets-raised.md) — `--priority low` только упорядочивает очередь; кандидатом делает `waitingOnOf`, вычёркивает `--waiting-on "—"`
-- [Деревья ролей делят один склад refs](role-worktrees-share-one-ref-store.md) — чужой тег виден без `fetch` — это улика и мина; годность тега мерится деревом и `version` внутри, а не именем
-- [Парк замораживает тот самый ход](parked-on-freezes-the-turn.md) — `--parked-on` отменяет постановку, если снятие зависит от адресата; цена person-парка мерится `notify.state` и бывает в сутках
-- [Дверь парка отказывает молчащему письму](park-door-refuses-silent-letters.md) — письмо в стоячий парк дверь принимает только назвавшим РОВНО этот парк (`--verdict … --pr`, `run:N`, `--park-lifted`)
-- [Письмо без парка поднимает тред впустую](letter-without-a-park-reraises-the-thread.md) — голым кандидатом делает и письмо БЕЗ парка, и своё `--delivers` (снимает стоячий); форм person-парка ДВЕ, тихая не звонит
-- [Лифт парка чист над почтой](park-lift-is-pure-over-the-mail.md) — `cli mail` парк НЕ фильтрует (свой свежий парк в списке — не улика), контрольного чтения парка у роли нет
-- [Свежую ленту читают ДО подъёма роли](read-the-fresh-feed-before-raising-a-role.md) — тот же живой замер мог снять другая сессия часом раньше; свежий `TMPDIR` убивает codex-роль на первой команде
-- [Чтение ссылки не должно писать в дерево](reading-a-ref-must-not-write-the-tree.md) — читать `git show <ref>:<путь>`: `checkout <ref> -- .` оставляет `M` в индексе и готовит отказ запуска роли (R17)
-- [Вендорская песочница мерится даром](vendor-sandbox-measures-for-free.md) — `codex sandbox -- <команда>` гоняет что угодно под тем же confinement БЕЗ вызова модели — дважды сэкономило слот
-- [Ссылка на письмо — автором и фактом](cite-letters-by-author-and-fact.md) — имён файлов читалка не даёт; `--tail` нумерует с `msg-001`, и «письма нет» бывает артефактом хвоста
-- [«Уезжает в тред X» — намерение, а не запись](handoff-to-another-thread-is-prose.md) — переезд предмета проверяется чтением ленты адресата: прогон связан одним тредом, писать в X некому
-- [`await-input` будит любой записью](await-input-wakes-on-any-write.md) — снять блокировку может объявление бота, а не ответ — перечитывать `--for` ПЕРЕД отправкой, а не только при пробуждении
-- [Треды, должные после #160](threads-owed-after-160.md) — восемь бесхозных предметов после #160; `new-thread` из связанного прогона john разрешил
-- [Нота о переезде базы — замером, не ребейзом](base-move-note-answered-by-measure.md) — сдвиг базы гасится замером (дерево мержа + полная сюита на обоих деревьях), а не ребейзом; нормой не объявлен
-- [Класс полевого дефекта требует ДВУХ писем](field-defect-class-needs-two-letters.md) — класс объявляется письмом РАНЬШЕ следа гарда 5; «Вопрос ревьюеру» в теле PR закрывает только условие 3
-- [Приёмка укладывается в объявленный `launch`](acceptance-must-fit-declared-launch-params.md) — прогон приёмки с чужими `--model`/`--effort` = право `launch-params`, которого у curator нет
-- [Цена такта — это очередь, а не проза](tick-cost-is-the-queue-not-prose.md) — тридцатиминутного такта нет (медиана 6.3), ход ждёт медиану 19.9 мин, 84% ожидания роль занята другим
-- [«0 of those new» = уже позвонило](notify-zero-new-means-already-rang.md) — парк проверяют БЛОКОМ своего треда в `notify.state`, и ключей ДВА (`asked` / `parked`) — греп по одному лжёт
-- [«Зелено» — это команда, дерево и ПОЧВА](green-is-only-the-runners-command.md) — `tsc`, названный файлами, выходит нулём поверх ошибок; хеш дерева краснеет из `/tmp`, зеленеет из чекаута
-- [Постановка кончается тегом](statement-of-work-ends-at-the-tag.md) — конечная точка постановки — тег и его объявление; рез — рука роли, и «резать сейчас» без бампа `version` не существует
-- [Смёрженное ≠ работающее](merged-code-is-not-running-code.md) — демон исполняет исходники чекаута: sha — в `daemon-code.json`, «почему не подобрал» — в `daemon-drift.json`; КАРТОЧКА едет мимо демона
-- [Приёмочный прогон нужен тред, который ЖДЁТ роль](acceptance-run-needs-a-thread-that-waits.md) — на закрытом треде `handoff` ловится за секунды; ОТКРЫТЫЙ тред с `waiting-on: curator` для приёмки годится
-- [Сверяй ШАБЛОН грепа, а не его вывод](verify-the-grep-pattern-not-its-result.md) — чистый греп бывает чистым по узкому шаблону: сверять ШАБЛОН с перечнем, а свой ноль — контрольным совпадением
-- [Копия в `comms` кладётся ДО мёржа канона](comms-copy-before-canon-merge.md) — копия в `comms` кладётся ДО мёржа канона; самосинки нет ни в одном воркфлоу, исполнитель копии — dev-core
-- [Гард 4 кончается на `workflows/**`](guard4-reach-ends-at-workflows.md) — `powerDocuments` не покрывает ни `.github/scripts/**`, ни `packages/**` — вынос тела снимает его с кнопки john
-- [Закрытие треда — третья дверь почты](closing-a-thread-is-a-third-door.md) — `thread status` у поднятой сессии есть; приёмка требует ВТОРОЙ проверки, а флип — тоже запись: `--for` перед ним
-- [Dispatch у Merge Notify ничего не пишет](merge-notify-dispatch-is-a-noop.md) — джоба стоит на `if: pull_request.merged == true` — пропущенные письма о merge не переигрываются
-- [Норма едет в PROTOCOL.md, таблица остаётся](norms-go-to-protocol-tables-stay.md) — инвентарь пополняется, а док власти двигает только john: копия таблицы раздваивается на первом пополнении
-- [Проза карточки едет в PR конфига](card-prose-rides-the-config-pr.md) — отдельный PR = вторая кнопка john под одним решением; два слова john бывают «второе уточняет первое»
-- [Перепроверяй тем инструментом, что мерил](reproduce-with-the-tool-that-measured.md) — прежде чем сказать «замер не сошёлся», исключи свою руку; пути влитого PR берут из squash-коммита
-- [Правка тела PR не убивает вердикт](pr-body-edit-keeps-the-verdict.md) — текстовую находку ревьюера закрывают в той же ветке, сверив `headRefOid` до и после; кодовую — нет
-- [Канал вердикта — свой у ревьюера](reviewer-verdict-channel-is-its-own.md) — вердикт и исход `checks` приезжают в тред сами шагами `claude-review.yml`; метка вешается по зову `LABEL_CALL`
-- [Звонок парка несёт СТАРУЮ первую строку](park-bell-carries-the-old-first-line.md) — «донеси X до john» закрывается замером `notify.state` и первой строки парковочного письма, а не вторым парком
-- [Стоячие адреса 076 и 077](standing-address-threads-076-077.md) — адрес — СЛАГ (`--ensure-thread`): дверь берёт открытый приёмник или открывает следующий; закрытие нормально
-- [Стык мерится на реальной ленте даром](seam-measured-on-real-feed-for-free.md) — фикстура покрывает функцию, а путь и имена — нет: `git show origin/main:<скрипт>` + `git archive origin/comms`
-- [Безголовый тред красит ВСЮ почту](headless-thread-reddens-all-mail.md) — тред без `_meta.md` роняет `Comms Derived` на каждом push в `comms`; чинится `thread status --repair --write`
-- [Номера тредов плоские](thread-ids-are-flat.md) — `NNN.M` дверь принимает, а обходчик (`^\d{3}-`) не видит; после `new-thread --write` — контрольное `mail --role <адресат>`
-- [Системный пользователь не читает чужой аккаунт](system-user-role-cannot-read-shared-account.md) — роль под `systemUser` умирает за 0 с на чужом `configDir`; полка кредов АККАУНТНАЯ — стоят все пары аккаунта
-- [Решение может предполагать несуществующий механизм](decision-may-presuppose-a-missing-mechanism.md) — сверяй механизм чтением кода/`usage` В ОБЕ стороны: «недостающее» бывает дверью на уже имеющемся праве
-- [Расширение предмета внутри PR двери — по двум проверкам](scope-widening-inside-a-door-pr.md) — законно тем же PR только если без починки дверь отказала бы в объявленной форме И починка не вводит нормы
-- [Названный случай — образец, а не класс](reported-instance-is-a-sample.md) — чужая находка перечисляется скриптом по всему предмету ДО постановки: названный случай был нулевым по цене
-- [Машинный конфиг — в `$HOME`, не в репозитории](machine-config-is-instance-file.md) — адрес `~/.config/agent-protocol/instances/hetzner.json`, его `secrets.envFile` называет свой креды-файл
-- [Хвост PR требует своего треда](pr-tail-sweep-needs-the-owning-thread.md) — чужой PR не домерживается: след гарда 5 обязан лечь в ленту ЕГО треда, а тред-владелец бывает ЗАКРЫТ — сверять `status:`
-- [Общий хвост файла сериализует мержи](protocol-reference-tail-serializes-merges.md) — чужой merge делает PR `CONFLICTING`, и цена — АННУЛИРОВАННЫЙ вердикт: approve жать в тот же такт, а свою кнопку — ПЕРЕД меткой на соседа
-- [Переезд шага отменяет объявленное исключение](moved-step-repeals-declared-exception.md) — приёмка переписанного шага читается КОДОМ ВЫХОДА на каждом классе, что различал старый
-- [Штамп письма зажимается вперёд](message-stamp-is-clamped-forward.md) — время в теле письма позже своего штампа невозможно; `thread show --for` перечитывают НЕПОСРЕДСТВЕННО перед отправкой
-- [`mergedBy` не называет руку](merged-by-does-not-name-the-hand.md) — обе кнопки печатают `maysway`; «письмо ДО merge» тоже не улика (кнопка бывает раньше письма) — только `STOP` гарда 4 и чей след
-- [Пришпиленный блоб протухает в круге](pinned-blob-rots-in-the-review-circle.md) — чужой мерж двигает канон под пришпиленным блобом; три стадии `merge-tree --write-tree` называют блобы базы/main/PR
-- [Круги ревьюера считаются точно](review-circles-are-countable.md) — осиротевшая голова читается `gh api …/commits/<sha>`, голова круга — из `reviewed.commit_id`; класс несут числом
-- [Прошедшее время меряют `date`, а не числом ходов](elapsed-time-is-measured-not-estimated.md) — время берут `date -u` в той же команде, что снимает факт: на глаз промахнулся трижды за день
-- [Полевой критерий уступает перечислению](field-sample-criterion-yields-to-enumeration.md) — приёмка «материал появится сам» жжёт слот каждый такт; перечисление фактов строго сильнее образца
-- [Хвост письма протухает молча](carried-tail-items-rot.md) — пункты «остаётся рука john» переезжают копированием, и их не судит ни дверь, ни ревьюер — перемерять перед переносом
-- [Кнопка merge жмётся с `--match-head-commit`](merge-with-match-head-commit.md) — sha берут из вывода самой `merge-gate` — тогда гарды 1–2 не зависят от сверки сорока hex глазом; пишется в след
-- [Годность тега среза — это поиск по линии](cut-tag-validity-is-a-line-search.md) — годность = дерево реза встречается у коммита линии `main`; сравнение с `origin/main:` краснеет на ЧЕСТНОМ теге
-- [Креды мерятся пушем](credentials-measured-by-push.md) — `ls-remote` проходит анонимно; сессия без токена умирает уже на ЧТЕНИИ почты — в заметке готовый `GIT_CONFIG_*`-хелпер
+- [Дверь почты падает на чужом `index.lock`](mail-door-dies-on-a-foreign-index-lock.md) — код 128; переждать и повторить, чужой лок не снимать
+- [Дифф PR берут от merge-base](pr-diff-base-is-the-merge-base.md) — `git diff origin/main <голова>` на отставшей ветке врёт про доки власти
+- [Низкий приоритет всё равно поднимают](low-priority-still-gets-raised.md) — кандидатом делает `waitingOnOf`, вычёркивает `--waiting-on "—"`
+- [Деревья ролей делят один склад refs](role-worktrees-share-one-ref-store.md) — чужой тег виден без `fetch`; годность тега мерится деревом и `version`, не именем
+- [Парк замораживает тот самый ход](parked-on-freezes-the-turn.md) — отменяет постановку, если снятие зависит от адресата; цена person-парка — в `notify.state`
+- [Дверь парка отказывает молчащему письму](park-door-refuses-silent-letters.md) — принимается только назвавшее РОВНО этот парк (`--verdict … --pr`, `run:N`, `--park-lifted`)
+- [Письмо без парка поднимает тред впустую](letter-without-a-park-reraises-the-thread.md) — голым кандидатом делает и письмо БЕЗ парка, и своё `--delivers`; форм person-парка ДВЕ
+- [Лифт парка чист над почтой](park-lift-is-pure-over-the-mail.md) — `cli mail` парк НЕ фильтрует; контрольного чтения парка у роли нет
+- [Свежую ленту читают ДО подъёма роли](read-the-fresh-feed-before-raising-a-role.md) — замер мог снять другая сессия часом раньше; свежий `TMPDIR` убивает codex-роль
+- [Чтение ссылки не должно писать в дерево](reading-a-ref-must-not-write-the-tree.md) — `git show <ref>:<путь>`: `checkout <ref> -- .` оставляет `M` и готовит отказ запуска (R17)
+- [Вендорская песочница мерится даром](vendor-sandbox-measures-for-free.md) — `codex sandbox -- <команда>` гоняет под тем же confinement БЕЗ вызова модели
+- [Ссылка на письмо — автором и фактом](cite-letters-by-author-and-fact.md) — имён файлов читалка не даёт; `--tail` нумерует с `msg-001`, «письма нет» — артефакт хвоста
+- [«Уезжает в тред X» — намерение, а не запись](handoff-to-another-thread-is-prose.md) — переезд проверяется чтением ленты адресата: прогон связан одним тредом
+- [Треды, должные после #160](threads-owed-after-160.md) — реестр бесхозных предметов; `new-thread` из связанного прогона john разрешил
+- [`await-input` будит любой записью](await-input-wakes-on-any-write.md) — снять блокировку может объявление бота; перечитывать `--for` ПЕРЕД отправкой
+- [Нота о переезде базы — замером, не ребейзом](base-move-note-answered-by-measure.md) — дерево мержа + полная сюита на обоих деревьях; нормой не объявлен
+- [Класс полевого дефекта требует ДВУХ писем](field-defect-class-needs-two-letters.md) — класс объявляется РАНЬШЕ следа гарда 5; «Вопрос ревьюеру» закрывает только условие 3
+- [Приёмка укладывается в объявленный `launch`](acceptance-must-fit-declared-launch-params.md) — чужие `--model`/`--effort` = право `launch-params`, которого у curator нет
+- [Цена такта — это очередь, а не проза](tick-cost-is-the-queue-not-prose.md) — медиана такта 6.3 мин, ход ждёт 19.9; 84% ожидания роль занята другим
+- [«0 of those new» = уже позвонило](notify-zero-new-means-already-rang.md) — парк проверяют БЛОКОМ своего треда в `notify.state`, и ключей ДВА (`asked`/`parked`)
+- [«Зелено» — это команда, дерево и ПОЧВА](green-is-only-the-runners-command.md) — `tsc` по именам файлов выходит нулём поверх ошибок; хеш дерева краснеет из `/tmp`
+- [Постановка кончается тегом](statement-of-work-ends-at-the-tag.md) — конечная точка — тег и его объявление; «резать сейчас» без бампа `version` не существует
+- [Смёрженное ≠ работающее](merged-code-is-not-running-code.md) — демон исполняет исходники чекаута: `daemon-code.json`, `daemon-drift.json`; КАРТОЧКА едет мимо демона
+- [Приёмочный прогон нужен тред, который ЖДЁТ роль](acceptance-run-needs-a-thread-that-waits.md) — на закрытом `handoff` ловится за секунды; годится открытый с `waiting-on`
+- [Сверяй ШАБЛОН грепа, а не его вывод](verify-the-grep-pattern-not-its-result.md) — чистый греп бывает чистым по узкому шаблону; свой ноль — контрольным совпадением
+- [Копия в `comms` кладётся ДО мёржа канона](comms-copy-before-canon-merge.md) — самосинки нет ни в одном воркфлоу, исполнитель копии — dev-core
+- [Гард 4 кончается на `workflows/**`](guard4-reach-ends-at-workflows.md) — `powerDocuments` не покрывает `.github/scripts/**` и `packages/**`: вынос тела снимает кнопку john
+- [Закрытие треда — третья дверь почты](closing-a-thread-is-a-third-door.md) — `thread status` у сессии есть; приёмка требует ВТОРОЙ проверки, флип — тоже запись
+- [Dispatch у Merge Notify ничего не пишет](merge-notify-dispatch-is-a-noop.md) — `if: pull_request.merged == true`: пропущенные письма о merge не переигрываются
+- [Норма едет в PROTOCOL.md, таблица остаётся](norms-go-to-protocol-tables-stay.md) — копия таблицы раздваивается на первом пополнении инвентаря
+- [Проза карточки едет в PR конфига](card-prose-rides-the-config-pr.md) — отдельный PR = вторая кнопка john под одним решением
+- [Перепроверяй тем инструментом, что мерил](reproduce-with-the-tool-that-measured.md) — прежде «замер не сошёлся» исключи свою руку; пути влитого PR — из squash-коммита
+- [Правка тела PR не убивает вердикт](pr-body-edit-keeps-the-verdict.md) — текстовую находку закрывают в той же ветке, сверив `headRefOid`; кодовую — нет
+- [Канал вердикта — свой у ревьюера](reviewer-verdict-channel-is-its-own.md) — вердикт и исход `checks` приезжают сами шагами `claude-review.yml`; метка — по `LABEL_CALL`
+- [Звонок парка несёт СТАРУЮ первую строку](park-bell-carries-the-old-first-line.md) — «донеси X до john» закрывается замером `notify.state`, а не вторым парком
+- [Стоячий адрес — это СЛАГ](standing-address-threads-076-077.md) — `--ensure-thread`: дверь берёт открытый приёмник или открывает следующий; закрытие нормально
+- [Стык мерится на реальной ленте даром](seam-measured-on-real-feed-for-free.md) — фикстура покрывает функцию, путь и имена — нет: `git show origin/main:` + `git archive origin/comms`
+- [Безголовый тред красит ВСЮ почту](headless-thread-reddens-all-mail.md) — тред без `_meta.md` роняет `Comms Derived`; чинится `thread status --repair --write`
+- [Номера тредов плоские](thread-ids-are-flat.md) — `NNN.M` дверь принимает, обходчик (`^\d{3}-`) не видит; после `new-thread` — контрольное `mail --role`
+- [Системный пользователь не читает чужой аккаунт](system-user-role-cannot-read-shared-account.md) — роль под `systemUser` умирает за 0 с; полка кредов АККАУНТНАЯ
+- [Решение может предполагать несуществующий механизм](decision-may-presuppose-a-missing-mechanism.md) — сверяй кодом/`usage` В ОБЕ стороны: «недостающее» бывает уже дверью
+- [Расширение предмета внутри PR двери — по двум проверкам](scope-widening-inside-a-door-pr.md) — законно, если без починки дверь отказала бы И починка не вводит нормы
+- [Названный случай — образец, а не класс](reported-instance-is-a-sample.md) — чужая находка перечисляется скриптом по всему предмету ДО постановки
+- [Машинный конфиг — в `$HOME`, не в репозитории](machine-config-is-instance-file.md) — `~/.config/agent-protocol/instances/hetzner.json`, его `secrets.envFile`
+- [Хвост PR требует своего треда](pr-tail-sweep-needs-the-owning-thread.md) — след гарда 5 обязан лечь в ленту ЕГО треда, а владелец бывает ЗАКРЫТ — сверять `status:`
+- [Общий хвост файла сериализует мержи](protocol-reference-tail-serializes-merges.md) — цена чужого merge — АННУЛИРОВАННЫЙ вердикт: свою кнопку жать ПЕРЕД меткой на соседа
+- [Переезд шага отменяет объявленное исключение](moved-step-repeals-declared-exception.md) — приёмка читается КОДОМ ВЫХОДА на каждом классе, что различал старый
+- [Штамп письма зажимается вперёд](message-stamp-is-clamped-forward.md) — время в теле позже своего штампа невозможно; `--for` перечитывают перед самой отправкой
+- [`mergedBy` не называет руку](merged-by-does-not-name-the-hand.md) — обе кнопки печатают `maysway`, «письмо ДО merge» тоже не улика — только `STOP` гарда 4 и чей след
+- [Пришпиленный блоб протухает в круге](pinned-blob-rots-in-the-review-circle.md) — три стадии `merge-tree --write-tree` называют блобы базы/main/PR
+- [Круги ревьюера считаются точно](review-circles-are-countable.md) — осиротевшая голова — `gh api …/commits/<sha>`, голова круга — `reviewed.commit_id`
+- [Прошедшее время меряют `date`, а не числом ходов](elapsed-time-is-measured-not-estimated.md) — `date -u` в той же команде, что снимает факт
+- [Полевой критерий уступает перечислению](field-sample-criterion-yields-to-enumeration.md) — «материал появится сам» жжёт слот каждый такт; перечисление сильнее образца
+- [Хвост письма протухает молча](carried-tail-items-rot.md) — пункты «остаётся рука john» переезжают копированием и никем не судятся — перемерять перед переносом
+- [Кнопка merge жмётся с `--match-head-commit`](merge-with-match-head-commit.md) — sha берут из вывода самой `merge-gate`; пишется в след
+- [Годность тега среза — это поиск по линии](cut-tag-validity-is-a-line-search.md) — дерево реза встречается у коммита линии `main`; сравнение с `origin/main:` врёт
+- [Креды мерятся пушем](credentials-measured-by-push.md) — `ls-remote` проходит анонимно; сессия без токена умирает уже на ЧТЕНИИ почты
 - [Одно дерево во всех порядках ≠ целость](same-tree-proves-no-conflict-not-integrity.md) — целость мерится `diff` база↔слитое с нулём удалений
-- [Потолок памяти мерит ОГЛАВЛЕНИЕ](memory-ceiling-measures-the-index.md) — переполняет длина крючков (82 % его байт), а не число заметок; смерть по поводу этой цены не платит
-- [У PAT нет записи в Actions](rerun-checks-without-moving-the-head.md) — ни `run rerun`, ни `workflow_dispatch` (403 называет `actions=write`); `checks` перезапускается close+reopen
-- [Обе формы парка берут номер PR](park-forms-both-take-the-pr-number.md) — `run:<pr>` ждёт ЛЮБОГО прогона в полёте, `pr:<n>` снимается только заголовком `merged-pr:`; id прогона в парк не едет
-- [Незапушенная ветка — невидимая работа](unpushed-branch-is-invisible-work.md) — умершая сессия оставляет коммит без push; спрашивать склад refs ДО написания диффа
-- [Мерж обнуляет сливаемость у всех PR](merge-blanks-mergeability-for-all-prs.md) — после мержа в `main` все открытые PR отвечают `UNKNOWN`; `gh pr list --json … mergeable` — один вызов на все
-- [Git-личность общая у контуров](git-identity-is-shared-across-contours.md) — `curator@agents.invalid` один в обоих домах: чужой чекаут атрибутируется номером треда и окном, а не автором
-- [Приёмка слитого дерева стоит минуты](acceptance-on-the-merged-tree-is-cheap.md) — прогон PR мерил слияние с базой СВОЕГО момента, дерево кнопки — никто; приёмка по СКВОШУ, почва — контролем
+- [Потолок памяти мерит ОГЛАВЛЕНИЕ](memory-ceiling-measures-the-index.md) — переполняет длина крючков (82 % байт), а не число заметок
+- [У PAT нет записи в Actions](rerun-checks-without-moving-the-head.md) — ни `run rerun`, ни `workflow_dispatch` (403 `actions=write`); `checks` — через close+reopen
+- [Обе формы парка берут номер PR](park-forms-both-take-the-pr-number.md) — `run:<pr>` ждёт любого прогона, `pr:<n>` снимается заголовком `merged-pr:`
+- [Незапушенная ветка — невидимая работа](unpushed-branch-is-invisible-work.md) — умершая сессия оставляет коммит без push; спрашивать склад refs ДО диффа
+- [Мерж обнуляет сливаемость у всех PR](merge-blanks-mergeability-for-all-prs.md) — после мержа все открытые PR отвечают `UNKNOWN`; один `gh pr list --json` на все
+- [Git-личность общая у контуров](git-identity-is-shared-across-contours.md) — `curator@agents.invalid` один в обоих домах: чужой чекаут ловится номером треда и окном
+- [Приёмка слитого дерева стоит минуты](acceptance-on-the-merged-tree-is-cheap.md) — прогон PR мерил базу СВОЕГО момента; приёмка по СКВОШУ, почва — контролем
 - [Приёмка на закрытии убивает свой канал](acceptance-on-close-kills-its-own-channel.md) — исход называют файлами и строками, лентой закрытого треда его не доложить
-- [Круг краснеет на квитанции](round-reddens-on-the-receipt.md) — STOP гарда 1 при видимом `approve`: доставку судит код выхода, `502` после прошедшей записи лечится перевешиванием метки, а не головой
-- [Круг ревьюера судит за минуты](review-circle-verdict-lands-in-minutes.md) — метка → вердикт 4,5–12 мин: своей работы брать на верхнюю границу, тогда ловится в тот же ход даром
-- [Норму от починки отличает дифф](norm-or-repair-is-read-in-the-diff.md) — переписана фраза, которой норма записана в доках, — гард 3 к john, и класс полевого дефекта не спасает
-- [Точечное слово john не закрывает гард 3 дважды](pointwise-john-word-does-not-close-guard3-again.md) — граница лежит абзацем НИЖЕ самого слова; совпадение класса основанием не является
-- [Парк ставится ПОСЛЕ вердикта](park-goes-after-the-verdict-not-before.md) — парк на john при летящем круге глотает письмо `reviewer-pr`: метка → вердикт в ленте → парк
-- [Каталог транскриптов выдаёт учётку](transcript-dir-reveals-the-account.md) — `find … -printf` под `TZ=UTC` читает подъём роли ЧУЖОГО контура, не трогая его репозиторий
-- [Каталог учётки называет свой аккаунт и тариф](config-dir-names-its-account-and-tier.md) — `.claude.json` → `oauthAccount.organizationRateLimitTier`: перелогин принимается замером, а не первой сессией роли
-- [Группы приезжают от менеджера пользователя](groups-come-from-the-user-manager.md) — рестарт юнита группу не подтягивает: креды держит `systemd --user` (PPID 1), мерится `/proc/<pid>/status`
-- [Голый `mktemp -d` — внутри чекаута](bare-mktemp-lands-inside-the-checkout.md) — `TMPDIR` роли лежит в `.orchestrator/sessions/`; букву «вне рабочего дерева» исполняет только `mktemp -d -p /tmp`
-- [Перечисленные формы могут не обязывать](named-forms-in-a-statement-may-not-bind.md) — постановка связывает требованием-исходом; не сказать этого вслух — три письма с одним вопросом
-- [PR по `claude-review.yml` не мерит НИКТО](review-yml-pr-is-unmeasured-before-merge.md) — круг самопропускается, а в `checks.yml` нет actionlint: YAML и `bash -n` по блокам `run:` — рука curator
-- [«Кредов не нужно» с ящика не мерится](no-credentials-needed-is-unmeasured-on-the-box.md) — токен стоит в среде молча, дверь без него ПРОПУСКАЕТ: приёмка — прогон с `env -u GH_TOKEN`
-- [Полевой класс гарда 3 умирает на `claude-review.yml`](guard3-field-class-dies-on-review-yml.md) — круг самопропускается → «ревьюер подтвердил» невыполнимо → слово john нужно ДО работы, а не под кнопкой
-- [Смотритель с гейтом дельты молчит на чистом дереве](delta-gated-watcher-is-silent-on-a-clean-tree.md) — зелёный молчаливый прогон доказывает замер, не доставку; приёмка — диспатч на ветке с положенной находкой
-- [Системное письмо передаёт ход на своём адресе](system-letter-passes-the-turn-on-its-own-address.md) — немоту даёт отсутствие `--waiting-on`, а не `expects: none`; обе ветви уже стоят в `ci-outcome.yml` — не норма
-- [Передача хода ≠ остановка работы](turn-passed-is-not-work-stopped.md) — «этого я НЕ сделал» протухает за минуты: прогон отправителя дописывает недоделку после письма, сверяй с МИРОМ (`gh pr view`, `origin`)
-- [Чисто тестовый предмет не восходит дёшево](test-only-item-has-no-cheap-ascent.md) — «дописать ассерт» не полевой дефект: гард 3 идёт к john, поэтому непокрытие называют фактом в ленте
-- [Самопропуск круга имеет ДВА повода](review-selfskip-has-two-causes.md) — «PR правит воркфлоу» (лечения нет) и «ветка отстала» (лечится ребейзом); различает `git diff origin/main <голова> -- .github/workflows/`
-- [Звонок смотрителя имени: список или текст](foreign-name-bell-judged-by-load-bearing.md) — исключение только несущему имени; скан гоняется локально даром, ноль подпирается контрольным сканом
-- [Скрипт из PR мерится до мёржа](pr-script-measured-before-merge.md) — `git show FETCH_HEAD:<путь>` + симлинк на `packages` и флаг корня: приёмка «в чужой руке» снимается в тот же такт, сверяются ДОЛИ, не объёмы
-- [Свой промпт — даровой оракул нормы поведения](own-prompt-is-the-free-oracle-for-role-norms.md) — норму хода несёт `runEndsNorm` в `launch.ts`, а не док: носитель сверяется с текстом СВОЕЙ сессии даром
-- [Слово john не бывает письмом john](johns-word-is-never-a-letter-by-john.md) — поиск по автору даёт ноль ВСЕГДА; гард 3 закрывается письмом curator с пометкой источника
-- [git-личность контура живёт в ОДНОМ доме](contour-git-identity-lives-in-one-home.md) — `insteadOf` в чужом `~/.gitconfig`: роль под `systemUser` теряет и ЧТЕНИЕ почты, а в журнале это неотличимо от «ушла молча»
-- [Костыли своей руки прячут дефект](own-hand-crutches-hide-the-defect.md) — приёмку воспроизводимости гоняют ДОКУМЕНТИРОВАННОЙ строкой из `.worktrees/<role>`: симлинк обошёл тот самый `ENOENT`
-- [Подагент наследует `deny`, а не `allowedTools`](subagent-inherits-deny-not-allowlist.md) — `--allowedTools` только автоподтверждает; зону держит `permissions.deny` из argv, и подагент наследует его точно
-- [Правка абсолютным путём бьёт по главному чекауту](absolute-path-edits-hit-the-main-checkout.md) — `/…/agent-crew-orchestrator/<файл>` ≠ `.worktrees/<role>/<файл>`; дерево чисто до самого `git commit`
-- [Починка оставляет отставший док-инструмент](merged-fix-leaves-a-stale-doc-instrument.md) — «пока не починен» становится ложным в момент merge, а дифф этого не судит; коммит починки называет свой док сам
-- [Парк в чужом треде отменяет второй звонок](park-elsewhere-beats-a-second-bell.md) — блок `parked` в `notify.state` называет тред-владельца; доделанный тред закрывают, а не паркуют повторно
-- [Тред без хода будит письмо ИЗВНЕ](turnless-thread-has-no-door.md) — `thread status --turn` — форма ответов, не ход; выход не рука john на ящике, а одно письмо в ленту с `--waiting-on` (замерено на 043)
-- [Мутации перегоняют в копии дерева](mutation-acceptance-runs-in-a-tmp-copy.md) — покраснение мерится строками `FAIL`, а не дельтой зелёных: проверки в циклах печатаются поштучно
-- [Порог версии мерится на ящике](version-floor-is-measured-on-the-box.md) — `Added in version N` в man systemd 254+ датирует директивы даром; выборка по шаблону завышает порог
-- [Состояния ноты двери снимаются с открытых PR](gate-note-states-are-free-on-open-prs.md) — разные головы дают разные состояния даром; молчание доказывается живым дрейфом
-- [Письмо о заморозке себя не отзывает](freeze-letter-never-retracts-itself.md) — `thaw` рукой виден только в журнале (82 с разрыва), а размороженную пару всё равно не зовут: `waiting-on: curator` того же письма
-- [Замёрзшая пара бывает уже сделана](frozen-pair-may-be-already-done.md) — предмет постановки мог исполнить мир: мерить пункты приёмки чтением ДО письма john: `thaw` поднятой сессии отказан по имени
-- [Приёмка-свойство среды бесплатна в любом прогоне](session-property-acceptance-is-free-in-any-run.md) — `TMPDIR`/код чекаута снимает первый подъём, роли не ставится
-- [Журнал ящика роли не читается](field-state-is-read-from-the-daemon-log-file.md) — полевое состояние ACO мерится `.orchestrator/daemon.log(+.1)` (~сутки), эпохи размечены, ноль — двумя контролями
-- [Отчёт под чужим uid мерится структурой](foreign-uid-report-verified-by-structure.md) — отказ ОС неизбежен по `stat`/`/run/user/<uid>`/`sudoers.d`, а «без `--write`» доказывает НЕприбавившийся `capabilities.log`
-- [Звонок класса дайджеста — в хвосте курьерской строки](digest-bell-is-read-from-the-courier-tail.md) — один звонок на 22-часовой эпизод это норма: свежесть по `since`
+- [Круг краснеет на квитанции](round-reddens-on-the-receipt.md) — STOP гарда 1 при видимом `approve`: `502` после прошедшей записи лечится перевешиванием метки
+- [Круг ревьюера судит за минуты](review-circle-verdict-lands-in-minutes.md) — метка → вердикт 4,5–12 мин: своей работы брать на верхнюю границу
+- [Норму от починки отличает дифф](norm-or-repair-is-read-in-the-diff.md) — переписана фраза, которой норма записана в доках, — гард 3 к john
+- [Точечное слово john не закрывает гард 3 дважды](pointwise-john-word-does-not-close-guard3-again.md) — граница лежит абзацем НИЖЕ слова; совпадение класса — не основание
+- [Парк ставится ПОСЛЕ вердикта](park-goes-after-the-verdict-not-before.md) — парк на john при летящем круге глотает письмо `reviewer-pr`
+- [Каталог транскриптов выдаёт учётку](transcript-dir-reveals-the-account.md) — `find … -printf` под `TZ=UTC` читает подъём роли ЧУЖОГО контура
+- [Каталог учётки называет свой аккаунт и тариф](config-dir-names-its-account-and-tier.md) — `.claude.json` → `oauthAccount.organizationRateLimitTier`
+- [Группы приезжают от менеджера пользователя](groups-come-from-the-user-manager.md) — рестарт юнита группу не подтягивает: креды держит `systemd --user` (PPID 1)
+- [Голый `mktemp -d` — внутри чекаута](bare-mktemp-lands-inside-the-checkout.md) — `TMPDIR` роли в `.orchestrator/sessions/`; «вне дерева» — только `mktemp -d -p /tmp`
+- [Перечисленные формы могут не обязывать](named-forms-in-a-statement-may-not-bind.md) — постановка связывает требованием-исходом; не сказать вслух — три письма с вопросом
+- [PR по `claude-review.yml` не мерит НИКТО](review-yml-pr-is-unmeasured-before-merge.md) — круг самопропускается, actionlint'а нет: YAML и `bash -n` — рука curator
+- [«Кредов не нужно» с ящика не мерится](no-credentials-needed-is-unmeasured-on-the-box.md) — токен стоит в среде молча; приёмка — прогон с `env -u GH_TOKEN`
+- [Полевой класс гарда 3 умирает на `claude-review.yml`](guard3-field-class-dies-on-review-yml.md) — «ревьюер подтвердил» невыполнимо → слово john ДО работы
+- [Смотритель с гейтом дельты молчит на чистом дереве](delta-gated-watcher-is-silent-on-a-clean-tree.md) — зелёный молчаливый прогон доказывает замер, не доставку
+- [Системное письмо передаёт ход на своём адресе](system-letter-passes-the-turn-on-its-own-address.md) — немоту даёт отсутствие `--waiting-on`, а не `expects: none`
+- [Передача хода ≠ остановка работы](turn-passed-is-not-work-stopped.md) — «этого я НЕ сделал» протухает за минуты: сверяй с МИРОМ (`gh pr view`, `origin`)
+- [Чисто тестовый предмет не восходит дёшево](test-only-item-has-no-cheap-ascent.md) — «дописать ассерт» не полевой дефект: непокрытие называют фактом в ленте
+- [Самопропуск круга имеет ДВА повода](review-selfskip-has-two-causes.md) — «PR правит воркфлоу» (не лечится) и «ветка отстала» (ребейз); различает `git diff`
+- [Звонок смотрителя имени: список или текст](foreign-name-bell-judged-by-load-bearing.md) — исключение только несущему имени; ноль подпирается контрольным сканом
+- [Скрипт из PR мерится до мёржа](pr-script-measured-before-merge.md) — `git show FETCH_HEAD:<путь>` + симлинк на `packages`; сверяются ДОЛИ, не объёмы
+- [Свой промпт — даровой оракул нормы поведения](own-prompt-is-the-free-oracle-for-role-norms.md) — норму хода несёт `runEndsNorm` в `launch.ts`, а не док
+- [Слово john не бывает письмом john](johns-word-is-never-a-letter-by-john.md) — поиск по автору даёт ноль ВСЕГДА; гард 3 закрывается письмом curator с источником
+- [git-личность контура живёт в ОДНОМ доме](contour-git-identity-lives-in-one-home.md) — `insteadOf` в чужом `~/.gitconfig`: роль теряет и ЧТЕНИЕ почты, в журнале — «ушла молча»
+- [Костыли своей руки прячут дефект](own-hand-crutches-hide-the-defect.md) — воспроизводимость гоняют ДОКУМЕНТИРОВАННОЙ строкой из `.worktrees/<role>`
+- [Подагент наследует `deny`, а не `allowedTools`](subagent-inherits-deny-not-allowlist.md) — зону держит `permissions.deny` из argv, и подагент наследует его точно
+- [Правка абсолютным путём бьёт по главному чекауту](absolute-path-edits-hit-the-main-checkout.md) — `/…/agent-crew-orchestrator/<файл>` ≠ `.worktrees/<role>/<файл>`
+- [Починка оставляет отставший док-инструмент](merged-fix-leaves-a-stale-doc-instrument.md) — «пока не починен» лжёт с момента merge, а дифф этого не судит
+- [Парк в чужом треде отменяет второй звонок](park-elsewhere-beats-a-second-bell.md) — блок `parked` называет тред-владельца; доделанный тред закрывают
+- [Тред без хода будит письмо ИЗВНЕ](turnless-thread-has-no-door.md) — `--turn` это форма ответов, не ход; выход — одно письмо с `--waiting-on` (замерено на 043)
+- [Мутации перегоняют в копии дерева](mutation-acceptance-runs-in-a-tmp-copy.md) — покраснение мерится строками `FAIL`, а не дельтой зелёных
+- [Порог версии мерится на ящике](version-floor-is-measured-on-the-box.md) — `Added in version N` в man systemd 254+; выборка по шаблону завышает порог
+- [Состояния ноты двери снимаются с открытых PR](gate-note-states-are-free-on-open-prs.md) — разные головы дают разные состояния даром; молчание — живым дрейфом
+- [Письмо о заморозке себя не отзывает](freeze-letter-never-retracts-itself.md) — `thaw` рукой виден только в журнале; размороженную пару всё равно не зовут
+- [Замёрзшая пара бывает уже сделана](frozen-pair-may-be-already-done.md) — предмет мог исполнить мир: мерить пункты приёмки чтением ДО письма john
+- [Приёмка-свойство среды бесплатна в любом прогоне](session-property-acceptance-is-free-in-any-run.md) — `TMPDIR`/код чекаута снимает первый подъём
+- [Журнал ящика роли не читается](field-state-is-read-from-the-daemon-log-file.md) — полевое состояние — `.orchestrator/daemon.log(+.1)`, ноль — двумя контролями
+- [Отчёт под чужим uid мерится структурой](foreign-uid-report-verified-by-structure.md) — отказ ОС неизбежен по `stat`/`/run/user/<uid>`; «без `--write`» — по `capabilities.log`
+- [Звонок класса дайджеста — в хвосте курьерской строки](digest-bell-is-read-from-the-courier-tail.md) — один звонок на 22-часовой эпизод это норма
+- [`run list --limit N` отдаёт НОВЕЙШИЕ N](run-list-truncates-to-the-newest-n.md) — усечение молчит и врёт в сторону «ничего не было»: мерить посуточно
