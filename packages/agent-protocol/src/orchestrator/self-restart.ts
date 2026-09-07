@@ -401,8 +401,16 @@ export const selfRestartVerdict = (input: {
   readonly target: string;
   /** Roles this daemon is running right now; empty is the condition. */
   readonly running: readonly string[];
-  /** Leases left open by anybody (an orphaned supervisor counts) — same condition. */
-  readonly openLeases: readonly string[];
+  /**
+   * Leases left open by anybody (an orphaned supervisor counts) — same condition.
+   *
+   * IT IS THE PAIR AND NOT A STRING ON PURPOSE (thread 168). While this was `string[]` the
+   * caller was free to put a form of its own choosing in it, and it put `role/thread` while
+   * `running` beside it holds a bare role: the same live session in two spellings, which no
+   * comparison of whole strings can see is one. The type is what makes that impossible now —
+   * the naming happens HERE, once, over a field that cannot carry a bare name.
+   */
+  readonly openLeases: readonly { readonly role: string; readonly thread: string }[];
   /** The stop or force flag is down — somebody is already stopping this box. */
   readonly stopping: boolean;
   /**
@@ -430,7 +438,23 @@ export const selfRestartVerdict = (input: {
   readonly attempts: number;
   readonly ceiling: number;
 }): SelfRestartVerdict => {
-  const live = [...input.running, ...input.openLeases.filter((id) => !input.running.includes(id))];
+  // ONE ROLE IS ONE LIVE SESSION — a role holds one session by construction, so two entries
+  // naming the same role are two spellings of one fact and not two waits (thread 168: the
+  // drain line said `(curator, curator/160-…)` and a reader counted two). The key is the
+  // ROLE and the last write wins, which is what makes the lease's `role/thread` beat the
+  // bare name where both exist: the pair is the more informative of the two. A `Map` keeps
+  // the insertion order, so the running roles still come first and only leases nobody is
+  // running are appended. THE LENGTH IS UNTOUCHED WHERE IT DECIDES: the set of role keys is
+  // empty exactly when both inputs are, so `live.length > 0` below judges as it judged.
+  const live = [
+    ...new Map<string, string>([
+      ...input.running.map((role): [string, string] => [role, role]),
+      ...input.openLeases.map((lease): [string, string] => [
+        lease.role,
+        `${lease.role}/${lease.thread}`,
+      ]),
+    ]).values(),
+  ];
   if (input.stopping)
     return {
       kind: "stand",
