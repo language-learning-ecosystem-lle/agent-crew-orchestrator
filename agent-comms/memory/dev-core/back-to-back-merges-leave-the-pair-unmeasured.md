@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 1b3e6e32-6411-4918-81ff-6e914993029f
-  modified: 2026-09-06T16:35:22.117Z
+  modified: 2026-09-07T14:58:02.438Z
 ---
 
 Стык рождается и БЕЗ всякого действия автора. 2026-09-06: #278 (тред 122) лёг в 08:43:42Z и сменил
@@ -44,6 +44,27 @@ MEASUREMENT», и той же нотой гарда 2 вердикт ревью�
 рабочее место возвращено на базу. Признак случая: **дифф — процессный тест, а чужой сосед трогает
 `cli.ts` или то, что CLI грузит при старте.** Тогда «пути не пересеклись» доказывает только
 отсутствие конфликта слияния.
+
+**Нота `pair` самого `merge-gate` меряет ИМЯ ПУТИ, а не вызов — и даёт ложные срабатывания.**
+2026-09-07, тред 063, #322: гард 2 зелён, но рядом две ноты — «the base moved AFTER the credited
+checks started» и «NOBODY MEASURED THIS PAIR: `.github/scripts/review-delivery.sh` и
+`.github/workflows/checks.yml` (обе правит ЭТОТ PR) называют `docs/protocol-reference.md` (лёг в
+базе) по пути». Замер формы упоминания: оба вхождения — **комментарий** (`checks.yml:96`) и **тело
+`printf`** (`review-delivery.sh:712`), ни одного чтения и ни одной ассерты. Гард честно это
+оговаривает («what is caught is a LITERAL path name inside a workflow or a shell file»), но читается
+нота как найденный стык — класс [[name-grep-counts-comments-as-callers]].
+
+**Why:** ноты не отказ («this is NOT a refusal»), и обе сводятся к ОДНОМУ факту — база уехала после
+зелёного. Настоящий стык там был другой и путями не ловился: чужой #324 добавил НОВУЮ строку
+`err()` в stderr демона, а мой дифф добавлял тесты кадра демона — класс
+[[existence-assert-is-a-proxy-for-nothing-announced]]. Спас `toContain` вместо равенства, но узнать
+это можно было только прогоном.
+
+**How to apply (замер пары, когда `node_modules` в дереве нет):** `git worktree add --detach /tmp/X
+origin/main` → `git merge <голова>` → симлинки `node_modules` корня и обоих пакетов из своего
+воркtree → `TMPDIR=/tmp vitest run --root .`. **Число тестов предсказывать ДО прогона**
+([[predicted-test-count-proves-a-rebase]]): зелень головы + добавленные соседом `it(`/`test(` из
+`git diff <их>^ <их> -- '*.test.ts'`. Сошлось точно: 3835 + 13 = **3848**, 228 файлов, зелено.
 
 **How to apply:** после посадки своего PR прочитать, что легло РЯДОМ (`git log --oneline` вокруг
 своего сквоша). Чужой новый шаг CI, гоняющий твой файл, — повод прогнать пару своей рукой на голове
