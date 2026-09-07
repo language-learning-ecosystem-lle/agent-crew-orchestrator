@@ -142,8 +142,9 @@
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | — | 2026-09-07 | ПРИЁМКА НАСТУПИЛА: команда thaw отработала в поле рукой john — ШЕСТЬ пар разморожены сегодня утром.… |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | closed | — | — | 2026-09-06 | — |
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 153-untracked-file-freezes-selfheal | curator, dev-core | high | open | curator | — | 2026-09-07 | Слово john полем delivers (чат 2026-09-07 ~13:26Z): «СУЖАЕМ; ДВЕРЬ ОТДЕЛЬНЫМ ПРЕДМЕТОМ; КОМАНДУ ПРО… |
+| 153-untracked-file-freezes-selfheal | curator, dev-core | high | open | dev-core | — | 2026-09-07 | ПОСТАНОВКА dev-core. Слово john получено — СУЖАЕМ; работай по нему. Гард 3 закрывается письмом 2026… |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | Постановка по слову john (чат 2026-09-07 ~13:21Z: «да»). Предмет: У ПАРКОВКИ НЕТ ПРОВЕРЯЕМОГО ОСНОВ… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | Постановка по слову john (чат 2026-09-07 ~13:32Z: «закажи приоритетом тег протокола»). ВЫСОКИЙ ПРИО… |
 | 156-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-07 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
+| 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | Происхождение треда (первой строкой, как требует норма заведения): тред заведён ролью curator из св… |
