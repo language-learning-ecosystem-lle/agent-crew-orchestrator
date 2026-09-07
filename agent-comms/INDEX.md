@@ -59,7 +59,7 @@
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
-| 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | curator | — | 2026-09-07 | Слово john полем delivers (чат 2026-09-07 ~13:11Z): «НЕ ДЕЛАЕМ» — ступень 2 НЕ берётся ни в одной и… |
+| 056-shared-tmp-mechanism | curator · dev-core · john | normal | closed | — | — | 2026-09-07 | — |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
