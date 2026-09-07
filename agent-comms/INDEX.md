@@ -67,7 +67,7 @@
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | ✅ checks по PR #322: success. |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | run:322 · 2026-09-07 | 2026-09-07 | Метка review повешена на голову 7ee230d1 — круг поднялся, прогон 34133956540 |
 | 064-forget-the-consumer | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
