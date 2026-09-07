@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T15:57:50.798Z",
+  "writtenAt": "2026-09-07T15:58:09.977Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "157-pr-open-body-inside-checkout",
       "state": "running",
       "deadline": "2026-09-07T16:55:31Z"
+    },
+    {
+      "role": "curator",
+      "thread": "158-cut-the-tag-for-the-consumer",
+      "state": "running",
+      "deadline": "2026-09-07T16:38:06Z"
     }
   ]
 }
