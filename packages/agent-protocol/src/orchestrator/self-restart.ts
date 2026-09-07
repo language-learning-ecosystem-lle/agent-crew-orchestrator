@@ -173,7 +173,23 @@ export type SelfRestartBlock =
   | { readonly kind: "stopping"; readonly flag?: string }
   | { readonly kind: "held"; readonly roles: readonly string[] }
   | { readonly kind: "foreign-checkout"; readonly code: string; readonly served: string }
-  | { readonly kind: "dirty"; readonly checkout: string; readonly paths: readonly string[] }
+  /**
+   * `untrackedOnly` is CARRIED rather than derived from `paths` (thread 153). It used to be
+   * read off the porcelain prefix of every line (`paths.every(line => line.startsWith("??"))`),
+   * and that only worked while `paths` was raw `git status` output and every untracked path in
+   * the tree was a block. Neither holds now: {@link workingTreeState} classifies, so the one
+   * place that knows which half of the tree stopped the repair is the read itself.
+   *
+   * `harmless` is the untracked that did NOT stop anything — named so that an operator who is
+   * told about a dirty tree does not stop seeing the litter beside it.
+   */
+  | {
+      readonly kind: "dirty";
+      readonly checkout: string;
+      readonly paths: readonly string[];
+      readonly untrackedOnly: boolean;
+      readonly harmless?: readonly string[];
+    }
   | { readonly kind: "tree-unreadable"; readonly checkout: string; readonly problem: string }
   | { readonly kind: "attempts"; readonly attempts: number; readonly ceiling: number };
 
@@ -399,8 +415,13 @@ export const selfRestartVerdict = (input: {
   readonly held: readonly string[];
   /** The state of the checkout the loaded code came from — the tree `pull` would move. */
   readonly tree:
-    | { readonly kind: "clean" }
-    | { readonly kind: "dirty"; readonly paths: readonly string[] }
+    | { readonly kind: "clean"; readonly harmless?: readonly string[] }
+    | {
+        readonly kind: "dirty";
+        readonly paths: readonly string[];
+        readonly untrackedOnly: boolean;
+        readonly harmless?: readonly string[];
+      }
     | { readonly kind: "unreadable"; readonly problem: string };
   /** The checkout the loaded code came from — the tree `pull` would move. */
   readonly checkout: string;
@@ -429,7 +450,13 @@ export const selfRestartVerdict = (input: {
   if (input.tree.kind === "dirty")
     return {
       kind: "stand",
-      block: { kind: "dirty", checkout: input.checkout, paths: input.tree.paths },
+      block: {
+        kind: "dirty",
+        checkout: input.checkout,
+        paths: input.tree.paths,
+        untrackedOnly: input.tree.untrackedOnly,
+        ...(input.tree.harmless === undefined ? {} : { harmless: input.tree.harmless }),
+      },
     };
   if (input.tree.kind === "unreadable")
     return {
@@ -571,12 +598,19 @@ export const describeSelfRestartCause = (block: SelfRestartBlock): string => {
       return `no self-restart — this daemon runs code loaded from '${block.code}' but serves '${block.served}'; a repair pulls and relaunches ONE tree, and these are two`;
     case "dirty": {
       const named = `${block.paths.slice(0, 5).join(", ")}${block.paths.length > 5 ? ", …" : ""}`;
+      // THE LITTER THAT DID NOT STOP ANYTHING IS STILL SAID (thread 153). It is a separate
+      // clause and not part of `named` on purpose: an operator who reads one line has to be
+      // able to tell what he must clear to unblock this box from what is merely lying there.
+      const beside =
+        block.harmless === undefined || block.harmless.length === 0
+          ? ""
+          : `; also untracked here and NOT what blocks this (${block.harmless.slice(0, 5).join(", ")}${block.harmless.length > 5 ? ", …" : ""})`;
       // UNTRACKED-ONLY IS A DIFFERENT REPAIR, and saying "uncommitted work" about it sends
       // the operator looking for work to commit (003): a checkout whose only dirt is the
       // circuit's own runtime is fixed by an ignore rule, and nothing here can be committed.
-      return block.paths.every((line) => line.startsWith("??"))
-        ? `no self-restart with untracked files in '${block.checkout}' (${named}) — 'git pull --ff-only' refuses over them; NOTHING HERE IS WORK TO COMMIT: if these are this circuit's own runtime ('orchestrator.state', 'orchestrator.workdir.worktrees'), the repair is an ignore rule in the served repository`
-        : `no self-restart with uncommitted work in '${block.checkout}' (${named}) — 'git pull' would move that tree`;
+      return block.untrackedOnly
+        ? `no self-restart with untracked files in '${block.checkout}' (${named}) — 'git pull --ff-only' refuses over untracked paths the incoming commits would write; NOTHING HERE IS WORK TO COMMIT: if these are this circuit's own runtime ('orchestrator.state', 'orchestrator.workdir.worktrees'), the repair is an ignore rule in the served repository${beside}`
+        : `no self-restart with uncommitted work in '${block.checkout}' (${named}) — 'git pull' would move that tree${beside}`;
     }
     case "tree-unreadable":
       return `no self-restart — the state of '${block.checkout}' could not be read (${block.problem}); a pull over an unknown tree is not something to do unattended`;
@@ -1043,7 +1077,11 @@ export const versionRepairVerdict = (input: {
   if (input.tree.kind === "dirty")
     return {
       kind: "stand",
-      why: `there is uncommitted work in '${input.checkout}' (${input.tree.paths.slice(0, 5).join(", ")}${input.tree.paths.length > 5 ? ", …" : ""}) — 'git pull' would move that tree, and that is the one irreversible step of the chain`,
+      why: `there is uncommitted work in '${input.checkout}' (${input.tree.paths.slice(0, 5).join(", ")}${input.tree.paths.length > 5 ? ", …" : ""}) — 'git pull' would move that tree, and that is the one irreversible step of the chain${
+        input.tree.harmless === undefined || input.tree.harmless.length === 0
+          ? ""
+          : `; also untracked here and NOT what blocks this (${input.tree.harmless.slice(0, 5).join(", ")}${input.tree.harmless.length > 5 ? ", …" : ""})`
+      }`,
     };
   if (input.tree.kind === "unreadable")
     return {
@@ -1070,19 +1108,25 @@ export const describeVersionRepair = (target: string, checkout: string): string 
 export const describeVersionStand = (why: string, checkout: string): string =>
   `VERSION VERDICT: this box CANNOT repair itself — ${why}. Leaving with code 2 so the supervisor stops rather than looping (the start limit stays intact). A hand is needed: cd '${checkout}' && git pull --ff-only && pnpm install && systemctl --user restart agent-protocol@<instance>`;
 
-/** What `git status --porcelain` says about the tree a pull is about to move. */
+/**
+ * What `git status --porcelain -uall -z` says about the tree a pull is about to move, with
+ * the untracked half already classified against the incoming commits.
+ *
+ * `paths` are porcelain LINES (status prefix included) because they are printed to a human;
+ * `harmless` are bare paths, because nothing is wrong with them and the prefix would only be
+ * noise. Both halves exist on `clean` and on `dirty`: litter does not stop a repair, and it
+ * does not stop being litter either.
+ */
 export type WorkingTreeState =
-  | { readonly kind: "clean" }
-  | { readonly kind: "dirty"; readonly paths: readonly string[] }
+  | { readonly kind: "clean"; readonly harmless?: readonly string[] }
+  | {
+      readonly kind: "dirty";
+      readonly paths: readonly string[];
+      readonly untrackedOnly: boolean;
+      readonly harmless?: readonly string[];
+    }
   | { readonly kind: "unreadable"; readonly problem: string };
 
-/**
- * THE ONE READ THE RULE CANNOT DO FOR ITSELF. `--porcelain` is used rather than a
- * human-readable status for the obvious reason and one less obvious: untracked files
- * count as dirty here, because `pull --ff-only` refuses over an untracked file it would
- * overwrite, and a repair that dies half-way through phase 3 is worse than one that never
- * started. A read that FAILS is not "clean": it becomes its own refusal.
- */
 /**
  * THE SECOND READ THE RULE CANNOT DO FOR ITSELF (thread 096) — which branch the tree the
  * repair just pulled is actually on. `--abbrev-ref` is asked rather than `--symbolic-full-name`
@@ -1103,16 +1147,131 @@ export const checkoutBranch = (checkout: string): CheckoutBranch => {
   }
 };
 
-export const workingTreeState = (checkout: string): WorkingTreeState => {
+/** One entry of `git status --porcelain -uall -z`, split into what each half is used for. */
+type StatusEntry = {
+  /** The porcelain line as printed, prefix and all — this is what a reader is shown. */
+  readonly line: string;
+  /** The path alone — this is what is compared against the incoming commits. */
+  readonly path: string;
+  readonly untracked: boolean;
+};
+
+/**
+ * `-z` IS WHAT MAKES THE PATHS COMPARABLE and the reason this is hand-parsed rather than
+ * split on newlines: without it a path with a space in it arrives quoted (`?? "with
+ * space.txt"`), and a quoted path matches nothing in a diff. A rename or a copy spends TWO
+ * NUL-separated fields — the second is where the path came from — and reading that second
+ * field as an entry of its own would invent a path that is not in the tree at all.
+ */
+const parsePorcelainZ = (said: string): readonly StatusEntry[] => {
+  const fields = said.split("\0");
+  const entries: StatusEntry[] = [];
+  for (let index = 0; index < fields.length; index += 1) {
+    const field = fields[index];
+    if (field === undefined || field === "") continue;
+    const xy = field.slice(0, 2);
+    if (xy.includes("R") || xy.includes("C")) index += 1;
+    entries.push({ line: field.trim(), path: field.slice(3), untracked: xy === "??" });
+  }
+  return entries;
+};
+
+/**
+ * The paths the incoming commits would WRITE — `ACMRT` and not the whole diff, because a
+ * path the target DELETES is not a path an untracked file can collide with. `undefined` is
+ * "the diff would not read", and the caller answers that by narrowing nothing.
+ */
+const incomingWrites = (checkout: string, target: string): readonly string[] | undefined => {
+  try {
+    return execFileSync(
+      "git",
+      ["-C", checkout, "diff", "--name-only", "-z", "--diff-filter=ACMRT", "HEAD", target],
+      { encoding: "utf8" },
+    )
+      .split("\0")
+      .filter((path) => path !== "");
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * THE ONE READ THE RULE CANNOT DO FOR ITSELF, AND IT IS TWO READS (thread 153).
+ *
+ * TRACKED changes are dirt unconditionally, and that half is not narrowed by anything: `git
+ * pull` would move somebody's unsaved work, and that is the one irreversible step of the
+ * whole chain.
+ *
+ * UNTRACKED IS NOT. It used to be, and the justification written here said why —
+ * «`pull --ff-only` refuses over an untracked file IT WOULD OVERWRITE» — while the code
+ * refused over every untracked file there was. The condition was wider than its own
+ * justification, and the difference is not theoretical: measured on this box, one stray
+ * `.pr278-body.md` in the served checkout froze the self-repair of the whole crew for 13
+ * commits and 23 hours, twice in three days. Measured against git itself (thread 153, §1):
+ * a stray untracked path the incoming commits do not write is `pull --ff-only` exit 0 with
+ * the tree fast-forwarded; a path they do write is exit 1. So an untracked path is dirt
+ * here only when the incoming commits would write it — the same path, or any path under it
+ * when the untracked entry is a FILE and the incoming commit puts a directory there.
+ * Content is never read: git compares paths, not bytes (a byte-identical untracked file is
+ * still a refusal).
+ *
+ * WHAT THIS DOES NOT BUY, and the reason the rest of the chain stays exactly as it was: the
+ * target is resolved BEFORE the tick and `repairCheckoutInPlace` does its own `fetch`, so a
+ * commit that lands between the two can add a path this classifier has already waved
+ * through. The repair then dies in phase 3 — which is why "the repair did not work" stays a
+ * branch, why the `attempts` ceiling stays a ceiling, and why the version door still leaves
+ * with code 2. This narrowing makes a `stand` RARER; it does not make `pull` unfailing, and
+ * nothing downstream may be simplified as if it did.
+ *
+ * `target` is `undefined` when the caller has no rewind target to compare against — the
+ * classifier then narrows NOTHING and every untracked path counts, exactly as before. The
+ * same fallback answers a diff that will not read.
+ *
+ * A read that FAILS is not "clean": it becomes its own refusal.
+ */
+export const workingTreeState = (
+  checkout: string,
+  target: string | undefined,
+): WorkingTreeState => {
   let said: string;
   try {
-    said = execFileSync("git", ["-C", checkout, "status", "--porcelain"], { encoding: "utf8" });
+    said = execFileSync("git", ["-C", checkout, "status", "--porcelain", "-uall", "-z"], {
+      encoding: "utf8",
+    });
   } catch (error) {
     return { kind: "unreadable", problem: (error as Error).message.replace(/\s+/g, " ").trim() };
   }
-  const lines = said
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line !== "");
-  return lines.length === 0 ? { kind: "clean" } : { kind: "dirty", paths: lines };
+  const entries = parsePorcelainZ(said);
+  // -uall IS LOAD-BEARING, not tidiness: on the default -unormal a wholly untracked
+  // directory prints as one line, `?? foo/`, and the collision on `foo/bar.txt` is INVISIBLE
+  // in that output. The classifier would wave it through and the repair would die in phase
+  // 3 — the exact failure the old comment here was afraid of.
+  const incoming =
+    target === undefined || entries.every((entry) => !entry.untracked)
+      ? undefined
+      : incomingWrites(checkout, target);
+  const blocks = (entry: StatusEntry): boolean =>
+    !entry.untracked ||
+    incoming === undefined ||
+    incoming.some((written) => written === entry.path || written.startsWith(`${entry.path}/`));
+  const blocking = entries.filter(blocks);
+  const harmless = entries.filter((entry) => !blocks(entry)).map((entry) => entry.path);
+  return blocking.length === 0
+    ? { kind: "clean", harmless }
+    : {
+        kind: "dirty",
+        paths: blocking.map((entry) => entry.line),
+        untrackedOnly: blocking.every((entry) => entry.untracked),
+        harmless,
+      };
 };
+
+/**
+ * THE LITTER IS STILL NAMED WHEN IT STOPS NOTHING (thread 153, a condition of john's «да»).
+ * The narrowing means a served checkout can now carry stray untracked files through any
+ * number of clean self-repairs, and a box that never mentions them teaches its operator to
+ * stop seeing them. This is the tick's line for that: not a refusal, and it must not read as
+ * one.
+ */
+export const describeHarmlessUntracked = (checkout: string, paths: readonly string[]): string =>
+  `untracked and harmless in '${checkout}' (${paths.slice(0, 5).join(", ")}${paths.length > 5 ? ", …" : ""}) — the incoming commits write none of these paths, so 'git pull --ff-only' goes over them and NOTHING IS BLOCKED BY THEM. No hand is needed for the restart; they are litter in a served checkout and worth clearing on their own account`;

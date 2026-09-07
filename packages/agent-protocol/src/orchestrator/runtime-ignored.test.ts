@@ -1,10 +1,17 @@
 /**
  * THE REPOSITORY MEASURED AGAINST ITS OWN DAEMON (003). Everything else in this package
  * is asserted on a fixture; this one asserts a fact about THIS checkout, because that is
- * where the defect lived: `workingTreeState` counts untracked as dirty, `selfRestartVerdict`
- * stands on a dirty tree BEFORE it chooses a form of repair — so a runtime directory of the
- * orchestrator left un-ignored makes every box serving this repository meet a merge into
- * `main` with a daemon that refuses to repair itself and calls its own workspaces dirt.
+ * where the defect lived: `selfRestartVerdict` stands on a dirty tree BEFORE it chooses a
+ * form of repair — so a runtime directory of the orchestrator left un-ignored makes every
+ * box serving this repository meet a merge into `main` with a daemon that calls its own
+ * workspaces dirt.
+ *
+ * SINCE THREAD 153 THAT IS NO LONGER THE ONLY DOOR THIS RULE HOLDS OPEN, and the narrowing
+ * is not a reason to relax it. `workingTreeState` now counts an untracked path as dirt only
+ * when the incoming commits would write it, so an un-ignored `.orchestrator/` would usually
+ * survive a tick — but "usually" is the word: the day a commit adds a tracked file under one
+ * of these paths it is a refusal again, and every OTHER door over a working tree (a role's
+ * workplace, R17) still reads the whole of `git status`. The rule is the same rule.
  *
  * The paths are not typed here twice: they are read from `agent-protocol.json`, so renaming
  * 'orchestrator.state' or 'orchestrator.workdir.worktrees' without touching `.gitignore`
