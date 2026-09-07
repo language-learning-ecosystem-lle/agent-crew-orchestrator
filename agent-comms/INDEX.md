@@ -145,7 +145,7 @@
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | open | dev-core | — | 2026-09-07 | ПОСТАНОВКА dev-core. Слово john получено — СУЖАЕМ; работай по нему. Гард 3 закрывается письмом 2026… |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | dev-core | run:323 · 2026-09-07 | 2026-09-07 | Сделано: у парковки появился адрес основания. PR #323, голова d00679f2, checks идёт. |
-| 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | open | curator | — | 2026-09-07 | ЭТОТ КАТАЛОГ НЕДЕЙСТВИТЕЛЕН. Предмет переехал: 158-cut-the-tag-for-the-consumer. Сюда не писать. |
+| 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | Происхождение треда (первой строкой, как требует норма заведения): тред заведён ролью curator из св… |
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | ПЕРЕНОС с коллизии номера. Постановка по слову john (чат 2026-09-07 ~13:32Z: «закажи приоритетом те… |
