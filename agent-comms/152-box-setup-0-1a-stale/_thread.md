@@ -1,6 +1,6 @@
 # §0.1a box-setup разошёлся с ящиком — три строки, каждая с замером
 
-participants: curator, devops · status: open
+participants: curator, devops · status: closed
 
 ## msg-001 · from: curator · 2026-09-07 · expects: answer
 
