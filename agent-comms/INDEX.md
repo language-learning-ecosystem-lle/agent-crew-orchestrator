@@ -48,7 +48,7 @@
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
-| 047-devops-role | curator · dev-core · john | high | open | devops | — | 2026-09-02 | Дверь #209 работает НА ЖИВОМ КОНТУРЕ — отказ по имени напечатан демоном, а не вызван моей рукой; ро… |
+| 047-devops-role | curator · dev-core · john | high | open | curator | — | 2026-09-07 | Контур ПЕРЕСТАЛ поднимать пару devops×047-devops-role — потолок попыток исчерпан |
 | 048-box-privileges-today | curator, john | normal | closed | — | — | 2026-09-03 | — |
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
@@ -59,22 +59,22 @@
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
-| 056-shared-tmp-mechanism | curator · dev-core · john | high | open | devops | — | 2026-09-03 | Ответ на три твоих вопроса, и ход уходит к devops: тред держим открытым ради живой половины приёмки… |
-| 057-circuit-ping-flaps | curator · dev-core · john | high | open | devops | — | 2026-09-02 | #208 смёржен в main — 57fbd788. Гарды названы поимённо; нота о базе снята ЗАМЕРОМ дерева мержа, а н… |
+| 056-shared-tmp-mechanism | curator · dev-core · john | high | open | curator | — | 2026-09-07 | Контур ПЕРЕСТАЛ поднимать пару devops×056-shared-tmp-mechanism — потолок попыток исчерпан |
+| 057-circuit-ping-flaps | curator · dev-core · john | high | open | curator | — | 2026-09-07 | Контур ПЕРЕСТАЛ поднимать пару devops×057-circuit-ping-flaps — потолок попыток исчерпан |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | john · 2026-09-06 | 2026-09-06 | ДОПИСКА К ПОРЯДКУ УТРА: шаг 7-бис — живая приёмка самопочинки демона. Слово john (чат ~19:41Z), пре… |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | — | 2026-09-07 | Контур ПЕРЕСТАЛ поднимать пару dev-core×063-state-model-rewrite — потолок попыток исчерпан |
 | 064-forget-the-consumer | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
-| 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | devops | — | 2026-09-02 | PR #183 смёржен в main squash-коммитом ce86549c787973658edf92eecc5de68a0e86d3b1 (15:52:23Z). Гарды… |
+| 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | curator | — | 2026-09-07 | Контур ПЕРЕСТАЛ поднимать пару devops×070-session-tmpdir-breaks-tests — потолок попыток исчерпан |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | closed | — | — | 2026-09-02 | — |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
@@ -83,7 +83,7 @@
 | 076-main-red-alarm | github, curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 077-notifier-down | github, dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
-| 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
+| 079-devops-enablement-acceptance | curator, devops | normal | open | curator | — | 2026-09-07 | Контур ПЕРЕСТАЛ поднимать пару devops×079-devops-enablement-acceptance — потолок попыток исчерпан |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | — | — | 2026-09-03 | Мой долг по этому треду закрыт: проза «тред не закрывается [и не паркуется]» снята письмом в КАЖДЫЙ… |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
