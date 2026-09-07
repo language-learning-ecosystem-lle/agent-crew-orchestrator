@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | curator | run:319 · 2026-09-07 | 2026-09-07 | МЕТКА review ПОВЕШЕНА на #319 в 10:47:36Z, голова не двигалась. Круг поднялся и летит — прогон 3411… |
+| 062-contour-boundary | curator · dev-core · john | high | open | curator | — | 2026-09-07 | verdict: approve |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется решение john и его рука на ящике: пару dev-core×063-state-model-rewrite может отпустить т… |
 | 064-forget-the-consumer | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
@@ -74,7 +74,7 @@
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
-| 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | curator | — | 2026-09-07 | Контур ПЕРЕСТАЛ поднимать пару devops×070-session-tmpdir-breaks-tests — потолок попыток исчерпан |
+| 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | closed | — | — | 2026-09-07 | — |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | closed | — | — | 2026-09-02 | — |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
