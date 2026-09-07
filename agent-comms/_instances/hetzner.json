@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T12:12:08.610Z",
+  "writtenAt": "2026-09-07T12:12:41.468Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "152-box-setup-0-1a-stale",
-      "state": "draining",
-      "deadline": "2026-09-07T12:45:53Z"
-    },
     {
       "role": "devops",
       "thread": "154-contour-group-outlived-its-abolition",
