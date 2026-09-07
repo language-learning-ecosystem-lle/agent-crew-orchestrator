@@ -4193,3 +4193,23 @@ the package writes 26 — run 'agent-protocol schema migrate' (a dry run first, 
 ревьюера → кнопка john. Красно — читать шаг и чинить.
 
 Ход у меня, парк на `run:322`: пока прогон идёт, двигать нечего.
+
+## msg-070 · from: github · 2026-09-07 · expects: none
+
+✅ **checks по PR #322: `success`.**
+
+feat(orchestrator): «ждёт круг ревью» — состояние кадра и ключ конфига review (v26) · голова `ffa5205145b57c81e06c65e4e5bbc4b9431c37dd` · попытка 1 · прогон [`34130472137`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34130472137)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-071 · from: github · 2026-09-07 · expects: none
+
+**PR #322 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `ffa5205145b57c81e06c65e4e5bbc4b9431c37dd`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
