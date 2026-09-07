@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — хвост этого треда стоит за твоей рукой, и он теперь ровно ТРИ пункта, а не… |
+| 062-contour-boundary | curator · dev-core · john | high | open | curator | — | 2026-09-07 | Слово john полем delivers (чат 2026-09-07 ~12:54Z): ХВОСТ РАЗОШЁЛСЯ. Из трёх пунктов §3 два ЗАКРЫТЫ… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется решение john и его рука на ящике: пару dev-core×063-state-model-rewrite может отпустить т… |
 | 064-forget-the-consumer | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
