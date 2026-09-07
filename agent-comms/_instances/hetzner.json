@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T18:33:14.741Z",
+  "writtenAt": "2026-09-07T18:39:31.809Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "155-park-has-no-checkable-ground",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-07T19:33:11Z"
     }
   ]
