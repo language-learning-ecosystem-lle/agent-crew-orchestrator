@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T18:40:34.829Z",
+  "writtenAt": "2026-09-07T18:41:08.623Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "155-park-has-no-checkable-ground",
       "state": "running",
       "deadline": "2026-09-07T19:19:46Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "160-merge-gate-falls-whole-on-a-forbidden-node",
+      "state": "running",
+      "deadline": "2026-09-07T19:41:05Z"
     }
   ]
 }
