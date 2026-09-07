@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T13:34:05.706Z",
+  "writtenAt": "2026-09-07T13:34:38.932Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "153-untracked-file-freezes-selfheal",
-      "state": "draining",
-      "deadline": "2026-09-07T14:09:20Z"
-    },
     {
       "role": "dev-core",
       "thread": "155-park-has-no-checkable-ground",
