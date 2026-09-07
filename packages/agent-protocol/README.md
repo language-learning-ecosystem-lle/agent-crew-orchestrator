@@ -2481,6 +2481,11 @@ agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec
 agent-protocol orchestrator log    --ref <ref>                             # the history of events for the owner of the decision (here: john)
 agent-protocol orchestrator stop   --mode graceful --ref <ref> [--write]
 agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--write]
+                            # WITHOUT --mode IT REFUSES AND NAMES BOTH KINDS OF STOP (thread 141): the soft one
+                            # is `orchestrator down` — the same flag PLUS the pid to watch and the line about
+                            # launches — and the hard one is this command's `--mode force`. It refuses BEFORE
+                            # touching anything (exit 2, the code of a wrong call FORM; a stop asked for
+                            # properly and then failed leaves through 1), so nothing is stopped by the refusal
 agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--write]
 agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--write]   # the role is taken by a manual session
 agent-protocol orchestrator thaw   --role <id> --thread <slug> --by <who> [--note <t>] [--journal <p>] [--ref <ref>] [--now <iso>] [--max-attempts <n>] [--write]
