@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T14:07:06.031Z",
+  "writtenAt": "2026-09-07T14:15:32.918Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "153-untracked-file-freezes-selfheal",
       "state": "running",
       "deadline": "2026-09-07T15:07:02Z"
+    },
+    {
+      "role": "curator",
+      "thread": "155-park-has-no-checkable-ground",
+      "state": "running",
+      "deadline": "2026-09-07T14:55:29Z"
     }
   ]
 }
