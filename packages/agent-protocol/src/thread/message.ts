@@ -49,6 +49,8 @@
  * `MessageFields.raised` and `standingParkOf` in `thread.ts` for the walk that uses it.
  */
 
+import { PARK_GROUND } from "./park-ground.js";
+
 /**
  * THE LAUNCH DIRECTIVE (R21, john's decision, thread `016-protocol-roadmap`) — an
  * authorized role saying which model and effort the RUNS OF THIS THREAD are to be
@@ -335,6 +337,17 @@ export type MessageFields = {
    * can raise is not something to park behind — that is `waiting-on`.
    */
   readonly parkedOn?: string;
+  /**
+   * THE FACT THIS PARK WAITS ON, in a form the circuit can ask (thread 155) — the ADDRESS of a
+   * ground that until now lived only in the prose of the body and in the memory of whoever set
+   * it. Optional and refused by nobody when absent: a park on a person's decision names no fact
+   * and behaves exactly as it always has. What it buys is that a park taken against a fact which
+   * has since fallen away gets NAMED once, instead of standing until a human happens to read the
+   * feed — 21 h 23 m over a ready PR, measured. The forms and the reading live in
+   * `park-ground.ts`; here, as with every other field of the tolerant reader, only the SHAPE is
+   * demanded.
+   */
+  readonly parkGround?: string;
   /**
    * WHOSE WORD THIS MESSAGE CARRIES — the one lift of a park on a person (thread 030, defect
    * (в1); decision of john 2026-08-22, `PROTOCOL.md` "ЛИФТ ПАРКОВКИ НА ЧЕЛОВЕКЕ СУЖЕН ДО СЛОВА
@@ -852,6 +865,20 @@ export const parseMessageFile = (raw: string): Message => {
     return value;
   });
 
+  // `park-ground` names the FACT the park waits on (thread 155). Shape only here, and the shape
+  // is the whole of the reading: a value this version cannot parse is dropped by every reader as
+  // "no ground named", which is the behaviour of the parks that carry no field at all. The door
+  // is where an unreadable ground is refused, because that is where it can still be typed again.
+  const parkGround = soft(() => {
+    const value = raws.get("park-ground");
+    if (value !== undefined && !PARK_GROUND.test(value)) {
+      throw new MessageFormatError(
+        `'park-ground: ${value}' — expected the fact the park waits on, in a form the box can ask ('frozen:<role>×<thread>')`,
+      );
+    }
+    return value;
+  });
+
   // `delivers` names a PERSON, and the check that this name is one the feed cannot move lives
   // at the writing door beside `parked-on`'s, for the reason stated there. Here, as there, only
   // the SHAPE is demanded — and the event forms are NOT accepted: a merge delivers nobody's
@@ -934,6 +961,7 @@ export const parseMessageFile = (raw: string): Message => {
     ...(launch === undefined ? {} : { launch }),
     ...(priority === undefined ? {} : { priority: priority as ThreadPriorityValue }),
     ...(parkedOn === undefined ? {} : { parkedOn }),
+    ...(parkGround === undefined ? {} : { parkGround }),
     ...(delivers === undefined ? {} : { delivers }),
     ...(parkMover === undefined ? {} : { parkMover }),
     ...(mergedPr === undefined ? {} : { mergedPr }),
@@ -985,6 +1013,9 @@ export const renderMessageFile = (message: Message): string => {
     // Right after `waiting-on`'s neighbours, because it qualifies the turn itself: whose it
     // is, and whether it can move at all before a person says something.
     ...(fields.parkedOn === undefined ? [] : [`parked-on: ${fields.parkedOn}`]),
+    // Directly under `parked-on` and above its other qualifiers: the two lines read as one
+    // statement — what freezes the turn, and the fact that freeze was taken against (thread 155).
+    ...(fields.parkGround === undefined ? [] : [`park-ground: ${fields.parkGround}`]),
     // Beside `parked-on` for the same reason `merged-pr` is: one freezes a turn behind a
     // person, this one says that the person has spoken.
     ...(fields.delivers === undefined ? [] : [`delivers: ${fields.delivers}`]),
