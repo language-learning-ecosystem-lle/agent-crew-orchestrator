@@ -25,7 +25,7 @@
  */
 
 import { z } from "zod";
-import type { PullRequestFacts, ReviewRunFact, ReviewRunReading } from "./gate.js";
+import type { ChecksReading, PullRequestFacts, ReviewRunFact, ReviewRunReading } from "./gate.js";
 
 const nullableText = z.string().nullish();
 
@@ -82,6 +82,79 @@ export const ghPullRequestSchema = z.looseObject({
 });
 
 export type GhPullRequest = z.infer<typeof ghPullRequestSchema>;
+
+/**
+ * THE SAME PAYLOAD MINUS THE ONE NODE GITHUB MAY REFUSE (thread 160) — every field above
+ * except `statusCheckRollup`, and it exists because the refusal is NOT a refusal of the
+ * pull request.
+ *
+ * Measured by john on 2026-09-07 against a PRIVATE repository, with a fine-grained token:
+ * `commits/<sha>/check-runs` answers 403, and inside `gh pr view` the elements of
+ * `statusCheckRollup.contexts.nodes` each come back `FORBIDDEN` — while `pulls/N/reviews`
+ * answers the verdict, `actions/runs?head_sha=` answers both runs with `conclusion:
+ * success`, and even the failing GraphQL query itself carries `statusCheckRollup.state:
+ * "SUCCESS"`. But `gh` exits 2 and prints NOTHING on stdout, so one forbidden node takes
+ * the whole door with it — including guard 1, which needs no checks at all. A
+ * fine-grained token has no `checks` permission to grant (there is none), and it reads
+ * public repositories unconditionally: that is why THIS contour, being public, never saw
+ * the class in six weeks while the consumer's private one paid for it in hand-pushed PRs.
+ *
+ * So the door asks a second time WITHOUT the node it was refused, and takes the checks
+ * from the runs of Actions instead ({@link checksFromWorkflowRuns}). Nothing else about
+ * the payload changes — the fields guards 1, 3 and 4 are computed from are pinned here
+ * exactly as above, for exactly the same reason.
+ */
+export const ghPullRequestWithoutChecksSchema = ghPullRequestSchema.omit({
+  statusCheckRollup: true,
+});
+
+export type GhPullRequestWithoutChecks = z.infer<typeof ghPullRequestWithoutChecksSchema>;
+
+/**
+ * WHETHER THIS REFUSAL IS ABOUT THE CHECKS NODE AND NOTHING ELSE — the path GitHub named,
+ * or `undefined` when the refusal is about something the second ask would not repair.
+ *
+ * READS THE NAMED PATH, NEVER THE WORD (thread 026, and it is the whole reason this is a
+ * function): the message of `execFileSync` carries the ECHOED COMMAND LINE, and that line
+ * contains `statusCheckRollup` on EVERY failure — a `Could not resolve to a Repository`
+ * included. A predicate that matched the word would drop the node on a refusal that had
+ * nothing to do with it and then report the second failure instead of the first.
+ */
+export const forbiddenChecksRollup = (message: string): string | undefined => {
+  if (!/not accessible by integration/i.test(message)) return undefined;
+  const path = /not accessible by integration\s*\(([^)]*)\)/i.exec(message)?.[1]?.trim();
+  if (path === undefined || path.length === 0) return undefined;
+  return /(^|\.)statusCheckRollup(\.|$)/i.test(path) ? path : undefined;
+};
+
+/**
+ * THE RUNS OF ACTIONS READ AS CHECKS (thread 160) — the substitute source guard 2 judges
+ * when `statusCheckRollup` was refused.
+ *
+ * REST answers in lower case (`completed`, `success`) where GraphQL answers in upper
+ * (`COMPLETED`, `SUCCESS`), and the gate's green set is the GraphQL one — so the words are
+ * folded up here, at the boundary, and the guard keeps one vocabulary. `state` is left
+ * absent on purpose: a workflow run is a check run, never a status context, and inventing
+ * a `state` for it would make {@link checkIsGreen} read it by the wrong branch.
+ *
+ * WIDER THAN THE ROLLUP, AND ONLY IN THE CLOSING DIRECTION: `actions/runs?head_sha=`
+ * answers every run on the commit, including ones the rollup would not carry (a
+ * `workflow_dispatch`, a rerun). An extra run can turn a green answer into a red one and
+ * never the other way, which is the side of the error a merge door is allowed to be on.
+ */
+export const checksFromWorkflowRuns = (
+  runs: readonly ReviewRunFact[],
+): PullRequestFacts["checks"] =>
+  runs.map((run) => ({
+    name: run.name ?? "?",
+    status: run.status?.toUpperCase(),
+    conclusion: run.conclusion?.toUpperCase(),
+    state: undefined,
+    // A finished run last spoke at `updated_at`; a flying one has only `created_at`, which
+    // is also the stamp the base drift note dates a reading against (023.3).
+    completedAt: run.updatedAt,
+    startedAt: run.createdAt,
+  }));
 
 /**
  * THE CHEAP HALF OF THE SCHEDULER'S READ (thread 019, point 5): what `gh pr list` says
@@ -230,7 +303,13 @@ export const readReviewRuns = (input: {
  * guard function exists to prevent.
  */
 export const pullRequestFacts = (
-  pr: GhPullRequest,
+  /**
+   * The payload — WITH the checks node, or without it when GitHub refused that one node
+   * (thread 160). Without it, `checks` comes from {@link ChecksReading} and the absence is
+   * never read as "no checks reported": that sentence is guard 2's answer for a head
+   * NOBODY confirmed, and it is not the answer for a head we were not allowed to look at.
+   */
+  pr: GhPullRequest | (GhPullRequestWithoutChecks & { readonly statusCheckRollup?: undefined }),
   /**
    * THE HEAD OF THE BASE BRANCH AS IT IS NOW, and its commit date (023.3, repaired 023.4).
    * Both arrive from a SECOND read — `gh pr view` dates the PR's own commits, never the
@@ -251,6 +330,12 @@ export const pullRequestFacts = (
    * guard then says `by-hand` instead of guessing.
    */
   reviewRuns?: ReviewRunReading | undefined,
+  /**
+   * WHERE THE CHECKS CAME FROM (thread 160), from a fourth read — absent means the ordinary
+   * path: `statusCheckRollup` arrived and is what guard 2 judges. Present means the node was
+   * refused and this is the substitute, in either of its two states.
+   */
+  checksReading?: ChecksReading | undefined,
 ): PullRequestFacts => ({
   number: pr.number,
   headSha: pr.headRefOid,
@@ -267,7 +352,7 @@ export const pullRequestFacts = (
   headCommittedAt:
     pr.commits.find((commit) => commit.oid === pr.headRefOid)?.committedDate ?? undefined,
   reviewRuns,
-  checks: pr.statusCheckRollup.map((check) => ({
+  checks: (pr.statusCheckRollup ?? []).map((check) => ({
     // A flying run answers `conclusion: ""`, not null — the gate reads emptiness as
     // absence itself (D3), so the mapping stays a mapping.
     name: check.name ?? check.context ?? "?",
@@ -277,6 +362,7 @@ export const pullRequestFacts = (
     completedAt: check.completedAt ?? undefined,
     startedAt: check.startedAt ?? undefined,
   })),
+  checksReading,
   changedPaths: pr.files.map((file) => file.path),
   baseSha: baseHead?.sha,
   baseCommittedAt: baseHead?.committedAt,

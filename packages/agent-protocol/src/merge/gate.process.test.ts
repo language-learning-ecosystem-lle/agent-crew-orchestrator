@@ -1348,3 +1348,110 @@ fi
     expect(result.out).toContain("This is not 'there is no pair'");
   });
 });
+
+/**
+ * ONE FORBIDDEN NODE MUST NOT TAKE THE WHOLE DOOR (thread 160) — the seam, with a real
+ * `gh` on the other side of it, because this repair is entirely about what happens
+ * BETWEEN two process calls and no unit of the mapping can see it.
+ *
+ * The class does not reproduce on THIS repository by construction: a fine-grained token
+ * reads a PUBLIC repository unconditionally, and there is no `checks` permission to grant
+ * it for a private one. So the stub is the only place the private answer exists — it
+ * refuses `pr view` exactly while the field list carries `statusCheckRollup`, and answers
+ * the same call without it, which is what john measured on 2026-09-07.
+ */
+const stubGhRefusingRollup = (
+  repo: string,
+  answer: { json: unknown; runs?: unknown; runsFailWith?: string },
+): string => {
+  const bin = join(repo, "stub-bin-forbidden");
+  mkdirSync(bin, { recursive: true });
+  const runsBranch =
+    answer.runsFailWith !== undefined
+      ? `  *actions/runs*) echo ${JSON.stringify(answer.runsFailWith)} >&2; exit 1;;\n`
+      : `  *actions/runs*) cat <<'RUNS'\n${JSON.stringify(answer.runs)}\nRUNS\n  exit 0;;\n`;
+  const refusal =
+    "GraphQL: Resource not accessible by integration (repository.pullRequest.statusCheckRollup.contexts.nodes.0)";
+  const script = `#!/bin/sh
+case "$*" in
+${runsBranch}  *statusCheckRollup*) echo ${JSON.stringify(refusal)} >&2; exit 1;;
+esac
+cat <<'PAYLOAD'
+${JSON.stringify(answer.json)}
+PAYLOAD
+`;
+  const path = join(bin, "gh");
+  writeFileSync(path, script, "utf8");
+  chmodSync(path, 0o755);
+  return bin;
+};
+
+/** The same head, seen through `actions/runs` — REST's lower case, which the door folds up. */
+const RUNS_ON_HEAD: unknown = {
+  total_count: 2,
+  workflow_runs: [
+    {
+      id: 32535411165,
+      name: "Claude PR Review",
+      head_sha: HEAD,
+      event: "pull_request",
+      status: "completed",
+      conclusion: "success",
+      created_at: "2026-07-01T00:00:00Z",
+      updated_at: "2026-08-01T00:00:00Z",
+    },
+    {
+      id: 32535411166,
+      name: "checks",
+      head_sha: HEAD,
+      event: "pull_request",
+      status: "completed",
+      conclusion: "success",
+      created_at: "2026-07-30T00:00:10Z",
+      updated_at: "2026-07-30T00:04:05Z",
+    },
+  ],
+};
+
+describe("merge-gate — a token refused the checks node (thread 160)", () => {
+  it("re-reads the PR without the refused field and judges guard 2 by the runs of Actions", () => {
+    const repo = repoWithConfig();
+    const payload = mergeable() as Record<string, unknown>;
+    delete payload.statusCheckRollup;
+    const result = run(
+      repo,
+      stubGhRefusingRollup(repo, { json: payload, runs: RUNS_ON_HEAD }),
+      REVIEWED,
+    );
+
+    // Before this repair the first `gh pr view` threw and the command exited 2 with no
+    // verdict at all — guards 1, 3 and 4 included, none of which read a check.
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("GitHub refused");
+    expect(result.out).toContain("repository.pullRequest.statusCheckRollup.contexts.nodes.0");
+    expect(result.out).toContain("ok   guard 1");
+    expect(result.out).toContain("ok   guard 2");
+    // The substitution is never silent, and REST's `success` is folded into the one
+    // vocabulary the guard's green set is written in.
+    expect(result.out).toContain("from the runs of Actions on this head");
+    expect(result.out).toContain("checks=SUCCESS");
+  });
+
+  it("no access is not no green: the runs refused too, and guard 2 says NOT READ", () => {
+    const repo = repoWithConfig();
+    const payload = mergeable() as Record<string, unknown>;
+    delete payload.statusCheckRollup;
+    const result = run(
+      repo,
+      stubGhRefusingRollup(repo, { json: payload, runsFailWith: "gh: HTTP 403" }),
+      REVIEWED,
+    );
+
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("STOP guard 2");
+    expect(result.out).toContain("were NOT READ");
+    expect(result.out).toContain("'no access', NOT 'not green'");
+    // The sentence that used to be printed here was a statement ABOUT THE HEAD, and false.
+    expect(result.out).not.toContain("nothing has confirmed this head");
+  });
+});

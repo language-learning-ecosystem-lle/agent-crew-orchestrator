@@ -265,6 +265,31 @@ export type ReviewRunReading =
   /** No `--review-workflow`: nobody named the reviewer's workflow, so nothing was asked. */
   | { readonly state: "not-asked" };
 
+/**
+ * WHERE GUARD 2'S CHECKS CAME FROM WHEN THEY DID NOT COME FROM `statusCheckRollup`
+ * (thread 160). Absent on the ordinary path; present only after GitHub refused that one
+ * node, in the two states that refusal can end in.
+ *
+ * The two are DIFFERENT ANSWERS and the whole point of the type: `substituted` means the
+ * checks were read, elsewhere, and guard 2 judges them exactly as it judges a rollup —
+ * `refused` means NOTHING was read, which is "no access", not "not green". Both keep the
+ * door shut; only one of them is a statement about the head.
+ */
+export type ChecksReading =
+  | {
+      readonly state: "substituted";
+      /** The path GitHub refused, quoted — the fact the substitution was made on. */
+      readonly refusedPath: string;
+      /** What answered instead, named so the reader can go and ask it by hand. */
+      readonly source: string;
+    }
+  | {
+      readonly state: "refused";
+      readonly refusedPath: string;
+      /** Why the substitute could not be read either, in GitHub's own words. */
+      readonly reason: string;
+    };
+
 /** The facts about a pull request the gate judges — the shape `gh pr view --json` gives. */
 export type PullRequestFacts = {
   readonly number: number;
@@ -300,6 +325,11 @@ export type PullRequestFacts = {
     /** When it started — the only stamp a still-flying attempt has. */
     readonly startedAt?: string | undefined;
   }[];
+  /**
+   * Whether `checks` above is the rollup or a substitute for it (thread 160). Absent is the
+   * ordinary case and reads exactly as today. See {@link ChecksReading}.
+   */
+  readonly checksReading?: ChecksReading | undefined;
   /** `files[].path`, repository-relative. */
   readonly changedPaths: readonly string[];
   /**
@@ -1198,27 +1228,45 @@ export const verdictAndChecks = (
 
   const attempts = latestAttemptPerName(pr.checks.map(asAttempt));
   const notGreen = attempts.filter((check) => !checkIsGreen(check));
+  // WHERE THE CHECKS CAME FROM, SAID IN THE VERDICT ITSELF (thread 160): a substituted
+  // reading is judged by the same rules, but a reader who cannot tell it from a rollup
+  // cannot tell what to go and ask by hand when it disagrees with the page.
+  const via =
+    pr.checksReading?.state === "substituted"
+      ? ` (from ${pr.checksReading.source}, not 'statusCheckRollup' — GitHub refused '${pr.checksReading.refusedPath}' on this token)`
+      : "";
   const checks: GateOutcome =
-    attempts.length === 0
+    // NO ACCESS IS NOT NO GREEN, and this branch stands first because the two used to
+    // collapse into one sentence: a refused rollup left `checks` empty and the door said
+    // "nothing has confirmed this head", which is a statement ABOUT THE HEAD and was false.
+    // Still a `fail` — a door that cannot see does not open — but it now names what to fix.
+    pr.checksReading?.state === "refused"
       ? {
           guard: 2,
           title: "green checks on the same head",
           state: "fail",
-          detail: `no checks reported on ${head.slice(0, 7)} — nothing has confirmed this head`,
+          detail: `the checks on ${head.slice(0, 7)} were NOT READ: GitHub refused '${pr.checksReading.refusedPath}' and the substitute source answered nothing either — ${pr.checksReading.reason}. This is 'no access', NOT 'not green': nothing here says this head is red, and nothing says it is green`,
         }
-      : notGreen.length === 0
+      : attempts.length === 0
         ? {
             guard: 2,
             title: "green checks on the same head",
-            state: "pass",
-            detail: `${attempts.length} check(s) green: ${attempts.map(describeCheck).join(", ")}`,
-          }
-        : {
-            guard: 2,
-            title: "green checks on the same head",
             state: "fail",
-            detail: `not green: ${notGreen.map(describeCheck).join(", ")}`,
-          };
+            detail: `no checks reported on ${head.slice(0, 7)}${via} — nothing has confirmed this head`,
+          }
+        : notGreen.length === 0
+          ? {
+              guard: 2,
+              title: "green checks on the same head",
+              state: "pass",
+              detail: `${attempts.length} check(s) green${via}: ${attempts.map(describeCheck).join(", ")}`,
+            }
+          : {
+              guard: 2,
+              title: "green checks on the same head",
+              state: "fail",
+              detail: `not green${via}: ${notGreen.map(describeCheck).join(", ")}`,
+            };
 
   return { verdict, checks };
 };
