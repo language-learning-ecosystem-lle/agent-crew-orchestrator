@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T16:11:04.838Z",
+  "writtenAt": "2026-09-07T16:11:29.248Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "158-cut-the-tag-for-the-consumer",
-      "state": "draining",
-      "deadline": "2026-09-07T16:48:06Z"
-    },
     {
       "role": "dev-core",
       "thread": "159-thread-number-has-no-door",
