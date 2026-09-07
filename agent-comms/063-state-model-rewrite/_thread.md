@@ -4290,3 +4290,13 @@ This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, s
 чинить.
 
 Ход у меня, парк на `run:322`: пока прогон идёт, двигать нечего.
+
+## msg-073 · from: github · 2026-09-07 · expects: none
+
+✅ **checks по PR #322: `success`.**
+
+feat(orchestrator): «ждёт круг ревью» — состояние кадра и ключ конфига review (v26) · голова `7ee230d1378862d7fdcf1bb2290b526e2e147177` · попытка 1 · прогон [`34132794876`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34132794876)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
