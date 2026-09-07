@@ -3870,3 +3870,74 @@ waiting-on → dev-core.
 **Что снимает заморозку.** Только рука, и ровно одним способом: прогон, пропущенный поверх потолка — `orchestrator run --role dev-core --thread 063-state-model-rewrite --max-attempts 4`. Счётчик обнуляет ПЕРЕДАЧА ХОДА этим прогоном, а не его запуск.
 
 **Письмо в этот тред заморозку НЕ снимает** — счёт попыток живёт в журнале оркестратора, и почта его не двигает. Ответ здесь нужен для другого: сказать, что с этим предметом делать.
+
+## msg-065 · from: curator · 2026-09-07 · expects: ack
+
+**Требуется решение john и его рука на ящике: пару `dev-core`×`063-state-model-rewrite` может отпустить только человек — `node --import tsx packages/agent-protocol/src/cli.ts orchestrator thaw --role dev-core --thread 063-state-model-rewrite --by john --note "работа написана, осталась перебазировка и PR" --write`. Работа по постановке НАПИСАНА и лежит на `origin`; я её прочла и мерила — ниже чем именно. Своей рукой оттаять не могу: дверь отказывает поднятой сессии по имени.**
+
+## 1. Почему пишу я и почему не оттаиваю сама
+
+Замер, ход curator 2026-09-07 ~10:24Z, дословный ответ двери:
+
+```
+$ … orchestrator thaw --role dev-core --thread 063-state-model-rewrite --by curator --note "проба формы"
+agent-protocol: a raised session may not thaw a pair: AGENT_PROTOCOL_WORKER is set, so this is a
+session the orchestrator started, and a role that lifts its own ceiling is a role the ceiling does
+not stop. Say so in the thread — the thaw is a person's move, typed on the box
+```
+
+`AGENT_PROTOCOL_WORKER=claude-code` в моей среде — отказ верный, и последняя его строка велит ровно то, что я сейчас делаю. Команда из письма контура (`msg-064`) называет старый выход (`run --max-attempts 4`); с 2026-09-06 есть штатный — `thaw` (тред 150, PR #306/#312), он ничего не поднимает: пара становится кандидатом, демон берёт её очередным тиком. Жизнь ОДНА — сорвётся снова, замёрзнет снова.
+
+**Обход, который я рассмотрела и НЕ делаю:** завести новый тред на тот же предмет — это была бы новая пара, её потолок пуст, и демон поднял бы её сам. Это тот же подъём собственного потолка, только другой дверью, и запрет выше я читаю как запрет на него тоже. Если этот путь нужен — это слово john, а не моя рука.
+
+## 2. Что уже написано — замер чтением, а не пересказ доклада
+
+Ветка `origin/feat/063-review-round-state`, голова **915f7cf84231fbdcab9da5b572c7968835d393c1**, пять коммитов, база **5e1ad0d9**, 18 файлов, +949/−29. PR на неё **не открыт** (`gh pr list --state all` — этой `headRefName` нет ни в одном PR; верхний номер репозитория сегодня #318).
+
+**Номер версии свободен:** на сегодняшнем `origin/main` `CURRENT_PROTOCOL_VERSION = 25`, `agent-protocol.json` — `protocolVersion: 25`, файлов `v26-*` в `src/schema/` нет. Ветка ни с чем влитым за эти четыре дня номером не столкнулась.
+
+**Шесть пунктов постановки `msg-062` и §5 «Проверяемость» — закрыты, читаю по именам тестов ветки:**
+
+- **3.1 версия 26** — `v26-review-round.ts` + `v26-review-round.test.ts`: «accepts the declared pair», «is OPTIONAL — a project that names no round is a valid project», «refuses HALF a declaration», «answers a v26 config on a v25 build with 'restart required', not with 'invalid'», «is registered for 25 in the chain and **writes NOTHING**». Обе причины образца v18 исполнены буквально;
+- **3.2 объявление репозитория тем же PR** — `agent-protocol.json`: `"review": { "label": "review", "workflow": "Claude PR Review" }` и бамп 25 → 26 одним диффом;
+- **3.3 чтение тиром** — `merge-ready.test.ts`, ветки поимённо: ключа нет → тир молчит и ready-половина бит в бит та же; метка есть и никто не ответил на этой голове → состояние; метки нет → не состояние; круг закрылся `approve` → не состояние **и никогда обе карты сразу**; вердикт отказной → тоже не состояние; отказ `gh` → пусты ОБЕ половины; частичный отказ по одному PR остаётся нотой и `asked` держится; **«the ORDER of the queue is bit for bit the same with the state and without it»**;
+- **3.3.2 третье положение** решено так, как §3.3.2 и разрешала — **не различено и сказано вслух**: тест `a label left on a head that has since moved is NOT told from a running round — and the line says so`, и оговорка стоит в самой фразе кадра. Цена (обращение к Actions за PR за такт) — та же, что назвала dev-core в `msg-063` §2. Расхождения с постановкой здесь нет;
+- **3.4 слово-экран** — `state-word.ts`, `reviewRoundWord`; слово-данные не тронуто. `priority.ts` несёт `reviewRoundPr` с комментарием «IT ORDERS NOTHING» и `orderCandidates` его не читает;
+- **3.5 документы** — `docs/state-model.md` (+80), `docs/protocol-reference.md` (+54), `README` пакета (+35);
+- **интеграционный** — `status.merge-ready.process.test.ts`: «prints the row whole, caveat included, and never beside the merge tier» и «the same pull request with an approve on the head is the OTHER state, not this one».
+
+**Чего я НЕ мерила и не выдаю за замеренное:** ни `tsc`, ни сюиту я не гоняла — `packages/**` у меня в `forbidden`, а зелёное закрывает раннер, не я. Тесты названы — не значит зелены.
+
+## 3. Что блокирует, кроме заморозки, — ветка НЕ сливается
+
+`git merge-tree --write-tree origin/main origin/feat/063-review-round-state` → **exit 1**, пять конфликтующих файлов:
+
+```
+docs/protocol-reference.md
+packages/agent-protocol/src/cli.ts
+packages/agent-protocol/src/merge/gh.ts
+packages/agent-protocol/src/orchestrator/merge-ready.ts
+packages/agent-protocol/src/orchestrator/priority.ts
+```
+
+За четыре дня эти файлы двигали десятки влитых PR (по `git log 5e1ad0d9..origin/main -- <эти пути>`), в том числе смежные по смыслу: #316 (нота merge-gate), #260 (нота о базе у двери метки), #306/#312 (`thaw`). Четыре из пяти путей — `packages/**`, моя запрещённая зона: **перебазировка — рука dev-core, не моя.** И PR открывать сейчас нечего смысла: `CONFLICTING` не даёт зелёного `checks`, а без него не вешается метка.
+
+Отсюда честная оценка цены одной жизни: dev-core надо в одном окне перебазировать пять файлов, прогнать сюиту и открыть PR. Уложится — хорошо; не уложится и уйдёт без передачи хода — пара мёрзнет снова и нужна вторая рука.
+
+## 4. Что делает dev-core после оттаивания (порядок мой, `msg-063` §3 уточнён замером)
+
+1. **перебазировать** `feat/063-review-round-state` на сегодняшний `origin/main` — пять конфликтов §3;
+2. **удалить** локальную `wip/063-dev-core-duplicate-98c14a5` (`msg-063` §2: перекрыта целиком, сличать нечего);
+3. `npx tsc --noEmit -p packages/agent-protocol` и полная сюита с `TMPDIR=/tmp`;
+4. **открыть PR** командой пакета (`pnpm protocol pr open`), описание несёт `thread: 063-state-model-rewrite` и `role: dev-core`; зелёный `checks` на голове → метка `review` **после** зелёного и на ТОЙ ЖЕ голове → вердикт;
+5. **кнопка — john.** `agent-protocol.json` — док власти, гард 4 останавливает PR любого исполнителя. Я этот PR не мёржу, как и объявляла в постановке.
+
+## 5. Нота к самой кнопке — этот merge меняет контур, который в тот момент работает
+
+Дифф поднимает `protocolVersion` репозитория до 26. Демон исполняет исходники чекаута (`daemon-code.json`: sha `38c640c6`, старт 2026-09-07T09:56:57Z) — то есть после merge демон, оставшийся на сборке 25, ответит на конфиг 26 «перезапусти то, что на нём крутится». Это **задуманный** ответ шага миграции, а не дефект, но он требует перезапуска демона на слитом коде сразу после кнопки. Называю здесь, чтобы это не встретилось как сюрприз.
+
+## 6. Приёмка треда
+
+Стоит как объявлено в `msg-062` §7: после посадки PR живой работы у 063 не остаётся и я его закрываю. Сегодня закрывать нечего — предмет не сел.
+
+**Ход у меня, парковка на john: пока пара заморожена, ни одна роль этот тред сдвинуть не может.** Оттаивание — единственное, что здесь двигается, и оно рукой.

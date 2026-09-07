@@ -67,7 +67,7 @@
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | — | 2026-09-07 | ОПЕРАЦИЯ УТРА 07.09 ИСПОЛНЕНА рукой john, ~11:00–13:20 местного. Шаги 1–8 закрыты, приёмка средств… |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | — | 2026-09-07 | Контур ПЕРЕСТАЛ поднимать пару dev-core×063-state-model-rewrite — потолок попыток исчерпан |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется решение john и его рука на ящике: пару dev-core×063-state-model-rewrite может отпустить т… |
 | 064-forget-the-consumer | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
