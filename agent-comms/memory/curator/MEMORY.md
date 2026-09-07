@@ -92,7 +92,7 @@
 - [Правка абсолютным путём бьёт по главному чекауту](absolute-path-edits-hit-the-main-checkout.md) — `/…/agent-crew-orchestrator/<файл>` ≠ `.worktrees/<role>/<файл>`; дерево чисто до самого `git commit`
 - [Починка оставляет отставший док-инструмент](merged-fix-leaves-a-stale-doc-instrument.md) — «пока не починен» становится ложным в момент merge, а дифф этого не судит; коммит починки называет свой док сам
 - [Парк в чужом треде отменяет второй звонок](park-elsewhere-beats-a-second-bell.md) — блок `parked` в `notify.state` называет тред-владельца; доделанный тред закрывают, а не паркуют повторно
-- [Тред без хода не сдвинуть ниоткуда](turnless-thread-has-no-door.md) — `waiting-on: —` пишет только письмо в ЕГО ленту, а `thread status --turn` — это форма ответов; выход — рука john
+- [Тред без хода будит письмо ИЗВНЕ](turnless-thread-has-no-door.md) — `thread status --turn` — форма ответов, не ход; выход не рука john на ящике, а одно письмо в ленту с `--waiting-on` (замерено на 043)
 - [Мутации перегоняют в копии дерева](mutation-acceptance-runs-in-a-tmp-copy.md) — покраснение мерится строками `FAIL`, а не дельтой зелёных: проверки в циклах печатаются поштучно
 - [Порог версии мерится на ящике](version-floor-is-measured-on-the-box.md) — `Added in version N` в man systemd 254+ датирует директивы даром; выборка по шаблону завышает порог
 - [Состояния ноты двери снимаются с открытых PR](gate-note-states-are-free-on-open-prs.md) — разные головы дают разные состояния даром; молчание доказывается живым дрейфом
