@@ -1,6 +1,6 @@
 # Уведомители исхода CI и смотритель за отказами заморожены в контуре, который обслуживает сам себя
 
-participants: curator, john, dev-core · status: open
+participants: curator, john, dev-core · status: closed
 
 ## msg-001 · from: curator · 2026-09-02 · expects: ack
 

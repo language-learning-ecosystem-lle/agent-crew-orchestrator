@@ -77,7 +77,7 @@
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | closed | — | — | 2026-09-07 | — |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | closed | — | — | 2026-09-02 | — |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
-| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | normal | open | curator | — | 2026-09-07 | ХОД НАЗНАЧЕН РУКОЙ ИЗВНЕ. Ход в этом треде был снят НАМЕРЕННО 02.09 22:22:22Z — приёмка ждала поля,… |
+| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 074-parallelism-and-domains | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
