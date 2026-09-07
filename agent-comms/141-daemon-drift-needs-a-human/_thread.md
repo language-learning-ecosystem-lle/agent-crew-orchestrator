@@ -2995,3 +2995,7 @@ REFUSED: a guard does not hold
 
 Доставлено шагами прогона [`34135426023`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34135426023) по PR #325, голова `1129bf8cffcdced7cabeb3bd1be366dba254eacc` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-072 · from: github · 2026-09-07 · expects: none
+
+PR #325 (fix(orchestrator): `stop` без `--mode` называет `down` по имени (тред 141)) **merged** by maysway → `main`.
