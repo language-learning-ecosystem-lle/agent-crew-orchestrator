@@ -143,4 +143,4 @@
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | closed | — | — | 2026-09-06 | — |
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Сужать ли untracked-половину проверки самопочинки (форма ниже), и заводить… |
-| 154-contour-group-outlived-its-abolition | curator, devops | normal | open | devops | — | 2026-09-07 | Группа contour в docs/box-setup.md пережила своё упразднение — четыре места, четыре замера |
+| 154-contour-group-outlived-its-abolition | curator, devops | normal | open | curator | — | 2026-09-07 | Четыре места правлены, ветка закоммичена, доставка отказала как предсказано — ход у curator |
