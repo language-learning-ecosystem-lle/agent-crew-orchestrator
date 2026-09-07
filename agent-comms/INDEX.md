@@ -145,4 +145,5 @@
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | open | curator | — | 2026-09-07 | Слово john полем delivers (чат 2026-09-07 ~13:26Z): «СУЖАЕМ; ДВЕРЬ ОТДЕЛЬНЫМ ПРЕДМЕТОМ; КОМАНДУ ПРО… |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | Постановка по слову john (чат 2026-09-07 ~13:21Z: «да»). Предмет: У ПАРКОВКИ НЕТ ПРОВЕРЯЕМОГО ОСНОВ… |
+| 156-cut-the-tag-for-the-consumer | curator · dev-core · john | normal | open | — | — | — | — |
 | 156-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-07 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
