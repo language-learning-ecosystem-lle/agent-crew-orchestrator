@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T19:27:39.633Z",
+  "writtenAt": "2026-09-07T19:27:54.113Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "160-merge-gate-falls-whole-on-a-forbidden-node",
-      "state": "draining",
-      "deadline": "2026-09-07T20:24:05Z"
-    },
     {
       "role": "curator",
       "thread": "167-daemon-self-restart",
