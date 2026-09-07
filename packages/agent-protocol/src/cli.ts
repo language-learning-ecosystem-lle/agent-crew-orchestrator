@@ -12639,10 +12639,14 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     const verdict = selfRestartVerdict({
       target: drift.refSha,
       running: runningRoles(),
+      // THE PAIRS GO IN AS PAIRS (thread 168). They used to be joined into `role/thread`
+      // here, one field away from `running` holding bare roles — and the drain line then
+      // named one live session twice. The naming lives in `selfRestartVerdict` now, which
+      // is the only place that can see both fields at once.
       openLeases: unclosedLeases(
         existsSync(journalPath) ? parseJournal(readFile(journalPath, "orchestrator journal")) : [],
         new Date(),
-      ).map((lease) => `${lease.role}/${lease.thread}`),
+      ),
       stopping: flagDown !== undefined,
       // WHICH file is down, because the repair sentence tells a hand to delete it by name
       // rather than to type `orchestrator up` — the trap that cost john a fallen service.

@@ -68,7 +68,7 @@ const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.me
 const facts = {
   target: "b".repeat(40),
   running: [] as readonly string[],
-  openLeases: [] as readonly string[],
+  openLeases: [] as readonly { readonly role: string; readonly thread: string }[],
   stopping: false,
   held: [] as readonly string[],
   tree: { kind: "clean" } as const,
@@ -101,20 +101,67 @@ describe("selfRestartVerdict", () => {
   it("counts a lease left open by a dead supervisor as a live session", () => {
     // The orphan is the case a `running` check alone would miss: this process holds
     // nothing, and yet somebody's turn is unclosed in the journal.
-    expect(selfRestartVerdict({ ...facts, openLeases: ["curator/019"] })).toEqual({
+    expect(
+      selfRestartVerdict({ ...facts, openLeases: [{ role: "curator", thread: "019" }] }),
+    ).toEqual({
       kind: "drain",
       target: facts.target,
       roles: ["curator/019"],
     });
   });
 
-  it("names a running role once when it is also in the open leases", () => {
+  // 168. THE FIXTURE IS THE HALF OF THE REPAIR. This case was here and green while the
+  // field was red on the box, because it fed `openLeases: ["dev-core"]` — a BARE NAME in
+  // the field the circuit only ever fills with pairs. What the drain line printed was
+  // `(curator, curator/160-…)`: one live session, named twice, and a reader of the log
+  // counting two. The input below is the form `cli.ts` actually passes.
+  it("names a running role once when its own lease is open, and names it by the pair", () => {
     const verdict = selfRestartVerdict({
       ...facts,
       running: ["dev-core"],
-      openLeases: ["dev-core"],
+      openLeases: [{ role: "dev-core", thread: "063-state-model-rewrite" }],
     });
-    expect(verdict).toEqual({ kind: "drain", target: facts.target, roles: ["dev-core"] });
+    expect(verdict).toEqual({
+      kind: "drain",
+      target: facts.target,
+      roles: ["dev-core/063-state-model-rewrite"],
+    });
+  });
+
+  it("names each of two roles once when both are running with their leases open", () => {
+    // The two-role list from the journal of 2026-09-07, which printed four entries.
+    const verdict = selfRestartVerdict({
+      ...facts,
+      running: ["dev-core", "curator"],
+      openLeases: [
+        { role: "dev-core", thread: "153-untracked-file-freezes-selfheal" },
+        { role: "curator", thread: "155-park-has-no-checkable-ground" },
+      ],
+    });
+    expect(verdict).toEqual({
+      kind: "drain",
+      target: facts.target,
+      roles: [
+        "dev-core/153-untracked-file-freezes-selfheal",
+        "curator/155-park-has-no-checkable-ground",
+      ],
+    });
+  });
+
+  it("still drains when a running role has no lease and an orphan lease has no runner", () => {
+    // The mixed list: deduplication must not eat either half, and the bare name stays
+    // where — and only where — there is no pair to say instead.
+    expect(
+      selfRestartVerdict({
+        ...facts,
+        running: ["dev-core"],
+        openLeases: [{ role: "curator", thread: "019" }],
+      }),
+    ).toEqual({
+      kind: "drain",
+      target: facts.target,
+      roles: ["dev-core", "curator/019"],
+    });
   });
 
   it("takes the go on the tick where the last session has closed", () => {
