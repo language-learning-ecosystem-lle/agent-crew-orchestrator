@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T20:20:25.434Z",
+  "writtenAt": "2026-09-07T20:21:12.158Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "169-tag-fitness-is-measured-by-tree-not-ancestry",
-      "state": "draining",
-      "deadline": "2026-09-07T20:56:51Z"
-    }
-  ]
+  "leases": []
 }
