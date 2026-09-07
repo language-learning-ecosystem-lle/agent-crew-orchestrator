@@ -158,12 +158,53 @@ const inReviewPayload = (thread: string): string =>
   });
 
 /**
+ * THE PAYLOAD MINUS THE ONE NODE A FINE-GRAINED TOKEN IS REFUSED (thread 166, the class
+ * measured by john on a private repository in thread 160): everything above except
+ * `statusCheckRollup`, which is precisely what `gh pr view` answers on the SECOND ask.
+ */
+const withoutRollupPayload = (thread: string): string => {
+  const payload = JSON.parse(readyPayload(thread));
+  delete payload.statusCheckRollup;
+  return JSON.stringify(payload);
+};
+
+/** The runs of Actions on the head — the substitute source, answering green. */
+const RUNS = JSON.stringify({
+  workflow_runs: [
+    {
+      id: 1,
+      name: "checks",
+      head_sha: HEAD,
+      event: "pull_request",
+      status: "completed",
+      conclusion: "success",
+      created_at: "2026-08-01T06:41:00Z",
+      updated_at: "2026-08-01T06:49:00Z",
+    },
+  ],
+});
+
+/**
+ * THE REFUSAL GITHUB ANSWERS FOR THE ONE FORBIDDEN NODE, in its own words — the path is
+ * what is read, never the word (`forbiddenChecksRollup`), so the shim has to name it.
+ */
+const ROLLUP_REFUSAL =
+  "GraphQL: Resource not accessible by integration (repository.pullRequest.statusCheckRollup.contexts.nodes.0)";
+
+/**
  * A `gh` on `PATH` that answers both halves and logs every call. `mode` is what the
  * expensive half does: answer, or refuse the way a box with no token refuses.
+ *
+ * DISPATCH IS ON THE WHOLE ARGV, not on `$2`: `gh api repos/…` puts a URL where `pr view`
+ * puts a subcommand, and a shim reading one position sends the substitute read of thread
+ * 166 down the default branch instead of answering it.
  */
 const ghShim = (
   repo: string,
-  options: { readonly thread: string; readonly mode?: "ready" | "refuse" | "in-review" },
+  options: {
+    readonly thread: string;
+    readonly mode?: "ready" | "refuse" | "in-review" | "refuse-rollup" | "refuse-rollup-and-runs";
+  },
 ): { readonly bin: string; readonly calls: () => string[] } => {
   const dir = join(repo, "ghbin");
   mkdirSync(dir, { recursive: true });
@@ -177,18 +218,35 @@ const ghShim = (
       labels: options.mode === "in-review" ? [{ name: "review" }] : [],
     },
   ]);
+  const refusesRollup =
+    options.mode === "refuse-rollup" || options.mode === "refuse-rollup-and-runs";
   const expensive =
     options.mode === "refuse"
       ? 'echo "gh: no token" >&2; exit 1'
       : options.mode === "in-review"
         ? `cat <<'JSON'\n${inReviewPayload(options.thread)}\nJSON`
         : `cat <<'JSON'\n${readyPayload(options.thread)}\nJSON`;
+  // The rollup-refusing box answers the SECOND ask — the same fields without that node.
+  const withRollup = refusesRollup
+    ? `echo ${JSON.stringify(ROLLUP_REFUSAL)} >&2; exit 1`
+    : expensive;
+  const withoutRollup = refusesRollup
+    ? `cat <<'JSON'\n${withoutRollupPayload(options.thread)}\nJSON`
+    : expensive;
+  const api =
+    options.mode === "refuse-rollup"
+      ? `cat <<'JSON'\n${RUNS}\nJSON`
+      : 'echo "gh: no token for Actions either" >&2; exit 1';
   const script = [
     "#!/bin/sh",
     `echo "$@" >> ${JSON.stringify(log)}`,
-    'case "$2" in',
-    `  list) cat <<'JSON'\n${open}\nJSON\n    ;;`,
-    `  view) ${expensive}`,
+    'case "$*" in',
+    `  "pr list"*) cat <<'JSON'\n${open}\nJSON\n    ;;`,
+    `  "pr view"*statusCheckRollup*) ${withRollup}`,
+    "    ;;",
+    `  "pr view"*) ${withoutRollup}`,
+    "    ;;",
+    `  "api"*) ${api}`,
     "    ;;",
     "  *) exit 1 ;;",
     "esac",
@@ -311,6 +369,55 @@ describe("`orchestrator status` orders by the merge a thread holds — the tick'
     expect(withRefusal.err).toContain("PR #154 (019-operator-ux) not read");
     expect(withRefusal.out).not.toContain("merge-ready:");
     expect(withRefusal.out).not.toContain("queue 1/2: dev-core×019-operator-ux");
+  });
+
+  /**
+   * THE SEAM OF THREAD 166 — the tier's half of the repair thread 160 gave the door. The
+   * class is measured, not supposed: on a private repository a fine-grained token is
+   * refused `statusCheckRollup.contexts.nodes` and `gh pr view` then answers NOTHING, so
+   * the expensive half threw for every pull request there was. Neither the unit of the
+   * reader nor the unit of the gate can see it: the ask, the refusal and the second ask
+   * all live in the CLI's `gh` source, and only a run through the real wiring reaches it.
+   */
+  it("a rollup GitHub refuses is re-asked without that node, and the tier still fires", () => {
+    const repo = contour([
+      { id: "003-old", message: handoff({ date: "2026-07-01T10:00:00Z" }) },
+      { id: "019-operator-ux", message: handoff({ date: "2026-07-25T10:00:00Z" }) },
+    ]);
+    const gh = ghShim(repo, { thread: "019-operator-ux", mode: "refuse-rollup" });
+
+    const result = status(repo, { path: gh.bin });
+
+    // The pair is raised — the same sentence as with a rollup that was never refused.
+    expect(result.out).toContain("queue 1/2: dev-core×019-operator-ux");
+    expect(result.out).toContain("guards 1-2 hold on PR #154");
+    // And it was earned the hard way: the first ask carried the node, the second dropped
+    // it, and the checks came from the runs of Actions on the head.
+    const calls = gh.calls();
+    expect(calls.filter((line) => line.startsWith("pr view")).length).toBe(2);
+    expect(calls.filter((line) => line.includes("statusCheckRollup")).length).toBe(1);
+    expect(calls.filter((line) => line.startsWith("api"))).toHaveLength(1);
+    expect(calls.some((line) => line.includes(`actions/runs?head_sha=${HEAD}`))).toBe(true);
+  });
+
+  it("both sources refused is NOT READ, said out loud — never the silence of 'not ready'", () => {
+    const repo = contour([
+      { id: "003-old", message: handoff({ date: "2026-07-01T10:00:00Z" }) },
+      { id: "019-operator-ux", message: handoff({ date: "2026-07-25T10:00:00Z" }) },
+    ]);
+    const gh = ghShim(repo, { thread: "019-operator-ux", mode: "refuse-rollup-and-runs" });
+
+    const result = status(repo, { path: gh.bin });
+
+    // The order is the order of a circuit without the tier — the degradation is unchanged.
+    expect(result.out).toContain("queue 1/2: dev-core×003-old");
+    expect(result.out).not.toContain("guards 1-2 hold");
+    // But it is NOT silent, and it does not say "not ready": that is the whole defect.
+    expect(result.err).toContain("PR #154 (019-operator-ux) — the checks were NOT READ");
+    expect(result.err).toContain("repository.pullRequest.statusCheckRollup.contexts.nodes.0");
+    expect(result.err).toContain("This is 'no access', NOT 'not ready'");
+    // Beside the picture, never inside it (the rule the whole file is written by).
+    expect(result.out).not.toContain("NOT READ");
   });
 
   it("`--watch` asks the network ONCE, not once per frame — a reader is not a poll", () => {

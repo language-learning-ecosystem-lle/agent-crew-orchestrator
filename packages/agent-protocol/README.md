@@ -3008,8 +3008,11 @@ not be MEASURED, STOP means it was measured and does not hold, and neither is ev
 Nothing new is let through by any of this — the guard only stops crediting an approve it used
 to credit blindly, which is why the change is a defect of the tooling and not a move of the
 norm. The scheduler's merge-ready reader (`orchestrator status`, the queue) does not ask
-Actions at all, one call per PR per tick being too much for a hint: it treats an obligation as
-"nothing refuses" and raises the pair, and the anchor is answered at the door, where it belongs.
+Actions **for the anchor**, one call per PR per tick being too much for a hint: it treats an
+obligation as "nothing refuses" and raises the pair, and the anchor is answered at the door,
+where it belongs. It does ask Actions for the CHECKS, and only where GitHub refused
+the rollup (the refused node, below): on such a contour the alternative to that call is not a
+cheaper tier but no tier at all.
 
 **One head answers once per check name.** A rerun does not replace the attempt it
 reran: both hang on the same head in `statusCheckRollup`, and read flat, the door
@@ -3232,6 +3235,24 @@ green".** Guard 2 then answers `the checks on <head> were NOT READ: GitHub refus
 and the substitute source answered nothing either — <reason>. This is 'no access', NOT 'not
 green'`, and stops all the same. It used to fall through to `no checks reported on <head> —
 nothing has confirmed this head`, which is a statement about the head, and was false.
+
+**And one refused node no longer takes the TIER with it either** (thread 166). The same
+facts have a second consumer — the scheduler's merge-ready reader — and it asked for
+`statusCheckRollup` in its own `gh pr view`, knowing nothing of the door's second ask.
+Measured: with the rollup refused, the expensive half threw for EVERY pull request, the tier
+fired for nobody, and the daemon's log carried one `merge-ready: PR #N (<thread>) not read —
+Command failed: gh pr view …` per PR per tick, for as long as the token stayed the same.
+So the tier now makes the same second ask, and takes the checks from the runs of Actions on
+the head. **The refusal is remembered for the life of the source** — the daemon builds it at
+boot — so the 403 is earned once and not once per pull request per tick, and where GitHub
+answers the rollup (this repository, every public one) not a single extra call is made.
+
+And when both sources are refused the tier does not fall silent, which is what "not ready"
+looks like here: it says `merge-ready: PR #N (<thread>) — the checks were NOT READ: GitHub
+refused '<path>' on this token and the substitute source answered nothing either — <reason>.
+This is 'no access', NOT 'not ready': the thread keeps its ordinary place, and nothing here
+says the pull request is unready`. The ORDER is untouched in every one of these cases — the
+tier's one direction of degradation is not weakened by the repair, only its silence is.
 
 That much is observed, not hypothetical — it is how the reviewer of this very PR found
 that its "live run" had only ever been made from a session token. What the refusal path

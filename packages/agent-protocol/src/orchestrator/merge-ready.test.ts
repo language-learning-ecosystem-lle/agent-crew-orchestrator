@@ -174,6 +174,94 @@ describe("readMergeReady — the fact is measured through the door's own guards"
     expect(reading.notes.join("\n")).toContain("PR #152 (019-operator-ux) not read");
   });
 
+  /**
+   * THREAD 166 — 'NO ACCESS' AND 'NOT READY' ARE ONE SENTENCE APART, AND WERE ONE SILENCE.
+   * A pull request whose checks could not be read fails guard 2 exactly like a red one, and
+   * the tier is right to leave it where it is; what it must not do is report the two the
+   * same way, because "not ready" is reported by saying NOTHING. On a contour where the
+   * token is refused the rollup, nothing is ever ready and no trace says why.
+   */
+  it("checks that could not be read are said out loud, and NOT as 'not ready'", async () => {
+    const reading = await readMergeReady({
+      source: {
+        open: async () => [open()],
+        facts: async () =>
+          facts({
+            checks: [],
+            checksReading: {
+              state: "refused",
+              refusedPath: "repository.pullRequest.statusCheckRollup.contexts.nodes.0",
+              reason: "gh: no token for Actions either",
+            },
+          }),
+      },
+      threads: ["019-operator-ux"],
+      cache: createMergeReadyCache(),
+    });
+
+    // The order is untouched — the degradation runs in one direction, as before.
+    expect([...reading.ready]).toEqual([]);
+    const note = reading.notes.join("\n");
+    expect(note).toContain("PR #152 (019-operator-ux) — the checks were NOT READ");
+    expect(note).toContain("repository.pullRequest.statusCheckRollup.contexts.nodes.0");
+    expect(note).toContain("gh: no token for Actions either");
+    expect(note).toContain("This is 'no access', NOT 'not ready'");
+  });
+
+  it("a PR that is merely NOT READY stays silent — the note belongs to 'not read' alone", async () => {
+    const reading = await readMergeReady({
+      source: {
+        open: async () => [open()],
+        // Red checks, read perfectly well: this is a statement ABOUT the head, and the
+        // tier has always answered it by saying nothing.
+        facts: async () =>
+          facts({
+            checks: [
+              {
+                name: "checks",
+                status: "COMPLETED",
+                conclusion: "FAILURE",
+                state: undefined,
+                completedAt: "2026-08-01T05:12:00Z",
+              },
+            ],
+          }),
+      },
+      threads: ["019-operator-ux"],
+      cache: createMergeReadyCache(),
+    });
+
+    expect([...reading.ready]).toEqual([]);
+    expect(reading.notes).toEqual([]);
+  });
+
+  /**
+   * THE SUBSTITUTED READING IS AN ORDINARY ANSWER, not a complaint: the rollup was refused,
+   * the runs of Actions answered instead, and what the guards then judge is a fact about the
+   * head. A tier that kept apologising for the source would teach its reader to ignore the
+   * one line that means "nobody could see anything".
+   */
+  it("a SUBSTITUTED reading fires the tier and adds no complaint of its own", async () => {
+    const reading = await readMergeReady({
+      source: {
+        open: async () => [open()],
+        facts: async () =>
+          facts({
+            checksReading: {
+              state: "substituted",
+              refusedPath: "repository.pullRequest.statusCheckRollup.contexts.nodes.0",
+              source: "the runs of Actions on this head (`gh api actions/runs?head_sha=`)",
+            },
+          }),
+      },
+      threads: ["019-operator-ux"],
+      cache: createMergeReadyCache(),
+    });
+
+    expect([...reading.ready]).toEqual([["019-operator-ux", 152]]);
+    expect(reading.notes.join("\n")).not.toContain("NOT READ");
+  });
+
   it("a head that has not moved is not asked about twice — the cache is keyed by (PR, head)", async () => {
     const reads: number[] = [];
     const cache = createMergeReadyCache();

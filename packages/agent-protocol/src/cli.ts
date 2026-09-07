@@ -15059,6 +15059,35 @@ const ghMergeReadySource = (repo: string): MergeReadySource => {
       throw new Error(explainWithCredentials((error as Error).message, platform));
     }
   };
+  /**
+   * THE EXPENSIVE HALF, AND THE ONE NODE GITHUB MAY REFUSE (thread 166, the tier's half of
+   * thread 160's repair). `statusCheckRollup` is asked for first and dropped for good once
+   * GitHub has named it: this source outlives the tick — the daemon builds it at boot — so
+   * the refusal is remembered here rather than re-earned once per pull request per tick.
+   *
+   * ONLY THAT REFUSAL IS CAUGHT, by the path GitHub named and never by the word (see
+   * {@link forbiddenChecksRollup}: the echoed command line carries `statusCheckRollup` on
+   * EVERY failure). Anything else throws exactly as before, and `readMergeReady` turns it
+   * into "not read" with the vendor's sentence quoted.
+   */
+  let refusedChecksPath: string | undefined;
+  const factFields = "number,headRefOid,body,reviews,commits,files,mergeable,mergeStateStatus";
+  const askFacts = (
+    number: number,
+  ): { readonly payload: string; readonly refusedPath?: string } => {
+    const view = (fields: string): string => ask(["pr", "view", String(number), "--json", fields]);
+    if (refusedChecksPath !== undefined) {
+      return { payload: view(factFields), refusedPath: refusedChecksPath };
+    }
+    try {
+      return { payload: view(`${factFields},statusCheckRollup`) };
+    } catch (error) {
+      const named = forbiddenChecksRollup((error as Error).message);
+      if (named === undefined) throw error;
+      refusedChecksPath = named;
+      return { payload: view(factFields), refusedPath: named };
+    }
+  };
   return {
     open: async () =>
       ghOpenPullRequestsSchema
@@ -15085,20 +15114,47 @@ const ghMergeReadySource = (repo: string): MergeReadySource => {
           // (thread 063) costs no second read.
           labels: pr.labels.map((label: { readonly name: string }) => label.name),
         })),
-    facts: async (number: number) =>
-      pullRequestFacts(
-        ghPullRequestSchema.parse(
-          JSON.parse(
-            ask([
-              "pr",
-              "view",
-              String(number),
-              "--json",
-              "number,headRefOid,body,statusCheckRollup,reviews,commits,files,mergeable,mergeStateStatus",
-            ]),
-          ),
-        ),
-      ),
+    facts: async (number: number) => {
+      const raw = askFacts(number);
+      if (raw.refusedPath === undefined) {
+        return pullRequestFacts(ghPullRequestSchema.parse(JSON.parse(raw.payload)));
+      }
+      // ONE FORBIDDEN NODE MUST NOT TAKE THE TIER EITHER (thread 166) — the same repair the
+      // door got in thread 160, at the second consumer of the same facts. Without it the
+      // expensive half threw for EVERY pull request of a private repository, the tier said
+      // "not read" once per PR per tick into the daemon's log and nothing was ever
+      // accelerated — for as long as the token stayed the same, which is forever.
+      const pr = ghPullRequestWithoutChecksSchema.parse(JSON.parse(raw.payload));
+      const reading = readReviewRuns({
+        workflow: "actions/runs",
+        ask: () =>
+          ask(["api", `repos/{owner}/{repo}/actions/runs?head_sha=${pr.headRefOid}&per_page=100`]),
+      });
+      // THE ONE PLACE THIS TIER PAYS AN ACTIONS CALL PER PULL REQUEST PER TICK, and it is
+      // paid ONLY where the rollup was refused: the alternative on such a contour is not a
+      // cheaper tier but no tier at all. Where GitHub answers the rollup — this repository,
+      // every public one — not a single extra call is made, and the price written down in
+      // `merge-ready.ts` stands unchanged.
+      const checksReading: ChecksReading =
+        reading.state === "read"
+          ? {
+              state: "substituted",
+              refusedPath: raw.refusedPath,
+              source: "the runs of Actions on this head (`gh api actions/runs?head_sha=`)",
+            }
+          : {
+              state: "refused",
+              refusedPath: raw.refusedPath,
+              reason:
+                reading.state === "unreadable"
+                  ? reading.reason
+                  : "the runs of Actions were not asked",
+            };
+      const facts = pullRequestFacts(pr, undefined, undefined, checksReading);
+      return reading.state === "read"
+        ? { ...facts, checks: checksFromWorkflowRuns(reading.runs) }
+        : facts;
+    },
   };
 };
 
