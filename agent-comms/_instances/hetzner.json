@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T12:25:46.846Z",
+  "writtenAt": "2026-09-07T12:26:07.876Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "154-contour-group-outlived-its-abolition",
+      "state": "running",
+      "deadline": "2026-09-07T13:06:04Z"
+    }
+  ]
 }
