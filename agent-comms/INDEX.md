@@ -153,4 +153,4 @@
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 161-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 162-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется ack john (решения не требуется): отчёт ящика о самоперезапуске проверен фактами — все шес… |
-| 163-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-07 | Отчёт прочитан и проверен фактами; к john в этот раз НЕ доношу — порог не набран, и число называю н… |
+| 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |

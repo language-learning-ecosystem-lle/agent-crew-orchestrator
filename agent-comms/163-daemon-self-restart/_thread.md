@@ -1,6 +1,6 @@
 # Стоячий адрес: демон перезапустил себя на новый код
 
-participants: github, curator, john · status: open
+participants: github, curator, john · status: closed
 
 ## msg-001 · from: github · 2026-09-07 · expects: none
 
