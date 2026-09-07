@@ -81,7 +81,7 @@
 - [Системное письмо передаёт ход на своём адресе](system-letter-passes-the-turn-on-its-own-address.md) — немоту даёт отсутствие `--waiting-on`, а не `expects: none`
 - [Передача хода ≠ остановка работы](turn-passed-is-not-work-stopped.md) — «этого я НЕ сделал» протухает за минуты: сверяй с МИРОМ (`gh pr view`, `origin`)
 - [Чисто тестовый предмет не восходит дёшево](test-only-item-has-no-cheap-ascent.md) — «дописать ассерт» не полевой дефект: непокрытие называют фактом в ленте
-- [Самопропуск круга имеет ДВА повода](review-selfskip-has-two-causes.md) — «PR правит воркфлоу» (не лечится) и «ветка отстала» (ребейз); различает `git diff`
+- [Самопропуск круга имеет ДВА повода](review-selfskip-has-two-causes.md) — пустой дифф по `claude-review.yml` = ребейз НЕ нужен, отставание само повода не даёт
 - [Звонок смотрителя имени: список или текст](foreign-name-bell-judged-by-load-bearing.md) — исключение только несущему имени; ноль подпирается контрольным сканом
 - [Скрипт из PR мерится до мёржа](pr-script-measured-before-merge.md) — `git show FETCH_HEAD:<путь>` + симлинк на `packages`; сверяются ДОЛИ, не объёмы
 - [Свой промпт — даровой оракул нормы поведения](own-prompt-is-the-free-oracle-for-role-norms.md) — норму хода несёт `runEndsNorm` в `launch.ts`, а не док
