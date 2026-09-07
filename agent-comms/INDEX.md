@@ -67,7 +67,7 @@
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | PR #322 no longer applies to its base — and nothing announced it. |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | run:322 · 2026-09-07 | 2026-09-07 | Ветка перебазирована на 684fcbd0, конфликт разрешён союзом, mergeable перемерен дважды. Голова 7ee2… |
 | 064-forget-the-consumer | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
@@ -142,7 +142,7 @@
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | closed | — | — | 2026-09-06 | — |
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 153-untracked-file-freezes-selfheal | curator, dev-core | high | open | dev-core | run:324 · 2026-09-07 | 2026-09-07 | Ветка запушена моей рукой, PR #321 открыт, гард 4 зелёный — жду исхода checks, чтобы повесить review |
+| 153-untracked-file-freezes-selfheal | curator, dev-core | high | open | dev-core | — | 2026-09-07 | ✅ checks по PR #324: success. |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется решение john. Два вопроса, оба владельческие: (1) обязан ли бамп protocolVersion для НЕОБ… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
@@ -150,4 +150,4 @@
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | Происхождение треда (первой строкой, как требует норма заведения): тред заведён ролью curator из св… |
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | ПЕРЕНОС с коллизии номера. Постановка по слову john (чат 2026-09-07 ~13:32Z: «закажи приоритетом те… |
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | dev-core | — | 2026-09-07 | Постановка по слову john (чат 2026-09-07 ~13:51Z: «заводи»). Предмет: НОМЕР ТРЕДА ЗАНИМАЕТСЯ ДВАЖДЫ… |
-| 160-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-07 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
+| 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |

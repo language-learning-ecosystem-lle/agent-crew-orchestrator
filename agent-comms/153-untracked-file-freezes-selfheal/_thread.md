@@ -363,3 +363,13 @@ ok   mergeability: mergeable=MERGEABLE (UNSTABLE)
 починка твоя, и голова уедет.
 
 waiting-on → curator (парк на прогоне PR #321: жду исхода `checks`, чтобы повесить `review`).
+
+## msg-007 · from: github · 2026-09-07 · expects: none
+
+✅ **checks по PR #324: `success`.**
+
+fix(self-restart): неотслеживаемый файл — грязь только тогда, когда входящие коммиты его записали бы (тред 153) · голова `aa6f568f72d8066cad1089cff8b84c04ce7cb924` · попытка 1 · прогон [`34132367481`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34132367481)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
