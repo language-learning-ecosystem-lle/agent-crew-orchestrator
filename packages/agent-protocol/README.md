@@ -2277,14 +2277,21 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # standing 21 h 23 m over a ready PR after its question had been answered,
                             # and a park asking john to unfreeze a pair HIS OWN HAND had unfrozen that
                             # morning, which then locked both pairs of the thread over five commits
-                            # already on `origin`. One form today, `frozen:<role>×<thread>` ("stands
-                            # while that pair is frozen", ASCII `*` for the `×`), and it is the one the
-                            # box can answer out of the journal it already reads every tick. The daemon
-                            # then NAMES a park whose pair is no longer frozen — once per park, not once
-                            # per tick — and lifts NOTHING: the park stands and a hand ends it, because
-                            # a thread may have grown a second reason while nobody was reading. Refused
-                            # at the door in two cases only: a value this version cannot ask, and a
-                            # ground on a message that parks nothing
+                            # already on `origin`. TWO FORMS, one per case: `frozen:<role>×<thread>`
+                            # ("stands while that pair is frozen", ASCII `*` for the `×`), answered out
+                            # of the journal of leases the tick already reads; and
+                            # `no-delivers-since:<thread>` ("stands while no letter in that thread
+                            # carries `delivers:`"), answered out of the SAME MAIL — the word of a
+                            # person reaches this circuit in exactly one readable way. The window of
+                            # the second form is counted FROM THE PARK: a delivery already lying in
+                            # that feed is not an answer to a question asked after it. The daemon then
+                            # NAMES a park whose ground is gone — once per park, not once per tick —
+                            # and lifts NOTHING: the park stands and a hand ends it, because a thread
+                            # may have grown a second reason while nobody was reading. Refused at the
+                            # door in three cases and no fourth: a value this version cannot ask, a
+                            # ground on a message that parks nothing, and a `no-delivers-since:` naming
+                            # a thread this mail does not have — a misspelled slug is a ground that can
+                            # NEVER fall away, which is the quietest bad outcome the field has
                             # --park-mover <participant>: WHO MAKES THAT MERGE HAPPEN (thread 061, by the
                             # word of john 2026-08-30) — DEMANDED on `--parked-on pr:<n>`, refused with
                             # anything else. A merge park waits for A HAND on a button, and a parked

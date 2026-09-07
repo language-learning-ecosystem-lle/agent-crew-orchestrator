@@ -34,12 +34,30 @@
  *  · ONCE PER TRANSITION, not once per tick — {@link foldGroundNotes}. A sentence repeated 71
  *    times is a sentence nobody reads.
  *
- * ONE FORM IN THIS FIRST ROUND — `frozen:<role>×<thread>` — and the choice is the measurement of
- * case (3): it is the ground that was named in a letter to john, that was already false when the
- * letter was written, and that this box can answer WITHOUT ASKING ANYBODY, out of the same
- * journal the tick already reads to plan on. The parser refuses everything else BY NAME, so the
- * next form is a change here and a change to that refusal, and never a value that means nothing
- * lying silently in the feed.
+ * TWO FORMS, and each one is the measurement of a case above:
+ *
+ *  · `frozen:<role>×<thread>` — case (3). The ground that was named in a letter to john, that was
+ *    already false when the letter was written, and that this box can answer WITHOUT ASKING
+ *    ANYBODY, out of the same journal the tick already reads to plan on.
+ *  · `no-delivers-since:<thread>` — case (1), the park that outlived its answer by 21 h 23 m over
+ *    a ready PR. The word of a person reaches this circuit in exactly one readable way — a letter
+ *    carrying `delivers: <person>` — so "he has not answered yet" has an address in the SAME MAIL
+ *    the tick already scans, and no new source is added for it either.
+ *
+ * THE WINDOW OF THE SECOND FORM IS MEASURED FROM THE PARK, not from the beginning of the thread
+ * (statement of work, §3.5): a `delivers` that was already lying in the feed when the park was
+ * declared is not an answer to it, and reading it as one would make EVERY named ground read as
+ * fallen away — the feature would then be loudest exactly where it promised to be silent. That is
+ * the shape of the defect the seam test caught on `pairKey` in the first round, and the window is
+ * what keeps it from coming back in the second.
+ *
+ * WHAT THE SECOND FORM DOES NOT COVER, said out loud rather than stretched to fit (statement of
+ * work, §2): case (2) — "`delivers` arrived and the turn stayed" — is about the LIFT of a park (a
+ * delivering letter lifts it by itself), not about its ground, and no ground can address it. It
+ * stays without an address until the lift is opened as a subject of its own.
+ *
+ * The parser refuses everything else BY NAME, so a third form is a change here and a change to
+ * that refusal, and never a value that means nothing lying silently in the feed.
  */
 
 import type { Parking } from "./thread.js";
@@ -47,19 +65,32 @@ import type { Parking } from "./thread.js";
 /** The separator of a pair as the circuit writes it everywhere; `*` is the ASCII spelling. */
 const PAIR_SEPARATORS = ["×", "*"] as const;
 
-/** WHAT a `park-ground` value names. One kind today — see the head of this file. */
-export type ParkGround = {
-  readonly kind: "frozen";
-  /** The role of the pair whose freeze is the ground. */
-  readonly role: string;
-  /** The thread of that pair. */
-  readonly thread: string;
-  /** The value as the writer typed it, canonicalised to `×`, for every sentence that quotes it. */
-  readonly raw: string;
-};
+/** WHAT a `park-ground` value names. Two kinds today — see the head of this file. */
+export type ParkGround =
+  | {
+      readonly kind: "frozen";
+      /** The role of the pair whose freeze is the ground. */
+      readonly role: string;
+      /** The thread of that pair. */
+      readonly thread: string;
+      /** The value as the writer typed it, canonicalised to `×`, for every sentence quoting it. */
+      readonly raw: string;
+    }
+  | {
+      readonly kind: "no-delivers-since";
+      /** The thread whose feed is asked for a `delivers` letter. */
+      readonly thread: string;
+      /** The value as the writer typed it, for every sentence that quotes it. */
+      readonly raw: string;
+    };
+
+/** The id of a thread, as every other door of this package spells it. */
+const THREAD_ID = "[A-Za-z0-9][A-Za-z0-9._-]*";
 
 /** The shape a header value must have to be read at all — the tolerant reader's only demand. */
-export const PARK_GROUND = /^frozen:[a-z0-9][a-z0-9-]*[×*][A-Za-z0-9][A-Za-z0-9._-]*$/;
+export const PARK_GROUND = new RegExp(
+  `^(?:frozen:[a-z0-9][a-z0-9-]*[×*]${THREAD_ID}|no-delivers-since:${THREAD_ID})$`,
+);
 
 /**
  * THE ONE PARSER OF THE FIELD, for the door and for every reader that judges a ground.
@@ -70,6 +101,11 @@ export const PARK_GROUND = /^frozen:[a-z0-9][a-z0-9-]*[×*][A-Za-z0-9][A-Za-z0-9
  */
 export const parseParkGround = (raw: string): ParkGround | undefined => {
   if (!PARK_GROUND.test(raw)) return undefined;
+  if (raw.startsWith("no-delivers-since:")) {
+    const thread = raw.slice("no-delivers-since:".length);
+    if (thread === "") return undefined;
+    return { kind: "no-delivers-since", thread, raw: `no-delivers-since:${thread}` };
+  }
   const body = raw.slice("frozen:".length);
   const at = PAIR_SEPARATORS.map((separator) => body.indexOf(separator)).find((index) => index > 0);
   if (at === undefined) return undefined;
@@ -97,7 +133,7 @@ export const judgeParkGround = (raw: string): ParkGroundVerdict => {
   if (ground !== undefined) return { ok: true, ground };
   return {
     ok: false,
-    reason: `--park-ground '${raw}' — this field names the FACT the park waits on, in a form the box can ask; the one form it knows is 'frozen:<role>×<thread>' ("stands while that pair is frozen", ASCII '*' for the '×'). A ground it cannot read is a check that never runs, which is the silence this field was added to end (thread 155). Waiting for a person's decision needs no ground at all — leave the field off and the park behaves exactly as it always has`,
+    reason: `--park-ground '${raw}' — this field names the FACT the park waits on, in a form the box can ask; the two forms it knows are 'frozen:<role>×<thread>' ("stands while that pair is frozen", ASCII '*' for the '×') and 'no-delivers-since:<thread>' ("stands while no letter in that thread carries 'delivers:'", counted from this park onwards). A ground it cannot read is a check that never runs, which is the silence this field was added to end (thread 155). Waiting for a person's decision needs no ground at all — leave the field off and the park behaves exactly as it always has`,
   };
 };
 
@@ -132,6 +168,16 @@ export const groundsGone = (
     readonly frozen: ReadonlySet<string>;
     /** How a pair is keyed in that set; passed in to keep this module free of the orchestrator. */
     readonly key: (role: string, thread: string) => string;
+    /**
+     * DOES THAT THREAD CARRY A `delivers` LETTER STAMPED AFTER `since` — the one question of the
+     * second form, answered by the caller out of the same scan of the mail the parks come from.
+     *
+     * `undefined` is "this box cannot ask": the named thread is not in the mail at all. It is a
+     * SILENCE here and not a note, for the reason an unreadable ground is one — the reader of an
+     * append-only feed repairs nothing, and "the thread you named does not exist" is a sentence
+     * about a typo, which the door refuses at the moment it can still be retyped.
+     */
+    readonly deliveredSince: (thread: string, since: string) => boolean | undefined;
   },
 ): readonly GroundedPark[] => {
   const gone: GroundedPark[] = [];
@@ -139,7 +185,9 @@ export const groundsGone = (
     if (parking?.ground === undefined) continue;
     const ground = parseParkGround(parking.ground);
     if (ground === undefined) continue;
-    if (input.frozen.has(input.key(ground.role, ground.thread))) continue;
+    if (ground.kind === "frozen") {
+      if (input.frozen.has(input.key(ground.role, ground.thread))) continue;
+    } else if (input.deliveredSince(ground.thread, parking.since) !== true) continue;
     gone.push({
       thread,
       ground,
@@ -194,6 +242,17 @@ export const foldGroundNotes = (
 };
 
 /**
+ * WHAT EXACTLY IS NO LONGER TRUE — one clause per form, and the clause is the whole difference
+ * between the two sentences: everything around it is the same because the reader's question is
+ * the same. Each one says the fact in the tense of NOW, so it can be checked by the hand that
+ * reads it rather than believed.
+ */
+const groundIsGone = (ground: ParkGround): string =>
+  ground.kind === "frozen"
+    ? `the pair ${ground.role}×${ground.thread} is NOT frozen now`
+    : `thread ${ground.thread} HAS a letter carrying 'delivers:' since then`;
+
+/**
  * THE SENTENCE. It says the four things its reader needs and no diagnosis: which thread, what
  * the park declared it was waiting on, that the fact is no longer true, and that lifting it is
  * still a hand's job — the box does not lift a park and this line is not a claim that it did.
@@ -203,6 +262,6 @@ export const describeGroundGone = (gone: GroundedPark): string =>
     gone.since
   } behind ${gone.on}${
     gone.holder === undefined ? "" : ` on the turn of ${gone.holder}`
-  }, with 'park-ground: ${gone.ground.raw}', and the pair ${gone.ground.role}×${
-    gone.ground.thread
-  } is NOT frozen now. The park still stands and still freezes this thread — nothing is lifted by this line — but the fact it was taken against is gone (thread 155). Read the thread and lift it by hand if nothing else holds it`;
+  }, with 'park-ground: ${gone.ground.raw}', and ${groundIsGone(
+    gone.ground,
+  )}. The park still stands and still freezes this thread — nothing is lifted by this line — but the fact it was taken against is gone (thread 155). Read the thread and lift it by hand if nothing else holds it`;
