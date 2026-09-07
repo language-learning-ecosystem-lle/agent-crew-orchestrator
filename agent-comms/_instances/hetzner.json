@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T16:24:01.973Z",
+  "writtenAt": "2026-09-07T16:24:47.572Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "159-thread-number-has-no-door",
       "state": "running",
       "deadline": "2026-09-07T17:23:54Z"
+    },
+    {
+      "role": "curator",
+      "thread": "157-pr-open-body-inside-checkout",
+      "state": "running",
+      "deadline": "2026-09-07T17:04:44Z"
     }
   ]
 }
