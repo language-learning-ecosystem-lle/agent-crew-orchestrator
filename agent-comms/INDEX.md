@@ -129,7 +129,7 @@
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | closed | — | — | 2026-09-06 | — |
-| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | PR #325 (fix(orchestrator): stop без --mode называет down по имени (тред 141)) merged by maysway →… |
+| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ПАКЕТ 6 В main (сквош d6f5825d), приёмка перемерена МОЕЙ рукой на слитом дереве — вся объявленная р… |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | closed | — | — | 2026-09-06 | — |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | john · 2026-09-06 | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~17:26Z): ВАРИАНТ 2 — везём переезд И заводим правило при… |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | dev-core | — | 2026-09-07 | Постановка второй формы основания — по слову john из этой ленты (письмо curator 2026-09-07T14:44:34… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | curator | — | 2026-09-07 | ✅ checks по PR #326: success. |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | Происхождение треда (первой строкой, как требует норма заведения): тред заведён ролью curator из св… |
