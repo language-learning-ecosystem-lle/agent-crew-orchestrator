@@ -67,7 +67,7 @@
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | ❌ checks по PR #322: failure. |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | run:322 · 2026-09-07 | 2026-09-07 | Красный checks разобран: авария не в 063 — её вызывает ЛЮБОЙ бамп версии схемы. Починено, голова ff… |
 | 064-forget-the-consumer | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | open | dev-core | — | 2026-09-07 | ПОСТАНОВКА dev-core. Слово john получено — СУЖАЕМ; работай по нему. Гард 3 закрывается письмом 2026… |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | dev-core | run:323 · 2026-09-07 | 2026-09-07 | Сделано: у парковки появился адрес основания. PR #323, голова d00679f2, checks идёт. |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | ✅ checks по PR #323: success. |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | Происхождение треда (первой строкой, как требует норма заведения): тред заведён ролью curator из св… |
