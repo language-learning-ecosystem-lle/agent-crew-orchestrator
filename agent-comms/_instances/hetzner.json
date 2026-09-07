@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T13:54:19.223Z",
+  "writtenAt": "2026-09-07T13:57:31.973Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "curator",
       "thread": "156-cut-the-tag-for-the-consumer",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-07T14:34:15Z"
     }
   ]
