@@ -81,10 +81,14 @@ const handoff = (options: {
   readonly date: string;
   readonly priority?: string;
   readonly parkedOn?: string;
+  /** The fact the park is taken against (thread 155) — absent from almost every park. */
+  readonly parkGround?: string;
 }): string =>
   `---\nfrom: ${options.from}\ndate: ${options.date}\nexpects: answer\nwaiting-on: dev-core\n${
     options.priority === undefined ? "" : `priority: ${options.priority}\n`
-  }${options.parkedOn === undefined ? "" : `parked-on: ${options.parkedOn}\n`}---\n\nThe body.\n`;
+  }${options.parkedOn === undefined ? "" : `parked-on: ${options.parkedOn}\n`}${
+    options.parkGround === undefined ? "" : `park-ground: ${options.parkGround}\n`
+  }---\n\nThe body.\n`;
 
 /**
  * THE WORD OF THE PERSON arriving on a parked thread — the one lift of that park since
@@ -373,6 +377,79 @@ describe("a thread frozen behind a person costs the pair nothing (thread 020)", 
 
     expect(allLaunched(repo)).toEqual(["dev-core×030-consult"]);
     expect(result.out).not.toContain("skipped: the turn is parked");
+  });
+});
+
+/**
+ * THREAD 155 — A PARK WHOSE NAMED GROUND HAS FALLEN AWAY. The unit tests judge the reading and
+ * the wording; only this level says the tick ASKS the question at all, and asks it against the
+ * very set of frozen pairs it plans the queue from. The live case it repairs: a role asked john
+ * to unfreeze a pair his own hand had unfrozen that morning, and the park then locked both pairs
+ * of the thread over five commits already lying on `origin`.
+ */
+describe("the tick names a park whose ground is gone, and lifts nothing (thread 155)", () => {
+  const ground = { role: "dev-core", thread: "070-other" };
+
+  it("says it when the pair the park waits on is NOT frozen", () => {
+    const repo = contour([
+      {
+        id: "155-ground",
+        message: handoff({
+          from: "curator",
+          date: "2026-07-25T10:00:00Z",
+          parkedOn: "john",
+          parkGround: `frozen:${ground.role}×${ground.thread}`,
+        }),
+      },
+    ]);
+    enable(repo);
+
+    const tick = daemon(repo);
+
+    expect(tick.out).toContain("thread 155-ground: THE GROUND OF THE PARK HAS FALLEN AWAY");
+    expect(tick.out).toContain(`frozen:${ground.role}×${ground.thread}`);
+    // AND IT IS NOT A LIFT: the park still freezes the thread on the very same tick, which is
+    // the whole difference between a note and a door. A line that named a ground and quietly
+    // raised the pair would be the machine ending a park, and no such thing is being built.
+    expect(allLaunched(repo)).toEqual([]);
+    expect(tick.out).toContain("candidate dev-core×155-ground skipped: the turn is parked");
+  });
+
+  it("says NOTHING while that pair is frozen — the ground is alive and the park is honest", () => {
+    const repo = contour([
+      {
+        id: "155-ground",
+        message: handoff({
+          from: "curator",
+          date: "2026-07-25T10:00:00Z",
+          parkedOn: "john",
+          parkGround: `frozen:${ground.role}×${ground.thread}`,
+        }),
+      },
+    ]);
+    enable(repo);
+    // Three failed runs is the default ceiling of this box: the pair named as the ground is
+    // frozen exactly as the parking letter says it is.
+    failedRuns(repo, ground, 3);
+
+    const tick = daemon(repo);
+
+    expect(tick.out).not.toContain("THE GROUND OF THE PARK HAS FALLEN AWAY");
+  });
+
+  it("says nothing about a park that named no ground — the field obliges nobody", () => {
+    const repo = contour([
+      {
+        id: "155-ground",
+        message: handoff({ from: "curator", date: "2026-07-25T10:00:00Z", parkedOn: "john" }),
+      },
+    ]);
+    enable(repo);
+
+    const tick = daemon(repo);
+
+    expect(tick.out).not.toContain("THE GROUND OF THE PARK HAS FALLEN AWAY");
+    expect(tick.out).toContain("candidate dev-core×155-ground skipped: the turn is parked");
   });
 });
 

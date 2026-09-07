@@ -321,6 +321,18 @@ export {
   verifyMigration,
 } from "./thread/migrate.js";
 export {
+  describeGroundGone,
+  foldGroundNotes,
+  type GroundedPark,
+  type GroundNotes,
+  groundNoteKey,
+  groundsGone,
+  judgeParkGround,
+  type ParkGround,
+  type ParkGroundVerdict,
+  parseParkGround,
+} from "./thread/park-ground.js";
+export {
   judgeParkNumber,
   MAX_PR_NUMBER,
   type ParkNumberVerdict,

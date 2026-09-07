@@ -417,6 +417,11 @@ import {
 import {
   DEFAULT_THREAD_PRIORITY,
   describeOrder,
+  // THE KEY OF A FROZEN PAIR IS THIS ONE (thread 155): the mail has a `pairKey` of its own and
+  // the two spell a pair differently, so a ground judged with the wrong one never matches and
+  // every named ground reads as fallen away. The set comes from `spentCeilings` — the key must
+  // come from the same module, and the daemon test is what caught it.
+  pairKey as frozenPairKey,
   orderCandidates,
   type RankedCandidate,
   rankCandidates,
@@ -658,7 +663,6 @@ import { unreadableThreadId } from "./thread/id.js";
 import {
   closedThreads,
   deliveryMarks,
-  pairKey as mailPairKey,
   modeParks,
   parkedThreads,
   renderIndex,
@@ -13240,7 +13244,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         thread: thread.id,
         parking: parkingOf(thread, mergedPrs(threads)),
       })),
-      { frozen: new Set(outOfAttempts.keys()), key: mailPairKey },
+      { frozen: new Set(outOfAttempts.keys()), key: frozenPairKey },
     );
     const groundNotes = foldGroundNotes(groundsSaid, gone);
     groundsSaid = groundNotes.seen;

@@ -163,7 +163,7 @@ export const groundsGone = (
  * this feature is measured in sentences an operator actually reads.
  */
 export const groundNoteKey = (gone: GroundedPark): string =>
-  `${gone.thread} ${gone.since} ${gone.ground.raw}`;
+  [gone.thread, gone.since, gone.ground.raw].join("\t");
 
 /** What to say now, and what the caller must remember in order not to say it again. */
 export type GroundNotes = {
