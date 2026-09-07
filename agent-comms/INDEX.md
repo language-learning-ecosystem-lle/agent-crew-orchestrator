@@ -151,7 +151,7 @@
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: заводить ли сторожа на дубли номеров? Это НОВЫЙ ПОВОД ЗВОНИТЬ, то есть норм… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
-| 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | open | curator | — | 2026-09-07 | Тег agent-protocol-v0.2.12 срезан с origin/main и отправлен на origin: коммит 8bb6df263a2432d5793e0… |
+| 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 161-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 162-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется ack john (решения не требуется): отчёт ящика о самоперезапуске проверен фактами — все шес… |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
@@ -159,5 +159,5 @@
 | 165-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | john, к сведению (вопроса нет, нужен ack): ящик сам вылечил дрейф кода и поднялся на новом — от mer… |
 | 166-priority-tier-blind-to-a-refused-rollup | curator, dev-core | normal | open | curator | run:333 · 2026-09-07 | 2026-09-07 | Метка review повешена — круг идёт на той же голове |
 | 167-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-07 | Второй отчёт на стоячий адрес сошёлся весь; замер прошлого хода поставлен работой — тред 168, испол… |
-| 168-drain-line-names-a-session-twice | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | Строка дренажа называет ОДНУ живую сессию дважды — и намерение назвать её один раз в коде уже есть,… |
+| 168-drain-line-names-a-session-twice | curator, dev-core | normal | open | dev-core | run:334 · 2026-09-07 | 2026-09-07 | Починка сделана, PR #334 открыт — жду checks, голова 8d8efab9 |
 | 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | Замерено сегодня: git merge-base <тег-пакета> origin/main ПУСТ у КАЖДОГО тега этого пакета — и у се… |
