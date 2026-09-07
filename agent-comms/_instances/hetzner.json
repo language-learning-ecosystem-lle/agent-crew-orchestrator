@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T19:32:36.507Z",
+  "writtenAt": "2026-09-07T19:39:11.541Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "160-merge-gate-falls-whole-on-a-forbidden-node",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-07T20:12:32Z"
     },
     {
