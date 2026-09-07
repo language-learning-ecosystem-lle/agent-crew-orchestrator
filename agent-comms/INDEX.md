@@ -45,7 +45,7 @@
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 042-unaccepted-turn-silent | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 043-stale-park-reminders | curator · dev-core · john | normal | closed | — | — | 2026-09-07 | — |
-| 044-selfheal-blind-spots | curator · dev-core · john | normal | open | curator | — | 2026-09-07 | ХОД НАЗНАЧЕН РУКОЙ ИЗВНЕ. Тред стои́т без хода с 29.08 — не по забывчивости, а потому, что двери у… |
+| 044-selfheal-blind-spots | curator · dev-core · john | normal | closed | — | — | 2026-09-07 | — |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
 | 047-devops-role | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
