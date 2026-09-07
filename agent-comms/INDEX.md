@@ -144,4 +144,4 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Сужать ли untracked-половину проверки самопочинки (форма ниже), и заводить… |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | — | — | — | — |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | Постановка по слову john (чат 2026-09-07 ~13:21Z: «да»). Предмет: У ПАРКОВКИ НЕТ ПРОВЕРЯЕМОГО ОСНОВ… |
