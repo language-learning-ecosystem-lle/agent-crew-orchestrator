@@ -103,6 +103,13 @@ export const ghOpenPullRequestsSchema = z.array(
     headRefOid: z.string().min(1),
     body: z.string(),
     mergeable: nullableText,
+    /**
+     * The labels, as `gh pr list --json labels` answers them. DEFAULTED rather than
+     * required: this schema reads somebody else's payload, and a field the caller did not
+     * ask for must not turn a readable answer into a refusal that stands the whole tier
+     * down (thread 063).
+     */
+    labels: z.array(z.looseObject({ name: z.string() })).default([]),
   }),
 );
 

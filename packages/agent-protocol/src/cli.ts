@@ -8631,32 +8631,64 @@ const loadDigests = (
  */
 const MERGE_READY_FLOOR_MS = 60_000;
 
+/**
+ * THE NAME OF THE ROUND OF REVIEW, AS THE SERVED PROJECT DECLARES IT (v26, thread 063) —
+ * `review.label` of the config, and nothing invented when it is absent. Read through the
+ * same loader every other command reads the config with; an unreadable config is not a
+ * reason to break a frame that has other things to say, so it degrades to silence exactly
+ * as the tier does.
+ */
+const reviewLabelOf = (argv: readonly string[]): string | undefined => {
+  try {
+    return configFrom(argv).config.review?.label;
+  } catch {
+    return undefined;
+  }
+};
+
 const frameMergeReadyCache = createMergeReadyCache();
 let frameMergeReadyAt = 0;
 let frameMergeReadyMap: ReadonlyMap<string, number> = new Map();
+/** The other half of the same reading (thread 063): who is waiting for a round of review. */
+let frameInReviewMap: ReadonlyMap<string, number> = new Map();
 
 const frameMergeReady = async (
   argv: readonly string[],
   waiting: readonly string[],
-): Promise<ReadonlyMap<string, number>> => {
-  if (waiting.length === 0) return frameMergeReadyMap;
+): Promise<{
+  readonly ready: ReadonlyMap<string, number>;
+  readonly inReview: ReadonlyMap<string, number>;
+}> => {
+  const held = (): {
+    ready: ReadonlyMap<string, number>;
+    inReview: ReadonlyMap<string, number>;
+  } => ({
+    ready: frameMergeReadyMap,
+    inReview: frameInReviewMap,
+  });
+  if (waiting.length === 0) return held();
   // `Date.now()` and not the frame's `--now`: the floor is about how often THIS PROCESS
   // touches the network, which no test stamp may move.
   const now = Date.now();
   if (frameMergeReadyAt !== 0 && now - frameMergeReadyAt < MERGE_READY_FLOOR_MS) {
-    return frameMergeReadyMap;
+    return held();
   }
   frameMergeReadyAt = now;
+  const repo = flag(argv, "--repo") ?? homeOf(process.cwd());
   const reading = await readMergeReady({
-    source: ghMergeReadySource(flag(argv, "--repo") ?? homeOf(process.cwd())),
+    source: ghMergeReadySource(repo),
     threads: waiting,
     cache: frameMergeReadyCache,
+    reviewLabel: reviewLabelOf(argv),
   });
   // A refusal leaves the previous reading standing (`ready` is empty on failure, and an
   // empty map from a first read is the honest "nothing measured" either way).
-  if (reading.ready.size > 0 || reading.notes.length === 0) frameMergeReadyMap = reading.ready;
+  if (reading.ready.size > 0 || reading.notes.length === 0) {
+    frameMergeReadyMap = reading.ready;
+    frameInReviewMap = reading.inReview;
+  }
   for (const line of reading.notes) err(`agent-protocol: ${line}`);
-  return frameMergeReadyMap;
+  return held();
 };
 
 const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> => {
@@ -8720,7 +8752,8 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     roles: scope.roles,
     waitingOn: (role) => threadsWaitingOn(threads, role),
     authorized: (role) => registry.canSetThreadPriority(role),
-    mergeReady,
+    mergeReady: mergeReady.ready,
+    inReview: mergeReady.inReview,
   });
   // THE SAME JOIN THE TICK MAKES (thread 063), through the same function: which account each
   // pair of this queue would spend and what its spares are. Read here, where the registry and
@@ -13188,6 +13221,10 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       source: ghMergeReadySource(repo),
       threads: waiting,
       cache: mergeReadyCache,
+      // The label of the round, as the SERVED project declares it (v26) — re-read every
+      // tick like the mail branch beside it: the config can change under a daemon that
+      // outlives it, and an undeclared round is silence, never a guess.
+      reviewLabel: configFrom(argv, undefined).config.review?.label,
     });
     for (const line of mergeReady.notes) err(`agent-protocol: ${line}`);
     // THE REFUSAL IS COUNTED, NOT JUST PRINTED (thread 051). Before this, a `gh` that had
@@ -13216,6 +13253,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       waitingOn: (roleId) => threadsWaitingOn(threads, roleId),
       authorized: (role) => registry.canSetThreadPriority(role),
       mergeReady: mergeReady.ready,
+      inReview: mergeReady.inReview,
     });
     // An unauthorized priority is dropped OUT LOUD, every tick it is read: a queue
     // ordered by a statement nobody honoured looks exactly like a queue that did.
@@ -14958,7 +14996,14 @@ const ghMergeReadySource = (repo: string): MergeReadySource => {
       ghOpenPullRequestsSchema
         .parse(
           JSON.parse(
-            ask(["pr", "list", "--state", "open", "--json", "number,headRefOid,body,mergeable"]),
+            ask([
+              "pr",
+              "list",
+              "--state",
+              "open",
+              "--json",
+              "number,headRefOid,body,mergeable,labels",
+            ]),
           ),
         )
         .map((pr) => ({
@@ -14968,6 +15013,9 @@ const ghMergeReadySource = (repo: string): MergeReadySource => {
           // ONE MORE FIELD, ZERO MORE CALLS (thread 097, half 2). The scheduler does not
           // read it; it is the free first ask the watchman of mergeability is priced on.
           mergeable: pr.mergeable,
+          // The labels ride on the call that was already being made — the round of review
+          // (thread 063) costs no second read.
+          labels: pr.labels.map((label: { readonly name: string }) => label.name),
         })),
     facts: async (number: number) =>
       pullRequestFacts(

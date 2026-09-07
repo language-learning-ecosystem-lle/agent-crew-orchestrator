@@ -42,6 +42,29 @@
 # ФАКТ доставки, а не пересказывает догадку о ней.
 REVIEW_DELIVERY_DIR="${REVIEW_DELIVERY_DIR:-${GITHUB_WORKSPACE:-.}/.delivery}"
 
+# РЕВИЗИЯ, У КОТОРОЙ СПРАШИВАЕТСЯ КОНФИГ ПРОТОКОЛА. Прод спрашивает `origin/main`, и
+# это ОСТАЁТСЯ значением по умолчанию — переменная не меняет ни одного вопроса живого
+# круга ревью.
+#
+# ЗАЧЕМ ОНА ВООБЩЕ. Инвариант здесь не «читай main», а «конфиг спрашивается у ТОЙ ЖЕ
+# ревизии, что и код, который его читает»: версионная дверь пакета сравнивает версию
+# СХЕМЫ ИСХОДНИКОВ с версией конфига в названном ref, и расхождение — отказ. В проде
+# инвариант держится сам собой: шаги круга едут вторым чекаутом `ref: main`, то есть
+# исходники и `origin/main` — одна ревизия. В интеграционной сюите он НЕ держится:
+# сюиту гоняет `checks` на PR, и код там — код ветки.
+#
+# ЗАМЕРЕНО, а не выведено (прогон 34127384968 по PR #322, тред 063): PR поднимал
+# `protocolVersion` 25 → 26, и все одиннадцать состояний сюиты покраснели одним и тем
+# же отказом двери — «the repository declares protocol version 25, the package writes
+# 26». Ни одно из них не про доставку. Хуже: в `review_pr_author` тот же отказ
+# ДЕГРАДИРОВАЛ В ДРУГОЙ ДИАГНОЗ — `role exists` вернул ненулевой код, и шаг напечатал
+# «в описании PR названа роль 'dev-core', которой нет в конфиге протокола», то есть
+# соврал про конфиг вместо того, чтобы назвать версию.
+#
+# Класс, который это закрывает: ЛЮБОЙ PR, поднимающий версию схемы, красил этот шаг
+# целиком и по причине, к предмету PR отношения не имеющей.
+REVIEW_DELIVERY_CONFIG_REF="${REVIEW_DELIVERY_CONFIG_REF:-origin/main}"
+
 # Записать исход доставки. <имя> — `thread`|`comment`|`status`; <исход> — `ok`|`failed`.
 delivery_mark() { # <имя> <исход>
   local name="${1:?delivery_mark: не названа доставка}" state="${2:?delivery_mark: не назван исход}"
@@ -662,8 +685,15 @@ review_pr_author() { # <номер PR>
     echo "::warning::в описании PR #${pr} нет строки 'role: <id>' — ход по недоехавшему вердикту передать некому." >&2
     return 0
   fi
-  if ! (cd .code && pnpm -F agent-protocol --silent cli role exists --repo . --ref origin/main --role "$role" >/dev/null 2>&1); then
-    echo "::warning::в описании PR #${pr} названа роль '${role}', которой нет в конфиге протокола — ход по недоехавшему вердикту не передан." >&2
+  # ОТКАЗ СВЕРКИ ЦИТИРУЕТСЯ, А НЕ ПЕРЕСКАЗЫВАЕТСЯ. До 2026-09-07 здесь стояло
+  # «роли нет в конфиге протокола» — вывод, а не факт: ненулевой код у `role exists`
+  # значит «сверка не состоялась», и версионный отказ двери печатался как отсутствие
+  # роли (замер — в шапке `REVIEW_DELIVERY_CONFIG_REF`). Теперь ответ двери едет
+  # дословно; перевод строки схлопывается, иначе аннотация обрежется первой строкой.
+  local role_answer
+  if ! role_answer=$( (cd .code && pnpm -F agent-protocol --silent cli role exists \
+        --repo . --ref "$REVIEW_DELIVERY_CONFIG_REF" --role "$role") 2>&1 ); then
+    echo "::warning::роль '${role}' из описания PR #${pr} НЕ СВЕРИЛАСЬ с конфигом (ref '${REVIEW_DELIVERY_CONFIG_REF}') — ход по недоехавшему вердикту не передан. Дверь ответила: $(printf '%s' "$role_answer" | tr '\n' ' ')" >&2
     return 0
   fi
   printf '%s' "$role"
@@ -823,7 +853,7 @@ park_probe() { # <корень почты> <адрес> <от кого> <фай�
   mapfile -t addr_args <<<"$flags"
   local out
   if out=$( (cd .code && pnpm -F agent-protocol --silent cli new-message \
-        --root "$root" --repo . --ref origin/main \
+        --root "$root" --repo . --ref "$REVIEW_DELIVERY_CONFIG_REF" \
         "${addr_args[@]}" --from "$from" --expects answer "$@" \
         --park-lifted "$PARK_PROBE_SENTINEL" \
         --worker gh-action --body-file "$body" --no-push) 2>&1 ); then
@@ -887,7 +917,7 @@ deliver_to_thread() { # <адрес: <NNN-слаг> либо address:<слаг>>
     [ -n "$park" ] && echo "На адресате '${address}' стои́т парк '${park}' — письмо идёт с '${park_args}'."
     # shellcheck disable=SC2086 # $park_args и $@ — набор аргументов, не строка
     if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
-          --root "$root" --repo . --ref origin/main \
+          --root "$root" --repo . --ref "$REVIEW_DELIVERY_CONFIG_REF" \
           "${addr_args[@]}" --from "$from" --expects answer "$@" ${park_args} \
           --worker gh-action --body-file "$body" --write --no-push); then
       echo "::error::new-message отказал — по адресу '${address}' НЕ сообщено."
