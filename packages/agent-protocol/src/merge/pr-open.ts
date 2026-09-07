@@ -99,6 +99,53 @@ export type BodyLocationVerdict =
   | { readonly ok: false; readonly refusal: string };
 
 /**
+ * WHAT GIT SAID ABOUT THE FILE'S DIRECTORY — and «it could not say» is its own answer,
+ * not a synonym for «no checkout» (verdict of `reviewer-pr` on PR #328, thread 157).
+ *
+ * The reader this door had first was `checkoutOf`, whose whole failure vocabulary is
+ * `undefined`: «fatal: not a git repository» and «git is not installed» and «the spawn
+ * was refused» all arrive as the same word, and the door read that word as PASS. That is
+ * the one direction this door must never fail in silently, and it is the direction its
+ * neighbour already refuses in — `isIgnored` reads any trouble as «not ignored», the side
+ * that REFUSES. Two readers of the same door erring to opposite sides is not a policy.
+ */
+export type CheckoutAnswer =
+  /** `--show-toplevel` printed a checkout — `at` is what it printed. */
+  | { readonly kind: "checkout"; readonly at: string }
+  /** Git answered, and the answer is that this directory is in no repository. */
+  | { readonly kind: "none" }
+  /** Git did not answer at all — `why` is its own words, and they go into the refusal. */
+  | { readonly kind: "unknown"; readonly why: string };
+
+/** The one sentence that says where a body file belongs — repeated by both refusals. */
+const WRITE_IT_OUTSIDE =
+  "write it OUTSIDE any checkout, in a directory of its own: `mktemp -d -p /tmp` " +
+  "(with `-p /tmp` on purpose — a session's own `TMPDIR` can itself be inside the checkout)";
+
+/**
+ * Git's answer about a directory, read into {@link CheckoutAnswer} — a pure classifier so
+ * that the three cases are testable without a broken git to produce them.
+ *
+ * `ask` is `git -C <dir> rev-parse --show-toplevel`: it PRINTS the checkout, and it throws
+ * both when there is none and when it could not run. Only one of those two is an answer,
+ * and git says which by name — «not a git repository» is the sentence it prints when it
+ * looked and found none. Anything else (`ENOENT` on the binary, a refused spawn, a
+ * permission error on the directory) is trouble the door must not read as «no checkout».
+ * The caller is expected to run git with `LC_ALL=C` so this sentence is the one it prints.
+ */
+export const checkoutAnswerOf = (ask: () => string): CheckoutAnswer => {
+  try {
+    const printed = ask().trim();
+    // An empty answer is not a checkout: a door that read `''` as a repository would
+    // refuse every path on a box whose git prints nothing.
+    return printed === "" ? { kind: "none" } : { kind: "checkout", at: printed };
+  } catch (error) {
+    const said = error instanceof Error ? error.message : String(error);
+    return /not a git repository/i.test(said) ? { kind: "none" } : { kind: "unknown", why: said };
+  }
+};
+
+/**
  * THE BODY FILE LEFT INSIDE A CHECKOUT — the fault that freezes a whole box (thread
  * `157-pr-open-body-inside-checkout`, john's word of 2026-09-07: «ДВЕРЬ ОТДЕЛЬНЫМ
  * ПРЕДМЕТОМ»).
@@ -125,8 +172,14 @@ export type BodyLocationVerdict =
  *
  * - **the file does not exist** — this door is never reached: `pr open` reads the body
  *   first, and a path that cannot be read is refused as unreadable, by its own name;
- * - **a directory inside no repository at all** — `checkoutOf` answers nothing and the
- *   door stands aside. This is the normal path, and `mktemp -d -p /tmp` is on it;
+ * - **a directory inside no repository at all** — git says so by name («not a git
+ *   repository») and the door stands aside. This is the normal path, and `mktemp -d -p
+ *   /tmp` is on it;
+ * - **git did not answer at all** — NOT the same edge as the one above, and told apart
+ *   from it deliberately (see {@link CheckoutAnswer}): the door refuses, naming git's own
+ *   words. It is the side `isIgnored` already errs to, and the asymmetry the first cut of
+ *   this door had — trouble read as «no checkout», that is as PASS — was a door that
+ *   stopped guarding without saying so;
  * - **a nested checkout** — `--show-toplevel` answers the INNERMOST one, and that is the
  *   right answer here: dirt in a nested checkout is dirt in a checkout;
  * - **symlinks** — not resolved by this function and not needed to be: `git -C <dir>`
@@ -159,20 +212,29 @@ export type BodyLocationVerdict =
  */
 export const judgeBodyLocation = (input: {
   readonly path: string;
-  /** `git -C <dir> rev-parse --show-toplevel`, or nothing when that is not a checkout. */
-  readonly checkoutOf: (dir: string) => string | undefined;
+  /** `git -C <dir> rev-parse --show-toplevel`, read into an answer by {@link checkoutAnswerOf}. */
+  readonly checkoutOf: (dir: string) => CheckoutAnswer;
   /** `git -C <dir> check-ignore` on the file — asked ONLY when it is inside a checkout. */
   readonly isIgnored: (dir: string, path: string) => boolean;
 }): BodyLocationVerdict => {
   const dir = dirname(resolve(input.path));
-  const checkout = input.checkoutOf(dir);
-  if (checkout === undefined || checkout === "") return { ok: true };
+  const answer = input.checkoutOf(dir);
+  if (answer.kind === "none") return { ok: true };
+  if (answer.kind === "unknown") {
+    return {
+      ok: false,
+      refusal:
+        `git could not say whether the body file '${input.path}' lies inside a checkout: ${answer.why} — ` +
+        `and this door refuses on that rather than guessing, because the one guess it could make is the one that costs: ` +
+        `a body file left in a tree stops the box's self-restart (13 commits and ≥23 hours the first time this was measured, thread 153). ` +
+        `Fix git where it failed, or ${WRITE_IT_OUTSIDE}. Nothing was created`,
+    };
+  }
   if (input.isIgnored(dir, resolve(input.path))) return { ok: true };
   return {
     ok: false,
     refusal:
-      `the body file '${input.path}' lies inside the git checkout '${checkout}' — write it OUTSIDE any checkout, ` +
-      "in a directory of its own: `mktemp -d -p /tmp` (with `-p /tmp` on purpose — a session's own `TMPDIR` can itself be inside the checkout). " +
+      `the body file '${input.path}' lies inside the git checkout '${answer.at}' — ${WRITE_IT_OUTSIDE}. ` +
       "A body file left in a tree is untracked dirt that nothing ignores, and the box's self-restart runs `git pull --ff-only`, which refuses over it: " +
       "the circuit then stops updating until a hand removes the file — 13 commits and ≥23 hours the first time this was measured (thread 153). " +
       "Nothing was created: move the file and run this again",

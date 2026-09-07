@@ -383,4 +383,38 @@ describe("pr open — the body file that lies inside a checkout", () => {
     expect(result.out).not.toContain("lies inside the git checkout");
     expect(gh.calls().length).toBe(1);
   });
+
+  /**
+   * A GIT THAT CANNOT ANSWER — the seam of the reviewer's second finding on #328. The stub
+   * refuses ONE call by its argv (`rev-parse --show-toplevel`) and hands every other call
+   * to the real git: a shim that failed on the subcommand name would break the fixture's
+   * own repository, and the assertion would then be about the wrong failure.
+   */
+  it("refuses a body when git could not say where it lies, and DOES NOT call gh", () => {
+    const repo = repoWithConfig();
+    const gh = recordingGh(repo);
+    const real = execFileSync("sh", ["-c", "command -v git"], { encoding: "utf8" }).trim();
+    const shim = join(gh.bin, "git");
+    writeFileSync(
+      shim,
+      `#!/bin/sh\ncase "$*" in\n  *"rev-parse --show-toplevel"*)\n    echo "fatal: unable to read current working directory: Permission denied" >&2\n    exit 128 ;;\nesac\nexec ${JSON.stringify(real)} "$@"\n`,
+      "utf8",
+    );
+    chmodSync(shim, 0o755);
+
+    const result = run(repo, gh.bin, [
+      "--title",
+      "feat: something",
+      "--body-file",
+      withBody(repo, GOOD),
+      "--write",
+    ]);
+
+    // The body itself lies outside every checkout — this refusal is about git's silence,
+    // and the door errs to the guarded side rather than opening on a failure it cannot read.
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("git could not say");
+    expect(result.out).toContain("Permission denied");
+    expect(gh.calls()).toEqual([]);
+  });
 });

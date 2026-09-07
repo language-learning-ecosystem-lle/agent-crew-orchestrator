@@ -118,7 +118,12 @@ import {
   describePairNote,
   executorCandidatesOf,
 } from "./merge/pair-note.js";
-import { judgeBodyLocation, judgePrDescription, PR_FIELDS_FORM } from "./merge/pr-open.js";
+import {
+  checkoutAnswerOf,
+  judgeBodyLocation,
+  judgePrDescription,
+  PR_FIELDS_FORM,
+} from "./merge/pr-open.js";
 import {
   type AccountAlarm,
   type AuthAlarm,
@@ -15572,7 +15577,17 @@ const prOpen = (argv: readonly string[]): void => {
   // an unreadable path into a refusal about the path, which this door then never sees.
   const where = judgeBodyLocation({
     path: bodyPath,
-    checkoutOf: (dir) => checkoutOf(dir, gitEnvOutsideHook()),
+    // NOT `checkoutOf`: its whole failure vocabulary is `undefined`, and this door reads
+    // `undefined` as "no checkout", that is as PASS — so a git that could not run would
+    // silently open the door instead of guarding it. `checkoutAnswerOf` keeps "git looked
+    // and found no repository" apart from "git did not answer", and `LC_ALL=C` is what
+    // makes the first of those recognisable by its own sentence on any box.
+    checkoutOf: (dir) =>
+      checkoutAnswerOf(() =>
+        execFileSyncByExit("git", ["-C", dir, "rev-parse", "--show-toplevel"], {
+          env: { ...gitEnvOutsideHook(), LC_ALL: "C" },
+        }),
+      ),
     // `check-ignore` exits 0 when the path IS ignored, 1 when it is not, and >1 on an
     // error — and only the first is an answer. Anything else is read as "not ignored",
     // which is the side that refuses: a door that fell silent because git had trouble

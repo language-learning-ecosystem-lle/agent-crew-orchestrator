@@ -3351,7 +3351,22 @@ agent-protocol: pr open — the body file '/home/x/aco/.pr-body.md' lies inside 
   need no handling: `git -C <dir>` makes that directory its cwd and git resolves cwd itself, so
   a path reaching into a checkout through a link is answered with the checkout it lands in;
 - **an unreadable path is refused as unreadable** — the body is read first, so this door never
-  speaks about a file that does not exist.
+  speaks about a file that does not exist;
+- **and «git could not say» is refused too, by its own sentence** — it is NOT read as «there is
+  no checkout». Git names the one case that is an answer («not a git repository», read with
+  `LC_ALL=C` so it is that sentence on every box); a spawn that failed, a missing binary or a
+  directory git could not read are trouble, and the door refuses on them naming git's words:
+
+  ```
+  agent-protocol: pr open — git could not say whether the body file '/tmp/x/body.md' lies
+  inside a checkout: git -C /tmp/x rev-parse --show-toplevel exited with code 128: fatal:
+  unable to read current working directory: Permission denied — … Nothing was created
+  ```
+
+  The reason it is not the other way round: the ignore reader beside it already errs to the
+  refusing side (`check-ignore` trouble is read as «not ignored»), and two readers of one door
+  erring to opposite sides is not a policy — the pass side is where this door would stop
+  guarding without saying so.
 
 **What this door is not.** It catches an honest mistake and is bypassed by not using it — a
 hand-typed `gh pr create` walks past it and always will; nor can it see a file put into a tree
