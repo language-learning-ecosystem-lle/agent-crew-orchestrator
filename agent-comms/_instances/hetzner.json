@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T20:16:54.892Z",
+  "writtenAt": "2026-09-07T20:20:25.434Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "169-tag-fitness-is-measured-by-tree-not-ancestry",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-07T20:56:51Z"
     }
   ]
