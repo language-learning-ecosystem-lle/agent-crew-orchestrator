@@ -148,3 +148,4 @@
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | Постановка по слову john (чат 2026-09-07 ~13:32Z: «закажи приоритетом тег протокола»). ВЫСОКИЙ ПРИО… |
 | 156-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-07 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | Происхождение треда (первой строкой, как требует норма заведения): тред заведён ролью curator из св… |
+| 158-cut-the-tag-for-the-consumer | curator · dev-core · john | normal | open | — | — | — | — |
