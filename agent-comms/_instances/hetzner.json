@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T15:36:02.802Z",
+  "writtenAt": "2026-09-07T15:36:09.956Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "157-pr-open-body-inside-checkout",
+      "state": "running",
+      "deadline": "2026-09-07T16:36:06Z"
+    },
     {
       "role": "curator",
       "thread": "158-cut-the-tag-for-the-consumer",
