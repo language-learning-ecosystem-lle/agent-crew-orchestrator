@@ -147,9 +147,9 @@
 | 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать кнопку merge на [#326](https://github.com/language-learning-ecosyste… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
-| 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | curator | — | 2026-09-07 | verdict: approve |
+| 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN (первой строкой): ставить ли дверь ТОГО ЖЕ КЛАССА на тело ПИСЬМА — new-messa… |
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | run:329 · 2026-09-07 | 2026-09-07 | Метка review повешена на #329, круг идёт: прогон 34143121624, голова 5b784e9b. В foreground не жду,… |
+| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | — | 2026-09-07 | verdict: approve |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 161-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 162-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется ack john (решения не требуется): отчёт ящика о самоперезапуске проверен фактами — все шес… |
