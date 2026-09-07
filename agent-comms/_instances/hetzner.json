@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T19:31:15.732Z",
+  "writtenAt": "2026-09-07T19:32:08.919Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "167-daemon-self-restart",
-      "state": "draining",
-      "deadline": "2026-09-07T20:04:49Z"
-    },
     {
       "role": "dev-core",
       "thread": "168-drain-line-names-a-session-twice",
