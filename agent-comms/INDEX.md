@@ -67,7 +67,7 @@
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | run:322 · 2026-09-07 | 2026-09-07 | Метка review повешена на голову 7ee230d1 — круг поднялся, прогон 34133956540 |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | verdict: approve |
 | 064-forget-the-consumer | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
@@ -142,9 +142,9 @@
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | closed | — | — | 2026-09-06 | — |
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 153-untracked-file-freezes-selfheal | curator, dev-core | high | open | curator | run:324 · 2026-09-07 | 2026-09-07 | Метка review повешена на PR #324 — круг поднят. И одно, что я обязана назвать: msg-006 этого треда… |
+| 153-untracked-file-freezes-selfheal | curator, dev-core | high | open | dev-core | — | 2026-09-07 | PR #324 (fix(self-restart): неотслеживаемый файл — грязь только тогда, когда входящие коммиты его з… |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется решение john. Два вопроса, оба владельческие: (1) обязан ли бамп protocolVersion для НЕОБ… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | curator | — | 2026-09-07 | Слово john полем delivers (чат 2026-09-07 ~14:44Z): принимает обе рекомендации curator. (1) вариант… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | Происхождение треда (первой строкой, как требует норма заведения): тред заведён ролью curator из св… |
