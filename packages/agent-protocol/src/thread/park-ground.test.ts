@@ -11,6 +11,9 @@ import type { Parking } from "./thread.js";
 
 const key = (role: string, thread: string): string => JSON.stringify([role, thread]);
 
+/** The second form's question, in the shape the tick answers it: nobody has delivered anything. */
+const noDeliveries = (): boolean => false;
+
 const park = (over: Partial<Parking> = {}): Parking => ({
   kind: "person",
   person: "john",
@@ -32,15 +35,76 @@ describe("the value of a named ground", () => {
     expect(parseParkGround("frozen:dev-core*063-slug")?.raw).toBe("frozen:dev-core×063-slug");
   });
 
+  it("reads the second form — the thread whose feed is asked for a delivery", () => {
+    expect(parseParkGround("no-delivers-since:110-adoption")).toEqual({
+      kind: "no-delivers-since",
+      thread: "110-adoption",
+      raw: "no-delivers-since:110-adoption",
+    });
+    // Not a pair and not a person: a bare name after the colon is all this form takes, and a
+    // value that only LOOKS like it is still unreadable — the door names it rather than guessing.
+    expect(parseParkGround("no-delivers-since:")).toBeUndefined();
+    expect(parseParkGround("no-delivers:110-adoption")).toBeUndefined();
+  });
+
   it("refuses a ground it cannot ask BY NAME, and says what a park without one does", () => {
     const verdict = judgeParkGround("john decides");
     expect(verdict.ok).toBe(false);
     if (verdict.ok) return;
-    // Discipline 4: the value is quoted back, the one known form is named, and the legality of
+    // Discipline 4: the value is quoted back, BOTH known forms are named, and the legality of
     // parking with no ground at all is stated — a refusal nobody can act on is a defect.
     expect(verdict.reason).toContain("--park-ground 'john decides'");
     expect(verdict.reason).toContain("frozen:<role>×<thread>");
+    expect(verdict.reason).toContain("no-delivers-since:<thread>");
     expect(verdict.reason).toContain("needs no ground at all");
+  });
+});
+
+describe("the second form: a park that outlived the answer it was waiting for", () => {
+  const parked = park({ ground: "no-delivers-since:110-adoption" });
+  const standing = [{ thread: "155-x", parking: parked }];
+
+  it("is named when a delivery landed in that thread AFTER the park was declared", () => {
+    const gone = groundsGone(standing, {
+      frozen: new Set(),
+      key,
+      deliveredSince: (thread, since) => thread === "110-adoption" && since === parked.since,
+    });
+    expect(gone.map((entry) => entry.ground.raw)).toEqual(["no-delivers-since:110-adoption"]);
+    const line = describeGroundGone(gone[0] as (typeof gone)[number]);
+    // The clause is the fact in the tense of NOW, so the hand that reads it can check it.
+    expect(line).toContain("thread 110-adoption HAS a letter carrying 'delivers:' since then");
+    expect(line).toContain("The park still stands");
+    expect(line).toContain("lift it by hand");
+  });
+
+  it("is silent when that thread carries no delivery at all", () => {
+    expect(groundsGone(standing, { frozen: new Set(), key, deliveredSince: noDeliveries })).toEqual(
+      [],
+    );
+  });
+
+  it("is silent about a thread this box does not have — that is the door's refusal, not a note", () => {
+    // A misspelled slug can never fall away, which is why the DOOR refuses it while the writer is
+    // standing there. Here, in an append-only feed nothing can repair, it is read as no ground.
+    expect(
+      groundsGone(standing, { frozen: new Set(), key, deliveredSince: () => undefined }),
+    ).toEqual([]);
+  });
+
+  it("judges the two forms apart: a frozen pair does not silence a delivery, and back", () => {
+    const both = [
+      { thread: "155-x", parking: parked },
+      { thread: "063-slug", parking: park({ ground: "frozen:dev-core×063-slug" }) },
+    ];
+    const gone = groundsGone(both, {
+      // The pair IS frozen (the first form stays silent) and the delivery HAS landed (the second
+      // speaks). One input cannot answer the other's question, and this is the assert that says so.
+      frozen: new Set([key("dev-core", "063-slug")]),
+      key,
+      deliveredSince: () => true,
+    });
+    expect(gone.map((entry) => entry.thread)).toEqual(["155-x"]);
   });
 });
 
@@ -52,31 +116,38 @@ describe("a park whose ground has fallen away", () => {
 
   it("is named when the pair it waits on is not frozen, and is silent while it is", () => {
     const frozen = new Set([key("dev-acme", "110-other")]);
-    const gone = groundsGone(standing, { frozen, key });
+    const gone = groundsGone(standing, { frozen, key, deliveredSince: noDeliveries });
     expect(gone.map((entry) => entry.thread)).toEqual(["063-slug"]);
     expect(
       groundsGone(standing, {
         frozen: new Set([key("dev-core", "063-slug"), key("dev-acme", "110-other")]),
         key,
+        deliveredSince: noDeliveries,
       }),
     ).toEqual([]);
   });
 
   it("says nothing at all about a park that named no ground — today's behaviour, unchanged", () => {
-    expect(groundsGone([{ thread: "155-x", parking: park() }], { frozen: new Set(), key })).toEqual(
-      [],
-    );
+    expect(
+      groundsGone([{ thread: "155-x", parking: park() }], {
+        frozen: new Set(),
+        key,
+        deliveredSince: noDeliveries,
+      }),
+    ).toEqual([]);
   });
 
   it("skips a ground this version cannot read instead of inventing a meaning for it", () => {
     // The door refuses these, so one in the feed is older than this code or hand-written; the
     // honest reading of it is "no ground was named", never "the ground is gone".
     const older = [{ thread: "155-x", parking: park({ ground: "until john answers" }) }];
-    expect(groundsGone(older, { frozen: new Set(), key })).toEqual([]);
+    expect(groundsGone(older, { frozen: new Set(), key, deliveredSince: noDeliveries })).toEqual(
+      [],
+    );
   });
 
   it("is NOT a lift: the sentence says the park stands and that a hand ends it", () => {
-    const [gone] = groundsGone(standing, { frozen: new Set(), key });
+    const [gone] = groundsGone(standing, { frozen: new Set(), key, deliveredSince: noDeliveries });
     if (gone === undefined) throw new Error("expected a gone ground");
     const line = describeGroundGone(gone);
     expect(line).toContain("thread 063-slug");
@@ -89,10 +160,7 @@ describe("a park whose ground has fallen away", () => {
 describe("once per transition, not once per tick", () => {
   const gone = groundsGone(
     [{ thread: "063-slug", parking: park({ ground: "frozen:a×063-slug" }) }],
-    {
-      frozen: new Set(),
-      key,
-    },
+    { frozen: new Set(), key, deliveredSince: noDeliveries },
   );
 
   it("says a gone ground once and holds its tongue on every tick after it", () => {
@@ -119,7 +187,7 @@ describe("once per transition, not once per tick", () => {
           parking: park({ ground: "frozen:a×063-slug", since: "2026-09-07T12:00:00Z" }),
         },
       ],
-      { frozen: new Set(), key },
+      { frozen: new Set(), key, deliveredSince: noDeliveries },
     );
     const said = foldGroundNotes(new Set(), gone).seen;
     expect(foldGroundNotes(said, later).say).toHaveLength(1);

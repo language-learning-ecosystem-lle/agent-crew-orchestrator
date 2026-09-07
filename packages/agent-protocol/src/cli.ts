@@ -3635,17 +3635,26 @@ const parkMoverFrom = (
  * THE DOOR OF A NAMED GROUND (thread 155) — `--park-ground <fact>` on both writing commands: the
  * FACT the park is taken against, in a form the box can ask on its own.
  *
- * Two refusals and no third, both about the flag and neither about the park: the value must be a
- * ground this version can read (`judgeParkGround`), and a ground must come WITH a park — a fact
- * named on a message that freezes nothing is a check nobody will ever run, written into a feed
- * that cannot take it back. The absence of the flag is never refused: that is the park of every
- * day, and this field is for the rest (see `park-ground.ts`).
+ * Three refusals, all about the flag and none about the park: the value must be a ground this
+ * version can read (`judgeParkGround`), a ground must come WITH a park — a fact named on a
+ * message that freezes nothing is a check nobody will ever run, written into a feed that cannot
+ * take it back — and a `no-delivers-since:` ground must name a thread THAT EXISTS. The absence of
+ * the flag is never refused: that is the park of every day, and this field is for the rest (see
+ * `park-ground.ts`).
+ *
+ * THE THIRD ONE IS PRICED BY THE COST OF ITS MISTAKE (statement of work, §4). A misspelled slug
+ * is the quietest bad outcome this feature has: the ground can then never fall away, so the park
+ * looks checked and is not, and nothing ever says a word about it — the exact silence the field
+ * was added to end. The reader cannot repair it (an append-only feed), the door can (the writer
+ * is standing right there), and asking costs one `existsSync` on a directory the command has
+ * already resolved. The `frozen:` form is deliberately NOT checked this way: its thread is half
+ * of a PAIR and a pair is legitimately named before its thread has any mail of its own.
  *
  * No permission gates it, for the reason none gates a park.
  */
 const parkGroundFrom = (
   argv: readonly string[],
-  input: { readonly parkedOn: string | undefined },
+  input: { readonly parkedOn: string | undefined; readonly threadsRoot: string },
 ): string | undefined => {
   const value = flag(argv, "--park-ground");
   if (value === undefined) return undefined;
@@ -3657,7 +3666,14 @@ const parkGroundFrom = (
   }
   const verdict = judgeParkGround(value);
   if (!verdict.ok) return fail(verdict.reason, 2);
-  return verdict.ground.raw;
+  const ground = verdict.ground;
+  if (ground.kind === "no-delivers-since" && !existsSync(join(input.threadsRoot, ground.thread))) {
+    return fail(
+      `--park-ground '${ground.raw}' names thread '${ground.thread}', and there is no such thread in this mail. This ground asks that feed for a letter carrying 'delivers:', so a name nothing answers to is a ground that can NEVER fall away — the park would look checked and be exactly as unchecked as one with no field at all (thread 155). Name the thread as its directory spells it ('NNN-slug'), or leave the ground off`,
+      2,
+    );
+  }
+  return ground.raw;
 };
 
 /**
@@ -4007,7 +4023,7 @@ const newMessage = (argv: readonly string[]): void => {
   const parkedOn = parkedOnFrom(argv, { registry });
   const delivers = deliversFrom(argv, { registry });
   const parkMover = parkMoverFrom(argv, { registry });
-  const parkGround = parkGroundFrom(argv, { parkedOn });
+  const parkGround = parkGroundFrom(argv, { parkedOn, threadsRoot: root });
   // A PARK BY MEANING THAT IS NOT A PARK BY FIELD (thread 022) — checked here, where the flags
   // can still be retyped, because the feed is append-only and such a header cannot be taken
   // back: it names its own author as the one who acts next, asks for something, and says
@@ -4442,7 +4458,7 @@ const newThread = (argv: readonly string[]): void => {
   // AND THE SAME GROUND, by the same door (thread 155), for the reason `delivers` is here: a flag
   // one command of the pair parses and the other swallows goes into an append-only feed without
   // a word (the lesson of 075).
-  const parkGround = parkGroundFrom(argv, { parkedOn });
+  const parkGround = parkGroundFrom(argv, { parkedOn, threadsRoot: root });
   // AND THE SAME VERDICT, by the same door (thread 042), for the reason `delivers` is here and
   // not for a use case: the lesson of 075 is that a flag one command of the pair parses and the
   // other swallows goes into an append-only feed without a word. What the field does in an
@@ -13318,12 +13334,30 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // about which pairs are spent. Without it the row of a pair frozen three days ago is
     // character for character the row of one that is next in line.
     const outOfAttempts = spentCeilings(foldLeases(events, now, gates.maxAttempts.value));
+    // THE SECOND FORM IS ANSWERED OUT OF THE VERY SAME SCAN (thread 155): `no-delivers-since:X`
+    // asks whether thread X has grown a letter carrying `delivers:` SINCE THE PARK WAS DECLARED,
+    // and `threads` is that mail, already read this tick. The window is the park's own stamp and
+    // the comparison is strict, so the declaring message cannot answer itself and a delivery that
+    // was already lying in the feed is not mistaken for the answer to a question asked after it.
+    // A thread this box does not have is `undefined` — not a note: the door refuses that name at
+    // the moment it can still be retyped, and a reader of an append-only feed repairs nothing.
+    const byId = new Map(threads.map((thread) => [thread.id, thread]));
     const gone: readonly GroundedPark[] = groundsGone(
       threads.map((thread) => ({
         thread: thread.id,
         parking: parkingOf(thread, mergedPrs(threads)),
       })),
-      { frozen: new Set(outOfAttempts.keys()), key: frozenPairKey },
+      {
+        frozen: new Set(outOfAttempts.keys()),
+        key: frozenPairKey,
+        deliveredSince: (thread, since) => {
+          const named = byId.get(thread);
+          if (named === undefined) return undefined;
+          return named.messages.some(
+            (message) => message.fields.delivers !== undefined && message.fields.date > since,
+          );
+        },
+      },
     );
     const groundNotes = foldGroundNotes(groundsSaid, gone);
     groundsSaid = groundNotes.seen;
