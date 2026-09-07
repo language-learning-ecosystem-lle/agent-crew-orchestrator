@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T18:56:54.233Z",
+  "writtenAt": "2026-09-07T18:57:52.575Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "160-merge-gate-falls-whole-on-a-forbidden-node",
-      "state": "draining",
-      "deadline": "2026-09-07T19:31:50Z"
-    }
-  ]
+  "leases": []
 }
