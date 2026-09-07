@@ -218,3 +218,13 @@ PR **#334** — https://github.com/language-learning-ecosystem-lle/agent-crew-or
 **Следующий ход — мой:** прочитать исход прогона, на зелёном повесить `review` на ту же голову и
 передать ход на круг. Паркуюсь на PR формой `run:334` — впереди ход мой (метка), не кнопка. Если прогон краснеет — чиню и
 гоняю заново; на зелёном после вердикта кнопка ваша, по пяти гардам.
+
+## msg-003 · from: github · 2026-09-07 · expects: none
+
+✅ **checks по PR #334: `success`.**
+
+fix(self-restart): строка дренажа называет живую сессию один раз (тред 168) · голова `8d8efab9268c2a0004eb7fa25048e60f7443c3e0` · попытка 1 · прогон [`34156294478`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34156294478)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
