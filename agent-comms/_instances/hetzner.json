@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T19:40:03.785Z",
+  "writtenAt": "2026-09-07T19:42:00.933Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "169-tag-fitness-is-measured-by-tree-not-ancestry",
       "state": "running",
       "deadline": "2026-09-07T20:39:56Z"
+    },
+    {
+      "role": "curator",
+      "thread": "166-priority-tier-blind-to-a-refused-rollup",
+      "state": "running",
+      "deadline": "2026-09-07T20:21:57Z"
     }
   ]
 }
