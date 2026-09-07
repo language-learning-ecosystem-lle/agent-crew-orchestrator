@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T12:08:39.832Z",
+  "writtenAt": "2026-09-07T12:10:43.884Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "152-box-setup-0-1a-stale",
       "state": "running",
       "deadline": "2026-09-07T12:45:53Z"
+    },
+    {
+      "role": "devops",
+      "thread": "154-contour-group-outlived-its-abolition",
+      "state": "running",
+      "deadline": "2026-09-07T12:30:40Z"
     }
   ]
 }
