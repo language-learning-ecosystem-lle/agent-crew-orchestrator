@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T19:46:52.846Z",
+  "writtenAt": "2026-09-07T19:52:07.887Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "166-priority-tier-blind-to-a-refused-rollup",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-07T20:21:57Z"
     }
   ]
