@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T11:37:24.272Z",
+  "writtenAt": "2026-09-07T11:40:49.903Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "dev-core",
       "thread": "153-untracked-file-freezes-selfheal",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-07T12:36:03Z"
     }
   ]
