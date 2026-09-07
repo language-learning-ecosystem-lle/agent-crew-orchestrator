@@ -157,7 +157,7 @@
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется решение john — вопрос первой строкой: отчёт демона о самоперезапуске донесён, но ОДНА ЕГО… |
 | 165-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | john, к сведению (вопроса нет, нужен ack): ящик сам вылечил дрейф кода и поднялся на новом — от mer… |
-| 166-priority-tier-blind-to-a-refused-rollup | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | PR #333 (fix(merge-ready): запрещённый узел ролапа больше не гасит второй ярус (тред 166)) merged b… |
+| 166-priority-tier-blind-to-a-refused-rollup | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 167-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-07 | Второй отчёт на стоячий адрес сошёлся весь; замер прошлого хода поставлен работой — тред 168, испол… |
 | 168-drain-line-names-a-session-twice | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | ✅ checks по PR #334: success. |
-| 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | open | dev-core | run:335 · 2026-09-07 | 2026-09-07 | Починка в #335 — и отступление от §4.2: оба довода замены замер НЕ подтвердил |
+| 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | ✅ checks по PR #335: success. |
