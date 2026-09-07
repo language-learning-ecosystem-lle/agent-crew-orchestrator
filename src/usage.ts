@@ -208,9 +208,14 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # refusal — a decision is fixed where it was taken; it is printed
                               # a --d1 on a diff that touches NO document of power leaves guard 4 the
                               # pass it was and SAYS the flag changed nothing (never silent either way)
-                              # guard 2 reads 'statusCheckRollup' — a token without 'checks: read'
-                              # (and 'actions: read', asked for inside it) is refused the whole call;
-                              # the command PRINTS what gh answered and only guesses at the scope
+                              # guard 2 reads 'statusCheckRollup', and a token may be refused THAT ONE
+                              # NODE (a fine-grained token on a private repository always is: there is
+                              # no 'checks' permission to grant it). The call is no longer lost with
+                              # it — the PR is re-read WITHOUT that field, guard 2 judges the runs of
+                              # Actions on the head instead, and the door says which source it used
+                              # and when the runs are refused too, guard 2 answers 'NOT READ' —
+                              # 'no access' is a different sentence from 'not green' and stops all the
+                              # same; the command PRINTS what gh answered and only guesses at the scope
                               # and it judges the LAST attempt of each check name, by time — a rerun
                               # replaces the run it reran, both of which hang on the same head
                               # guard 1 judges the LAST verdict of each reviewer on that head, by

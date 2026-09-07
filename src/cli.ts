@@ -92,10 +92,12 @@ import { type BaseMovePaths, describeBaseNote } from "./merge/base-note.js";
 import {
   type BaseDrift,
   baseDriftOf,
+  type ChecksReading,
   describeMergeGate,
   describePowerDocuments,
   describeVersionBumpFollowUp,
   evaluateMergeGate,
+  type PullRequestFacts,
   powerDocumentList,
   readD1Reference,
   roleOfDescription,
@@ -103,8 +105,11 @@ import {
   unmatchedWorkingCards,
 } from "./merge/gate.js";
 import {
+  checksFromWorkflowRuns,
+  forbiddenChecksRollup,
   ghOpenPullRequestsSchema,
   ghPullRequestSchema,
+  ghPullRequestWithoutChecksSchema,
   ghRefusalHint,
   ghRunParkSchema,
   mergeableWordOf,
@@ -15395,31 +15400,51 @@ const mergeGate = (argv: readonly string[]): void => {
   const platform = platformEnvOf({ repo });
   out(`merge-gate: credentials — ${platform.note}`);
 
-  const ask = (): string =>
-    execFileSync(
-      "gh",
-      [
-        "pr",
-        "view",
-        number,
-        "--json",
-        // `mergeable`/`mergeStateStatus`: what GitHub itself would refuse (D2).
-        // `commits` beside `reviews`: the date of the head commit, the one fact a
-        // substituted review anchor cannot fake (thread 043).
-        // `baseRefName`: the NAME of the branch whose head the credited checks are dated
-        // against (023.3, input repaired in 023.4) — read for a note, never for a guard.
-        // The name and not `baseRefOid`: that SHA is the base the branch was cut from and
-        // stands still while the base moves, which made the note a silent no-op.
-        "number,headRefOid,body,statusCheckRollup,reviews,commits,files,baseRefName,mergeable,mergeStateStatus",
-      ],
-      {
-        cwd: repo,
-        encoding: "utf8",
-        env: platform.env,
-        stdio: ["ignore", "pipe", "pipe"],
-        maxBuffer: 16 * 1024 * 1024,
-      },
-    );
+  // `mergeable`/`mergeStateStatus`: what GitHub itself would refuse (D2).
+  // `commits` beside `reviews`: the date of the head commit, the one fact a
+  // substituted review anchor cannot fake (thread 043).
+  // `baseRefName`: the NAME of the branch whose head the credited checks are dated
+  // against (023.3, input repaired in 023.4) — read for a note, never for a guard.
+  // The name and not `baseRefOid`: that SHA is the base the branch was cut from and
+  // stands still while the base moves, which made the note a silent no-op.
+  const askFields =
+    "number,headRefOid,body,statusCheckRollup,reviews,commits,files,baseRefName,mergeable,mergeStateStatus";
+  const askFieldsWithoutChecks = askFields
+    .split(",")
+    .filter((field) => field !== "statusCheckRollup")
+    .join(",");
+  const askWith = (fields: string): string =>
+    execFileSync("gh", ["pr", "view", number, "--json", fields], {
+      cwd: repo,
+      encoding: "utf8",
+      env: platform.env,
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: 16 * 1024 * 1024,
+    });
+
+  /**
+   * THE PATH GITHUB REFUSED, once it has refused it (thread 160) — and, once set, the ONLY
+   * field list this door asks for afterwards. `readMergeability` below asks two, three,
+   * four times; re-earning the same 403 on each of them would spend a call to learn a fact
+   * we already have.
+   */
+  let refusedChecksPath: string | undefined;
+  const ask = (): string => {
+    if (refusedChecksPath !== undefined) return askWith(askFieldsWithoutChecks);
+    try {
+      return askWith(askFields);
+    } catch (error) {
+      // ONE FORBIDDEN NODE MUST NOT TAKE THE WHOLE DOOR (thread 160). `gh` exits 2 and
+      // prints nothing at all when an element of `statusCheckRollup.contexts.nodes` comes
+      // back FORBIDDEN — so guards 1, 3 and 4, which need no checks whatsoever, died of a
+      // refusal that was never about them. The second ask drops exactly the refused node
+      // and keeps every field the other guards are computed from.
+      const named = forbiddenChecksRollup((error as Error).message);
+      if (named === undefined) throw error;
+      refusedChecksPath = named;
+      return askWith(askFieldsWithoutChecks);
+    }
+  };
 
   let raw: string | undefined;
   let mergeability: MergeabilityReading;
@@ -15453,7 +15478,12 @@ const mergeGate = (argv: readonly string[]): void => {
     return;
   }
 
-  const parsed = ghPullRequestSchema.safeParse(JSON.parse(raw ?? "null"));
+  // The payload is judged by the schema of the ask that actually went out: with the checks
+  // node when it was served, without it when GitHub refused that one node (thread 160).
+  // Every other field stays pinned in both — the degradation is one field wide, by name.
+  const parsed = (
+    refusedChecksPath === undefined ? ghPullRequestSchema : ghPullRequestWithoutChecksSchema
+  ).safeParse(JSON.parse(raw ?? "null"));
   if (!parsed.success) {
     fail(
       `the answer of gh about PR #${number} is not the shape this command reads: ${parsed.error.issues
@@ -15501,34 +15531,67 @@ const mergeGate = (argv: readonly string[]): void => {
   // project, and guessing it here is the same line the documents of power do not cross.
   // A refusal is NOT fatal here, unlike the `gh pr view` above: guard 1 has a third state
   // for it (`by-hand`), which is the point of the whole repair.
+  const askRuns = (): string =>
+    execFileSync(
+      "gh",
+      [
+        "api",
+        // `per_page=100`: the rounds of ONE head, and a head with a hundred runs on
+        // it has a different problem than this door is about.
+        `repos/{owner}/{repo}/actions/runs?head_sha=${parsed.data.headRefOid}&per_page=100`,
+      ],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        env: platform.env,
+        stdio: ["ignore", "pipe", "pipe"],
+        maxBuffer: 16 * 1024 * 1024,
+      },
+    );
   const reviewWorkflow = flag(argv, "--review-workflow")?.trim();
   const reviewRuns =
     reviewWorkflow === undefined || reviewWorkflow.length === 0
       ? undefined
-      : readReviewRuns({
-          workflow: reviewWorkflow,
-          ask: () =>
-            execFileSync(
-              "gh",
-              [
-                "api",
-                // `per_page=100`: the rounds of ONE head, and a head with a hundred runs on
-                // it has a different problem than this door is about.
-                `repos/{owner}/{repo}/actions/runs?head_sha=${parsed.data.headRefOid}&per_page=100`,
-              ],
-              {
-                cwd: repo,
-                encoding: "utf8",
-                env: platform.env,
-                stdio: ["ignore", "pipe", "pipe"],
-                maxBuffer: 16 * 1024 * 1024,
-              },
-            ),
-        });
+      : readReviewRuns({ workflow: reviewWorkflow, ask: askRuns });
+
+  // WHAT ANSWERS FOR GUARD 2 WHEN THE ROLLUP WAS REFUSED (thread 160). The same runs of
+  // Actions guard 1 anchors by — measured on 2026-09-07 to answer both runs with
+  // `conclusion: success` through the very token that is refused the rollup — and the SAME
+  // reading when guard 1 already paid for it, so the substitution costs no second call.
+  // A refusal here is not silence: it becomes the `refused` state, which is 'no access'
+  // and is printed as a different sentence from 'not green'.
+  let checksReading: ChecksReading | undefined;
+  let substitutedChecks: PullRequestFacts["checks"] | undefined;
+  if (refusedChecksPath !== undefined) {
+    const reading = reviewRuns ?? readReviewRuns({ workflow: "actions/runs", ask: askRuns });
+    if (reading.state === "read") {
+      substitutedChecks = checksFromWorkflowRuns(reading.runs);
+      checksReading = {
+        state: "substituted",
+        refusedPath: refusedChecksPath,
+        source: "the runs of Actions on this head (`gh api actions/runs?head_sha=`)",
+      };
+    } else {
+      checksReading = {
+        state: "refused",
+        refusedPath: refusedChecksPath,
+        reason:
+          reading.state === "unreadable" ? reading.reason : "the runs of Actions were not asked",
+      };
+    }
+    out(
+      `merge-gate: GitHub refused '${refusedChecksPath}' on this token — the pull request was re-read without that field${
+        checksReading.state === "substituted"
+          ? ", and guard 2 judges the runs of Actions instead"
+          : ", and guard 2 has no source for the checks at all"
+      }`,
+    );
+  }
 
   // The SAME reading of the payload the scheduler's merge-ready uses (`pullRequestFacts`).
+  const facts = pullRequestFacts(parsed.data, baseHead, reviewRuns, checksReading);
   const verdict = evaluateMergeGate({
-    pr: pullRequestFacts(parsed.data, baseHead, reviewRuns),
+    pr: substitutedChecks === undefined ? facts : { ...facts, checks: substitutedChecks },
     powerDocs,
     d1,
     mergeability,

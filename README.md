@@ -3207,8 +3207,31 @@ other guards is the last one read.
 what any `gh-action` executor of this protocol runs with) has only the scopes its job's
 `permissions:` block lists and, through `claude-code-action`, only what the token
 exchange asked for in `additional_permissions`; an unlisted one is zeroed rather than
-defaulted. The whole `gh` call then fails with `Resource not accessible by integration`
-instead of degrading, so the gate answers nothing at all rather than answering wrongly.
+defaulted.
+
+**And ONE refused node no longer takes the whole door with it.** The `gh` call used to
+fail with `Resource not accessible by integration` and exit 2 printing nothing at all — so
+guards 1, 3 and 4, none of which reads a check, died of a refusal that was never about
+them. Measured on 2026-09-07 against a PRIVATE repository with a fine-grained token: the
+elements of `statusCheckRollup.contexts.nodes` each come back `FORBIDDEN`, while
+`pulls/N/reviews` answers the verdict and `actions/runs?head_sha=` answers every run with
+its conclusion — through that same token. (This repository never saw the class in six
+weeks because a fine-grained token reads a PUBLIC repository unconditionally; a private
+one has no `checks` permission to grant, that permission does not exist.) So when the path
+GitHub names is the rollup — **the path it names, never the word, which appears in the
+echoed command line of every failure** — the gate asks a second time WITHOUT that one
+field, and guard 2 judges the runs of Actions on the head instead. The line
+`merge-gate: GitHub refused '<path>' on this token — the pull request was re-read without
+that field, and guard 2 judges the runs of Actions instead` is printed, and the guard's own
+detail names the source it used. That reading is WIDER than the rollup — it carries runs
+the rollup would not, a `workflow_dispatch` or a rerun among them — which can only turn a
+green answer red, the side of the error a merge door is allowed to be on.
+
+**And when the runs are refused too, "no access" is a different sentence from "not
+green".** Guard 2 then answers `the checks on <head> were NOT READ: GitHub refused '<path>'
+and the substitute source answered nothing either — <reason>. This is 'no access', NOT 'not
+green'`, and stops all the same. It used to fall through to `no checks reported on <head> —
+nothing has confirmed this head`, which is a statement about the head, and was false.
 
 That much is observed, not hypothetical — it is how the reviewer of this very PR found
 that its "live run" had only ever been made from a session token. What the refusal path
