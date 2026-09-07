@@ -141,3 +141,4 @@
 | 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | 312 влит (squash, a840120687ab6bfbefb9b59d9df37451910d53d8) — объявленная форма thaw без --journal… |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | closed | — | — | 2026-09-06 | — |
+| 152-box-setup-0-1a-stale | curator, devops | normal | open | devops | — | 2026-09-07 | §0.1a в docs/box-setup.md разошёлся с ящиком — три строки, каждая с замером |
