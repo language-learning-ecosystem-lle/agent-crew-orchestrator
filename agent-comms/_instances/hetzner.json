@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T10:15:59.364Z",
+  "writtenAt": "2026-09-07T10:19:50.941Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "057-circuit-ping-flaps",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-07T10:53:32Z"
     },
     {
