@@ -2804,3 +2804,71 @@ waiting-on → dev-core.
 Ничего другого в постановке эта поправка не двигает: §§1–6 (замер `13:44Z`, требования, приёмка, проверяемость, границы, форма сдачи) читаются как есть.
 
 waiting-on → dev-core.
+
+## msg-068 · from: dev-core · 2026-09-07 · expects: answer
+
+**ПАКЕТ 6 СДАН: PR #325, голова `1129bf8c`, ветка `fix/141-stop-names-down`. Жду `checks`. Метка `review` — ваша, после зелёного на этой же голове.**
+
+## 1. Что сделано
+
+`orchestrator stop` без `--mode` теперь отказывает текстом, который называет ОБЕ формы. Дословно, мой замер на голове PR:
+
+```
+$ node --import tsx packages/agent-protocol/src/cli.ts orchestrator stop
+agent-protocol: 'orchestrator stop' will not choose the kind of stop for you: --mode is not set, and the two are different stops. NOTHING HAS BEEN STOPPED AND NOTHING HAS BEEN WRITTEN by this refusal.
+  SOFT, and the one usually wanted — 'orchestrator down': the daemon finishes the sessions it is running and exits at its next tick. It prints the pid to watch and says launches stay enabled.
+  HARD — 'orchestrator stop --mode force --by <who> --reason <why> --thread <slug>': the trace goes to the thread first and the flag second, and the sessions running right now are put down.
+  ('orchestrator stop --mode graceful' sets the same flag as 'down' and prints neither the pid nor the line about launches.)
+  agent-protocol orchestrator down   [--ref <ref>] [--repo <p>] [--stop-flag <p>] [--pid-file <p>]
+  agent-protocol orchestrator stop   --mode graceful --ref <ref> [--stop-flag <p>] [--write]
+  agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--repo <p>] [--force-flag <p>] [--root <mail>] [--write]
+                              # THE TRACE IS DELIVERED FIRST (committed and pushed), the flag
+                              # …
+EXIT=2
+```
+
+Строки форм РЕЖУТСЯ из `USAGE` (`usageFor(USAGE, ["orchestrator down", "orchestrator stop"])`), а не перепечатываются — по причине, которую даёт сам `usage.ts`: отказ, набранный рукой, первым отстаёт от кода. `down` выходит первым потому, что таково его место в таблице, и он же — тот, к которому тянется рука.
+
+**Правка в теле функции — одна строка:** `required(argv, "--mode")` → `flag(argv, "--mode") ?? fail(STOP_MODE_REFUSAL, 2)`. Всё, что ниже, не тронуто.
+
+## 2. Приёмка §3 — команды и их вывод, мой замер
+
+1. **`stop` без `--mode`** (голый и с `--ref`): вывод выше. Содержит `orchestrator down` и `stop --mode force`; **stop-флаг не создан** — путь флага проверен ДО и ПОСЛЕ вызова, обе проверки в тесте, каталог запуска остаётся пуст;
+2. **`stop --mode force --ref HEAD`** — доходит до своего `--by is not set` с прежним блоком usage, форс-флаг не создан. То есть дверь режима пройдена и ветка форса открывается как открывалась; доставочная её половина мерится соседом `force-stop-delivery.process.test.ts`;
+3. **`stop --mode graceful --stop-flag <p> --write`** → `agent-protocol: graceful stop — the stop flag '<p>' was created`, EXIT=0, флаг на месте. Без `--write` — прежняя строка `would create the stop flag … --write performs it`, флага нет;
+4. **`orchestrator down`** → `the stop flag is set ('<p>')` + строка про pid + `launches stay enabled — 'orchestrator disable' is the policy switch`, EXIT=0;
+5. **`restart` в новый отказ не попадает ПО ПОСТРОЕНИЮ:** force-ветка зовёт `orchestratorStop([...args, "--mode", "force", "--by", by, "--write"])` — всегда с `--mode`; graceful-ветка идёт через `orchestratorDown` и `stop` не трогает вовсе. Обе гоняются соседями `restart.process.test.ts` и `self-restart.process.test.ts`, они зелёные;
+6. **полная сюита** — на раннере по #325, жду `checks`. Своей рукой прогнал новый файл плюс четырёх соседей текста отказов: `stop-mode-refusal`, `usage-refusal.process`, `usage`, `operator-tail.process`, `force-stop-delivery.process` — **5 файлов, 118 проверок, зелено**.
+
+## 3. Коды возврата — оба числа замером
+
+- **новый отказ — `2`.** Это код неверной ФОРМЫ вызова в этом файле (`fail(message, 2)`, `cli.ts`), тот же, каким отвечают `--by is not set` и `--mode 'sideways'`;
+- **настоящий сбой — `1`.** `process.exit(1)` — отказ по существу; кроме того необработанное исключение (нечитаемый путь флага) уводит процесс тем же кодом 1.
+
+Требование john «ненулевой, но отличимый от „остановка не удалась“» закрывается этой конвенцией, и я её не менял. Рука, не сказавшая, какую остановку хочет, сбоя остановки не пережила, и читатель кода возврата обязан их различать.
+
+## 4. Проверяемость — что именно держит починку
+
+Новый процессный тест `packages/agent-protocol/src/orchestrator/stop-mode-refusal.process.test.ts`, 7 проверок: две на сам отказ (обе формы вызова без `--mode`) и пять регрессионных на нетронутое (`graceful` с `--write` и без, `--mode sideways`, вход в `force`, `down`).
+
+**Мутационная проба, своей рукой, а не рассуждением:** временно вернул `required(argv, "--mode")` и прогнал файл — красными стали РОВНО две проверки нового отказа, пять регрессионных остались зелёными. Правку восстановил, зелень перемерил.
+
+**Что сознательно НЕ покрывается автотестом:** живой отказ на ящике под рукой человека. Ваш выбор из §4 принимаю целиком — текст CLI закрывается процессным тестом полностью, а `down`/`up` john мерил в поле утром отдельно. Своего пункта сюда не добавляю.
+
+## 5. Границы §5 — своими словами, по списку
+
+Новой нормы дифф не вводит. В нём нет: нового флага, нового ключа конфига, нового права, нового шага маршрута; нет снятия или сужения существующего запрета; нет переименования команд и изменения смысла существующих вызовов — всё, что зовёт `stop --mode force`, работает буквой в букву; нет правок `orchestrator down`, `orchestrator restart` и порядка «трасса → флаг» у force-остановки; нет доков власти (`PROTOCOL.md`, `docs/roles/**`, `REVIEWER.md`, `agent-protocol.json`, `.github/workflows/**`).
+
+Дифф — четыре файла: `cli.ts` (одна строка тела + константа текста рядом), новый процессный тест, `packages/agent-protocol/README.md` («Commands», хвостовой комментарий под строками `stop`), `docs/protocol-reference.md` (новый пункт в ряду отказов оркестратора, рядом с отказом `up` над живым демоном).
+
+## 6. Одна развилка, которую я НЕ прошёл молча
+
+**`--mode` с неизвестным значением** (`stop --mode sideways`) я оставил как есть: `--mode 'sideways' — allowed values are graceful | force`, `down` он не называет. Постановка говорит про вызов БЕЗ `--mode`, и расширять её своей рукой я не стал — это была бы та же широкая форма, от которой §5 предостерегает. Если john или вы читаете иначе, это правка на одну строку и отдельный маленький пакет; вопросом в john я её не несу, потому что он на неё уже ответил выбором самой узкой формы.
+
+## 7. Чего я не делал
+
+- метки `review` не вешал (ваша), тела PR после создания не правил, у прогона не стоял;
+- `pr open` — командой пакета, не `gh pr create`; тело PR несёт `thread:` и `role:` первыми двумя строками;
+- в рабочем дереве роли незакоммиченного нет: всё, что я тронул, ушло одним коммитом `1129bf8c` и запушено. Тело этого письма — в `mktemp -d -p /tmp`, вне чекаута почты и вне рабочего дерева роли.
+
+waiting-on → curator.
