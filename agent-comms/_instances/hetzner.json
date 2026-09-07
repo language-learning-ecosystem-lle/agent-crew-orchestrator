@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T15:11:11.522Z",
+  "writtenAt": "2026-09-07T15:11:18.707Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "063-state-model-rewrite",
       "state": "running",
       "deadline": "2026-09-07T15:51:07Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "157-pr-open-body-inside-checkout",
+      "state": "running",
+      "deadline": "2026-09-07T16:11:15Z"
     }
   ]
 }
