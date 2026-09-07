@@ -172,6 +172,14 @@ const homeContour = (options?: {
    * the box is not repaired at all.
    */
   readonly foreign?: boolean;
+  /**
+   * A STRAY UNTRACKED FILE IN THE SERVED CHECKOUT (thread 153) — the live shape of the
+   * episode: a PR body left inside the tree by a hand. No commit on the ref writes that
+   * path, so `git pull --ff-only` walks straight past it (measured, thread 153 §1) and the
+   * tick has nothing to refuse over. It used to be a `stand`, and that `stand` cost the box
+   * 13 commits and 23 hours of drift, twice in three days.
+   */
+  readonly litter?: string;
 }): { readonly repo: string; readonly cli: string } => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-selfrestart-home-"));
   const origin = join(base, "origin.git");
@@ -212,6 +220,9 @@ const homeContour = (options?: {
     git(repo, "push", "-q", "-u", "origin", "core/gate-checks-from-actions");
   } else if (options?.pullable === true) git(repo, "reset", "--hard", "-q", loaded);
   else git(repo, "checkout", "-q", loaded);
+  // Written LAST, after every checkout above: an untracked file survives them all, which is
+  // precisely why it can sit in a served checkout for a day without anybody noticing.
+  if (options?.litter !== undefined) writeFileSync(join(repo, options.litter), "a PR body\n");
   return { repo, cli: join(repo, "src", "cli.ts") };
 };
 
@@ -433,6 +444,33 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
       );
       expect(memory?.attempts).toBe(1);
       expect(memory?.target).toBe(git(home.repo, "rev-parse", "origin/main").trim());
+    },
+    2 * HANG_CEILING_MS,
+  );
+
+  /**
+   * THE EPISODE THIS THREAD IS ABOUT, RUN BY A REAL DAEMON (thread 153). One `.pr278-body.md`
+   * left inside the served checkout by a hand — a path no incoming commit writes — used to
+   * make every tick a `dirty` stand, and the box measured 13 commits and 23 hours of drift
+   * behind it, twice in three days. The unit above decides the classification; only a tick
+   * proves the decision reaches the daemon that takes it.
+   */
+  it(
+    "goes over a stray untracked file in the served checkout, and still names it",
+    () => {
+      const home = homeContour({ litter: ".pr278-body.md" });
+      const said = tick(home.cli, home.repo);
+
+      // IT DECIDED. The whole of the defect was that this line was a refusal instead.
+      expect(said).toContain("SELF-RESTART: the loaded code is behind");
+      expect(said).toMatch(/handed over to the restart process \(pid \d+\)/);
+      expect(said).not.toContain("no self-restart");
+      expect(said).not.toContain("untracked files in");
+      // AND IT IS NOT SILENT ABOUT THE LITTER: the narrowing must not teach an operator to
+      // stop seeing what is lying in the tree his box serves.
+      expect(said).toContain(".pr278-body.md");
+      expect(said).toContain("untracked and harmless in");
+      expect(said).toContain("NOTHING IS BLOCKED BY THEM");
     },
     2 * HANG_CEILING_MS,
   );

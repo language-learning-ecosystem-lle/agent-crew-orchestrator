@@ -462,6 +462,7 @@ import {
   attemptsFor,
   checkoutBranch,
   describeDrainWithheld,
+  describeHarmlessUntracked,
   describeInstallSkipped,
   describeRepairRefusal,
   describeRepairStood,
@@ -1156,7 +1157,10 @@ const repairOnVersionVerdict = (argv: readonly string[], error: ProtocolVersionE
           ? { kind: "match" }
           : { kind: "unknown", problem: reading.problem },
     tree: isVintage(read)
-      ? workingTreeState(checkout)
+      ? // The rewind target is the drift reading's own `refSha` — the same SHA the repair
+        // below pulls to. On the two arms that have no target the verdict stands before it
+        // ever looks at the tree, and `undefined` there narrows nothing (thread 153).
+        workingTreeState(checkout, reading.kind === "drift" ? reading.drift.refSha : undefined)
       : { kind: "unreadable", problem: "the loaded code could not be dated" },
     checkout,
     ref,
@@ -12480,6 +12484,14 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   };
 
   const selfRestart = (drift: CodeDrift): SelfRestartOutcome => {
+    const tree = workingTreeState(drift.vintage.checkout, drift.refSha);
+    // THE LITTER THAT STOPPED NOTHING IS STILL SAID (thread 153). On a `stand` the refusal
+    // sentence carries it, so this line is only for the ticks that go through: a narrowing
+    // that made stray files invisible would trade a frozen box for a checkout nobody sweeps.
+    if (tree.kind === "clean" && tree.harmless !== undefined && tree.harmless.length > 0)
+      err(
+        `agent-protocol: daemon — ${describeHarmlessUntracked(drift.vintage.checkout, tree.harmless)}`,
+      );
     const memory = existsSync(paths.daemonSelfRestart)
       ? parseSelfRestartMemory(readFile(paths.daemonSelfRestart, "the self-restart memory"))
       : undefined;
@@ -12500,7 +12512,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       // rather than to type `orchestrator up` — the trap that cost john a fallen service.
       ...(flagDown === undefined ? {} : { stopFlag: flagDown }),
       held: heldRoles(foldHolds(loadHolds(holdsDir), new Date())),
-      tree: workingTreeState(drift.vintage.checkout),
+      tree,
       checkout: drift.vintage.checkout,
       served: servedCheckout,
       attempts: attemptsFor(memory, drift.refSha),

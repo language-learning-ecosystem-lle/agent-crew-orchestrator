@@ -4,9 +4,10 @@
  * behind, and the whole point of the module is that none of them needs a process, a
  * clock or a checkout to be asserted about.
  */
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
@@ -22,6 +23,7 @@ import { daemonArgvFor } from "./restart.js";
 import {
   attemptsFor,
   describeDrainWithheld,
+  describeHarmlessUntracked,
   describeInstallSkipped,
   describeRepairRefusal,
   describeRepairStood,
@@ -55,6 +57,8 @@ import {
   selfRestartVerdict,
   spawnSelfRestart,
   versionRepairVerdict,
+  type WorkingTreeState,
+  workingTreeState,
 } from "./self-restart.js";
 import { describePutItBack } from "./workspace.js";
 
@@ -177,7 +181,7 @@ describe("selfRestartVerdict", () => {
       selfRestartVerdict({
         ...facts,
         served: "/somewhere/else",
-        tree: { kind: "dirty", paths: ["?? scratch.md"] },
+        tree: { kind: "dirty", paths: ["?? scratch.md"], untrackedOnly: true },
       }),
     ).toMatchObject({ block: { kind: "foreign-checkout" } });
   });
@@ -185,7 +189,11 @@ describe("selfRestartVerdict", () => {
   it("stands over an uncommitted tree — the pull would move it", () => {
     const verdict = selfRestartVerdict({
       ...facts,
-      tree: { kind: "dirty", paths: ["M packages/agent-protocol/src/cli.ts"] },
+      tree: {
+        kind: "dirty",
+        paths: ["M packages/agent-protocol/src/cli.ts"],
+        untrackedOnly: false,
+      },
     });
     expect(verdict).toEqual({
       kind: "stand",
@@ -193,6 +201,7 @@ describe("selfRestartVerdict", () => {
         kind: "dirty",
         checkout: "/box/repo",
         paths: ["M packages/agent-protocol/src/cli.ts"],
+        untrackedOnly: false,
       },
     });
   });
@@ -236,7 +245,7 @@ describe("selfRestartVerdict", () => {
     const verdict = selfRestartVerdict({
       ...facts,
       running: ["dev-core"],
-      tree: { kind: "dirty", paths: ["?? scratch.md"] },
+      tree: { kind: "dirty", paths: ["?? scratch.md"], untrackedOnly: true },
     });
     expect(verdict).toMatchObject({ kind: "stand", block: { kind: "dirty" } });
   });
@@ -604,7 +613,7 @@ describe("the refusal carries its own measurement (thread 044)", () => {
     const blocks: SelfRestartBlock[] = [
       { kind: "stopping" },
       { kind: "held", roles: ["dev-core"] },
-      { kind: "dirty", checkout: "/box/repo", paths: ["M a.ts"] },
+      { kind: "dirty", checkout: "/box/repo", paths: ["M a.ts"], untrackedOnly: false },
       { kind: "tree-unreadable", checkout: "/box/repo", problem: "x" },
       { kind: "attempts", attempts: 2, ceiling: 2 },
     ];
@@ -634,7 +643,12 @@ describe("the line said instead", () => {
     const lines = [
       describeSelfRestartBlock({ kind: "stopping" }),
       describeSelfRestartBlock({ kind: "held", roles: ["dev-core"] }),
-      describeSelfRestartBlock({ kind: "dirty", checkout: "/box/repo", paths: ["?? a"] }),
+      describeSelfRestartBlock({
+        kind: "dirty",
+        checkout: "/box/repo",
+        paths: ["?? a"],
+        untrackedOnly: true,
+      }),
       describeSelfRestartBlock({ kind: "tree-unreadable", checkout: "/box/repo", problem: "x" }),
       describeSelfRestartBlock({ kind: "attempts", attempts: 2, ceiling: 2 }),
     ];
@@ -652,6 +666,7 @@ describe("the line said instead", () => {
       kind: "dirty",
       checkout: "/box/repo",
       paths: ["?? .orchestrator/", "?? .worktrees/"],
+      untrackedOnly: true,
     });
     expect(said).toContain("untracked files in '/box/repo'");
     expect(said).toContain(".orchestrator/");
@@ -666,6 +681,7 @@ describe("the line said instead", () => {
       kind: "dirty",
       checkout: "/box/repo",
       paths: ["M packages/agent-protocol/src/cli.ts", "?? .orchestrator/"],
+      untrackedOnly: false,
     });
     expect(said).toContain("uncommitted work in '/box/repo'");
     expect(said).not.toContain("ignore rule");
@@ -684,7 +700,7 @@ describe("the call carries the order that heals, not just the fault", () => {
     { kind: "stopping", flag: "/box/.orchestrator/stop" },
     { kind: "held", roles: ["dev-core"] },
     { kind: "foreign-checkout", code: "/box/a", served: "/box/b" },
-    { kind: "dirty", checkout: "/box/repo", paths: ["M x"] },
+    { kind: "dirty", checkout: "/box/repo", paths: ["M x"], untrackedOnly: false },
     { kind: "tree-unreadable", checkout: "/box/repo", problem: "x" },
     { kind: "attempts", attempts: 3, ceiling: 3 },
   ];
@@ -735,7 +751,7 @@ describe("the call carries the order that heals, not just the fault", () => {
   it("does NOT send a hand through the restart order where the box takes it from there", () => {
     for (const block of [
       { kind: "held", roles: ["dev-core"] },
-      { kind: "dirty", checkout: "/box/repo", paths: ["M x"] },
+      { kind: "dirty", checkout: "/box/repo", paths: ["M x"], untrackedOnly: false },
       { kind: "tree-unreadable", checkout: "/box/repo", problem: "x" },
     ] as const) {
       const said = describeSelfRestartRepair(block);
@@ -1009,7 +1025,11 @@ describe("what a daemon does with a config newer than its build", () => {
   it("stands over uncommitted work — a pull there is the one irreversible step", () => {
     const verdict = versionRepairVerdict({
       code: { kind: "drift", refSha: "abcdef0123456789" },
-      tree: { kind: "dirty", paths: [" M packages/agent-protocol/src/cli.ts"] },
+      tree: {
+        kind: "dirty",
+        paths: [" M packages/agent-protocol/src/cli.ts"],
+        untrackedOnly: false,
+      },
       checkout: "/srv/circuit",
       ref: "origin/main",
     });
@@ -1342,5 +1362,170 @@ describe("what the digest is told when the repair failed", () => {
     // And the band the ninth class rings on is read off the same two fields as before: the
     // subject of this file is the drift, not who wrote the sentence in it.
     expect(codeDriftOverdue(standoff, new Date("2026-09-04T05:00:00Z"))).toBe(true);
+  });
+});
+
+/**
+ * THE CLASSIFIER MEASURED AGAINST A REAL GIT TREE (thread 153), and it is the one place in
+ * this file that needs a checkout: the whole subject is what `git status` prints and what
+ * `git diff` answers, and a mocked git would only prove that the mock agrees with itself.
+ *
+ * The seven cases are the seven rows measured against `git pull --ff-only` itself before any
+ * of this was written (thread 153, §1): the tree carries an untracked path, the incoming
+ * commits carry theirs, and the question is whether `pull` would refuse. Git's answer is a
+ * FACT OF THE ENVIRONMENT recorded there and in `docs/protocol-reference.md`; deliberately
+ * not re-measured here, because a test that re-ran `pull` would be testing git.
+ */
+describe("workingTreeState — which half of a tree actually stops a fast-forward", () => {
+  /**
+   * One repo, two heads: `main` is what the tree stands on, `incoming` is what the repair
+   * would rewind to. No remote is needed — the classifier reads `status` and one `diff`.
+   */
+  const treeStandingOn = (): { readonly repo: string; readonly target: string } => {
+    const repo = mkdtempSync(join(tmpdir(), "agent-protocol-tree-"));
+    const run = (...argv: readonly string[]): string =>
+      execFileSync("git", ["-C", repo, ...argv], { encoding: "utf8" });
+    execFileSync("git", ["init", "-q", "-b", "main", repo]);
+    run("config", "user.email", "tree@test");
+    run("config", "user.name", "tree");
+    writeFileSync(join(repo, "README.md"), "base\n");
+    mkdirSync(join(repo, "sub"));
+    writeFileSync(join(repo, "sub", "kept.txt"), "kept\n");
+    run("add", ".");
+    run("commit", "-qm", "base");
+    run("checkout", "-q", "-b", "incoming");
+    // Every path any case below could collide with, added by ONE commit — so that the
+    // difference between the cases is only ever what the tree carries.
+    for (const [path, body] of [
+      ["incoming.txt", "incoming\n"],
+      ["sub/added.txt", "added\n"],
+      ["dir/inner.txt", "inner\n"],
+      ["same.txt", "identical\n"],
+      ["foo/bar.txt", "bar\n"],
+      ["with space.txt", "spaced\n"],
+    ] as const) {
+      mkdirSync(dirname(join(repo, path)), { recursive: true });
+      writeFileSync(join(repo, path), body);
+    }
+    run("add", "-A");
+    run("commit", "-qm", "the ref");
+    const target = run("rev-parse", "HEAD").trim();
+    run("checkout", "-q", "main");
+    return { repo, target };
+  };
+
+  const { repo, target } = treeStandingOn();
+  /** The tree put into one state and read once — untracked litter first, tracked edits after. */
+  const carrying = (
+    untracked: Readonly<Record<string, string>>,
+    tracked?: Readonly<Record<string, string>>,
+  ): WorkingTreeState => {
+    execFileSync("git", ["-C", repo, "clean", "-qfdx"]);
+    execFileSync("git", ["-C", repo, "checkout", "-q", "--", "."]);
+    for (const [path, body] of Object.entries({ ...untracked, ...(tracked ?? {}) })) {
+      mkdirSync(dirname(join(repo, path)), { recursive: true });
+      writeFileSync(join(repo, path), body);
+    }
+    return workingTreeState(repo, target);
+  };
+
+  // ROW (a) OF THE MEASUREMENT AND THE LIVE EPISODE ITSELF: `.pr278-body.md`, a PR body left
+  // inside the served checkout by a hand, froze the self-repair of the whole crew for 13
+  // commits and 23 hours — over a path `pull --ff-only` walks straight past (exit 0).
+  it("does not call a stray untracked file dirt — no incoming commit writes that path", () => {
+    const state = carrying({ ".pr278-body.md": "the body of a pull request\n" });
+    expect(state.kind).toBe("clean");
+    // AND IT IS STILL NAMED. A narrowing that made the litter invisible would trade a frozen
+    // box for a served checkout nobody ever sweeps.
+    expect(state.kind === "clean" ? state.harmless : []).toEqual([".pr278-body.md"]);
+  });
+
+  // ROW (c): a neighbour in a directory the incoming commits DO touch. Git refuses over
+  // paths, not over directories, and so does this.
+  it("does not call an untracked neighbour dirt — the incoming path beside it is not it", () => {
+    expect(carrying({ "sub/mine.txt": "mine\n" }).kind).toBe("clean");
+  });
+
+  // ROW (b): the plain collision — the same path on both sides.
+  it("calls an untracked path the incoming commits write exactly what git calls it", () => {
+    const state = carrying({ "incoming.txt": "mine\n" });
+    expect(state).toMatchObject({ kind: "dirty", untrackedOnly: true });
+    expect(state.kind === "dirty" ? state.paths.join() : "").toContain("incoming.txt");
+  });
+
+  // ROW (d): the untracked entry is a FILE and the incoming commit puts a DIRECTORY there.
+  // The paths are not equal and git refuses all the same — hence the `p + "/"` half.
+  it("calls an untracked FILE dirt when the incoming commits put a directory over it", () => {
+    expect(carrying({ dir: "not a directory\n" }).kind).toBe("dirty");
+  });
+
+  // ROW (e): byte-identical content. Git compares paths and never bytes, so neither may this
+  // — reading the file would invent an exception git does not have.
+  it("calls a byte-identical untracked file dirt — content is not what git compares", () => {
+    expect(carrying({ "same.txt": "identical\n" }).kind).toBe("dirty");
+  });
+
+  // ROW (f): THE REASON `-uall` IS LOAD-BEARING. On the default `-unormal` this tree prints
+  // one line, `?? foo/`, and the collision on `foo/bar.txt` is invisible in it: the
+  // classifier would wave it through and the repair would die in phase 3.
+  it("sees a collision inside a wholly untracked directory", () => {
+    expect(carrying({ "foo/bar.txt": "mine\n" }).kind).toBe("dirty");
+  });
+
+  // ROW (g): THE REASON `-z` IS LOAD-BEARING. Without it this path arrives from `status` as
+  // `?? "with space.txt"`, quotes and all, and a quoted path matches nothing in a diff.
+  it("sees a collision on a path with a space in it", () => {
+    expect(carrying({ "with space.txt": "mine\n" }).kind).toBe("dirty");
+  });
+
+  // THE HALF THAT IS NOT NARROWED, AND MUST NOT BE: `git pull` would move somebody's unsaved
+  // work, and that is the one irreversible step of the chain. No incoming commit touches
+  // `README.md` here, and it is dirt anyway.
+  it("calls a tracked edit dirt unconditionally, whatever the incoming commits carry", () => {
+    const state = carrying({}, { "README.md": "edited by a hand\n" });
+    expect(state).toMatchObject({ kind: "dirty", untrackedOnly: false });
+  });
+
+  // AND THE LITTER SURVIVES A REFUSAL ABOUT SOMETHING ELSE: an operator told to clean a tree
+  // has to be able to tell what blocks the box from what is merely lying in it.
+  it("names harmless untracked beside a block it did not cause", () => {
+    const state = carrying({ ".pr278-body.md": "body\n" }, { "README.md": "edited\n" });
+    expect(state.kind === "dirty" ? state.harmless : []).toEqual([".pr278-body.md"]);
+    const said = describeSelfRestartCause({
+      kind: "dirty",
+      checkout: repo,
+      paths: state.kind === "dirty" ? state.paths : [],
+      untrackedOnly: false,
+      ...(state.kind === "dirty" && state.harmless !== undefined
+        ? { harmless: state.harmless }
+        : {}),
+    });
+    expect(said).toContain("uncommitted work");
+    expect(said).toContain("NOT what blocks this");
+    expect(said).toContain(".pr278-body.md");
+  });
+
+  // THE FALLBACK IS THE OLD BEHAVIOUR, and it is deliberate: with no rewind target to
+  // compare against there is nothing to narrow BY, so nothing is narrowed.
+  it("narrows nothing when the caller has no rewind target", () => {
+    execFileSync("git", ["-C", repo, "clean", "-qfdx"]);
+    execFileSync("git", ["-C", repo, "checkout", "-q", "--", "."]);
+    writeFileSync(join(repo, ".pr278-body.md"), "body\n");
+    expect(workingTreeState(repo, undefined)).toMatchObject({
+      kind: "dirty",
+      untrackedOnly: true,
+    });
+  });
+
+  // A READ THAT FAILS IS NOT "CLEAN" — it becomes its own refusal, exactly as before.
+  it("makes an unreadable tree its own refusal", () => {
+    expect(workingTreeState(join(repo, "nowhere-at-all"), target).kind).toBe("unreadable");
+  });
+
+  it("says of harmless litter that nothing is blocked by it, and asks for no hand", () => {
+    const said = describeHarmlessUntracked("/box/repo", [".pr278-body.md"]);
+    expect(said).toContain(".pr278-body.md");
+    expect(said).toContain("NOTHING IS BLOCKED BY THEM");
+    expect(said).not.toContain("no self-restart");
   });
 });
