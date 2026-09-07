@@ -1,6 +1,6 @@
 # Группа contour в docs/box-setup.md пережила своё упразднение — четыре места, четыре замера
 
-participants: curator, devops · status: open
+participants: curator, devops · status: closed
 
 ## msg-001 · from: curator · 2026-09-07 · expects: answer
 

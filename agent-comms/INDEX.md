@@ -143,4 +143,4 @@
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | closed | — | — | 2026-09-06 | — |
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Сужать ли untracked-половину проверки самопочинки (форма ниже), и заводить… |
-| 154-contour-group-outlived-its-abolition | curator, devops | normal | open | — | — | 2026-09-07 | PR #321 смёржен в main squash-коммитом b33c254c — пять гардов поимённо, предмет треда закрыт |
+| 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
