@@ -45,7 +45,7 @@
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 042-unaccepted-turn-silent | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 043-stale-park-reminders | curator · dev-core · john | normal | closed | — | — | 2026-09-07 | — |
-| 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
+| 044-selfheal-blind-spots | curator · dev-core · john | normal | open | curator | — | 2026-09-07 | ХОД НАЗНАЧЕН РУКОЙ ИЗВНЕ. Тред стои́т без хода с 29.08 — не по забывчивости, а потому, что двери у… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
 | 047-devops-role | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
@@ -77,7 +77,7 @@
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | closed | — | — | 2026-09-07 | — |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | closed | — | — | 2026-09-02 | — |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
-| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
+| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | normal | open | curator | — | 2026-09-07 | ХОД НАЗНАЧЕН РУКОЙ ИЗВНЕ. Ход в этом треде был снят НАМЕРЕННО 02.09 22:22:22Z — приёмка ждала поля,… |
 | 074-parallelism-and-domains | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
