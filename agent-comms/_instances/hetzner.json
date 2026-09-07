@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T15:24:45.123Z",
+  "writtenAt": "2026-09-07T15:25:40.735Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "158-cut-the-tag-for-the-consumer",
       "state": "running",
       "deadline": "2026-09-07T16:24:07Z"
-    },
-    {
-      "role": "curator",
-      "thread": "161-daemon-self-restart",
-      "state": "draining",
-      "deadline": "2026-09-07T15:58:32Z"
     }
   ]
 }
