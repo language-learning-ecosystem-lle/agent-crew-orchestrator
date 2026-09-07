@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T14:35:03.016Z",
+  "writtenAt": "2026-09-07T14:35:40.729Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "dev-core",
-      "thread": "153-untracked-file-freezes-selfheal",
-      "state": "draining",
-      "deadline": "2026-09-07T15:30:07Z"
-    }
-  ]
+  "leases": []
 }
