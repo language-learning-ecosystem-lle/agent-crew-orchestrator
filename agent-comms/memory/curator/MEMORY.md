@@ -1,12 +1,12 @@
 - [Дверь почты падает на чужом `index.lock`](mail-door-dies-on-a-foreign-index-lock.md) — код 128; переждать и повторить, чужой лок не снимать
 - [Дифф PR берут от merge-base](pr-diff-base-is-the-merge-base.md) — `git diff origin/main <голова>` на отставшей ветке врёт про доки власти
 - [Низкий приоритет всё равно поднимают](low-priority-still-gets-raised.md) — кандидатом делает `waitingOnOf`, вычёркивает `--waiting-on "—"`
-- [Деревья ролей делят один склад refs](role-worktrees-share-one-ref-store.md) — чужой тег виден без `fetch`; годность тега мерится деревом и `version`, не именем
-- [Парк замораживает тот самый ход](parked-on-freezes-the-turn.md) — отменяет постановку, если снятие зависит от адресата; цена person-парка — в `notify.state`
-- [Дверь парка отказывает молчащему письму](park-door-refuses-silent-letters.md) — принимается только назвавшее РОВНО этот парк (`--verdict … --pr`, `run:N`, `--park-lifted`)
+- [Деревья ролей делят один склад refs](role-worktrees-share-one-ref-store.md) — чужой тег виден без `fetch`; годность мерится деревом и `version`
+- [Парк замораживает тот самый ход](parked-on-freezes-the-turn.md) — отменяет постановку, если снятие зависит от адресата
+- [Дверь парка отказывает молчащему письму](park-door-refuses-silent-letters.md) — принимается только назвавшее РОВНО этот парк (`--verdict … --pr`, `run:N`)
 - [Письмо без парка поднимает тред впустую](letter-without-a-park-reraises-the-thread.md) — голым кандидатом делает и письмо БЕЗ парка, и своё `--delivers`
 - [Лифт парка чист над почтой](park-lift-is-pure-over-the-mail.md) — `cli mail` парк НЕ фильтрует; контрольного чтения парка у роли нет
-- [Свежую ленту читают ДО подъёма роли](read-the-fresh-feed-before-raising-a-role.md) — замер мог снять другая сессия часом раньше; свежий `TMPDIR` убивает codex-роль
+- [Свежую ленту читают ДО подъёма роли](read-the-fresh-feed-before-raising-a-role.md) — замер мог снять другая сессия часом раньше
 - [Чтение ссылки не должно писать в дерево](reading-a-ref-must-not-write-the-tree.md) — `git show <ref>:<путь>`: `checkout <ref> -- .` готовит отказ запуска (R17)
 - [Вендорская песочница мерится даром](vendor-sandbox-measures-for-free.md) — `codex sandbox -- <команда>` гоняет под тем же confinement БЕЗ вызова модели
 - [Ссылка на письмо — автором и фактом](cite-letters-by-author-and-fact.md) — имён файлов читалка не даёт; `--tail` нумерует с `msg-001`, «письма нет» — артефакт хвоста
@@ -24,7 +24,7 @@
 - [Приёмочный прогон нужен тред, который ЖДЁТ роль](acceptance-run-needs-a-thread-that-waits.md) — на закрытом `handoff` ловится за секунды; годится открытый с `waiting-on`
 - [Сверяй ШАБЛОН грепа, а не его вывод](verify-the-grep-pattern-not-its-result.md) — чистый греп бывает чистым по узкому шаблону; свой ноль — контрольным совпадением
 - [Копия в `comms` кладётся ДО мёржа канона](comms-copy-before-canon-merge.md) — самосинки нет ни в одном воркфлоу, исполнитель копии — dev-core
-- [Гард 4 кончается на `workflows/**`](guard4-reach-ends-at-workflows.md) — `powerDocuments` не покрывает `.github/scripts/**` и `packages/**`: вынос тела снимает кнопку john
+- [Гард 4 кончается на `workflows/**`](guard4-reach-ends-at-workflows.md) — `powerDocuments` не покрывает `.github/scripts/**`: вынос тела снимает кнопку john
 - [Закрытие треда — третья дверь почты](closing-a-thread-is-a-third-door.md) — `thread status` у сессии есть; приёмка требует ВТОРОЙ проверки, флип — тоже запись
 - [Dispatch у Merge Notify ничего не пишет](merge-notify-dispatch-is-a-noop.md) — `if: pull_request.merged == true`: пропущенные письма о merge не переигрываются
 - [Норма едет в PROTOCOL.md, таблица остаётся](norms-go-to-protocol-tables-stay.md) — копия таблицы раздваивается на первом пополнении инвентаря
@@ -33,7 +33,7 @@
 - [Правка тела PR не убивает вердикт](pr-body-edit-keeps-the-verdict.md) — текстовую находку закрывают в той же ветке, сверив `headRefOid`; кодовую — нет
 - [Канал вердикта — свой у ревьюера](reviewer-verdict-channel-is-its-own.md) — вердикт и исход `checks` приезжают сами шагами `claude-review.yml`; метка — по `LABEL_CALL`
 - [Звонок парка несёт СТАРУЮ первую строку](park-bell-carries-the-old-first-line.md) — «донеси X до john» закрывается замером `notify.state`, а не вторым парком
-- [Стоячий адрес — это СЛАГ](standing-address-threads-076-077.md) — `--ensure-thread`: дверь берёт открытый приёмник или открывает следующий; закрытие нормально
+- [Стоячий адрес — это СЛАГ](standing-address-threads-076-077.md) — приёмник берётся «open and unparked»: и парк, и закрытие форкают адрес; третья форма — `--waiting-on "—"`
 - [Стык мерится на реальной ленте даром](seam-measured-on-real-feed-for-free.md) — фикстура покрывает функцию, путь и имена — нет
 - [Безголовый тред красит ВСЮ почту](headless-thread-reddens-all-mail.md) — тред без `_meta.md` роняет `Comms Derived`; чинится `thread status --repair --write`
 - [Номера тредов плоские](thread-ids-are-flat.md) — `NNN.M` дверь принимает, обходчик (`^\d{3}-`) не видит; голый номер в слаг не разрешается ничем
