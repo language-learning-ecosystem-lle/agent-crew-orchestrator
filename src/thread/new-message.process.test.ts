@@ -910,6 +910,44 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
   });
 
+  // THE SECOND FORM (thread 155, decision of john 2026-09-07): the park that outlived its answer.
+  it("writes the SECOND form of the ground — the thread a delivery is waited for in", () => {
+    const contest = contour();
+
+    const result = direct(
+      contest,
+      "curator",
+      "--parked-on",
+      "john",
+      "--park-ground",
+      "no-delivers-since:016-x",
+    );
+
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.parkGround).toBe("no-delivers-since:016-x");
+  });
+
+  it("refuses a ground naming a thread THIS MAIL does not have — a typo can never fall away", () => {
+    // The quietest bad outcome the field has: a misspelled slug makes a park that LOOKS checked
+    // and is not, and no reader of an append-only feed can ever repair it. The door can, because
+    // the writer is standing right here — and the refusal names the thread, not just the flag.
+    const contest = contour();
+
+    const result = direct(
+      contest,
+      "curator",
+      "--parked-on",
+      "john",
+      "--park-ground",
+      "no-delivers-since:016-typo",
+    );
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("names thread '016-typo'");
+    expect(result.out).toContain("can NEVER fall away");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
   it("a ground on a message that parks NOTHING is refused — it qualifies nothing", () => {
     const contest = contour();
 

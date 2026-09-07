@@ -454,6 +454,80 @@ describe("the tick names a park whose ground is gone, and lifts nothing (thread 
 });
 
 /**
+ * THE SECOND FORM — `no-delivers-since:<thread>` (thread 155, decision of john 2026-09-07). The
+ * live case it repairs is the first of the four measured: a park set at 03.09 17:41Z under
+ * decisions of john, ANSWERED THE SAME EVENING, standing 21 h 23 m over a ready PR that nobody
+ * could take while it stood.
+ *
+ * Only the seam can show the two halves that matter and that no unit reaches: that the tick asks
+ * the MAIL — the same scan the queue is built from — and that the window is the park's own stamp.
+ * The window is the half a unit cannot defend: a reading that ignored it would call EVERY named
+ * ground fallen away as soon as the named thread had ever carried a delivery, which is the shape
+ * of the `pairKey` defect of the first round — loudest exactly where the feature promised silence.
+ */
+describe("the tick asks the mail for the delivery a park is waiting for (thread 155)", () => {
+  const parked = (date: string): string =>
+    handoff({
+      from: "curator",
+      date,
+      parkedOn: "john",
+      parkGround: "no-delivers-since:110-adoption",
+    });
+
+  it("names the ground gone when a `delivers` letter landed in that thread AFTER the park", () => {
+    const repo = contour([
+      { id: "155-ground", message: parked("2026-07-25T10:00:00Z") },
+      {
+        id: "110-adoption",
+        message: answer({ from: "curator", date: "2026-07-25T11:00:00Z", delivers: "john" }),
+      },
+    ]);
+    enable(repo);
+
+    const tick = daemon(repo);
+
+    expect(tick.out).toContain("thread 155-ground: THE GROUND OF THE PARK HAS FALLEN AWAY");
+    expect(tick.out).toContain("thread 110-adoption HAS a letter carrying 'delivers:' since then");
+    // AND IT IS NOT A LIFT, on this very tick: the park still freezes its own thread, and the
+    // difference between a note and a door is exactly this assert.
+    expect(tick.out).toContain("candidate dev-core×155-ground skipped: the turn is parked");
+  });
+
+  it("is SILENT about a delivery that was already lying there when the park was declared", () => {
+    // The window is measured from the park (statement of work, §3.5). The same letter, one hour
+    // EARLIER, is not an answer to a question that had not been asked yet.
+    const repo = contour([
+      { id: "155-ground", message: parked("2026-07-25T10:00:00Z") },
+      {
+        id: "110-adoption",
+        message: answer({ from: "curator", date: "2026-07-25T09:00:00Z", delivers: "john" }),
+      },
+    ]);
+    enable(repo);
+
+    const tick = daemon(repo);
+
+    expect(tick.out).not.toContain("THE GROUND OF THE PARK HAS FALLEN AWAY");
+    expect(tick.out).toContain("candidate dev-core×155-ground skipped: the turn is parked");
+  });
+
+  it("is silent while that thread carries no delivery at all — the park is honest", () => {
+    const repo = contour([
+      { id: "155-ground", message: parked("2026-07-25T10:00:00Z") },
+      {
+        id: "110-adoption",
+        message: handoff({ from: "curator", date: "2026-07-25T11:00:00Z" }),
+      },
+    ]);
+    enable(repo);
+
+    const tick = daemon(repo);
+
+    expect(tick.out).not.toContain("THE GROUND OF THE PARK HAS FALLEN AWAY");
+  });
+});
+
+/**
  * D-4 (thread 023) — THE OPERATOR'S FRAME, through the command rather than the renderer.
  *
  * The unit tests own the words; what only a process can show is the WIRING in `cli.ts`:

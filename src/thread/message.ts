@@ -873,7 +873,7 @@ export const parseMessageFile = (raw: string): Message => {
     const value = raws.get("park-ground");
     if (value !== undefined && !PARK_GROUND.test(value)) {
       throw new MessageFormatError(
-        `'park-ground: ${value}' — expected the fact the park waits on, in a form the box can ask ('frozen:<role>×<thread>')`,
+        `'park-ground: ${value}' — expected the fact the park waits on, in a form the box can ask ('frozen:<role>×<thread>' or 'no-delivers-since:<thread>')`,
       );
     }
     return value;
