@@ -105,3 +105,4 @@
 - [`run list --limit N` отдаёт НОВЕЙШИЕ N](run-list-truncates-to-the-newest-n.md) — усечение молчит и врёт в сторону «ничего не было»: мерить посуточно
 - [Сухой прогон двери почты бесплатен](mail-door-dry-run-measures-for-free.md) — без `--write` дверь судит и молчит в ленту; контроль — числом писем
 - [Причина пропуска в системном письме — константа](system-letter-explains-its-own-gap-by-fixed-prose.md) — мерь файлом и веткой кода: `git show <тот sha>:<путь>`
+- [Перенос парка вперёд ПЕРЕОБЪЯВЛЯЕТ его](carrying-a-park-forward-redeclares-it.md) — `since`/`question`/`holder` новые, `park-ground` пропадает молча
