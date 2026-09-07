@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T11:37:01.254Z",
+  "writtenAt": "2026-09-07T11:37:24.272Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "073-notifiers-frozen-in-own-contour",
+      "state": "running",
+      "deadline": "2026-09-07T12:17:20Z"
+    },
     {
       "role": "dev-core",
       "thread": "153-untracked-file-freezes-selfheal",
