@@ -649,3 +649,114 @@ describe("new-thread refuses an id the mail cannot read (thread 086)", () => {
     expect(inOrigin(legal)).toContain("agent-comms/047-devops-role/_meta.md");
   });
 });
+
+/**
+ * THE NUMBER IS ASKED AGAIN AFTER THE FETCH (thread 159).
+ *
+ * The door on a taken number has stood since thread 029, and it did not stop four
+ * collisions — `048`, `055`, `144` (ten minutes apart) and `156` (inside one hour). The
+ * reason is not that the door is missing but that it was asked ONCE, against the directory
+ * names on the writer's own disk, and that disk is whatever the last fetch left there.
+ * Delivery fetches INSIDE the attempt, and the only check it repeated after that fetch was
+ * `existsSync(threadDir)` — the FULL id. A collision is by definition the same number under
+ * a DIFFERENT slug, so it is a different directory and that re-check waves it through.
+ *
+ * The case below is the live shape: two writers hold `159` at the same time, the other one
+ * pushes first, and ours has not fetched yet. The whole point is the LAST assertion — the
+ * feed carries exactly one `159`, and nothing of ours was written into it.
+ */
+describe("new-thread refuses a number taken while it was delivering (thread 159)", () => {
+  /** Push a thread into the bare origin from ANOTHER clone: the contour's checkout stays stale. */
+  const pushFromElsewhere = (contest: Contour, id: string): void => {
+    const other = mkdtempSync(join(tmpdir(), "agent-protocol-nt-other-"));
+    execFileSync("git", ["-C", other, "clone", "-q", contest.remote, "."]);
+    mkdirSync(join(other, "agent-comms", id, "messages"), { recursive: true });
+    writeFileSync(join(other, "agent-comms", id, "_meta.md"), "# somebody else got here first\n");
+    execFileSync("git", ["-C", other, "add", "."]);
+    execFileSync("git", [
+      "-C",
+      other,
+      "-c",
+      "user.name=t",
+      "-c",
+      "user.email=t@e",
+      "commit",
+      "-qm",
+      `docs: ${id}`,
+    ]);
+    execFileSync("git", ["-C", other, "push", "-q", "origin", "comms"]);
+  };
+
+  /** The same command as `open`, with the id typed by the case: `--id` is read by indexOf. */
+  const openId = (contest: Contour, id: string): { code: number; out: string } => {
+    try {
+      const out = execFileSync(
+        TSX,
+        [
+          CLI,
+          "new-thread",
+          "--repo",
+          contest.repo,
+          "--root",
+          contest.root,
+          "--ref",
+          "HEAD",
+          "--no-fetch",
+          "--id",
+          id,
+          "--title",
+          "A new conversation",
+          "--participants",
+          "dev-core,curator",
+          "--from",
+          "dev-core",
+          "--expects",
+          "answer",
+          "--waiting-on",
+          "curator",
+          "--worker",
+          "claude-code",
+          "--body-file",
+          contest.body,
+          "--write",
+        ],
+        { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo), IDENTITY) },
+      );
+      return { code: 0, out };
+    } catch (error) {
+      const failure = error as { status?: number; stdout?: string; stderr?: string };
+      return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+    }
+  };
+
+  it("the same number under another slug, pushed while we were not looking, is refused BY NAME", () => {
+    const contest = contour();
+    // The other writer's thread is in the FEED and not on our disk — the state the
+    // pre-flight cannot see and the fetch inside the delivery is about to reveal.
+    pushFromElsewhere(contest, "159-somebody-else-got-here-first");
+    expect(existsSync(join(contest.root, "159-somebody-else-got-here-first"))).toBe(false);
+
+    const result = openId(contest, "159-thread-number-has-no-door");
+
+    expect(result.code).toBe(2);
+    // The refusal NAMES the taker — that is what lets the writer pick the next free
+    // number without going and looking for the collision itself.
+    expect(result.out).toContain("159-somebody-else-got-here-first");
+    expect(result.out).toMatch(/already taken/);
+    // And it says WHICH of the two refusals this is: free at the start, taken by the end.
+    expect(result.out).toMatch(/while we were delivering/);
+    // Nothing of ours reached the feed, and the number still means one thing.
+    expect(inOrigin(contest)).not.toContain("159-thread-number-has-no-door");
+    expect(inOrigin(contest)).toContain("agent-comms/159-somebody-else-got-here-first/_meta.md");
+  });
+
+  it("a free number still goes through against the very same fresh feed", () => {
+    const contest = contour();
+    pushFromElsewhere(contest, "159-somebody-else-got-here-first");
+
+    const result = openId(contest, "160-a-free-number");
+
+    expect(result.code, result.out).toBe(0);
+    expect(inOrigin(contest)).toContain("agent-comms/160-a-free-number/_meta.md");
+  });
+});
