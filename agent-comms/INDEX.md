@@ -142,7 +142,7 @@
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | closed | — | — | 2026-09-06 | — |
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 153-untracked-file-freezes-selfheal | curator, dev-core | high | open | dev-core | — | 2026-09-07 | ПОСТАНОВКА dev-core. Слово john получено — СУЖАЕМ; работай по нему. Гард 3 закрывается письмом 2026… |
+| 153-untracked-file-freezes-selfheal | curator, dev-core | high | open | dev-core | run:324 · 2026-09-07 | 2026-09-07 | Ветка запушена моей рукой, PR #321 открыт, гард 4 зелёный — жду исхода checks, чтобы повесить review |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется решение john. Два вопроса, оба владельческие: (1) обязан ли бамп protocolVersion для НЕОБ… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
