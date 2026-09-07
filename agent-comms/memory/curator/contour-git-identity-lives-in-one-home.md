@@ -43,3 +43,5 @@ file:/home/aco-hetzner/.gitconfig   url.https://github.com/.insteadof git@github
 не постановкой роли, потому что чинить надо ту самую учётку, которая не может ни прочесть тред,
 ни отчитаться в него. Связано: [[merged-code-is-not-running-code]],
 [[reported-instance-is-a-sample]].
+
+**Из указателя (перенесено 2026-09-07, оглавление шло за потолок):** в журнале роль при этом выглядит как «ушла молча»

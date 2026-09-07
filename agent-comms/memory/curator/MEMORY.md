@@ -4,10 +4,10 @@
 - [Деревья ролей делят один склад refs](role-worktrees-share-one-ref-store.md) — чужой тег виден без `fetch`; годность тега мерится деревом и `version`, не именем
 - [Парк замораживает тот самый ход](parked-on-freezes-the-turn.md) — отменяет постановку, если снятие зависит от адресата; цена person-парка — в `notify.state`
 - [Дверь парка отказывает молчащему письму](park-door-refuses-silent-letters.md) — принимается только назвавшее РОВНО этот парк (`--verdict … --pr`, `run:N`, `--park-lifted`)
-- [Письмо без парка поднимает тред впустую](letter-without-a-park-reraises-the-thread.md) — голым кандидатом делает и письмо БЕЗ парка, и своё `--delivers`; форм person-парка ДВЕ
+- [Письмо без парка поднимает тред впустую](letter-without-a-park-reraises-the-thread.md) — голым кандидатом делает и письмо БЕЗ парка, и своё `--delivers`
 - [Лифт парка чист над почтой](park-lift-is-pure-over-the-mail.md) — `cli mail` парк НЕ фильтрует; контрольного чтения парка у роли нет
 - [Свежую ленту читают ДО подъёма роли](read-the-fresh-feed-before-raising-a-role.md) — замер мог снять другая сессия часом раньше; свежий `TMPDIR` убивает codex-роль
-- [Чтение ссылки не должно писать в дерево](reading-a-ref-must-not-write-the-tree.md) — `git show <ref>:<путь>`: `checkout <ref> -- .` оставляет `M` и готовит отказ запуска (R17)
+- [Чтение ссылки не должно писать в дерево](reading-a-ref-must-not-write-the-tree.md) — `git show <ref>:<путь>`: `checkout <ref> -- .` готовит отказ запуска (R17)
 - [Вендорская песочница мерится даром](vendor-sandbox-measures-for-free.md) — `codex sandbox -- <команда>` гоняет под тем же confinement БЕЗ вызова модели
 - [Ссылка на письмо — автором и фактом](cite-letters-by-author-and-fact.md) — имён файлов читалка не даёт; `--tail` нумерует с `msg-001`, «письма нет» — артефакт хвоста
 - [«Уезжает в тред X» — намерение, а не запись](handoff-to-another-thread-is-prose.md) — переезд проверяется чтением ленты адресата: прогон связан одним тредом
@@ -34,7 +34,7 @@
 - [Канал вердикта — свой у ревьюера](reviewer-verdict-channel-is-its-own.md) — вердикт и исход `checks` приезжают сами шагами `claude-review.yml`; метка — по `LABEL_CALL`
 - [Звонок парка несёт СТАРУЮ первую строку](park-bell-carries-the-old-first-line.md) — «донеси X до john» закрывается замером `notify.state`, а не вторым парком
 - [Стоячий адрес — это СЛАГ](standing-address-threads-076-077.md) — `--ensure-thread`: дверь берёт открытый приёмник или открывает следующий; закрытие нормально
-- [Стык мерится на реальной ленте даром](seam-measured-on-real-feed-for-free.md) — фикстура покрывает функцию, путь и имена — нет: `git show origin/main:` + `git archive origin/comms`
+- [Стык мерится на реальной ленте даром](seam-measured-on-real-feed-for-free.md) — фикстура покрывает функцию, путь и имена — нет
 - [Безголовый тред красит ВСЮ почту](headless-thread-reddens-all-mail.md) — тред без `_meta.md` роняет `Comms Derived`; чинится `thread status --repair --write`
 - [Номера тредов плоские](thread-ids-are-flat.md) — `NNN.M` дверь принимает, обходчик (`^\d{3}-`) не видит; голый номер в слаг не разрешается ничем
 - [Системный пользователь не читает чужой аккаунт](system-user-role-cannot-read-shared-account.md) — роль под `systemUser` умирает за 0 с; полка кредов АККАУНТНАЯ
@@ -86,7 +86,7 @@
 - [Скрипт из PR мерится до мёржа](pr-script-measured-before-merge.md) — `git show FETCH_HEAD:<путь>` + симлинк на `packages`; сверяются ДОЛИ, не объёмы
 - [Свой промпт — даровой оракул нормы поведения](own-prompt-is-the-free-oracle-for-role-norms.md) — норму хода несёт `runEndsNorm` в `launch.ts`, а не док
 - [Слово john не бывает письмом john](johns-word-is-never-a-letter-by-john.md) — поиск по автору даёт ноль ВСЕГДА; гард 3 закрывается письмом curator с источником
-- [git-личность контура живёт в ОДНОМ доме](contour-git-identity-lives-in-one-home.md) — `insteadOf` в чужом `~/.gitconfig`: роль теряет и ЧТЕНИЕ почты, в журнале — «ушла молча»
+- [git-личность контура живёт в ОДНОМ доме](contour-git-identity-lives-in-one-home.md) — `insteadOf` в чужом `~/.gitconfig`: роль теряет и ЧТЕНИЕ почты
 - [Костыли своей руки прячут дефект](own-hand-crutches-hide-the-defect.md) — воспроизводимость гоняют ДОКУМЕНТИРОВАННОЙ строкой из `.worktrees/<role>`
 - [Подагент наследует `deny`, а не `allowedTools`](subagent-inherits-deny-not-allowlist.md) — зону держит `permissions.deny` из argv, и подагент наследует его точно
 - [Правка абсолютным путём бьёт по главному чекауту](absolute-path-edits-hit-the-main-checkout.md) — `/…/agent-crew-orchestrator/<файл>` ≠ `.worktrees/<role>/<файл>`
@@ -100,7 +100,7 @@
 - [Замёрзшая пара бывает уже сделана](frozen-pair-may-be-already-done.md) — предмет мог исполнить мир: мерить пункты приёмки чтением ДО письма john
 - [Приёмка-свойство среды бесплатна в любом прогоне](session-property-acceptance-is-free-in-any-run.md) — `TMPDIR`/код чекаута снимает первый подъём
 - [Журнал ящика роли не читается](field-state-is-read-from-the-daemon-log-file.md) — полевое состояние — `.orchestrator/daemon.log(+.1)`, ноль — двумя контролями
-- [Отчёт под чужим uid мерится структурой](foreign-uid-report-verified-by-structure.md) — отказ ОС неизбежен по `stat`/`/run/user/<uid>`; «без `--write`» — по `capabilities.log`
+- [Отчёт под чужим uid мерится структурой](foreign-uid-report-verified-by-structure.md) — отказ ОС неизбежен по `stat`/`/run/user/<uid>`
 - [Звонок класса дайджеста — в хвосте курьерской строки](digest-bell-is-read-from-the-courier-tail.md) — один звонок на 22-часовой эпизод это норма
 - [`run list --limit N` отдаёт НОВЕЙШИЕ N](run-list-truncates-to-the-newest-n.md) — усечение молчит и врёт в сторону «ничего не было»: мерить посуточно
 - [Сухой прогон двери почты бесплатен](mail-door-dry-run-measures-for-free.md) — без `--write` дверь судит и молчит в ленту; контроль — числом писем
