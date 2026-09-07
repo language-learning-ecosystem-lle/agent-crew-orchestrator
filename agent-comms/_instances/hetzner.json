@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T19:39:59.689Z",
+  "writtenAt": "2026-09-07T19:40:03.785Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "160-merge-gate-falls-whole-on-a-forbidden-node",
-      "state": "draining",
-      "deadline": "2026-09-07T20:12:32Z"
-    },
     {
       "role": "dev-core",
       "thread": "169-tag-fitness-is-measured-by-tree-not-ancestry",
