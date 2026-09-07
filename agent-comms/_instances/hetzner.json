@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T19:52:07.887Z",
+  "writtenAt": "2026-09-07T19:54:11.343Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "166-priority-tier-blind-to-a-refused-rollup",
-      "state": "draining",
-      "deadline": "2026-09-07T20:21:57Z"
-    }
-  ]
+  "leases": []
 }
