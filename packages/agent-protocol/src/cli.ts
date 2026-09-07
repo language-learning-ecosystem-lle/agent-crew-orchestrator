@@ -118,7 +118,7 @@ import {
   describePairNote,
   executorCandidatesOf,
 } from "./merge/pair-note.js";
-import { judgePrDescription, PR_FIELDS_FORM } from "./merge/pr-open.js";
+import { judgeBodyLocation, judgePrDescription, PR_FIELDS_FORM } from "./merge/pr-open.js";
 import {
   type AccountAlarm,
   type AuthAlarm,
@@ -9413,9 +9413,11 @@ const commandPath = (exec: string): string | undefined => {
 };
 
 /** `repoOf`/`homeOf` for a path that may not be in a repository at all — see decision 7. */
-const checkoutOf = (at: string): string | undefined => {
+const checkoutOf = (at: string, env?: NodeJS.ProcessEnv): string | undefined => {
   try {
-    return execFileSyncByExit("git", ["-C", at, "rev-parse", "--show-toplevel"]).trim();
+    return execFileSyncByExit("git", ["-C", at, "rev-parse", "--show-toplevel"], {
+      ...(env === undefined ? {} : { env }),
+    }).trim();
   } catch {
     return undefined;
   }
@@ -15562,6 +15564,31 @@ const prOpen = (argv: readonly string[]): void => {
   const title = required(argv, "--title");
   const bodyPath = required(argv, "--body-file");
   const body = readFile(bodyPath, "body of the pull request");
+  // WHERE THE FILE LIES IS ASKED BEFORE WHAT IS IN IT (thread 157), and the order is a
+  // decision, not an accident: a body inside a checkout has to be MOVED whatever it says,
+  // so judging its two header lines first would spend the caller's next step on the wrong
+  // repair and leave the dirt — the fault that freezes the box — lying there for a second
+  // round trip. The reading of the body above it is not the content door: it is what turns
+  // an unreadable path into a refusal about the path, which this door then never sees.
+  const where = judgeBodyLocation({
+    path: bodyPath,
+    checkoutOf: (dir) => checkoutOf(dir, gitEnvOutsideHook()),
+    // `check-ignore` exits 0 when the path IS ignored, 1 when it is not, and >1 on an
+    // error — and only the first is an answer. Anything else is read as "not ignored",
+    // which is the side that refuses: a door that fell silent because git had trouble
+    // would be a door that stops guarding without saying so.
+    isIgnored: (dir, path) => {
+      try {
+        execFileSyncByExit("git", ["-C", dir, "check-ignore", "-q", "--", path], {
+          env: gitEnvOutsideHook(),
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  });
+  if (!where.ok) fail(`pr open — ${where.refusal}`, 2);
   const registry = registryFrom(argv, undefined);
   const repo = repoArg(argv, process.cwd());
 

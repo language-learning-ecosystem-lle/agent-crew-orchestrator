@@ -29,6 +29,8 @@
  * door accepts, every workflow `grep` must read).
  */
 
+import { dirname, resolve } from "node:path";
+
 import { roleOfDescription, threadOfDescription } from "./gate.js";
 
 /** The form of the two lines, as one sentence — repeated by every refusal below. */
@@ -89,4 +91,90 @@ export const judgePrDescription = (input: {
 
   if (refusals.length > 0) return { ok: false, refusals };
   return { ok: true, thread: thread as string, role: role as string };
+};
+
+/** Where the body file lies — the second door of `pr open`, and it judges no content. */
+export type BodyLocationVerdict =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly refusal: string };
+
+/**
+ * THE BODY FILE LEFT INSIDE A CHECKOUT — the fault that freezes a whole box (thread
+ * `157-pr-open-body-inside-checkout`, john's word of 2026-09-07: «ДВЕРЬ ОТДЕЛЬНЫМ
+ * ПРЕДМЕТОМ»).
+ *
+ * WHAT IT COSTS, measured and not supposed. `.pr278-body.md` — the body of pull request
+ * #278, written by a hand into the SERVED root on 2026-09-05 and left there. The box's
+ * self-restart pulls with `git pull --ff-only`, that refuses over an untracked file, and
+ * the circuit stopped updating: 13 commits behind and ≥23 hours on the first episode, a
+ * second one still running two days later, and a hand of john's (`rm -f`) is what ended
+ * it. The refusal of the daemon named the file verbatim and no door had stopped it being
+ * written there — because the command that PRODUCES that artefact is this one.
+ *
+ * WHY THE CLASS WAS ALREADY KNOWN AND ONLY HALF-CLOSED. `deliver.ts` refuses over a dirty
+ * mail checkout with the same sentence in it — «a body file left inside the checkout
+ * counts, write it outside». That door sees ONE checkout of the three (the mail's own):
+ * a body dropped into the role's worktree or into the served root is invisible to it, and
+ * the served root is read by exactly one reader, the self-restart, whose reading is the
+ * standstill above.
+ *
+ * WHAT IT JUDGES AND WHAT IT DOES NOT. It asks git where the file's DIRECTORY lives and
+ * refuses if git answers with a checkout — any checkout, the served root, a role's linked
+ * worktree, the mail's, or one nobody in this protocol knows about. The edges are named
+ * rather than left to be discovered:
+ *
+ * - **the file does not exist** — this door is never reached: `pr open` reads the body
+ *   first, and a path that cannot be read is refused as unreadable, by its own name;
+ * - **a directory inside no repository at all** — `checkoutOf` answers nothing and the
+ *   door stands aside. This is the normal path, and `mktemp -d -p /tmp` is on it;
+ * - **a nested checkout** — `--show-toplevel` answers the INNERMOST one, and that is the
+ *   right answer here: dirt in a nested checkout is dirt in a checkout;
+ * - **symlinks** — not resolved by this function and not needed to be: `git -C <dir>`
+ *   makes that directory its cwd, and git resolves cwd itself, so a path that reaches
+ *   into a checkout through a link is answered with the checkout it really lands in;
+ * - **`--body-file -`** is not a form this command has: the body is read from a file by
+ *   name, and `-` would be looked for as a file literally called `-`;
+ * - **`TMPDIR` inside the checkout** is the trap this refusal must not send the caller
+ *   into — a session whose `TMPDIR` is a directory of the checkout gets a `mktemp -d`
+ *   INSIDE the repository. Hence `-p /tmp` in the sentence, and not a bare `mktemp -d`.
+ *   Measured in a raised session on 2026-09-07: `mktemp -d` → `/tmp/aco-<id>/tmp.XXXX`,
+ *   which is a symlink into `<served root>/.orchestrator/sessions/<run>.tmp/`, and git
+ *   answers `--show-toplevel` with the served root itself;
+ * - **and a path git IGNORES is not refused** — that measurement is the reason. The fault
+ *   is not «a file in a tree», it is «a file `git pull --ff-only` refuses to write over»,
+ *   and git does not refuse over an ignored one. The session's own temp directory lives
+ *   under `.orchestrator/`, which the served repository ignores as MACHINE state of the
+ *   contour (john's decision in thread 153, §2) — so every role's habitual `mktemp -d`
+ *   keeps working and this door stays silent on it. What it is NOT is a licence to ignore
+ *   manual dirt: adding an entry to `.gitignore` for a body file is the repair john
+ *   refused, and this door reads the ignores that already exist rather than inviting new
+ *   ones. A role's linked worktree is the case that shows the difference — `.worktrees/`
+ *   is ignored by the SERVED root, but inside the worktree, which is the innermost
+ *   checkout and the one asked, nothing ignores it, so a body left there is refused;
+ *
+ * AND WHAT IT IS NOT — the same honesty `judgePrDescription` owes: it catches an honest
+ * mistake and is walked past by typing `gh pr create` by hand, and it cannot see a file
+ * put into a checkout AFTER it has answered. It is not a guarantee that no body file ever
+ * lands in a tree; it is the refusal at the one place this package produces them.
+ */
+export const judgeBodyLocation = (input: {
+  readonly path: string;
+  /** `git -C <dir> rev-parse --show-toplevel`, or nothing when that is not a checkout. */
+  readonly checkoutOf: (dir: string) => string | undefined;
+  /** `git -C <dir> check-ignore` on the file — asked ONLY when it is inside a checkout. */
+  readonly isIgnored: (dir: string, path: string) => boolean;
+}): BodyLocationVerdict => {
+  const dir = dirname(resolve(input.path));
+  const checkout = input.checkoutOf(dir);
+  if (checkout === undefined || checkout === "") return { ok: true };
+  if (input.isIgnored(dir, resolve(input.path))) return { ok: true };
+  return {
+    ok: false,
+    refusal:
+      `the body file '${input.path}' lies inside the git checkout '${checkout}' — write it OUTSIDE any checkout, ` +
+      "in a directory of its own: `mktemp -d -p /tmp` (with `-p /tmp` on purpose — a session's own `TMPDIR` can itself be inside the checkout). " +
+      "A body file left in a tree is untracked dirt that nothing ignores, and the box's self-restart runs `git pull --ff-only`, which refuses over it: " +
+      "the circuit then stops updating until a hand removes the file — 13 commits and ≥23 hours the first time this was measured (thread 153). " +
+      "Nothing was created: move the file and run this again",
+  };
 };

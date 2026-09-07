@@ -18,6 +18,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -109,8 +110,24 @@ const run = (
   }
 };
 
-const withBody = (repo: string, body: string): string => {
-  const path = join(repo, "body.md");
+/**
+ * A BODY FILE WHERE A BODY FILE BELONGS — outside every checkout (thread 157).
+ *
+ * It used to be written into the fixture repository itself, which is exactly the fault the
+ * second door now refuses: these tests were, quietly, the shape of the mistake. The base is
+ * the suite's own neutral temp (`testing/tmp-base.ts` guarantees it is inside no repository),
+ * so this is also the live proof of the passing path — every green case below now runs the
+ * door for real.
+ */
+const withBody = (_repo: string, body: string): string => {
+  const path = join(mkdtempSync(join(tmpdir(), "agent-protocol-pr-body-")), "body.md");
+  writeFileSync(path, body, "utf8");
+  return path;
+};
+
+/** The same body, written INSIDE the checkout — the artefact `.pr278-body.md` was. */
+const bodyInside = (repo: string, body: string): string => {
+  const path = join(repo, ".pr-body.md");
   writeFileSync(path, body, "utf8");
   return path;
 };
@@ -225,5 +242,145 @@ describe("pr open — the door in front of `gh pr create`", () => {
     expect(result.code).toBe(2);
     expect(result.out).toContain("--reviewer");
     expect(gh.calls()).toEqual([]);
+  });
+});
+
+/**
+ * THE SECOND DOOR, WIRED (thread `157-pr-open-body-inside-checkout`). The unit test proves
+ * the verdict against an injected reader; what is proved here is that the real command asks
+ * REAL git, refuses before `gh`, and that the ORDER of the two doors is the declared one.
+ */
+describe("pr open — the body file that lies inside a checkout", () => {
+  it("refuses a body written into the checkout and DOES NOT call gh", () => {
+    const repo = repoWithConfig();
+    const gh = recordingGh(repo);
+    const path = bodyInside(repo, GOOD);
+    const result = run(repo, gh.bin, [
+      "--title",
+      "feat: something",
+      "--body-file",
+      path,
+      "--write",
+    ]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain(path);
+    expect(result.out).toContain("lies inside the git checkout");
+    // Executable, not a riddle: the refusal says where to put it instead.
+    expect(result.out).toContain("mktemp -d -p /tmp");
+    expect(gh.calls()).toEqual([]);
+  });
+
+  it("refuses even without --write — the file is already dirt by the time it is asked", () => {
+    const repo = repoWithConfig();
+    const gh = recordingGh(repo);
+    const result = run(repo, gh.bin, [
+      "--title",
+      "feat: something",
+      "--body-file",
+      bodyInside(repo, GOOD),
+    ]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("lies inside the git checkout");
+    expect(result.out).not.toContain("nothing created (no --write)");
+  });
+
+  it("puts WHERE before WHAT: a bad description inside a checkout is refused for the place", () => {
+    const repo = repoWithConfig();
+    const gh = recordingGh(repo);
+    const result = run(repo, gh.bin, [
+      "--title",
+      "feat: something",
+      "--body-file",
+      // No `role:` line — the content door would have plenty to say about this body.
+      bodyInside(repo, "thread: 157-pr-open-body-inside-checkout\n\nprose\n"),
+      "--write",
+    ]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("lies inside the git checkout");
+    // And the content door is silent: the file has to be moved whatever it says, so the
+    // caller is told one thing to do and not two (the order is a decision, thread 157).
+    expect(result.out).not.toContain("names no role");
+    expect(gh.calls()).toEqual([]);
+  });
+
+  it("refuses by the INNERMOST checkout when one is nested inside another", () => {
+    const repo = repoWithConfig();
+    const gh = recordingGh(repo);
+    const inner = join(repo, "vendor", "inner");
+    mkdirSync(inner, { recursive: true });
+    git(inner, "init", "-q", "-b", "main");
+    const path = join(inner, "body.md");
+    writeFileSync(path, GOOD, "utf8");
+
+    const result = run(repo, gh.bin, ["--title", "t", "--body-file", path, "--write"]);
+
+    expect(result.code).toBe(2);
+    // What git answers for that directory, asked of git and not restated: the innermost.
+    expect(result.out).toContain(git(inner, "rev-parse", "--show-toplevel").trim());
+    expect(gh.calls()).toEqual([]);
+  });
+
+  it("follows a symlink that reaches INTO a checkout — git resolves the cwd itself", () => {
+    const repo = repoWithConfig();
+    const gh = recordingGh(repo);
+    const inside = join(repo, "bodies");
+    mkdirSync(inside, { recursive: true });
+    writeFileSync(join(inside, "body.md"), GOOD, "utf8");
+    // The path as typed is outside every checkout; the bytes land inside one.
+    const outside = mkdtempSync(join(tmpdir(), "agent-protocol-pr-link-"));
+    const link = join(outside, "bodies");
+    symlinkSync(inside, link);
+
+    const result = run(repo, gh.bin, [
+      "--title",
+      "t",
+      "--body-file",
+      join(link, "body.md"),
+      "--write",
+    ]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("lies inside the git checkout");
+    expect(gh.calls()).toEqual([]);
+  });
+
+  it("names an unreadable path as unreadable — this door is never reached for one", () => {
+    const repo = repoWithConfig();
+    const gh = recordingGh(repo);
+    const missing = join(repo, "no-such-body.md");
+    const result = run(repo, gh.bin, ["--title", "t", "--body-file", missing, "--write"]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("could not read the body of the pull request");
+    expect(result.out).not.toContain("lies inside the git checkout");
+    expect(gh.calls()).toEqual([]);
+  });
+  it("passes a body in a directory the checkout IGNORES — the session's own temp", () => {
+    const repo = repoWithConfig();
+    const gh = recordingGh(repo);
+    writeFileSync(join(repo, ".gitignore"), ".orchestrator/\n", "utf8");
+    git(repo, "add", "-A");
+    git(repo, "commit", "-qm", "ignore the machine state");
+    const dir = join(repo, ".orchestrator", "sessions", "run.tmp");
+    mkdirSync(dir, { recursive: true });
+    const path = join(dir, "body.md");
+    writeFileSync(path, GOOD, "utf8");
+
+    const result = run(repo, gh.bin, [
+      "--title",
+      "feat: something",
+      "--body-file",
+      path,
+      "--write",
+    ]);
+
+    // `git pull --ff-only` writes over an ignored file without a word, so this is not the
+    // fault the door is about — and it is where a raised session's `mktemp -d` lands.
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("lies inside the git checkout");
+    expect(gh.calls().length).toBe(1);
   });
 });

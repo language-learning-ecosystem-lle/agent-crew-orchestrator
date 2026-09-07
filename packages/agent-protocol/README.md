@@ -3324,8 +3324,38 @@ absence cost a turn that was simply never handed on — silently.
 - **the repository is resolved the common way**, so the contour's ground guard (thread 062)
   is asked of this command like of every other.
 
+**And the second door: WHERE the body file lies** (thread `157-pr-open-body-inside-checkout`,
+john's word of 2026-09-07). A body file left inside a git checkout is untracked dirt, and the
+box's self-restart pulls with `git pull --ff-only`, which refuses over it — the circuit then
+stops updating until a hand removes the file. Measured: `.pr278-body.md`, the body of pull
+request #278 left in the served root on 2026-09-05, cost **13 commits behind and ≥23 hours** on
+its first episode and a second one two days later. So `pr open` refuses it:
+
+```
+agent-protocol: pr open — the body file '/home/x/aco/.pr-body.md' lies inside the git checkout
+'/home/x/aco' — write it OUTSIDE any checkout, in a directory of its own: `mktemp -d -p /tmp` …
+```
+
+- **the question is asked BEFORE the description is judged**, and the order is a decision, not
+  an accident: a body inside a checkout has to be moved whatever it says, so naming its header
+  fields first would spend the caller's next step on the wrong repair (locked by a test);
+- **`-p /tmp` is in the sentence on purpose.** A raised session's `TMPDIR` points INSIDE the
+  checkout (`orchestrator/run-tmp.ts`), so a bare `mktemp -d` lands there — measured
+  2026-09-07: `mktemp -d` → `/tmp/aco-<id>/tmp.XXXX` → `<served root>/.orchestrator/sessions/…`;
+- **a path git IGNORES is not refused**, because `git pull --ff-only` does not refuse over one.
+  That is what keeps the session's own temp directory (`.orchestrator/`, machine state of the
+  contour) working. It is not a licence to ignore manual dirt: the door reads the ignores that
+  already exist, and adding a `.gitignore` entry for a body file is the repair john refused in
+  thread 153;
+- **the checkout asked is the INNERMOST one** git names for the file's directory, and symlinks
+  need no handling: `git -C <dir>` makes that directory its cwd and git resolves cwd itself, so
+  a path reaching into a checkout through a link is answered with the checkout it lands in;
+- **an unreadable path is refused as unreadable** — the body is read first, so this door never
+  speaks about a file that does not exist.
+
 **What this door is not.** It catches an honest mistake and is bypassed by not using it — a
-hand-typed `gh pr create` walks past it and always will. The load-bearing half is guard 3 of
+hand-typed `gh pr create` walks past it and always will; nor can it see a file put into a tree
+after it has answered. The load-bearing half is guard 3 of
 [`merge-gate`](#merge-gate--the-guards-of-a-merge-that-are-facts-thread-026), which refuses
 the merge of a description missing either field; this half costs no runner minutes and answers
 before anything has been created.
