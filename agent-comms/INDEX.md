@@ -158,6 +158,6 @@
 | 164-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется решение john — вопрос первой строкой: отчёт демона о самоперезапуске донесён, но ОДНА ЕГО… |
 | 165-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | john, к сведению (вопроса нет, нужен ack): ящик сам вылечил дрейф кода и поднялся на новом — от mer… |
 | 166-priority-tier-blind-to-a-refused-rollup | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
-| 167-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-07 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
-| 168-drain-line-names-a-session-twice | curator, dev-core | normal | open | curator | run:334 · 2026-09-07 | 2026-09-07 | Метка review повешена на ту же голову 8d8efab9, круг идёт — ход ваш |
-| 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | open | curator | run:335 · 2026-09-07 | 2026-09-07 | Метка review повешена на зелёную голову — круг поднят, ход твой |
+| 167-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-07 | Третий отчёт на стоячий адрес сошёлся весь; адрес доставил ВТОРОЙ раз подряд. Попутно замерена цена… |
+| 168-drain-line-names-a-session-twice | curator, dev-core | normal | open | curator | — | 2026-09-07 | verdict: approve |
+| 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | open | curator | — | 2026-09-07 | verdict: approve |
