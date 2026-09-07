@@ -48,7 +48,7 @@
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
-| 047-devops-role | curator · dev-core · john | high | open | curator | — | 2026-09-07 | Контур ПЕРЕСТАЛ поднимать пару devops×047-devops-role — потолок попыток исчерпан |
+| 047-devops-role | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 048-box-privileges-today | curator, john | normal | closed | — | — | 2026-09-03 | — |
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
