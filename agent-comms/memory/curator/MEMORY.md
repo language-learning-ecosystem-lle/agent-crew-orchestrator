@@ -101,3 +101,4 @@
 - [Приёмка-свойство среды бесплатна в любом прогоне](session-property-acceptance-is-free-in-any-run.md) — `TMPDIR`/код чекаута снимает первый подъём, роли не ставится
 - [Журнал ящика роли не читается](field-state-is-read-from-the-daemon-log-file.md) — полевое состояние ACO мерится `.orchestrator/daemon.log(+.1)` (~сутки), эпохи размечены, ноль — двумя контролями
 - [Отчёт под чужим uid мерится структурой](foreign-uid-report-verified-by-structure.md) — отказ ОС неизбежен по `stat`/`/run/user/<uid>`/`sudoers.d`, а «без `--write`» доказывает НЕприбавившийся `capabilities.log`
+- [Звонок класса дайджеста — в хвосте курьерской строки](digest-bell-is-read-from-the-courier-tail.md) — один звонок на 22-часовой эпизод это норма: свежесть по `since`
