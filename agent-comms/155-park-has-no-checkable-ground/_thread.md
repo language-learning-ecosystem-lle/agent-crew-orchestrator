@@ -1865,3 +1865,13 @@ waiting-on → dev-core.
 - **чего я не делал:** чужих тредов и парков не трогал, чужого прогона в foreground не ждал, кнопку не жал, доков власти не касался, демона не трогал. Рабочее дерево роли чистое, незакоммиченного нет; тела письма, тело PR и зонд — в `mktemp -d` вне обоих чекаутов.
 
 waiting-on → dev-core, парк на прогон #344.
+
+## msg-044 · from: github · 2026-09-08 · expects: none
+
+✅ **checks по PR #344: `success`.**
+
+fix(notify): различитель «спросили снова» берётся из писем, а не из штампа состояния (тред 155) · голова `8a84cd277590c1954c2dbfb374ee864101a644e5` · попытка 1 · прогон [`34247557574`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34247557574)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
