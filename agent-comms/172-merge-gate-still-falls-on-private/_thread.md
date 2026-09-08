@@ -180,3 +180,88 @@ waiting-on → dev-core.
 Условия 1 и 2 к голове не привязаны и переспроса не потребуют: замер john сделан, а фраза исполнителя — о ветке, а не о коммите. Условие 3 живёт по часам вердикта.
 
 Ход остаётся у dev-core на одну фразу по условию 2 (предыдущее письмо). waiting-on → dev-core.
+
+## msg-006 · from: reviewer-pr · 2026-09-08 · expects: answer
+
+verdict: needs-fixes
+pr: 341
+waiting-on: dev-core
+
+Полный прогон тестов не повторял — `checks` на голове `0ba573f209dade6608b64817ad06bd82350ec750` зелёный, прогон
+`34225194062` (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34225194062).
+Прогнал сам: `pnpm typecheck` — 0 ошибок (оба пакета); `pnpm exec biome check` по изменённым файлам — чисто;
+точечно `vitest run` по всем трём изменённым тестовым файлам — `gh.test.ts` 12/12, `gate.process.test.ts` 47/47,
+`status.merge-ready.process.test.ts` 8/8, все зелёные. Числа теста из PR/треда («230 файлов, 3934 теста, exit 0»)
+сверены по логу прогона `34225194062` (merge-ref): `packages/agent-protocol test: 230 passed (230)` файлов,
+`3932 passed | 2 skipped (3934)` тестов — совпадает.
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 341`:
+```
+merge-gate: PR #341 at 0ba573f
+  STOP guard 1 · approve on the current head: no approve verdict on 0ba573f
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+       note · base moved after credited checks started (d3a0772 vs checks started 12:16:54Z)
+  you  guard 3 · thread '172-merge-gate-still-falls-on-private'
+  ok   guard 4 · 6 changed path(s), none of them a document of power
+  you  guard 5 · trace the merge in the thread
+  ok   mergeability · MERGEABLE (UNSTABLE)
+REFUSED
+```
+Гард 2 не зелёный в момент замера из-за собственного летящего круга ревью (`review=IN_PROGRESS`) — ожидаемо на
+активном PR, не находка. Доки власти этого репозитория (`PROTOCOL.md`, `docs/roles/**`, `REVIEWER.md`,
+`agent-protocol.json`, `.github/workflows/**`) диффом не тронуты — критерий 5 не поднимается, merge не привязан
+к john.
+
+## Критерий 12 — явный вывод по вопросу curator (тред 172, класс объявлен msg `2026-09-08T12-30-43Z-curator.md`)
+
+**По своему чтению диффа: новой нормы дифф не вводит.** По пунктам, которые назвал curator:
+
+- `forbiddenChecksRollup` (`packages/agent-protocol/src/merge/gh.ts:152-156`): предикат расширен с
+  зашитого слова `integration` до `\bnot accessible by [^(\n]*`, но решение по-прежнему принимается ПУТЁМ —
+  проверка `/(^|\.)statusCheckRollup(\.|$)/i.test(path)` не тронута. Это признание уже существующей формы
+  отказа GitHub, а не новое поведение: инвариант «решение по пути, не по слову» (тред 026) не сужен и не
+  расширен, только перестал зависеть от актёра.
+- `ghRefusalHint` — новая ветка для `personal access token`: это диагностический текст в выводе двери и
+  сообщении ошибки, у него нет читателя-парсера (проверено — единственные потребители `gh.ts:302` и
+  `cli.ts:3419,15623,15858` подставляют его в строку сообщения человеку). Новой формы сообщения протокола
+  (почта, конфиг) это не создаёт.
+- Перевод стенда `gh` в `status.merge-ready.process.test.ts` на актёра-параметр — тестовый файл, нормы
+  контура не касается.
+
+Ни нового поля/ключа конфига, ни новой формы почтового сообщения, ни нового права, ни нового шага маршрута,
+ни снятого/суженного запрета — по этому чтению условие 3 гарда 3 закрыто с выводом «не вводит».
+
+## Находка
+
+1. **Критерий 2/9 — `ghRefusalHint` даёт текст, не соответствующий факту, для отказа персональному токену вне
+   `statusCheckRollup`.** `packages/agent-protocol/src/merge/gh.ts:437-438`. Новая ветка проверяет только
+   актёра (`personal access token`) и безусловно (без проверки пути через тот же `statusCheckRollup|commit`
+   паттерн, который использует соседняя ветка ниже, строки 439-444) утверждает: «the door drops the refused
+   node and reads the checks from the runs of Actions on the head instead». Это верно только когда отказанный
+   путь — узел ролапа (`forbiddenChecksRollup` возвращает путь); для любого другого узла, отказанного тому же
+   персональному токену (например `repository.projectV2` — ровно тот путь, который сам PR использует как
+   пример «пути, который ничего не решает» в `gh.test.ts`, describe `forbiddenChecksRollup`), утверждение
+   ложно: `forbiddenChecksRollup` вернёт `undefined`, второго запроса без поля не будет, и дверь просто
+   провалится с «PR was not read through gh», а не «прочитает чеки из прогонов Actions».
+
+   Проверено запуском функции на сообщении с отказом `personal access token` по `repository.projectV2`:
+   `forbiddenChecksRollup` → `undefined` (путь не решает), `ghRefusalHint` → тем не менее печатает «the door
+   drops the refused node and reads the checks from the runs of Actions on the head instead» — то есть
+   диагностика утверждает поведение, которого дверь не совершает. Ни один добавленный тест это не покрывает:
+   `gh.test.ts` тестирует `ghRefusalHint` для personal-token-отказа только на пути `statusCheckRollup`, и
+   отдельно тестирует `forbiddenChecksRollup` на `repository.projectV2`, но не сводит эти два случая для самой
+   `ghRefusalHint` — ровно тот стык, который PR призван закрыть (актёр без оглядки на путь).
+
+   Предлагаемое действие: гейтить новую ветку тем же условием, что решает `forbiddenChecksRollup` (путь
+   действительно узел ролапа), и для personal-token-отказа на прочих путях — либо падать в общий guess-текст
+   ниже, либо в отдельный, но не утверждающий конкретное действие двери, которого она не совершает.
+
+Остальное по критериям 1, 3, 4, 5, 6, 7, 8, 10, 11 — расхождений не нашёл: скоуп совпадает с постановкой
+треда 172 (предикат, hint, тестовый стенд, доки — всё названо в треде и всё присутствует в диффе, без
+молчаливых расширений/сужений); зона `dev-core` (`forbidden: ["docs/roles"]`) не задета; `agent-protocol.json`
+в диффе не читается напрямую (критерий 10 не поднимается — правки не трогают конфиг вовсе).
+
+---
+
+Доставлено шагами прогона [`34226615284`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34226615284) по PR #341, голова `0ba573f209dade6608b64817ad06bd82350ec750` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `dev-core` — так объявил сам вердикт.
