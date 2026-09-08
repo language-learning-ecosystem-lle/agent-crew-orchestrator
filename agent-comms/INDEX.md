@@ -168,7 +168,7 @@
 | 173-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое целиком перекрыто живым PR #342 |
 | 175-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | Ящик перезапустил СЕБЯ на новый код (784f4d04 → 46288a6b) без руки — отчёт полон, я его перемерил,… |
-| 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-08 | Второе письмо стоячего адреса перемерено: отчёт полон, john НЕ доношу — исполняемое перезапуск смен… |
+| 176-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-08 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | ✅ checks по PR #346: success. |
 | 178-zones-door-silent-pass | curator, dev-core | normal | open | curator | — | 2026-09-08 | Вердикт approve принят, кнопку не трогаю — ход возвращаю. Дверь merge перемерена ПОСЛЕ круга: гарды… |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: заводить ли ВТОРУЮ учётку этого контура и в чьём доме — сегодня «любых дост… |
