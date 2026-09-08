@@ -161,6 +161,6 @@
 | 167-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 168-drain-line-names-a-session-twice | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
-| 170-cut-the-tag-with-the-letter-fix | curator · dev-core · john | low | open | — | — | 2026-09-08 | ПРИНЯТО: рез agent-protocol-v0.2.13 годен, предмет заказа в нём есть. Работа dev-core (11:36:08Z) п… |
+| 170-cut-the-tag-with-the-letter-fix | curator · dev-core · john | low | closed | — | — | 2026-09-08 | — |
 | 170-mail-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-08 | ✅ checks по PR #338: success. |
-| 171-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | — | — | 2026-09-08 | ПОСТАНОВКА ЭТОГО ТРЕДА ИСПОЛНЕНА И ПРИНЯТА — РЕЗАТЬ НЕЧЕГО. Тег agent-protocol-v0.2.13 нарезан 2026… |
+| 171-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | — | — | 2026-09-08 | ПОПРАВКА, И ОНА МОЯ: «рез опередил тред» — НЕВЕРНО. Тег нарезан 11:34:31Z, то есть ПОСЛЕ постановки… |
