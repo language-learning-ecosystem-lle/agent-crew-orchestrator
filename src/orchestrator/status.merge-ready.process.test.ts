@@ -187,9 +187,16 @@ const RUNS = JSON.stringify({
 /**
  * THE REFUSAL GITHUB ANSWERS FOR THE ONE FORBIDDEN NODE, in its own words — the path is
  * what is read, never the word (`forbiddenChecksRollup`), so the shim has to name it.
+ *
+ * AND IN THE ACTOR'S OWN WORDS TOO (thread 172): GitHub names WHO it refused, and the two
+ * seams that read this refusal now cover one actor each — the door's process test is
+ * refused `by integration`, what a GitHub App inside Actions is told, and the tier here is
+ * refused `by personal access token`, what the consumer's roles are actually told on their
+ * private repository. Only the first wording was recognised for six weeks, and the tick
+ * that cost is written up in `docs/protocol-reference.md`.
  */
 const ROLLUP_REFUSAL =
-  "GraphQL: Resource not accessible by integration (repository.pullRequest.statusCheckRollup.contexts.nodes.0)";
+  "GraphQL: Resource not accessible by personal access token (repository.pullRequest.statusCheckRollup.contexts.nodes.0)";
 
 /**
  * A `gh` on `PATH` that answers both halves and logs every call. `mode` is what the

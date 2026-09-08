@@ -1362,7 +1362,7 @@ fi
  */
 const stubGhRefusingRollup = (
   repo: string,
-  answer: { json: unknown; runs?: unknown; runsFailWith?: string },
+  answer: { json: unknown; runs?: unknown; runsFailWith?: string; refusal?: string },
 ): string => {
   const bin = join(repo, "stub-bin-forbidden");
   mkdirSync(bin, { recursive: true });
@@ -1370,7 +1370,12 @@ const stubGhRefusingRollup = (
     answer.runsFailWith !== undefined
       ? `  *actions/runs*) echo ${JSON.stringify(answer.runsFailWith)} >&2; exit 1;;\n`
       : `  *actions/runs*) cat <<'RUNS'\n${JSON.stringify(answer.runs)}\nRUNS\n  exit 0;;\n`;
+  // WHICH ACTOR GITHUB REFUSED IS PART OF THE ANSWER (thread 172), so the stub says it and
+  // does not assume it: `by integration` is what an installation token inside Actions is
+  // told, `by personal access token` what a session's own fine-grained token is told on a
+  // private repository — and for six weeks only the first wording was written down here.
   const refusal =
+    answer.refusal ??
     "GraphQL: Resource not accessible by integration (repository.pullRequest.statusCheckRollup.contexts.nodes.0)";
   const script = `#!/bin/sh
 case "$*" in
@@ -1453,5 +1458,40 @@ describe("merge-gate — a token refused the checks node (thread 160)", () => {
     expect(result.out).toContain("'no access', NOT 'not green'");
     // The sentence that used to be printed here was a statement ABOUT THE HEAD, and false.
     expect(result.out).not.toContain("nothing has confirmed this head");
+  });
+
+  /**
+   * AND THE REFUSAL THE CONSUMER ACTUALLY GETS (thread 172). The repair above shipped in
+   * `0.2.13`, reached the private repository — and the door went on dying with no guard
+   * printed at all, because GitHub had refused a PERSONAL ACCESS TOKEN and the predicate
+   * demanded the word `integration`. Measured by john on 2026-09-08 against the installed
+   * copy; the message here is his, path and all.
+   *
+   * This is the whole lesson of the tick as a test: green on THIS repository proved nothing
+   * about the class, because a fine-grained token reads a public repository unconditionally
+   * and is never refused here. The stub is the only private repository the suite has.
+   */
+  it("recognises the refusal of a personal access token too, not only of an integration", () => {
+    const repo = repoWithConfig();
+    const payload = mergeable() as Record<string, unknown>;
+    delete payload.statusCheckRollup;
+    const result = run(
+      repo,
+      stubGhRefusingRollup(repo, {
+        json: payload,
+        runs: RUNS_ON_HEAD,
+        refusal:
+          "GraphQL: Resource not accessible by personal access token (repository.pullRequest.statusCheckRollup.nodes.0.commit.statusCheckRollup.contexts.nodes.0), Resource not accessible by personal access token (repository.pullRequest.statusCheckRollup.nodes.0.commit.statusCheckRollup.contexts.nodes.1)",
+      }),
+      REVIEWED,
+    );
+
+    // What john got instead: exit 2, `PR #521 was not read through gh`, and not one guard.
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("GitHub refused");
+    expect(result.out).toContain("ok   guard 1");
+    expect(result.out).toContain("ok   guard 2");
+    expect(result.out).toContain("from the runs of Actions on this head");
+    expect(result.out).not.toContain("was not read through gh");
   });
 });
