@@ -510,6 +510,23 @@ export type ParkedThread = {
    * this field existed, and what a park declared by a message with no `waiting-on` deserves.
    */
   readonly holder?: RoleId | undefined;
+  /**
+   * THE LAST CARRYING LETTER THIS BOX HAS ALREADY SAID "asked again" ABOUT (thread 155) —
+   * state, not composition, and the one value in a `parked` row that is not read out of the
+   * feed. It exists because since 2026-09-08 the park belongs to the THREAD and {@link since}
+   * is pinned to the DECLARATION: the stamp does not move under a repeat any more, so it can
+   * no longer do the second job it used to do here — "what have we already spoken about".
+   *
+   * Without it the repeat, once found in the letters, would be true FOR EVER after the first
+   * carrying message, and a permanently restated park is a park the reminder round can never
+   * reach again (see the guard below) — the very muteness thread 043 was opened by.
+   *
+   * OPTIONAL AND TOLERATED WHEN ABSENT, exactly like {@link NotifyState.asked} and
+   * {@link NotifyState.reminded} before it: a state file written before this field existed
+   * says "this box has never said `asked again` about this park", which is the truth about
+   * it, and the first tick after the upgrade prints at most one honest repeat line.
+   */
+  readonly restated?: string | undefined;
 };
 
 /**
@@ -1228,7 +1245,15 @@ export const renderNotifyState = (state: NotifyState): string => {
     // THE STAMP IS STILL WRITTEN, though it is no longer part of the key (thread 030): it is
     // what tells a park re-declared under the same key from one standing untouched, and that
     // difference is the whole of the downgrade "call → line". The line keeps its four columns.
-    ...state.parked.map((park) => `parked\t${park.person}\t${park.thread}\t${park.since}`),
+    // A FIFTH COLUMN SINCE THREAD 155, AND ONLY WHEN THERE IS ONE: the stamp of the last
+    // carrying letter already said "asked again" about ({@link ParkedThread.restated}). A row
+    // of four is the pre-155 form and reads as "nothing said yet", which is what it is.
+    ...state.parked.map(
+      (park) =>
+        `parked\t${park.person}\t${park.thread}\t${park.since}${
+          park.restated === undefined ? "" : `\t${park.restated}`
+        }`,
+    ),
     // THE LEDGER OF WHAT WAS TOLD (thread 129), sorted so that a diff of the file stays
     // readable: it is the one class here that only grows while a thread is open, and an
     // unordered append would make every tick's diff unreadable.
@@ -1317,13 +1342,22 @@ export const parseNotifyState = (raw: string): NotifyState => {
       continue;
     }
     if (columns[0] === "parked") {
-      const [, person, thread, since] = columns;
+      const [, person, thread, since, restated] = columns;
       // The question is not stored either, for the same reason the age is not: what
       // identifies the event is the message that parked, and the text is re-read from it.
       // `asks` is not stored for the third time for the same reason — the state answers one
       // question ("was this event announced"), and it answers it by the key alone.
       if (person !== undefined && thread !== undefined && since !== undefined) {
-        parked.push({ person, thread, since, question: "", asks: false });
+        // The fifth column is optional and a missing one is not a broken line (thread 155):
+        // it is what every state file written before the field existed looks like.
+        parked.push({
+          person,
+          thread,
+          since,
+          question: "",
+          asks: false,
+          ...(restated === undefined || restated === "" ? {} : { restated }),
+        });
       }
       continue;
     }
@@ -1622,34 +1656,126 @@ export const planNotifications = (input: {
   // quiet about it and the state remembers it was told. `asks` is the message's own word:
   // `expects: none` says it wants nothing of anybody, and ❓ over it is a lie by mark.
   const askingParked = parked.filter((park) => park.asks);
-  const freshStandingParked = askingParked.filter((park) => !seenParks.has(parkedKey(park)));
-  // THE REPEAT WAS TOLD FROM THE FIRST TELLING BY THE STAMP AND BY NOTHING ELSE (thread 030,
-  // Д-2). An informational re-park is not here for the same reason it is not in `freshParked`:
-  // `asks` is the message's own word, and 016 re-declared its park daily asking nothing.
+  // WHAT THIS BOX HAS ALREADY TOLD THE HUMAN, BY PAIR AND STAMP (thread 129) — read here, above
+  // all three park classes, because since thread 155 it is also what tells a FIRST telling from
+  // a repeat. `seenParks` answers "is this pair in the composition", and a pair whose park was
+  // LIFTED and declared again between two ticks never left it: the new question then arrived as
+  // "already announced" and got the repeat's line instead of its call. The ledger is keyed by the
+  // MESSAGE, which is what a park is since 155, so the new declaration is simply not in it.
   //
-  // AND THAT DISCRIMINATOR IS DEAD SINCE 2026-09-08 (thread 155). The park now belongs to the
-  // THREAD and `since` is the point of its DECLARATION, so a repeat of the same question under
-  // the same key no longer moves the stamp — and this filter, whose whole test is "the key was
-  // announced AND the stamp has moved", can no longer be filled by a repeat at all. Measured,
-  // not deduced: `notify.process.test.ts`, "THE COURIER'S REPEAT DISCRIMINATOR IS DEAD".
+  // A BOX UPGRADING INTO THE LEDGER DOES NOT RE-RING WHAT IT ALREADY SAID: an absent ledger is
+  // seeded from the parks the state remembers announcing, and only then is "not in the ledger"
+  // read as "never told". Empty is not absent — see {@link NotifyState.asked}.
   //
-  // TWO CONSEQUENCES, AND BOTH ARE NAMED WHERE THEY LAND rather than repaired here, because a
-  // repair is a new rule about what the courier says to a person and that is john's to make:
+  // THE BOUNDARY OF THAT SEEDING, DECLARED: it can only seed from what the state STILL holds.
+  // A park announced before the ledger existed and whose `parked` row had already left the
+  // state by the upgrade tick — lifted, as the missed class below is about — seeds nothing, and
+  // from here it is indistinguishable from a park nobody was ever told about: both are a key the
+  // state does not carry. Such a park rings once more on the upgrade tick. That is a one-time
+  // cost of the rollout, bounded by the ledger written in that same tick, and not the endless
+  // re-ring this class prevents; measured dry against the live mail on 2026-09-04, it was 0.
+  const askedKeys = new Set(
+    (input.seen.asked ?? []).map((park) => `${parkedKey(park)}\t${park.since}`),
+  );
+  if (input.seen.asked === undefined)
+    for (const park of input.seen.parked) askedKeys.add(`${parkedKey(park)}\t${park.since}`);
+  const freshStandingParked = askingParked.filter(
+    (park) => !askedKeys.has(`${parkedKey(park)}\t${park.since}`),
+  );
+  const freshParkKeys = new Set(freshStandingParked.map(parkedKey));
+  // THE REPEAT IS TOLD FROM THE FIRST TELLING BY THE LETTERS, AND BY NOTHING DERIVED (thread 155;
+  // thread 030, Д-2 for the class itself). It used to be told by the stamp of the state file —
+  // "the key was announced AND the stamp has moved" — and that discriminator DIED on 2026-09-08:
+  // the park belongs to the THREAD now and `since` is the point of its DECLARATION, so a repeat
+  // under the same key no longer moves it. Measured, not deduced: `notify.process.test.ts`,
+  // "THE COURIER'S REPEAT DISCRIMINATOR IS DEAD".
   //
-  //  - {@link restatedPrefix} — "still standing, asked again (not a new question): " — is no
-  //    longer printed for a repeat, and neither is the `(restated on …)` count line;
-  //  - what DOES still reach this filter is the one shape in which the stamp legitimately
-  //    changes under an unchanged key: a park LIFTED and a NEW park declared on the same
-  //    person in the same thread between two ticks of the courier, so the key never left
-  //    `state.parked`. That is a NEW question, and calling it "asked again (not a new
-  //    question)" is a false sentence which ALSO subtracts it from `freshStandingParked` and
-  //    from the reminder round below — a new question to a human with no buzz at all. The
-  //    window is narrow (it closes on any tick in between) and it is not repaired in thread
-  //    155's diff; it is written down here so that the next hand finds it named.
-  const restatedParked = askingParked.filter((park) => {
-    const announced = seenParks.get(parkedKey(park));
-    return announced !== undefined && announced !== park.since;
+  // The primary quantity was never the stamp. A park is declared BY A MESSAGE, and a repeat is
+  // another message carrying `parked-on: <the same value>` over the declaration — 418 of them in
+  // 190 (thread × park) groups on the live mail of 2026-09-08. They already reach this function:
+  // {@link NotificationInput.declaredParks} is `personParksOf` over every open thread, and that
+  // returns EVERY letter carrying the park, each with its own stamp. So the source is read from
+  // there, and the resolver is not touched.
+  //
+  // WHAT THE PRECISION OF THE CLASS IS, STATED RATHER THAN IMPLIED: "somebody wrote about this
+  // park again" is not "somebody asked again" — R58 requires `parked-on:` of EVERY writer into a
+  // parked thread, so an honest report beside the question is indistinguishable from a repeated
+  // question (live: all four carrying letters on john in 155 were curator's reports). That is
+  // exactly the precision the class had BEFORE 155 and not a hair more — the stamp used to ride
+  // on those same letters. Making "asked again" mean a real second question needs a word or a
+  // field the writer prints, which is a norm and john's to make.
+  const standingSince = new Map(parked.map((park) => [parkedKey(park), park.since]));
+  const carried = new Map<string, string>();
+  for (const park of input.declaredParks ?? []) {
+    const pkey = parkedKey(park);
+    const declaredAt = standingSince.get(pkey);
+    // Only letters ABOVE the declaration of the park that STANDS: the ones below it belong to a
+    // park that has already been lifted, and a lifted park's repeats are nobody's line.
+    if (declaredAt === undefined || park.since <= declaredAt) continue;
+    const last = carried.get(pkey);
+    if (last === undefined || park.since > last) carried.set(pkey, park.since);
+  }
+  // AND WHAT WAS ALREADY SAID ABOUT THEM IS REMEMBERED, because the letters do not go away: a
+  // carrying message stays in the feed for ever, so a class filled from it with no memory would
+  // be true FOR EVER after the first repeat. See {@link ParkedThread.restated} for the price of
+  // that — a park permanently "restated" is a park the reminder round could never reach again.
+  const saidRestated = new Map(
+    input.seen.parked.flatMap((park) =>
+      park.restated === undefined ? [] : [[parkedKey(park), park.restated] as const],
+    ),
+  );
+  const restatedCandidates = askingParked.filter((park) => {
+    const pkey = parkedKey(park);
+    const last = carried.get(pkey);
+    // A park being CALLED about in this same letter is not also restated in it: the call already
+    // carries the question, and two lines about one question is what Д-2 was spent removing.
+    return last !== undefined && !freshParkKeys.has(pkey) && last !== saidRestated.get(pkey);
   });
+  // THE REMINDER ROUND IS DECIDED BEFORE THE REPEAT, AND NOT AFTER IT (thread 155). Д-2 gave the
+  // restatement precedence over the reminder — one letter must not carry two lines about one
+  // question — and that precedence, applied to a class filled from letters, is a deadlock: the
+  // repeat rides in a letter somebody else's event sends and NEVER raises one, so on a quiet box
+  // the line stays owed for ever, and a park owing it can never be reminded again. That is the
+  // muteness of 043, rebuilt by hand.
+  //
+  // So the reminder wins the slot when both are due, and the repeat for that key is recorded as
+  // told: the reminder line stands in the same slot, says the same question and adds the one
+  // thing the repeat cannot — how long it has been standing. NOTHING IS PRINTED THAT WAS NOT
+  // PRINTED BEFORE THIS DIFF, and that is the point: today `restatedParked` cannot be filled at
+  // all, so the reminder already wins every such tick — the process test of 043 · 155 asserts
+  // exactly that (`1 parked, 1 of them asking, 0 of those new` AND `1 reminded`, with a repeat
+  // one hour old in the feed). Giving the repeat back its precedence would be the change.
+  //
+  // THE FOUR CONDITIONS (thread 043, Д-4), each a class this repository has already paid for:
+  //
+  //  - THE PARK WAS ANNOUNCED — a park nobody has been called about yet is `freshParked`, and it
+  //    rings as a call in this very letter. Reminding about it in the same message would be the
+  //    same question twice under two prefixes;
+  //  - IT HAS STOOD LONGER THAN THE FIRST THRESHOLD, measured from the message that declared it;
+  //  - AND THE INTERVAL SINCE THE LAST REMINDER HAS RUN OUT. No stamp in the state means it has:
+  //    that is the state of every box upgrading into this class, and the ten parks measured on
+  //    2026-08-29 are exactly the set that must ring on the first tick after it ships.
+  const remindedAt = new Map((input.seen.reminded ?? []).map((mark) => [parkedKey(mark), mark.at]));
+  const remindedParked: ParkedThread[] = [];
+  if (input.now !== undefined) {
+    const at = input.now.getTime();
+    for (const park of askingParked) {
+      const pkey = parkedKey(park);
+      if (!seenParks.has(pkey) || freshParkKeys.has(pkey)) continue;
+      const standing = (at - Date.parse(park.since)) / 60_000;
+      if (!Number.isFinite(standing) || standing < PARK_REMINDER_AFTER_MINUTES) continue;
+      const last = remindedAt.get(pkey);
+      if (last !== undefined) {
+        const quiet = (at - Date.parse(last)) / 60_000;
+        // AN UNPARSABLE STAMP IS A REASON TO STAY QUIET, not to ring: a hand-edited state file
+        // must not turn into a call every tick, and the next real reminder repairs the entry.
+        if (!Number.isFinite(quiet) || quiet < PARK_REMINDER_EVERY_MINUTES) continue;
+      }
+      remindedParked.push({ ...park, age: describeAge(standing) });
+    }
+  }
+  const remindedNow = new Set(remindedParked.map(parkedKey));
+  const restatedParked = restatedCandidates.filter((park) => !remindedNow.has(parkedKey(park)));
   const restatedKeys = new Set(restatedParked.map(parkedKey));
   // THE PARK THAT WAS ANNOUNCED AND IS NO LONGER THERE (thread 030, (в2)). The key is the pair,
   // as everywhere since Д-2; the DECLARATION is found by the pair AND the announced stamp,
@@ -1687,22 +1813,9 @@ export const planNotifications = (input: {
   // itself is untouched — the scheduler keeps reading `parkingOf` and a lifted park stays
   // lifted for it; this is the courier's question ("is a question standing unanswered") and it
   // is a different one.
-  const askedKeys = new Set(
-    (input.seen.asked ?? []).map((park) => `${parkedKey(park)}\t${park.since}`),
-  );
-  // A BOX UPGRADING INTO THE LEDGER DOES NOT RE-RING WHAT IT ALREADY SAID: an absent ledger is
-  // seeded from the parks the state remembers announcing, and only then is "not in the ledger"
-  // read as "never told". Empty is not absent — see {@link NotifyState.asked}.
-  //
-  // THE BOUNDARY OF THAT SEEDING, DECLARED: it can only seed from what the state STILL holds.
-  // A park announced before the ledger existed and whose `parked` row had already left the
-  // state by the upgrade tick — lifted, as this whole class is about — seeds nothing, and from
-  // here it is indistinguishable from a park nobody was ever told about: both are a key the
-  // state does not carry. Such a park rings once more on the upgrade tick. That is a one-time
-  // cost of the rollout, bounded by the ledger written in that same tick, and not the endless
-  // re-ring this class prevents; measured dry against the live mail on 2026-09-04, it was 0.
-  if (input.seen.asked === undefined)
-    for (const park of input.seen.parked) askedKeys.add(`${parkedKey(park)}\t${park.since}`);
+  // The ledger itself is read at the top of the park pass, above `freshStandingParked`, because
+  // since thread 155 it answers both questions: "was this message ever told" and, by that, "is
+  // this standing park a first telling".
   const missedParks = (input.declaredParks ?? [])
     .filter(
       (park) =>
@@ -1743,56 +1856,33 @@ export const planNotifications = (input: {
   const asked = [...toldParks.values()].sort(
     (a, b) => a.thread.localeCompare(b.thread) || a.since.localeCompare(b.since),
   );
+  // WHAT A LETTER LEAVES SAID ABOUT THE REPEATS: the carrying message every line of THIS letter
+  // has just spoken about — the call, the repeat and the reminder alike, because all three name
+  // the question and a fourth line about it next tick would be the noise Д-2 removed.
+  const toldRestatedKeys = new Set(
+    [...freshStandingParked, ...restatedParked, ...remindedParked].map(parkedKey),
+  );
+  const withRestated = (park: ParkedThread, told: boolean): ParkedThread => {
+    const pkey = parkedKey(park);
+    const mark = (told ? carried.get(pkey) : undefined) ?? saidRestated.get(pkey);
+    return mark === undefined ? park : { ...park, restated: mark };
+  };
+  const parkedTold = parked.map((park) =>
+    withRestated(park, toldRestatedKeys.has(parkedKey(park))),
+  );
   const parkedIfSilent = [
+    // NOTHING WENT OUT, SO NOTHING WAS SAID: the mark stays where the state file had it and the
+    // repeat is still owed its line. Recording the carrying message here would turn Д-2's
+    // downgrade into a disappearance — the courier ticks every few minutes.
     ...parked.map((park) => {
+      const held = withRestated(park, false);
       const announced = restatedKeys.has(parkedKey(park))
         ? seenParks.get(parkedKey(park))
         : undefined;
-      return announced === undefined ? park : { ...park, since: announced };
+      return announced === undefined ? held : { ...held, since: announced };
     }),
     ...liftedParked,
   ];
-  // THE REMINDER ROUND (thread 043, Д-4). Four conditions, and every one of them is a class this
-  // repository has already paid for:
-  //
-  //  - THE PARK WAS ANNOUNCED — a park nobody has been called about yet is `freshParked`, and it
-  //    rings as a call in this very letter. Reminding about it in the same message would be the
-  //    same question twice under two prefixes;
-  //  - IT IS NOT A RESTATEMENT — Д-2's downgrade already puts a line about this key in this
-  //    letter, and two lines about one question is what Д-2 was spent removing. SINCE 2026-09-08
-  //    (thread 155) A REPEAT NEVER REACHES THIS GUARD: `restatedParked` above can no longer be
-  //    filled by one, so for the class this condition was written against it is unreachable, and
-  //    the only thing it now stops is the lift-and-re-declare window named up there — which is a
-  //    NEW question and should not be silenced by it. Left in place deliberately: removing it is
-  //    part of the same decision as the class itself, and that decision is john's;
-  //  - IT HAS STOOD LONGER THAN THE FIRST THRESHOLD, measured from the message that declared it;
-  //  - AND THE INTERVAL SINCE THE LAST REMINDER HAS RUN OUT. No stamp in the state means it has:
-  //    that is the state of every box upgrading into this class, and the ten parks measured on
-  //    2026-08-29 are exactly the set that must ring on the first tick after it ships.
-  const remindedAt = new Map((input.seen.reminded ?? []).map((mark) => [parkedKey(mark), mark.at]));
-  const remindedParked: ParkedThread[] = [];
-  if (input.now !== undefined) {
-    const at = input.now.getTime();
-    for (const park of askingParked) {
-      const pkey = parkedKey(park);
-      if (!seenParks.has(pkey) || restatedKeys.has(pkey)) continue;
-      const standing = (at - Date.parse(park.since)) / 60_000;
-      if (!Number.isFinite(standing) || standing < PARK_REMINDER_AFTER_MINUTES) continue;
-      const last = remindedAt.get(pkey);
-      if (last !== undefined) {
-        const quiet = (at - Date.parse(last)) / 60_000;
-        // AN UNPARSABLE STAMP IS A REASON TO STAY QUIET, not to ring: a hand-edited state file
-        // must not turn into a call every tick, and the next real reminder repairs the entry.
-        if (!Number.isFinite(quiet) || quiet < PARK_REMINDER_EVERY_MINUTES) continue;
-      }
-      remindedParked.push({ ...park, age: describeAge(standing) });
-    }
-  }
-  // THE CLOCK THAT SURVIVES INTO THE NEXT STATE FILE: the entries of parks still standing, with
-  // this round's stamp over the ones just reminded. A key whose park has gone is dropped here —
-  // an answer or a closure ends the cadence in the same tick (point 4), and it must also not
-  // leave a stamp behind that would silence the NEXT question of the same pair for twelve hours.
-  const remindedNow = new Set(remindedParked.map(parkedKey));
   const stamp = input.now?.toISOString();
   const reminded: ParkReminder[] = parked.flatMap((park) => {
     const pkey = parkedKey(park);
@@ -2296,7 +2386,7 @@ export const planNotifications = (input: {
   return {
     waiting,
     stalled,
-    parked,
+    parked: parkedTold,
     fresh,
     freshStalled,
     unaccepted,

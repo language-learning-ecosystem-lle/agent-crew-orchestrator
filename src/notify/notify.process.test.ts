@@ -607,15 +607,25 @@ describe("notify as a command", () => {
     expect(readFileSync(contest.state, "utf8")).toContain(`parked\tjohn\t023-x\t${declared}`);
 
     // A FRESH EVENT ELSEWHERE SENDS THE LETTER, and the park does not ride in it as news.
-    // What the letter says ABOUT THE REPEAT is measured one test below, where the courier's
-    // dead discriminator is the subject; here it is enough that the repeat is not a call.
+    // WHERE the repeat's line comes from is measured one test below, where the source of the
+    // discriminator is the subject; here it is enough that the repeat is not a call.
     contest.thread("016-x", "john");
     const third = run(contest, ["--write"]);
 
     const text = JSON.parse(readFileSync(contest.delivered, "utf8")).text as string;
     expect(text).toContain("⏳ твой ход: 016-x");
-    expect(text).not.toContain("your decision: 023-x");
-    expect(third.out).not.toContain("of those new, 1");
+    // AND THE REPEAT RIDES IN IT AS A REPEAT — under the package's own sentence saying it is
+    // the same question, never as a call. That is Д-2's downgrade, and since 2026-09-08 it is
+    // read out of the LETTERS rather than out of the state file's stamp (thread 155): the test
+    // below is where that source is the subject.
+    expect(text).toContain(
+      "still standing, asked again (not a new question): your decision: 023-x",
+    );
+    // THE COUNT LINE SAYS IT IN FULL WORDS rather than by the absence of a substring: since the
+    // repeat has its own counter beside the three tenses of the call, `of those new, 1` is a
+    // sentence the courier now prints legitimately (`0 of those new, 1 restated`), and an
+    // assert built on not finding it was measuring the wrong thing.
+    expect(third.out).toContain("1 parked, 1 of them asking, 0 of those new");
   });
 
   it("AN OLD PARK IS REMINDED WITH ITS TRUE AGE, AND THE REPEAT IS STILL NOT NEWS (thread 043, Д-4 · 155)", () => {
@@ -656,19 +666,18 @@ describe("notify as a command", () => {
     expect(readFileSync(contest.state, "utf8")).toContain("remind\tjohn\t023-x\t");
   });
 
-  it("THE COURIER'S REPEAT DISCRIMINATOR IS DEAD, AND IT IS MEASURED RATHER THAN DESCRIBED (thread 155, §3.1)", () => {
-    // A DEGRADATION OF THE BASE CODE, NOT OF THIS DIFF — and that is why it is a test and not
-    // a comment. `notify.ts` is not changed by thread 155 by a single line of behaviour, so a
-    // reviewer reading the diff cannot see this: the courier told a repeat from a first telling
-    // by the STAMP AND BY NOTHING ELSE (`notify.ts`, the `restatedParked` filter, thread 030,
-    // Д-2), and after 155 the stamp never moves. So `restatedParked` can no longer be filled by
-    // a repeat at all: the line `still standing, asked again (not a new question): ` is dead for
-    // this case, and the reminder round's `restatedKeys` guard is unreachable through it.
+  it("THE COURIER'S REPEAT DISCRIMINATOR IS READ FROM THE LETTERS (thread 155, §3.1 → the repair)", () => {
+    // WHERE THIS TEST COMES FROM. It was written as the measurement of a DEGRADATION: `notify.ts`
+    // was not changed by 155's first diff by a single line, so a reviewer reading it could not
+    // see that the courier told a repeat from a first telling by the STAMP AND BY NOTHING ELSE
+    // (the `restatedParked` filter, thread 030, Д-2) — and that after 155 the stamp never moves,
+    // so the class could no longer be filled by a repeat at all.
     //
-    // WHAT IS NOT DECIDED HERE: whether the class should be removed, or the discriminator
-    // repaired, is a norm about what the courier says to a person — curator carries it to john
-    // separately, and it does not hold this diff. What thread 155 owes is that the degradation
-    // is a FACT IN THE SUITE and not prose in a comment; this is that fact.
+    // IT IS NOW THE MEASUREMENT OF THE REPAIR, on the same fixture and with the assertions
+    // turned over: the source of the class is the LETTERS (`declaredParks` — every message
+    // carrying `parked-on: <the same value>` above the declaration, which is what door 058
+    // requires of every writer into a parked thread), and the state file only remembers which
+    // carrying message has already been spoken about.
     const contest = contour({ stalledAfter: 10_000_000 });
     contest.park("023-x", { asks: true, date: agedBy(0, 2) });
     contest.commit();
@@ -676,18 +685,32 @@ describe("notify as a command", () => {
     rmSync(contest.delivered);
 
     // THE REPEAT: the same pair, the same thread, a later message asking the same thing again —
-    // literally the shape `--parked-on <the same>` puts on disk.
+    // literally the shape `--parked-on <the same>` puts on disk. The park itself does not move:
+    // since 155 it belongs to the THREAD and its stamp is the point of DECLARATION.
     contest.park("023-x", { asks: true, date: agedBy(0, 1), body: "А теперь чинить?" });
     contest.thread("016-x", "john");
     const after = run(contest, ["--write"]);
 
     const text = JSON.parse(readFileSync(contest.delivered, "utf8")).text as string;
     expect(text).toContain("⏳ твой ход: 016-x");
-    // THE CLASS IS EMPTY. Both of its outlets are silent: the prefix in the letter and the
-    // courier's own count line on stdout.
-    expect(text).not.toContain("still standing, asked again (not a new question): ");
-    expect(after.out).not.toContain("restated");
+    // THE CLASS SPEAKS AGAIN. Both of its outlets: the prefix in the letter and the courier's
+    // own count line on stdout — and it is still a LINE and not a call (`0 of those new`).
+    expect(text).toContain("still standing, asked again (not a new question): ");
+    expect(after.out).toContain("023-x (restated on john)");
     expect(after.out).toContain("1 parked, 1 of them asking, 0 of those new");
+
+    // AND THE SAME CARRYING LETTER IS NOT SAID TWICE. A message does not leave the feed, so a
+    // class read out of it with no memory would be true for ever — and a park permanently
+    // restated is a park the reminder round can never reach again (043's muteness). The memory
+    // is the fifth column of the `parked` row, and this is where it is measured end to end.
+    expect(readFileSync(contest.state, "utf8")).toMatch(/parked\tjohn\t023-x\t\S+\t\S+/);
+    contest.thread("017-x", "john");
+    const third = run(contest, ["--write"]);
+    const again = JSON.parse(readFileSync(contest.delivered, "utf8")).text as string;
+
+    expect(again).toContain("⏳ твой ход: 017-x");
+    expect(again).not.toContain("still standing, asked again (not a new question): ");
+    expect(third.out).not.toContain("restated");
   });
 
   it("A PARK LIFTED WITH NO ANSWER IS A LINE, AND THE LINE WAITS FOR A LETTER (thread 030, (в2))", () => {
