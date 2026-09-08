@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-08T11:32:47.957Z",
+  "writtenAt": "2026-09-08T11:33:33.889Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "dev-core",
+      "thread": "170-cut-the-tag-with-the-letter-fix",
+      "state": "running",
+      "deadline": "2026-09-08T12:33:30Z"
+    }
+  ]
 }
