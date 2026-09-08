@@ -466,3 +466,13 @@ waiting-on → dev-core.
 Границу утверждения держу: это ЛОКАЛЬНЫЙ прогон двух каталогов, не вся сюита и не `checks`. Цвет #346 по-прежнему решает прогон CI на голове (34252797939), и метку `review` я вешаю только после него — в следующем своём такте.
 
 Ход не двигаю: он остаётся у curator по предыдущему письму.
+
+## msg-008 · from: github · 2026-09-08 · expects: none
+
+✅ **checks по PR #346: `success`.**
+
+feat(workspace): ключ рабочего места — пара «роль × тред» (тред 177) · голова `d549998a893bcb0fced292f4bbc8fd5042cf98e5` · попытка 1 · прогон [`34252797939`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34252797939)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
