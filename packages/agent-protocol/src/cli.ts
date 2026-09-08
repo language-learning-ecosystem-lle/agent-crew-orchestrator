@@ -552,6 +552,15 @@ import {
   describeFreeze,
   failureClassOf,
 } from "./orchestrator/thaw.js";
+import {
+  collisionSaidKey,
+  describeNumberCollisionLetter,
+  describeQuietNumberCollisions,
+  describeUndeliveredNumberCollision,
+  findNumberCollisions,
+  numberCollisionArgv,
+  planNumberCollisionWatch,
+} from "./orchestrator/thread-number-collision.js";
 import { type Candidate, describePlan, describeSkip, planTick } from "./orchestrator/tick.js";
 import {
   describeDeliveredTidyUpLetter,
@@ -753,6 +762,7 @@ import {
   personParksOf,
   renderMetaFile,
   renderThread,
+  type Thread,
   type ThreadMeta,
   type ThreadStatus,
   type ThreadTurn,
@@ -5099,6 +5109,102 @@ type MergeabilityPass = {
 const MERGEABILITY_LETTER_FROM = "github";
 
 /**
+ * THE WATCHMAN OF THREAD NUMBERS (thread 159, john's word of 2026-09-08) — the half that
+ * touches the world, beside the pure criterion in `orchestrator/thread-number-collision.ts`.
+ *
+ * WHY IT RIDES WITH THE COURIER, and this is also the answer to what it costs. The courier
+ * already loads EVERY thread of the mail for its own three questions (`loadThreads` at the
+ * head of this run), and the criterion is a fold over exactly those objects: the number is
+ * the first three characters of a directory name and the status is a field of the `_meta.md`
+ * already parsed. So this pass makes NO call of `gh`, NO call of `git` and NO read of the
+ * disk beyond the letter it delivers — measured as zero new calls, not assumed.
+ *
+ * THE DELIVERY IS A CHILD PROCESS and not `deliverMessage` as the mergeability letter's is,
+ * because the address is a STANDING one: `--ensure-thread` opens the next receiver when the
+ * current one is closed or parked, and that logic lives in the command. This is the form the
+ * tidy-up letter already uses for the same reason (`postTidyUpLetter`).
+ *
+ * IT NEVER THROWS. A finding whose letter did not land leaves its mark unset, so the next
+ * tick says it again — the direction every lock in this package fails in.
+ */
+const watchThreadNumbers = (input: {
+  readonly threads: readonly Thread[];
+  readonly mailRoot: string;
+  readonly repo?: string;
+  readonly ref?: string;
+  readonly said: readonly string[];
+  readonly say: (line: string) => void;
+}): readonly string[] => {
+  const found = findNumberCollisions(
+    input.threads.map((thread) => ({ id: thread.id, open: thread.meta.status === "open" })),
+  );
+  const plan = planNumberCollisionWatch({ found, said: input.said });
+  // THE SILENCE, SAID OUT LOUD. A tick that found pairs and rang about none of them is
+  // indistinguishable in a log from a tick whose search found nothing — and the whole field
+  // acceptance of this watchman is that the six known pairs are FOUND and rejected by the
+  // criterion, not missed by the search.
+  if (found.length > 0 && plan.letters.length === 0)
+    input.say(describeQuietNumberCollisions(found));
+  const kept = new Set(plan.said);
+  for (const letter of plan.letters) {
+    let dir: string | undefined;
+    try {
+      dir = mkdtempSync(join(tmpdir(), "agent-protocol-collision-"));
+      const bodyFile = join(dir, "letter.md");
+      writeFileSync(bodyFile, `${letter.body}\n`, "utf8");
+      const child = spawnSync(
+        process.execPath,
+        [
+          ...process.execArgv,
+          process.argv[1] as string,
+          ...numberCollisionArgv({
+            root: input.mailRoot,
+            ...(input.repo === undefined ? {} : { repo: input.repo }),
+            ...(input.ref === undefined ? {} : { ref: input.ref }),
+          }),
+          "--body-file",
+          bodyFile,
+        ],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      );
+      const cause =
+        child.error !== undefined
+          ? `it could not be run — ${child.error.message}`
+          : child.status !== 0
+            ? `'new-message' exited ${child.status ?? "on a signal"} — ${
+                `${child.stdout ?? ""}${child.stderr ?? ""}`
+                  .split("\n")
+                  .map((line) => line.trim())
+                  .filter((line) => line !== "")
+                  .slice(-1)[0] ?? "it said nothing"
+              }`
+            : undefined;
+      if (cause === undefined) {
+        input.say(
+          describeNumberCollisionLetter({ collision: letter.collision, label: "standing address" }),
+        );
+      } else {
+        // THE MARK IS NOT SET FOR A LETTER THAT DID NOT LAND — a collision nobody was told
+        // about must ring again, which is the whole reason this watchman exists.
+        kept.delete(collisionSaidKey(letter.collision));
+        input.say(describeUndeliveredNumberCollision({ collision: letter.collision, cause }));
+      }
+    } catch (error) {
+      kept.delete(collisionSaidKey(letter.collision));
+      input.say(
+        describeUndeliveredNumberCollision({
+          collision: letter.collision,
+          cause: (error as Error).message,
+        }),
+      );
+    } finally {
+      if (dir !== undefined) rmSync(dir, { recursive: true, force: true });
+    }
+  }
+  return [...kept].sort();
+};
+
+/**
  * THE LETTER INTO THE FEED OF A FROZEN PAIR (thread 149, the norm john declared on
  * 2026-09-06). The rules of what is written and when live in `orchestrator/freeze-letter.ts`;
  * this is the half that touches the world, and it is written beside the mergeability
@@ -5667,6 +5773,38 @@ const runNotify = async (input: {
       }),
     );
   }
+  // THE WATCHMAN OF THREAD NUMBERS WALKS HERE (thread 159) — over `parsed`, the threads this
+  // run has already loaded, so it costs nothing to walk. It is gated exactly like the
+  // watchman above: `--write` because a dry run never puts a letter in the feed, and the
+  // `orchestrator` section because the unit of its lock is A TICK — a courier run by hand
+  // twice a day would deliver letters no tick follows up.
+  let collisionsSaid = seen.numberCollisions;
+  if (write && section !== undefined) {
+    collisionsSaid = watchThreadNumbers({
+      threads: parsed,
+      mailRoot: root,
+      // `--repo`/`--ref` forwarded VERBATIM, the way the tidy-up letter forwards them: the
+      // child has to resolve the same config this process did, and a value derived here
+      // (`homeOf(cwd)`) would be this process's fallback rather than the caller's word.
+      ...(flag(argv, "--repo") === undefined ? {} : { repo: flag(argv, "--repo") as string }),
+      ...(flag(argv, "--ref") === undefined ? {} : { ref: flag(argv, "--ref") as string }),
+      said: seen.numberCollisions ?? [],
+      say,
+    });
+    // WRITTEN AT ONCE, on the rule the watchman above states: the letters are already in the
+    // feed, and a mark held back until the end of the run would be lost to a transport that
+    // could not deliver the digest — and the next tick would write a SECOND letter about a
+    // collision the feed already carries.
+    writeOut(
+      statePath,
+      renderNotifyState({
+        ...seen,
+        mergeable: mergeableSaid,
+        mergeableOutage: renderGhOutage(mergeableOutage).trim(),
+        numberCollisions: collisionsSaid,
+      }),
+    );
+  }
   // THE LETTER A FROZEN PAIR CANNOT WRITE FOR ITSELF (thread 149) — it rides here for the
   // reason the watchman above does: this is the one pass of the circuit that walks every
   // tick, holds the fold the freeze is read from and may write into the mail. It is NOT
@@ -5697,6 +5835,9 @@ const runNotify = async (input: {
         mergeable: mergeableSaid,
         mergeableOutage: renderGhOutage(mergeableOutage).trim(),
         freezeLetters: freezeLettersSaid,
+        // The number watchman's marks, carried through unchanged for the same reason (thread
+        // 159): they are the composition of the FEED, not of this run.
+        numberCollisions: collisionsSaid,
       }),
     );
   }
@@ -5943,6 +6084,9 @@ const runNotify = async (input: {
         // are the composition of THIS run, and that one is not (see `watchMergeability`).
         mergeable: mergeableSaid,
         freezeLetters: freezeLettersSaid,
+        // The number watchman's marks, carried through unchanged for the same reason (thread
+        // 159): they are the composition of the FEED, not of this run.
+        numberCollisions: collisionsSaid,
         // The counter and what has already rung about it, on the rule of `gh` beside it: the
         // run is carried verbatim, the announced stamp is dropped when the run ends, so the
         // NEXT outage rings again.
@@ -5984,6 +6128,9 @@ const runNotify = async (input: {
         // are the composition of THIS run, and that one is not (see `watchMergeability`).
         mergeable: mergeableSaid,
         freezeLetters: freezeLettersSaid,
+        // The number watchman's marks, carried through unchanged for the same reason (thread
+        // 159): they are the composition of the FEED, not of this run.
+        numberCollisions: collisionsSaid,
         mergeableOutage: renderGhOutage(mergeableOutage).trim(),
         mergeableRang: plan.mergeability?.since,
       }),
