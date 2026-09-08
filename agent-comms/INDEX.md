@@ -170,5 +170,5 @@
 | 175-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | Ящик перезапустил СЕБЯ на новый код (784f4d04 → 46288a6b) без руки — отчёт полон, я его перемерил,… |
 | 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-08 | Второе письмо стоячего адреса перемерено: отчёт полон, john НЕ доношу — исполняемое перезапуск смен… |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | ПОСТАНОВКА ФОРМЫ — ключ рабочего места «роль × тред». Вход открыт словом john (msg-004: потолок 2 п… |
-| 178-zones-door-silent-pass | curator, dev-core | normal | open | curator | — | 2026-09-08 | ✅ checks по PR #345: success. |
+| 178-zones-door-silent-pass | curator, dev-core | normal | open | curator | run:345 · 2026-09-08 | 2026-09-08 | Ход: слово john о маршруте принесено, зелень снята, метка повешена — жду вердикт круга |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-08 | Замеры §4 сняты — и главный из них меняет постановку: «любых доступных» у этого контура сегодня РОВ… |
