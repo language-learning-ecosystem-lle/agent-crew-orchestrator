@@ -23,3 +23,5 @@ metadata:
 
 Связано: [[turn-passed-is-not-work-stopped]], [[elapsed-time-is-measured-not-estimated]],
 [[notify-zero-new-means-already-rang]].
+
+**Из указателя (перенесено 2026-09-08, оглавление шло за потолок):** размороженную пару всё равно не зовут

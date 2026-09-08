@@ -29,3 +29,5 @@ metadata:
 того, кто увидит исход первым, назвать его в СВОЕЙ ленте со ссылкой на исходный тред. Связано:
 [[statement-of-work-ends-at-the-tag]], [[closing-a-thread-is-a-third-door]],
 [[field-sample-criterion-yields-to-enumeration]].
+
+**Из указателя (перенесено 2026-09-08, оглавление шло за потолок):** лентой закрытого треда его не доложить

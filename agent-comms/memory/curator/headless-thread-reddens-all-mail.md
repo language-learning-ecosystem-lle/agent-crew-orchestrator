@@ -31,3 +31,5 @@ metadata:
 [[comms-copy-before-canon-merge]], [[thread-ids-are-flat]].
 
 **Из указателя (перенесено 2026-09-06, оглавление шло за потолок):** тред без `_meta.md` роняет `Comms Derived` на каждом push в `comms`, а письмо смотрителя об этом само есть push, то есть петля 1:1; чинится одной командой `thread status --repair --write`
+
+**Из указателя (перенесено 2026-09-08, оглавление шло за потолок):** чинится `thread status --repair --write`

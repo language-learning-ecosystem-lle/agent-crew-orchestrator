@@ -22,3 +22,5 @@ metadata:
 предмет письма curator, называющего источник слова; поиск по автору в этот перечень не входит вовсе.
 Границу найденного слова см. [[pointwise-john-word-does-not-close-guard3-again]], форму звонка —
 [[park-goes-after-the-verdict-not-before]] и [[park-bell-carries-the-old-first-line]].
+
+**Из указателя (перенесено 2026-09-08, оглавление шло за потолок):** гард 3 закрывается письмом curator с источником

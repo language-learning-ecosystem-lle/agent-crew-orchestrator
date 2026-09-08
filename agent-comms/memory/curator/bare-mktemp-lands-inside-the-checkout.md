@@ -26,3 +26,5 @@ metadata:
 `tr '\0' '\n' < /proc/<pid демона>/environ | grep TMPDIR` — пусто, при живом `TMPDIR` у роли.
 Поэтому довод «дверь на месте тела отказала бы самому контуру» перемеряется ПРОЦЕССОМ:
 [[reproduce-with-the-tool-that-measured]], [[own-hand-crutches-hide-the-defect]].
+
+**Из указателя (перенесено 2026-09-08, оглавление шло за потолок):** «вне дерева» — только `mktemp -d -p /tmp`

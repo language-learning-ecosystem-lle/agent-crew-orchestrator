@@ -26,3 +26,5 @@ metadata:
 `by personal access token` — роли), поэтому предикат, зашивающий одного актёра, ловит только
 половину поля. Смежное — [[green-is-only-the-runners-command]],
 [[no-credentials-needed-is-unmeasured-on-the-box]], [[test-only-item-has-no-cheap-ascent]].
+
+**Из указателя (перенесено 2026-09-08, оглавление шло за потолок):** приёмка рукой john на приватном
