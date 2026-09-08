@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-08T14:51:50.541Z",
+  "writtenAt": "2026-09-08T14:52:33.276Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "172-merge-gate-still-falls-on-private",
       "state": "running",
       "deadline": "2026-09-08T15:51:46Z"
+    },
+    {
+      "role": "curator",
+      "thread": "176-daemon-self-restart",
+      "state": "running",
+      "deadline": "2026-09-08T15:32:29Z"
     }
   ]
 }
