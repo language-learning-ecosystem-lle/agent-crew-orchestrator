@@ -110,6 +110,6 @@
 - [Записанное ограничение читают в его блоке](recorded-limit-is-read-in-its-own-block.md) — фраза бывает про ДРУГОЙ гард; пределы перечислены рядом явно
 - [Дренаж останавливает ВСЮ очередь](drain-stalls-the-whole-queue.md) — цена — от минут до часов, держит длинная сессия; форма `3h` роняет шаблон `[0-9]+m`
 - [Смена читателя ломает файл БЕЗ хунков](reader-change-breaks-hunkless-consumers.md) — греп по значению; красный тест бывает восстановленной нормой
-- [Лента почты живёт на ветке `comms`](mail-feed-lives-on-the-comms-branch.md) — `git show origin/comms:./<тред>/_meta.md`: статусы всех тредов одной командой — но `./` резолвится от cwd, из `.worktrees/<role>` команда падает
+- [Лента почты живёт на ветке `comms`](mail-feed-lives-on-the-comms-branch.md) — `git show origin/comms:./<тред>/_meta.md` из `agent-comms`: статусы всех тредов даром; почта — ОТДЕЛЬНЫЙ репозиторий, из `.worktrees/<role>` перечисление молча даёт НОЛЬ тредов
 - [Коммит среза не датирует рез](split-commit-does-not-date-the-cut.md) — даты унаследованы, тег lightweight; момент реза — mtime ссылки под `TZ=UTC`
 - [Дверь `merge-gate` двигает `FETCH_HEAD`](merge-gate-clobbers-fetch-head.md) — замер после её вызова печатает пустой дифф и врёт молча
