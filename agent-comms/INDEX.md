@@ -168,4 +168,4 @@
 | 173-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | john: сегодня ящик перезапустился дважды, первый отчёт был ложен в трёх местах — починка влита (#34… |
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое целиком перекрыто живым PR #342 |
 | 175-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | Ящик перезапустил СЕБЯ на новый код (784f4d04 → 46288a6b) без руки — отчёт полон, я его перемерил,… |
-| 176-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-08 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
+| 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-08 | Отчёт полон и перемерен — john этим письмом НЕ доношу: его слово ~14:32Z уже покрывает этот перезап… |
