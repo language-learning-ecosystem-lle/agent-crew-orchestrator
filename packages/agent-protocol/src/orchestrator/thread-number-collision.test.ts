@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { parseNotifyState, renderNotifyState } from "../notify/notify.js";
 import {
   collisionRings,
   collisionSaidKey,
@@ -167,6 +168,67 @@ describe("the lock on the repeat", () => {
     expect(grown.letters[0]?.collision.halves).toHaveLength(3);
     // The old key is gone with the state it described: the pair of two no longer exists.
     expect(grown.said).toEqual([collisionSaidKey(grown.letters[0]?.collision as never)]);
+  });
+
+  /**
+   * THE MARK THROUGH THE PAIR THAT STORES IT — `render` → `parse` → `plan`, the circle
+   * `notify/alarms.test.ts:61` draws around the alarms, and here for the reason curator
+   * measured on the diff of this PR (thread 159, msg-007 §1): the producer of the key
+   * (`collisionSaidKey`, this file) and its validator (the `/^number:\d{3}:\S+$/` of
+   * `parseNotifyState`) are two independent literals in two files, and NOTHING binds them
+   * but the fact that they agree today.
+   *
+   * And the direction they fail in is the silent one: a line the validator does not accept
+   * is DROPPED rather than half-read, so a drift between the two would not turn a single
+   * test red — it would produce a watchman that looks like it works and writes a letter
+   * about the same pair every tick, which is thread `133-tidy-letter-repeats-every-tick`
+   * again. The plan alone cannot see it: it gets `said` handed to it in memory.
+   */
+  describe("the mark survives the state file it is stored in", () => {
+    const stateOf = (said: readonly string[]): readonly string[] =>
+      parseNotifyState(
+        renderNotifyState({ waiting: [], stalled: [], parked: [], numberCollisions: said }),
+      ).numberCollisions ?? [];
+
+    it("the SECOND tick over the same live pair, through the file, writes nothing", () => {
+      const found = findNumberCollisions(live);
+      const first = planNumberCollisionWatch({ found, said: [] });
+      expect(first.letters).toHaveLength(1);
+      // The key comes back from the file byte for byte — the validator accepts what the
+      // producer makes. This is the assert the two literals are bound by.
+      expect(stateOf(first.said)).toEqual(first.said);
+      expect(planNumberCollisionWatch({ found, said: stateOf(first.said) }).letters).toEqual([]);
+    });
+
+    it("a mark LIFTED through the file rings again when the pair comes back", () => {
+      const said = stateOf(
+        planNumberCollisionWatch({ found: findNumberCollisions(live), said: [] }).said,
+      );
+      // The number is divorced: the mark leaves the plan, and the file it is written into
+      // then carries nothing at all.
+      const divorced = planNumberCollisionWatch({
+        found: findNumberCollisions([half("159-a", true), half("161-b", false)]),
+        said,
+      });
+      expect(stateOf(divorced.said)).toEqual([]);
+      expect(
+        planNumberCollisionWatch({
+          found: findNumberCollisions(live),
+          said: stateOf(divorced.said),
+        }).letters,
+      ).toHaveLength(1);
+    });
+
+    it("a THREE-half key crosses the file too — the growth is not swallowed by the validator", () => {
+      // The widest key this watchman makes: three ids joined by commas. A validator that
+      // accepted only the two-half shape would drop it and say the same collision for ever.
+      const grown = planNumberCollisionWatch({
+        found: findNumberCollisions([...live, half("159-c", true)]),
+        said: [],
+      });
+      expect(stateOf(grown.said)).toEqual(grown.said);
+      expect(grown.said[0]).toBe("number:159:159-a,159-b,159-c");
+    });
   });
 
   it("does NOT re-ring when one half of a live pair merely closes", () => {
