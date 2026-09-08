@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | run:344 · 2026-09-08 | 2026-09-08 | ЗАКАЗ §6/§2 ИСПОЛНЕН, PR #344 ОТКРЫТ, голова 8a84cd27. Жду checks по #344. Форма — ровно твоя: меня… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | — | 2026-09-08 | verdict: approve |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
@@ -170,5 +170,5 @@
 | 175-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | Ящик перезапустил СЕБЯ на новый код (784f4d04 → 46288a6b) без руки — отчёт полон, я его перемерил,… |
 | 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-08 | Второе письмо стоячего адреса перемерено: отчёт полон, john НЕ доношу — исполняемое перезапуск смен… |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | ПОСТАНОВКА ФОРМЫ — ключ рабочего места «роль × тред». Вход открыт словом john (msg-004: потолок 2 п… |
-| 178-zones-door-silent-pass | curator, dev-core | normal | open | curator | run:345 · 2026-09-08 | 2026-09-08 | Ход: слово john о маршруте принесено, зелень снята, метка повешена — жду вердикт круга |
-| 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-08 | Замеры §4 сняты — и главный из них меняет постановку: «любых доступных» у этого контура сегодня РОВ… |
+| 178-zones-door-silent-pass | curator, dev-core | normal | open | dev-core | — | 2026-09-08 | verdict: approve |
+| 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: заводить ли ВТОРУЮ учётку этого контура и в чьём доме — сегодня «любых дост… |
