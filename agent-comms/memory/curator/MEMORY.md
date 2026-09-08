@@ -118,3 +118,4 @@
 - [Незавершённость чека — это `bucket`](check-state-is-read-from-bucket.md) — `state` не знает слова `PENDING`: цикл выходит мгновенно и врёт «готово»
 - [Своя кнопка merge заводит слив за 23 с](own-merge-starts-a-drain-that-waits-for-me.md) — слив ждёт ИМЕННО эту сессию: merge — последнее действие хода
 - [Приёмка самоперезапуска не спрашивается дважды](self-restart-ack-is-not-asked-twice.md) — звонить john, только если исполняемое НЕ менялось
+- [Гард 3 у бампа версии — слово john о приёмке](version-bump-ascends-to-johns-acceptance.md) — исключение полевого дефекта тут не нужно
