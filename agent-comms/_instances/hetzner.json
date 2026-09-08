@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-08T10:15:49.506Z",
+  "writtenAt": "2026-09-08T10:16:04.696Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "155-park-has-no-checkable-ground",
-      "state": "draining",
-      "deadline": "2026-09-08T11:07:46Z"
-    },
     {
       "role": "curator",
       "thread": "161-daemon-self-restart",
