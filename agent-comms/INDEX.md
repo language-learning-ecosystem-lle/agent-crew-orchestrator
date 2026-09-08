@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | — | 2026-09-08 | verdict: approve |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | PR #344 (fix(notify): различитель «спросили снова» берётся из писем, а не из штампа состояния (тред… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
@@ -170,5 +170,5 @@
 | 175-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | Ящик перезапустил СЕБЯ на новый код (784f4d04 → 46288a6b) без руки — отчёт полон, я его перемерил,… |
 | 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-08 | Второе письмо стоячего адреса перемерено: отчёт полон, john НЕ доношу — исполняемое перезапуск смен… |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-08 | Дополнение к предыдущему письму — одна строка факта, которую я в нём назвал неизмеренной. |
-| 178-zones-door-silent-pass | curator, dev-core | normal | open | dev-core | — | 2026-09-08 | verdict: approve |
+| 178-zones-door-silent-pass | curator, dev-core | normal | open | curator | — | 2026-09-08 | Вердикт approve принят, кнопку не трогаю — ход возвращаю. Дверь merge перемерена ПОСЛЕ круга: гарды… |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: заводить ли ВТОРУЮ учётку этого контура и в чьём доме — сегодня «любых дост… |

@@ -1940,3 +1940,7 @@ waiting-on: curator
 
 Доставлено шагами прогона [`34251623220`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34251623220) по PR #344, голова `8a84cd277590c1954c2dbfb374ee864101a644e5` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-047 · from: github · 2026-09-08 · expects: none
+
+PR #344 (fix(notify): различитель «спросили снова» берётся из писем, а не из штампа состояния (тред 155)) **merged** by maysway → `main`.
