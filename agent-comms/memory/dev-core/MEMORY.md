@@ -111,3 +111,4 @@
 - [Перенос парка вперёд — это НОВОЕ объявление](carrying-a-park-forward-redeclares-it.md) — `--parked-on <то же>` теряет `since`, `question`, `holder` и `park-ground`.
 - [Общие факты — не общий вызов](shared-facts-have-more-than-one-consumer.md) — починил отказ `gh` у двери: грепни поле, у него есть второй потребитель со своим вызовом.
 - [`is-ancestor` против тега реза отказывает ВСЕГДА](is-ancestor-against-a-split-tag-always-fails.md) — subtree split переписывает историю; годность мерят ревизия реза, тождество дерева и образ коммита.
+- [Два способа потерять прогон сюиты до первого теста](vitest-run-invocation-traps.md) — снятый репортёр `basic` и cwd, уехавший под `--root`.
