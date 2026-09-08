@@ -114,7 +114,7 @@
 - [Два способа потерять прогон сюиты до первого теста](vitest-run-invocation-traps.md) — репортёр `basic` и cwd под `--root`.
 - [Ноль хунков у потребителя не значит «цел»](zero-hunk-consumer-can-still-break.md)
 - [Заказанное мог исполнить ДРУГОЙ тред](order-may-be-executed-by-another-thread.md)
-- [Имя wip-ветки контура — тред ПРОГОНА, не предмета](wip-branch-name-is-the-run-thread-not-the-subject.md) — дом брать из диффа.
+- [Имя wip-ветки контура — тред ПРОГОНА, не предмета](wip-branch-name-is-the-run-thread-not-the-subject.md) — дом брать из диффа; черновик опознаётся грепом по снимку.
 - [`du -sh a b` дедуплицирует жёсткие ссылки](du-across-worktrees-dedups-hardlinks.md) — цену ВТОРОГО дерева мерить приростом.
 - [Дверь, опознающая дерево по ФОРМЕ пути, отказывает наружу](guard-that-infers-identity-from-a-path-fails-open.md) — exit 0 «guard does not apply».
 - [Учётка тратится, только если её кред ЧИТАЕМ](account-is-spendable-only-if-credentials-are-readable.md) — `existsSync` зелен на непригодной.
