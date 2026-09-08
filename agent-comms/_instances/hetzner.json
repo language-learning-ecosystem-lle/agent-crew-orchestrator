@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-08T16:20:09.949Z",
+  "writtenAt": "2026-09-08T16:22:33.923Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "dev-core",
       "thread": "178-zones-door-silent-pass",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-08T17:11:30Z"
     }
   ]
