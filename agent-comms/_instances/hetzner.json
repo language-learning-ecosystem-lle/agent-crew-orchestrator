@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-08T14:13:56.381Z",
+  "writtenAt": "2026-09-08T14:14:13.565Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "174-workspace-tidy-up",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-08T15:11:08Z"
     }
   ]
