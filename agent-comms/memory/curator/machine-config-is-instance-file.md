@@ -1,15 +1,25 @@
 ---
 name: machine-config-is-instance-file
-description: "Учётки этого контура объявлены в instances/hetzner.json, а local.json на ящике нет вовсе; тот же файл полем secrets.envFile отвечает, чей креды-файл СВОЙ; супервизор бежит как lle и не видит внутрь /home/aco-devops"
+description: "Учётки этого контура объявлены в instances/hetzner.json, а local.json на ящике нет вовсе; тильда в адресе — дом ТОГО, КТО БЕЖИТ (с 04.09 это aco-hetzner, не lle), и тот же файл полем secrets.envFile отвечает, чей креды-файл СВОЙ"
 metadata: 
   node_type: memory
   type: project
   originSessionId: 22059a72-f6dd-4e0c-8a44-c7c900ff9af4
-  modified: 2026-09-03T14:11:21.358Z
+  modified: 2026-09-08T16:42:54.864Z
 ---
 
 Машинная половина конфига этого контура — `~/.config/agent-protocol/instances/hetzner.json`
 (демон поднят как `agent-protocol@hetzner.service`; соседний контур — `lle-hetzner.json`).
+
+**ТИЛЬДА ЗДЕСЬ — ДОМ ТОГО, КТО БЕЖИТ, и с 04.09 это `aco-hetzner`, а не `lle`** (замер 2026-09-08,
+тред `179`): `ps -eo user,args` называет демона `aco-hetzner … orchestrator up --instance hetzner`,
+а адрес конфига строится от него — `config/local.ts:277`,
+`env.XDG_CONFIG_HOME ?? join(env.HOME ?? homedir(), ".config")`. Правящий файл —
+**`/home/aco-hetzner/.config/agent-protocol/instances/hetzner.json`** (объявляет `lle-main`,
+`lle-second`, `codex-main`, `devops-main`), а `/home/lle/.config/…/hetzner.json` из-под роли отвечает
+`Permission denied` — то есть замер по буквальному `/home/lle/…` из чужого письма даёт отказ и
+читается как «замер не сошёлся». Абзац ниже про супервизора-`lle` — состояние ДО разведения контуров
+по пользователям 04.09.
 **`~/.config/agent-protocol/local.json` на ящике не существует** — ссылаться на него в постановке
 значит послать john не по адресу. На 2026-09-02 файл объявляет `lle-main`, `lle-second`,
 `codex-main`; `devops-main` в нём нет.
@@ -26,7 +36,8 @@ metadata:
 нет вовсе. Полка одна и она в `$HOME`. Подъём токена в свой такт — одной строкой:
 `set -a; . /home/lle/.config/agent-protocol/secrets.aco.env; set +a` (замер 2026-09-03, тред `058`).
 
-Второй факт того же замера: супервизор бежит из-под `lle`, а `/home/aco-devops` — `0750
+Второй факт того же замера (**состояние 2026-09-03, ДО переезда демона на `aco-hetzner` — см. блок
+выше**): супервизор бежал из-под `lle`, а `/home/aco-devops` — `0750
 aco-devops:aco-devops`, и `lle` в этой группе нет. **Всё, что супервизор судит по `stat`, о
 каталогах роли под `systemUser` слепо**, и слепота приходит как `EACCES`, а не как «нет пути».
 

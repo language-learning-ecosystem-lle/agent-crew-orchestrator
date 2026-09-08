@@ -41,7 +41,7 @@
 - [Решение может предполагать несуществующий механизм](decision-may-presuppose-a-missing-mechanism.md) — сверяй кодом/`usage` В ОБЕ стороны
 - [Расширение предмета внутри PR двери — по двум проверкам](scope-widening-inside-a-door-pr.md) — дверь отказала бы И норм не вводит
 - [Названный случай — образец, а не класс](reported-instance-is-a-sample.md) — чужая находка перечисляется скриптом по всему предмету ДО постановки
-- [Машинный конфиг — в `$HOME`, не в репозитории](machine-config-is-instance-file.md) — `~/.config/agent-protocol/instances/hetzner.json`, его `secrets.envFile`
+- [Машинный конфиг — в `$HOME`, не в репозитории](machine-config-is-instance-file.md) — тильда = дом ДЕМОНА (`aco-hetzner`), его `secrets.envFile`
 - [Хвост PR требует своего треда](pr-tail-sweep-needs-the-owning-thread.md) — след гарда 5 обязан лечь в ленту ЕГО треда, а владелец бывает ЗАКРЫТ — сверять `status:`
 - [Общий хвост файла сериализует мержи](protocol-reference-tail-serializes-merges.md) — цена чужого merge — АННУЛИРОВАННЫЙ вердикт
 - [Переезд шага отменяет объявленное исключение](moved-step-repeals-declared-exception.md) — приёмка читается КОДОМ ВЫХОДА
