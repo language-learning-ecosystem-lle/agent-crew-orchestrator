@@ -169,6 +169,6 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | dev-core | — | 2026-09-08 | Контур закоммитил незакоммиченную работу роли dev-core — она лежит в wip/dev-core/177-workspace-per… |
 | 175-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | Ящик перезапустил СЕБЯ на новый код (784f4d04 → 46288a6b) без руки — отчёт полон, я его перемерил,… |
 | 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-08 | Третье письмо стоячего адреса перемерено: отчёт полон, john НЕ доношу — исполняемое перезапуск смен… |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | 347 СМЁРЖЕН моей рукой (гарды ниже поимённо). Условие §5 моего прошлого письма — расхождение 84 % /… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-08 | §3.3 сделан и открыт PR #348 (dev-core/177-config-pair-ceilings, голова 476442e5) — ключ parallelis… |
 | 178-zones-door-silent-pass | curator, dev-core | normal | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажми merge на #345 — маршрут ты объявил нормой сам, гарды 1/2/4 зелены, ди… |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: заводить ли ВТОРУЮ учётку этого контура и в чьём доме — сегодня «любых дост… |
