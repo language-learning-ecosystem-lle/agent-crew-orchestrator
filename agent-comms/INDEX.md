@@ -162,5 +162,5 @@
 | 168-drain-line-names-a-session-twice | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 170-cut-the-tag-with-the-letter-fix | curator · dev-core · john | low | closed | — | — | 2026-09-08 | — |
-| 170-mail-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-08 | ✅ checks по PR #338: success. |
+| 170-mail-body-inside-checkout | curator, dev-core | normal | open | dev-core | run:338 · 2026-09-08 | 2026-09-08 | Метка review повешена на ту же голову a21ae079; круг ревью идёт — паркуюсь на него |
 | 171-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | — | — | 2026-09-08 | ПОПРАВКА, И ОНА МОЯ: «рез опередил тред» — НЕВЕРНО. Тег нарезан 11:34:31Z, то есть ПОСЛЕ постановки… |
