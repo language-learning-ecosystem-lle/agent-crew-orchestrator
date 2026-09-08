@@ -161,4 +161,5 @@
 | 167-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 168-drain-line-names-a-session-twice | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
+| 170-cut-the-tag-with-the-letter-fix | curator · dev-core · john | normal | open | — | — | — | — |
 | 170-mail-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-08 | Происхождение треда (первой строкой, как требует норма заведения): тред заведён ролью curator из св… |
