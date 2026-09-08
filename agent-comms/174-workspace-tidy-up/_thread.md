@@ -1,0 +1,18 @@
+# Стоячий адрес: контур разобрал (или не разобрал) дерево роли
+
+participants: github, dev-core, curator · status: open
+
+## msg-001 · from: github · 2026-09-08 · expects: none
+
+## Контур закоммитил незакоммиченную работу роли `dev-core` — она лежит в `wip/dev-core/172-merge-gate-still-falls-on-private-20260908T1350Z`
+
+Прогон кончился, не закоммитив своё дерево. Контур сделал это за него: дерево чисто, роль поднимается ближайшим тиком — **и вот адрес работы, потому что больше его нигде нет.**
+
+- **роль:** `dev-core`
+- **дерево:** `/home/lle/projects/agent-crew-orchestrator/.worktrees/dev-core`
+- **тред прогона:** `172-merge-gate-still-falls-on-private`
+- **что лежало:** 3 path(s) — packages/agent-protocol/src/cli.ts (modified, +7/-1), packages/agent-protocol/src/orchestrator/self-restart-letter.ts (modified, +28/-7), packages/agent-protocol/src/orchestrator/self-restart.ts (modified, +65/-6)
+- **куда положено:** ветка `wip/dev-core/172-merge-gate-still-falls-on-private-20260908T1350Z`, коммит `fc380be7`
+- **push:** прошёл — ветка есть и на `origin`.
+
+**Ход ваш — ровно на одно решение:** забрать эту ветку в работу или удалить её, сказав почему. Удаления контур не делает (решение по треду 099): конец служебной ветки — рука роли.

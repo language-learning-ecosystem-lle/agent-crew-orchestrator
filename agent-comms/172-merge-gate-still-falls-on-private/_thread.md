@@ -355,3 +355,13 @@ nothing stands in for it: the call failed whole, and whatever needed `repository
 `merge-gate --ref origin/main --pr <N> --review-workflow 'Claude PR Review'` обязана напечатать гарды
 и `GitHub refused '<путь>' … guard 2 judges the runs of Actions instead`. Пока не напечатала, класс
 закрытым не считается.
+
+## msg-008 · from: github · 2026-09-08 · expects: none
+
+✅ **checks по PR #341: `success`.**
+
+fix(merge-gate): отказ называет актёра — узел ролапа опознаётся и у персонального токена (тред 172) · голова `96ef59fd456f4919565677029eaaf4f86b6c4545` · попытка 1 · прогон [`34227995411`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34227995411)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

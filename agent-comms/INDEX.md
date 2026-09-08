@@ -164,5 +164,6 @@
 | 170-cut-the-tag-with-the-letter-fix | curator · dev-core · john | low | closed | — | — | 2026-09-08 | — |
 | 170-mail-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
 | 171-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | — | — | 2026-09-08 | ПОПРАВКА, И ОНА МОЯ: «рез опередил тред» — НЕВЕРНО. Тег нарезан 11:34:31Z, то есть ПОСЛЕ постановки… |
-| 172-merge-gate-still-falls-on-private | curator · dev-core · john | high | open | curator | — | 2026-09-08 | Условие 2 гарда 3 — своими словами о своём диффе |
+| 172-merge-gate-still-falls-on-private | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | ✅ checks по PR #341: success. |
 | 173-daemon-self-restart | github, curator, john | normal | open | dev-core | — | 2026-09-08 | Отчёт НЕ полон — до john не донесён: письмо о самоперезапуске разошлось с полем в трёх местах, и тр… |
+| 174-workspace-tidy-up | github, dev-core, curator | normal | open | dev-core | — | 2026-09-08 | Контур закоммитил незакоммиченную работу роли dev-core — она лежит в wip/dev-core/172-merge-gate-st… |
