@@ -239,6 +239,44 @@ const reviewSchema = z.strictObject({
   workflow: z.string().min(1),
 });
 
+/**
+ * HOW MANY PAIRS «role × thread» MAY RUN AT ONCE (v27, thread `177-workspace-per-pair`,
+ * john's decision of 2026-09-08: «ДВЕ пары на роль, плюс явный потолок на инстанс»).
+ *
+ * BOTH HALVES ARE REQUIRED TOGETHER, and that is john's word rather than symmetry: «потолок
+ * на инстанс обязателен отдельно: две роли по две пары дают четыре сессии на одно окно».
+ * The ceiling that actually protects anything is the box one — the limiter measured in this
+ * thread is not disk (11 MB and 1.5 s per worktree) but the ACCOUNT WINDOW, and a per-role
+ * number raised alone multiplies by the number of roles. A config that names one half names
+ * the multiplication and not the bound.
+ */
+const parallelismSchema = z
+  .strictObject({
+    /**
+     * Pairs ONE ROLE may have running at once. `1` is what the package did before this
+     * field existed — the planner's «one session per role».
+     */
+    pairsPerRole: z.number().int().min(1),
+    /**
+     * Pairs ONE BOX may have running at once, summed across its roles. It is not derived
+     * from the other number: roles × pairsPerRole is the worst case, and the point of this
+     * field is to be lower than it.
+     */
+    pairsPerInstance: z.number().int().min(1),
+  })
+  .superRefine((value, context) => {
+    // A box ceiling under the role ceiling makes the role number a statement about nothing:
+    // the role could never reach it, and an operator reading `pairsPerRole: 2` would be told
+    // a parallelism the box refuses. Said by name here, at the door, rather than discovered
+    // as a role that never gets its second pair.
+    if (value.pairsPerInstance < value.pairsPerRole)
+      context.addIssue({
+        code: "custom",
+        path: ["pairsPerInstance"],
+        message: `the box ceiling (${value.pairsPerInstance}) is below the role ceiling (${value.pairsPerRole}) — no role could ever reach its own number, so one of the two is wrong; raise 'pairsPerInstance' to at least 'pairsPerRole' or lower 'pairsPerRole'`,
+      });
+  });
+
 export const protocolConfigSchema = z.strictObject({
   /**
    * THE VERSION OF THE PROTOCOL SCHEMA the repository's data is at — see
@@ -367,6 +405,31 @@ export const protocolConfigSchema = z.strictObject({
    * (john, same word, the boundary he did not widen).
    */
   review: reviewSchema.optional(),
+  /**
+   * HOW MANY PAIRS «role × thread» RUN AT ONCE (v27, thread `177-workspace-per-pair`).
+   *
+   * ABSENCE IS TODAY, BIT FOR BIT, and that is the load-bearing requirement of the field
+   * rather than a courtesy: one pair per role (the planner's `role-busy`, whose text still
+   * says «one session per role») and no ceiling of this kind on the box — the global run
+   * budget keeps cutting the tail exactly as it did. The code lands in `main` changing
+   * NOTHING in the field until john writes the numbers, which is why the numbers travel in
+   * their own pull request: `agent-protocol.json` is a document of power and the number IS
+   * the decision.
+   *
+   * WHY NOT PER ROLE, next to `launch.limits`, where a role's other ceilings live. Because
+   * this one is not a property of the role: it is a division of ONE account window between
+   * however many roles a box raises, and the statement of work names exactly two numbers.
+   * A per-role override would give «how many» a second answer before anybody has measured
+   * that two roles need different ones — the thread's own «два механизма против одного
+   * класса» refused for the same reason.
+   *
+   * WHY NOT UNDER `instances[]`, which is where a box's other facts (its roles, its account)
+   * already are. Because `instances` is OPTIONAL and its absence is a legitimate project —
+   * one machine, every role — and that project is precisely the one with nowhere to write a
+   * box ceiling. The day two boxes here genuinely differ, the override belongs there and it
+   * will be a version of its own.
+   */
+  parallelism: parallelismSchema.optional(),
   roles: z.array(roleSchema).min(1),
 });
 
@@ -376,6 +439,34 @@ export type Orchestrator = z.infer<typeof orchestratorSchema>;
 export type Notifications = z.infer<typeof notificationsSchema>;
 export type Announcements = z.infer<typeof announcementsSchema>;
 export type ProtocolConfig = z.infer<typeof protocolConfigSchema>;
+
+/**
+ * THE PAIRS ONE ROLE MAY RUN AT ONCE WHEN THE PROJECT HAS NOT SAID — one, which is the
+ * planner's rule as it stands today, written as a number instead of as an `if`.
+ */
+export const DEFAULT_PAIRS_PER_ROLE = 1;
+
+export type PairCeilings = {
+  /** Pairs of one role. Never undefined: silence here is the number 1, not an absence. */
+  readonly pairsPerRole: number;
+  /**
+   * Pairs of one box. `undefined` is NOT a number in disguise — it is "this project has
+   * declared no box ceiling", which is today's behaviour verbatim (the global run budget
+   * is the only thing that cuts a tick). A default of 1 here would have been the opposite
+   * of bit-for-bit: it would stand down every second ROLE, which nothing does today.
+   */
+  readonly pairsPerInstance: number | undefined;
+};
+
+/**
+ * THE ONE READER OF `parallelism`, so that "absence means today" is a fact of one function
+ * and not a habit repeated at every call site. The planner asks this and nothing else.
+ */
+export const pairCeilings = (config: ProtocolConfig): PairCeilings =>
+  config.parallelism ?? {
+    pairsPerRole: DEFAULT_PAIRS_PER_ROLE,
+    pairsPerInstance: undefined,
+  };
 
 /** Parse an unchecked value into a config. Throws ZodError with the list of complaints. */
 export const parseProtocolConfig = (raw: unknown): ProtocolConfig =>
