@@ -288,20 +288,37 @@ export const workspacePath = (input: {
 }): string => `${input.repo}/${input.worktrees}/${input.role}`.replace(/\/+/g, "/");
 
 /**
- * WHOSE WORKSPACE THIS CHECKOUT IS — the inverse of `workspacePath`, and the ONE answer
- * every guard about "am I standing in a role's tree" is allowed to use (`zones check
- * --role-from-workspace`, `systemd install`). It exists as a function rather than as two
- * copies of the same four lines because the two guards disagreeing would be worse than
- * either of them being wrong: one would refuse what the other passes, in the same tree.
+ * WHAT A CHECKOUT IS, IN THE THREE CLASSES THE CALLERS ACTUALLY DIFFER ON (thread 178).
+ * `workspaceRoleOf` answers one bit — "is this a role's tree" — and its `undefined` was
+ * read by both callers as one thing while it was two: a tree that has nothing to do with
+ * the workspaces at all, and a tree that lies INSIDE the declared workspaces and belongs
+ * to nobody nameable. `zones check --role-from-workspace` passed both with a note, so a
+ * checkout of the second class — the mail worktree, a probe worktree made by hand — took
+ * the only guard that enforces zones and turned it off, exit 0, on a path the role is
+ * forbidden to write (measured 2026-09-08, thread 177: the same forbidden path refused in
+ * `.worktrees/dev-core` and passed in `.worktrees/dev-core-177-probe`).
  *
- * The judgement is exactly as narrow as the layout it reads: the last path segment must
- * name a role OF THE CONFIG, and the whole path must be the one `workspacePath` builds
- * for that role. Anything else — the operator's own checkout, a CI checkout, the mail
- * worktree, a linked worktree somebody made by hand — is NOT a role workspace and gets
- * `undefined`; what a caller does with that (pass, note, refuse) is the caller's, and
- * this function never decides it.
+ *  - `role` — the path is exactly the one `workspacePath` builds for a role OF THE CONFIG;
+ *  - `unowned` — the path lies under `<repo>/<worktrees>/` and is not any role's workspace
+ *    (a name that is no role's, or a role's name at the wrong depth). Whose tree it is is
+ *    NOT KNOWN — and that is a different sentence from "it is nobody's";
+ *  - `outside` — the path is not under the declared workspaces at all (the home checkout,
+ *    a CI checkout, `/tmp/dev-core`), or the project declares no workspaces. Nothing about
+ *    the layout was ever claimed for it.
+ *
+ * WHAT A CALLER DOES WITH EACH IS STILL THE CALLER'S, and the two disagree on purpose:
+ * `systemd install` passes `unowned` with a note (R17 does not govern that tree, so a
+ * refusal there would name a reason that is not true), `zones check` refuses it (zones are
+ * enforced BY ROLE, and it has no role to enforce). What must never diverge is the
+ * CLASSIFICATION, which is why it is one function and not two copies of four lines.
  */
-export const workspaceRoleOf = (input: {
+export type WorkspaceCheckout =
+  | { readonly kind: "role"; readonly role: string }
+  | { readonly kind: "unowned" }
+  | { readonly kind: "outside" };
+
+/** The inputs every judgement about "whose tree is this" is allowed to read. */
+export type WorkspaceCheckoutQuestion = {
   /** The checkout being judged, absolute and already at its top level. */
   readonly checkout: string;
   /** The home checkout the workspaces hang under (R26). */
@@ -310,14 +327,49 @@ export const workspaceRoleOf = (input: {
   readonly worktrees?: string;
   /** The role ids of the config; a directory named after a non-role is not a workspace. */
   readonly roles: readonly string[];
-}): string | undefined => {
-  if (input.worktrees === undefined) return undefined;
+};
+
+/**
+ * The classification itself. As narrow as the layout it reads: the last path segment must
+ * name a role OF THE CONFIG and the whole path must be the one `workspacePath` builds for
+ * that role; everything else is told apart only by whether it lies under the declared
+ * workspaces directory.
+ */
+export const classifyWorkspaceCheckout = (input: WorkspaceCheckoutQuestion): WorkspaceCheckout => {
+  // No workspaces declared — the layout claims nothing about any path, so no tree can be
+  // inside it. `outside`, not `unowned`: there is nothing to be un-owned within.
+  if (input.worktrees === undefined) return { kind: "outside" };
   const here = input.checkout.replace(/\/+$/, "");
   const candidate = here.slice(here.lastIndexOf("/") + 1);
-  if (!input.roles.includes(candidate)) return undefined;
-  return workspacePath({ repo: input.repo, worktrees: input.worktrees, role: candidate }) === here
-    ? candidate
-    : undefined;
+  if (
+    input.roles.includes(candidate) &&
+    workspacePath({ repo: input.repo, worktrees: input.worktrees, role: candidate }) === here
+  ) {
+    return { kind: "role", role: candidate };
+  }
+  // The trailing slash is what makes this a containment test and not a prefix test:
+  // without it `<repo>/.worktrees-old/x` would count as living inside `<repo>/.worktrees`.
+  const workspaces = `${input.repo}/${input.worktrees}/`.replace(/\/+/g, "/");
+  return here.startsWith(workspaces) && here.length > workspaces.length
+    ? { kind: "unowned" }
+    : { kind: "outside" };
+};
+
+/**
+ * WHOSE WORKSPACE THIS CHECKOUT IS — the inverse of `workspacePath`, and the ONE answer
+ * every guard about "am I standing in a role's tree" is allowed to use (`zones check
+ * --role-from-workspace`, `systemd install`). It exists as a function rather than as two
+ * copies of the same four lines because the two guards disagreeing would be worse than
+ * either of them being wrong: one would refuse what the other passes, in the same tree.
+ *
+ * Anything that is not a role's workspace — the operator's own checkout, a CI checkout,
+ * the mail worktree, a linked worktree somebody made by hand — gets `undefined`. A caller
+ * that must tell those apart asks `classifyWorkspaceCheckout` instead; this shape stays
+ * for the callers that genuinely only need the name.
+ */
+export const workspaceRoleOf = (input: WorkspaceCheckoutQuestion): string | undefined => {
+  const seen = classifyWorkspaceCheckout(input);
+  return seen.kind === "role" ? seen.role : undefined;
 };
 
 /**

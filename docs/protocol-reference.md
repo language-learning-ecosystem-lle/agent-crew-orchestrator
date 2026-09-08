@@ -968,6 +968,42 @@ zones check --role curator --paths PROTOCOL.md,agent-protocol.json
 named, in both forms» — паритет форм на одном наборе путей плюс запрещённый путь
 ВТОРЫМ в строке (на старом коде это зелёное «1 path(s)»).
 
+## Дверь зон в неопознанном дереве ОТКАЗЫВАЕТ, а не пропускает молча
+
+Замер dev-core 2026-09-08 (тред `177-workspace-per-pair`, msg-002; база `1bac6218`): одна
+и та же команда, один и тот же ЗАПРЕЩЁННЫЙ роли путь `docs/roles/dev-core.md`, меняется
+только форма дерева —
+
+```
+zones check --role-from-workspace --staged   в .worktrees/dev-core
+  → exit 1, «'dev-core' may not write these paths (zones — writes denied under docs/roles)»
+zones check --role-from-workspace --staged   в .worktrees/dev-core-177-probe
+  → exit 0, «'…dev-core-177-probe' is not a role workspace, the guard does not apply»
+```
+
+Причина — не в вердикте и не в опознании дерева: `workspaceRoleOf` отвечал ровно то, что
+обещал («это не рабочее место роли»). Дефект в том, что потребитель читал ОДИН `undefined`
+там, где классов два: дерево ВНЕ объявленных `worktrees` (свой чекаут, чекаут CI) — про
+него раскладка ничего не утверждала, — и дерево ВНУТРИ них, чьего хозяина назвать нельзя
+(чекаут почты `.worktrees/comms`, worktree, добавленный рукой). Второй класс существует в
+поле и без всякой пробы, а примечание «the guard does not apply» читается и хуком, и
+человеком как «проверять тут нечего».
+
+Чинились ПОТРЕБИТЕЛИ, а не ответ общей функции. `classifyWorkspaceCheckout`
+(`orchestrator/workspace.ts`) отвечает тремя классами — `role` / `unowned` / `outside`;
+`workspaceRoleOf` выражен через неё и отвечает по-прежнему, поэтому вторая дверь,
+`orchestrator systemd install`, не сдвинулась ни на бит: у неё пропуск чужого дерева —
+объявленное поведение (`docs/box-setup.md`), R17 такое дерево не переставляет, и отказ там
+назвал бы неверную причину. У `zones check` терять есть что: зоны принуждаются РОЛЬЮ, роли
+нет — принуждать нечем, и дверь отказывает (exit 2), называя дерево, причину и ремонт
+(`--role <id>` со списком объявленных ролей). Общим осталось ЧТЕНИЕ, разошлось следствие.
+
+Тесты: `orchestrator/workspace.test.ts`, describe «what class a checkout falls in» —
+перечисление всех форм, дающих сегодня `undefined`, разложенное по трём классам, плюс
+проверка, что имя-ответ соседа не изменился; `roles/zones.process.test.ts`, describe «zones
+check --role-from-workspace — the class of the tree it stands in» — та же команда в четырёх
+реальных линкованных деревьях temp-ящика.
+
 ## Дверь зон судит ТОЛЬКО по `forbidden`; `writes` не сужает ничего
 
 Замер curator 2026-08-18 (тред 010): `zones check --role curator` пропустил
