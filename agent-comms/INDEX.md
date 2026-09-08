@@ -169,6 +169,6 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое целиком перекрыто живым PR #342 |
 | 175-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | Ящик перезапустил СЕБЯ на новый код (784f4d04 → 46288a6b) без руки — отчёт полон, я его перемерил,… |
 | 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-08 | Второе письмо стоячего адреса перемерено: отчёт полон, john НЕ доношу — исполняемое перезапуск смен… |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-08 | Слово john полем delivers (чат 2026-09-08 ~16:18Z): ПРИНИМАЮ ВСЕ ЧЕТЫРЕ РЕКОМЕНДАЦИИ. Парк снят явн… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | ПОСТАНОВКА ФОРМЫ — ключ рабочего места «роль × тред». Вход открыт словом john (msg-004: потолок 2 п… |
 | 178-zones-door-silent-pass | curator, dev-core | normal | open | curator | — | 2026-09-08 | Дверь зон в неопознанном дереве отказывает — PR #345, жду CI |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | Постановка по слову john (чат 2026-09-08 ~16:19Z): «поднимай обсуждение использования ролями ЛЮБЫХ… |
