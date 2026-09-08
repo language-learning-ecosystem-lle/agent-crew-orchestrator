@@ -887,6 +887,16 @@ export type NotifyState = {
    */
   readonly mergeable?: readonly string[] | undefined;
   /**
+   * THE COLLISIONS OF THREAD NUMBERS ALREADY WRITTEN ABOUT (thread 159) — the same kind of
+   * mark as `mergeable` above and stored the same way: this field only carries it, and the
+   * rule that lifts one lives in `orchestrator/thread-number-collision.ts` and nowhere else.
+   *
+   * Written by the watchman's own pass at the moment the letter lands, for the reason the
+   * `mergeable` block gives: a letter already in the feed must not be forgotten because a
+   * transport refused a minute later.
+   */
+  readonly numberCollisions?: readonly string[] | undefined;
+  /**
    * The {@link freezeLetterKey}s of the SERIES already written about IN THE FEED (thread 149)
    * — a second mark over the same fact as `freezes`, and separate from it on purpose.
    *
@@ -1258,6 +1268,9 @@ export const renderNotifyState = (state: NotifyState): string => {
     // nor the word heard is stored — a push into a conflicting branch is the SAME break, and
     // the word is re-measured every tick.
     ...(state.mergeable ?? []).map((entry) => `mergeable\t${entry}`),
+    // Two columns: the key is the number AND every half carried under it (thread 159), so a
+    // third directory appearing under an announced number is a different key and rings.
+    ...[...(state.numberCollisions ?? [])].sort().map((entry) => `number-collision\t${entry}`),
     // Four columns (role, thread, since): the SERIES, and nothing about the freeze in force
     // — that one is re-read from the journal every tick, and what identifies the letter is
     // the run of attempts it was written about. Sorted, like the freezes above it.
@@ -1285,6 +1298,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
   const accounts: string[] = [];
   const eventParks: string[] = [];
   const mergeable: string[] = [];
+  const numberCollisions: string[] = [];
   let auth: string | undefined;
   let gh: string | undefined;
   let drift: string | undefined;
@@ -1388,6 +1402,14 @@ export const parseNotifyState = (raw: string): NotifyState => {
       if (key !== undefined && /^pr:\d+$/.test(key)) mergeable.push(key);
       continue;
     }
+    if (columns[0] === "number-collision") {
+      // `number:NNN:<id>,<id>[,...]` and nothing else, on the same rule as `mergeable`: a
+      // line that is not the key is dropped rather than half-read, because a half-read mark
+      // would say the same collision a second time — which is the one thing the mark is for.
+      const [, key] = columns;
+      if (key !== undefined && /^number:\d{3}:\S+$/.test(key)) numberCollisions.push(key);
+      continue;
+    }
     if (columns[0] === "mergeable-outage") {
       // The rest of the line, tabs and all: the value is one JSON object and this file is
       // only its envelope. An unreadable one reads as NO OUTAGE where it is parsed — the
@@ -1448,6 +1470,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
     ...(accounts.length === 0 ? {} : { accounts }),
     ...(eventParks.length === 0 ? {} : { eventParks }),
     ...(mergeable.length === 0 ? {} : { mergeable }),
+    ...(numberCollisions.length === 0 ? {} : { numberCollisions }),
     ...(freezeLetters.length === 0 ? {} : { freezeLetters }),
     ...(mergeableOutage === undefined ? {} : { mergeableOutage }),
     ...(mergeableRang === undefined ? {} : { mergeableRang }),
