@@ -96,7 +96,9 @@ const contour = (): { repo: string; root: string; body: string } => {
     ["-C", repo, "-c", "user.name=t", "-c", "user.email=t@e", "commit", "-qm", "init"],
     { encoding: "utf8" },
   );
-  const body = join(repo, "body.md");
+  // OUTSIDE the repository, as the door of thread 170 now requires of every body file: a
+  // body left in a checkout is untracked dirt the box's self-restart refuses to pull over.
+  const body = join(mkdtempSync(join(tmpdir(), "agent-protocol-newmsg-body-")), "body.md");
   writeFileSync(body, "The answer.\n");
   return { repo, root: join(repo, "agent-comms"), body };
 };
@@ -1642,7 +1644,9 @@ const claiming = (
   body: string,
   extra: readonly string[],
 ): { code: number; out: string } => {
-  const file = join(contest.repo, "claim.md");
+  // Outside the checkout (thread 170) — this test is about what the body SAYS, and a body
+  // inside a tree would now be refused for where it lies before anyone reads it.
+  const file = join(mkdtempSync(join(tmpdir(), "agent-protocol-claim-")), "claim.md");
   writeFileSync(file, body);
   try {
     const out = execFileSync(
@@ -1878,7 +1882,8 @@ describe("the same claim written without the markup (thread 058)", () => {
 describe("new-thread and the same claim (thread 042)", () => {
   it("REFUSES an opening message that releases the turn in prose only", () => {
     const contest = contour();
-    const body = join(contest.repo, "opening.md");
+    // Outside the checkout (thread 170): the claim in the prose is what is on trial here.
+    const body = join(mkdtempSync(join(tmpdir(), "agent-protocol-opening-")), "opening.md");
     writeFileSync(body, "Стоячий приёмник. Ход никому: `waiting-on: —`.\n");
 
     const result = newThread({ ...contest, body }, "018-y", null);
@@ -2489,5 +2494,75 @@ describe("new-message notes the letters that landed under the sender's own last 
       "1 message(s) landed under your own letter of 2026-08-30T09:29:30Z",
     );
     expect(result.out).toContain("written by curator");
+  });
+});
+
+/**
+ * THE BODY FILE THAT MUST NOT LIE IN A TREE, ON THE MAIL COMMANDS (thread
+ * `170-mail-body-inside-checkout`).
+ *
+ * `fs/body-location.test.ts` proves the wiring and `merge/pr-open.test.ts` the predicate;
+ * neither of them proves that this command asks — and asks BEFORE it writes. That is the
+ * whole difference from `pr open`: there the cost of a late refusal is a stray branch,
+ * here it is a commit and a push into an append-only feed that cannot be edited or
+ * withdrawn.
+ */
+describe("new-message — the body file that lies inside a checkout (thread 170)", () => {
+  /** The same body, written INSIDE the served checkout — the artefact `.pr278-body.md` was. */
+  const bodyInside = (contest: { repo: string }, text = "The answer.\n"): string => {
+    const path = join(contest.repo, ".msg-body.md");
+    writeFileSync(path, text);
+    return path;
+  };
+
+  it("REFUSES it by name, and writes NOTHING: no message file, no commit", () => {
+    const contest = contour();
+    const before = execFileSync("git", ["-C", contest.repo, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+    });
+
+    const result = write(
+      { ...contest, body: bodyInside(contest) },
+      {
+        AGENT_PROTOCOL_WORKER: "human",
+      },
+    );
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("new-message —");
+    expect(result.out).toContain("lies inside the git checkout");
+    expect(result.out).toContain("mktemp -d -p /tmp");
+    // The write is the assertion, not the exit code: the door stands ahead of it.
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+    expect(
+      execFileSync("git", ["-C", contest.repo, "rev-parse", "HEAD"], { encoding: "utf8" }),
+    ).toBe(before);
+  });
+
+  it("puts WHERE before WHAT: a body claiming the turn from inside a checkout is refused for the PLACE", () => {
+    // The declared order (`cli.ts`, `newMessage`): the location door stands at the read,
+    // ahead of every judgement of the body's content. This body would be refused by the
+    // content door of thread 042 as well — and that refusal would send the caller to edit
+    // the prose while the dirt kept lying in the tree.
+    const contest = contour();
+    const body = bodyInside(contest, "Ход никому не передаю.\n");
+
+    const result = run({ ...contest, body }, { AGENT_PROTOCOL_WORKER: "human" }, [
+      "--expects",
+      "none",
+    ]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("lies inside the git checkout");
+    expect(result.out).not.toContain("the body says the turn is released");
+  });
+
+  it("stands aside for a body outside every checkout — the normal path is untouched", () => {
+    const contest = contour();
+
+    const result = write(contest, { AGENT_PROTOCOL_WORKER: "human" });
+
+    expect(result.code, result.out).toBe(0);
+    expect(result.out).not.toContain("lies inside the git checkout");
   });
 });

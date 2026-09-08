@@ -67,6 +67,7 @@ import { describePolicySkew, policyRole } from "./config/policy.js";
 import { createSkewVoice, describeRepairSkew } from "./config/repair.js";
 import { configSetSummary, planConfigSet } from "./config/set.js";
 import { createStandingConfig, standingKey } from "./config/standing.js";
+import { bodyFileLocation } from "./fs/body-location.js";
 import {
   type LoadedThread,
   loadThread,
@@ -87,6 +88,7 @@ import {
   readFileAtRef,
   workdirState,
 } from "./fs/git.js";
+import { gitEnvOutsideHook } from "./fs/git-env.js";
 import { resolveMailRoot } from "./fs/mail-root.js";
 import { type BaseMovePaths, describeBaseNote } from "./merge/base-note.js";
 import {
@@ -123,12 +125,7 @@ import {
   describePairNote,
   executorCandidatesOf,
 } from "./merge/pair-note.js";
-import {
-  checkoutAnswerOf,
-  judgeBodyLocation,
-  judgePrDescription,
-  PR_FIELDS_FORM,
-} from "./merge/pr-open.js";
+import { judgePrDescription, PR_FIELDS_FORM } from "./merge/pr-open.js";
 import {
   type AccountAlarm,
   type AuthAlarm,
@@ -1376,30 +1373,6 @@ const repairFrom = (argv: readonly string[]): LoadedRepair => {
   const skew = describeRepairSkew({ ref: loaded.ref, version: loaded.version });
   if (skew !== undefined && repairSkew.announce(key, skew)) out(`agent-protocol: ${skew}`);
   return loaded;
-};
-
-/**
- * THE ENVIRONMENT WITHOUT THE VARIABLES A GIT HOOK EXPORTS. Every hook runs with
- * `GIT_DIR` (and friends) set, and with `GIT_DIR` set `git rev-parse --show-toplevel`
- * stops answering "the root of the repository" and answers "the current directory" —
- * so a guard that resolves the repository from its cwd resolves it to whatever
- * directory the hook's command happened to run in. That is not a hypothetical: the
- * zones guard of thread 020 let a commit into a path under a prefix FORBIDDEN to the
- * committing role through on its first live test, because `pnpm -F agent-protocol`
- * runs in the package directory and the inherited `GIT_DIR` made that directory look
- * like the repository root — the
- * guard concluded "not a role workspace" and stood aside, silently, in exactly the
- * situation it exists for.
- */
-const gitEnvOutsideHook = (): NodeJS.ProcessEnv => {
-  const {
-    GIT_DIR: _dir,
-    GIT_INDEX_FILE: _index,
-    GIT_WORK_TREE: _tree,
-    GIT_PREFIX: _prefix,
-    ...rest
-  } = process.env;
-  return rest;
 };
 
 /**
@@ -3998,7 +3971,25 @@ const newMessage = (argv: readonly string[]): void => {
   }
   const messagesDir = join(threadDir, "messages");
 
-  const text = readFile(required(argv, "--body-file"), "message body");
+  const bodyPath = required(argv, "--body-file");
+  const text = readFile(bodyPath, "message body");
+  // WHERE THE FILE LIES IS ASKED BEFORE WHAT IS IN IT, and before anything is written
+  // (thread 170) — the same door `pr open` has had since #328, the same predicate, the
+  // same sentence about where a body belongs.
+  //
+  // THE ORDER IS DECLARED, NOT «AS IT CAME OUT». The door stands where the path first
+  // enters the command — at the read — so it is ahead of EVERY judgement of the body's
+  // content (`bodyClaimsTurnRelease` below and its neighbours) and ahead of every write.
+  // Ahead of content because a body inside a checkout has to be MOVED whatever it says,
+  // and refusing about its prose first would send the caller to the wrong repair and
+  // leave the dirt — the artefact that freezes the box's self-restart — lying there for a
+  // second round trip. Ahead of the write because here, unlike `pr open`, the cost of
+  // being late is not a stray branch: it is a commit and a push into an append-only feed
+  // that cannot be edited or taken back. What stays AHEAD of it is the addressing above
+  // (`--thread`/`--ensure-thread`, the id, the roles): those refusals are about where the
+  // letter goes, not about the file, and none of them writes anything.
+  const where = bodyFileLocation(bodyPath);
+  if (!where.ok) fail(`new-message — ${where.refusal}`, 2);
   const waitingRaw = waitingOnFlag(argv);
   const waitingOn = waitingRaw === undefined ? undefined : parseWaitingOn(waitingRaw, registry);
   // A RELEASE THAT LIVES ONLY IN THE PROSE IS NOT A RELEASE (thread 042): the body says
@@ -4434,7 +4425,17 @@ const newThread = (argv: readonly string[]): void => {
   const taker = numberTaker();
   if (taker !== undefined) fail(numberTakenBy(taker), 2);
 
-  const text = readFile(required(argv, "--body-file"), "body of the first message");
+  const bodyPath = required(argv, "--body-file");
+  const text = readFile(bodyPath, "body of the first message");
+  // THE SAME DOOR AS `new-message`'s, IN THE SAME PLACE (thread 170): at the read, ahead
+  // of every judgement of the body's content and of every write. It stands AFTER the
+  // number check above and BEFORE `--title`/`--worker` below, and that is deliberate: a
+  // taken number means this thread cannot be opened under this id at all — the caller has
+  // to re-address, not merely move a file — while everything after the read is either
+  // about the body's prose or about flags, and none of it can be repaired while the body
+  // still lies in a tree.
+  const where = bodyFileLocation(bodyPath);
+  if (!where.ok) fail(`new-thread — ${where.refusal}`, 2);
   const title = required(argv, "--title");
   const provenance = provenanceFrom(argv, { required: true });
   const expects = parseExpects(required(argv, "--expects"));
@@ -15891,34 +15892,10 @@ const prOpen = (argv: readonly string[]): void => {
   // repair and leave the dirt — the fault that freezes the box — lying there for a second
   // round trip. The reading of the body above it is not the content door: it is what turns
   // an unreadable path into a refusal about the path, which this door then never sees.
-  const where = judgeBodyLocation({
-    path: bodyPath,
-    // NOT `checkoutOf`: its whole failure vocabulary is `undefined`, and this door reads
-    // `undefined` as "no checkout", that is as PASS — so a git that could not run would
-    // silently open the door instead of guarding it. `checkoutAnswerOf` keeps "git looked
-    // and found no repository" apart from "git did not answer", and `LC_ALL=C` is what
-    // makes the first of those recognisable by its own sentence on any box.
-    checkoutOf: (dir) =>
-      checkoutAnswerOf(() =>
-        execFileSyncByExit("git", ["-C", dir, "rev-parse", "--show-toplevel"], {
-          env: { ...gitEnvOutsideHook(), LC_ALL: "C" },
-        }),
-      ),
-    // `check-ignore` exits 0 when the path IS ignored, 1 when it is not, and >1 on an
-    // error — and only the first is an answer. Anything else is read as "not ignored",
-    // which is the side that refuses: a door that fell silent because git had trouble
-    // would be a door that stops guarding without saying so.
-    isIgnored: (dir, path) => {
-      try {
-        execFileSyncByExit("git", ["-C", dir, "check-ignore", "-q", "--", path], {
-          env: gitEnvOutsideHook(),
-        });
-        return true;
-      } catch {
-        return false;
-      }
-    },
-  });
+  // The wiring is `fs/body-location.ts` and it is shared with `new-message` and
+  // `new-thread` (thread 170): three commands take a `--body-file`, the fault is one, and
+  // three copies of the same two git calls would be three doors drifting apart in silence.
+  const where = bodyFileLocation(bodyPath);
   if (!where.ok) fail(`pr open — ${where.refusal}`, 2);
   const registry = registryFrom(argv, undefined);
   const repo = repoArg(argv, process.cwd());

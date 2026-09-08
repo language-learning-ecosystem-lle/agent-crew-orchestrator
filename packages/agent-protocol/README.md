@@ -2129,7 +2129,18 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # them is unparsable (the stamp must stand strictly after the last in the feed)
                             # THE WRITING HALF (R3): --write means SENT — the file, the commit and the push
                             # happen inside, with the replanning retry behind them; nothing is left to type
-                            # --body-file lies OUTSIDE the mail checkout: delivery refuses a dirty checkout
+                            # --body-file lies OUTSIDE EVERY checkout, and since thread 170 that is a DOOR
+                            # and not only a habit: `new-message` and `new-thread` refuse a body file lying
+                            # inside a git checkout that nothing ignores — the same predicate, the same
+                            # sentence and the same wiring `pr open` uses (`fs/body-location.ts`), and the
+                            # refusal names its own command: "new-message — the body file '<p>' lies inside
+                            # the git checkout '<root>' — write it OUTSIDE any checkout … `mktemp -d -p /tmp`".
+                            # ASKED AT THE READ, so it stands ahead of every judgement of what the body SAYS
+                            # and ahead of every write: here, unlike `pr open`, a late refusal would already
+                            # have committed and pushed into an append-only feed. A path the checkout IGNORES
+                            # is not refused (a session's own TMPDIR under `.orchestrator/` is one), because
+                            # the fault is not "a file in a tree" but "a file `git pull --ff-only` refuses to
+                            # write over" — the artefact that froze the box for ≥23 hours in thread 153
                             # --no-push: the file only, for the ONE caller that owns its own git (CI)
                             # AND THE DOOR SAYS IF LETTERS LANDED UNDER THE SENDER'S OWN LAST ONE (thread
                             # 091, decision of john 2026-09-03): "N message(s) landed under your own letter
