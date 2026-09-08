@@ -4,7 +4,7 @@
 - [Деревья ролей делят один склад refs](role-worktrees-share-one-ref-store.md) — чужой тег виден без `fetch`
 - [Парк замораживает тот самый ход](parked-on-freezes-the-turn.md) — отменяет постановку, если снятие зависит от адресата
 - [Дверь парка отказывает молчащему письму](park-door-refuses-silent-letters.md) — принимается только назвавшее РОВНО этот парк (`--verdict … --pr`, `run:N`)
-- [Письмо без парка поднимает тред впустую](letter-without-a-park-reraises-the-thread.md) — голым кандидатом делает и письмо БЕЗ парка, и своё `--delivers`
+- [Письмо без парка поднимает тред впустую](letter-without-a-park-reraises-the-thread.md) — парк снимает ФАКТ, а не слово: с 08.09 только `--park-lifted`
 - [Лифт парка чист над почтой](park-lift-is-pure-over-the-mail.md) — `cli mail` парк НЕ фильтрует
 - [Свежую ленту читают ДО подъёма роли](read-the-fresh-feed-before-raising-a-role.md) — замер мог снять другая сессия часом раньше
 - [Чтение ссылки не должно писать в дерево](reading-a-ref-must-not-write-the-tree.md) — `git show <ref>:<путь>`: `checkout <ref> -- .` готовит отказ запуска (R17)
