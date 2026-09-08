@@ -502,7 +502,7 @@ describe("notify as a command", () => {
 
     writeFileSync(
       join(contest.root, "023-x", "messages", "2026-07-26T10-00-00Z-curator.md"),
-      "---\nfrom: curator\nworker: human\ndate: 2026-07-26T10:00:00Z\nexpects: none\ndelivers: john\nwaiting-on: dev-core\n---\n\nОтвет получен.\n",
+      "---\nfrom: curator\nworker: human\ndate: 2026-07-26T10:00:00Z\nexpects: none\ndelivers: john\npark-lifted: john\nwaiting-on: dev-core\n---\n\nОтвет получен.\n",
     );
 
     const after = run(contest, ["--write"]);
@@ -630,7 +630,7 @@ describe("notify as a command", () => {
     writeFileSync(
       join(contest.root, "030-x", "messages", "2026-07-26T09-00-00Z-curator.md"),
       "---\nfrom: curator\nworker: claude-code\ndate: 2026-07-26T09:00:00Z\nexpects: none\n" +
-        "waiting-on: dev-core\ndelivers: john\n---\n\nСлово john по вопросу.\n",
+        "waiting-on: dev-core\ndelivers: john\npark-lifted: john\n---\n\nСлово john по вопросу.\n",
     );
     const lifted = run(contest, ["--write"]);
 
@@ -710,7 +710,7 @@ describe("notify as a command", () => {
     writeFileSync(
       join(contest.root, "030-x", "messages", "2026-07-26T09-00-00Z-curator.md"),
       "---\nfrom: curator\nworker: claude-code\ndate: 2026-07-26T09:00:00Z\nexpects: none\n" +
-        "waiting-on: dev-core\ndelivers: john\n---\n\nСлово john по вопросу.\n",
+        "waiting-on: dev-core\ndelivers: john\npark-lifted: john\n---\n\nСлово john по вопросу.\n",
     );
     const both = run(contest, ["--write"]);
 
@@ -1055,16 +1055,21 @@ describe("a turn this box never took — notify against the journal (thread 042)
     expect(result.out).toContain("dev-core×042-untaken");
   });
 
-  it("a park declared on ANOTHER role's turn does not freeze the thread at all (thread 042)", () => {
+  it("A PARK DECLARED ON ANOTHER ROLE'S TURN FREEZES THE THREAD AGAIN — and RINGS (155)", () => {
     // The measured window of 2026-08-28, end to end through the command: a park put up on
     // curator's turn, the turn handed to dev-core two minutes later, and 4 h 16 m of silence
     // while the daemon printed `PARKED behind a decision of john` at every tick.
     //
-    // UNTIL THE LIFT OF 2026-08-29 THE COURIER WAS THE ONLY ONE WHO KNEW: the park stood, the
-    // scheduler kept skipping the pair, and this line rang about a pair frozen behind a decision
-    // that was not its own. Now the freeze itself is gone — `parkingOf` reads the park against
-    // the turn it was declared on — so the courier has nothing to explain away: the counters say
-    // `0 parked`, and what is left is the plain untaken turn the box owes a raise.
+    // THE HISTORY OF THIS TEST IS THE HISTORY OF THE NORM. Until 2026-08-29 the courier was the
+    // only one who knew: the park stood, the scheduler kept skipping the pair, and the line rang
+    // about a pair frozen behind a decision that was not its own. The lift of 042 answered that
+    // by ending the park when its TURN ended, and this test then asserted `0 parked`.
+    //
+    // Variant «А» of thread 155 (john, 2026-09-08) takes that lift back out, and this case is
+    // exactly where the trade is paid — and exactly where it is WON. The thread is frozen again,
+    // which is the cost; and the courier does not go quiet about it, which is the whole reason
+    // john chose (а): the human is rung with the standing question by name, on the same tick. The
+    // 4 h 16 m of silence cannot come back, because silence is what the ringing replaces.
     const contest = contour({});
     raiseable(contest);
     contest.park("902-acme", { asks: true, date: "2026-07-25T19:58:00Z", waitingOn: "curator" });
@@ -1077,12 +1082,11 @@ describe("a turn this box never took — notify against the journal (thread 042)
 
     const result = run(contest);
 
-    expect(result.out).toContain("dev-core×902-acme");
-    expect(result.out).toContain("0 parked, 0 of them asking, 0 of those new");
-    // AND THE SENTENCES OF THE FREEZE ARE ABSENT, both of them: the pair is not behind a park,
-    // and the courier's strap for a park it merely inherited has nothing to fire on here.
-    expect(result.out).not.toContain("behind a park on john");
-    expect(result.out).not.toContain("declared on another role's turn");
+    expect(result.out).toContain("your decision: 902-acme");
+    expect(result.out).toContain("1 parked, 1 of them asking, 1 of those new");
+    // AND THE UNTAKEN TURN IS NOT REPORTED: the pair is not owed a raise while the thread it
+    // would be raised into is frozen — one state, said once.
+    expect(result.out).not.toContain("dev-core×902-acme");
   });
 
   it("AT THE SAME HOLDER THE PARK STILL FREEZES THE THREAD — the pair is not owed a raise", () => {
@@ -1119,7 +1123,7 @@ describe("a turn this box never took — notify against the journal (thread 042)
     const date = stamp(Date.now() - ago);
     writeFileSync(
       join(contest.root, id, "messages", `${date.replace(/:/g, "-")}-curator.md`),
-      `---\nfrom: curator\nworker: human\ndate: ${date}\nexpects: none\ndelivers: john\nwaiting-on: dev-core\n---\n\nJohn ответил: вариант D.\n`,
+      `---\nfrom: curator\nworker: human\ndate: ${date}\nexpects: none\ndelivers: john\npark-lifted: john\nwaiting-on: dev-core\n---\n\nJohn ответил: вариант D.\n`,
     );
   };
 
