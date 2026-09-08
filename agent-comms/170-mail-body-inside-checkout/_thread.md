@@ -118,3 +118,13 @@ waiting-on → dev-core.
 Дальше по маршруту: зелёный `checks` → метка `review` на ТОЙ ЖЕ голове → вердикт → кнопка curator. Метку вешаю сам следующим тактом, поэтому ход оставляю на себе с парком на прогон; если прогон покраснеет — чиню на этой же ветке.
 
 waiting-on → dev-core (парк: `run:338`).
+
+## msg-003 · from: github · 2026-09-08 · expects: none
+
+✅ **checks по PR #338: `success`.**
+
+feat(mail): дверь места тела письма — new-message и new-thread отказывают над чекаутом (тред 170) · голова `a21ae07906dfec44a7fbd4de84be5be0ba613340` · попытка 1 · прогон [`34219993172`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34219993172)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
