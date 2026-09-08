@@ -389,50 +389,108 @@ describe("a thread frozen behind a person — the third class of event (thread 0
     expect(later.restatedParked).toEqual([]);
   });
 
-  it("the SAME question asked again does not ring a second time — the key is (person, thread)", () => {
+  const CARRIED = { ...PARKED, since: "2026-07-31T15:00:00Z", question: "И ещё?" };
+
+  it("the SAME question asked again does not ring a second time — the repeat is read from the LETTERS", () => {
     // THE DEFECT Д-2, MEASURED IN THE FIELD 2026-08-21/22 (thread 030): a park is lifted by
     // anybody's later move, so a role raised on the thread finds its question unanswered and
     // writes it out again — and the stamp in the key made every such repeat a fresh call.
     // Two calls about aco-028 and two about acme-102 in one day, one question each.
-    const first = withPark([PARKED]);
-    const later = withPark([{ ...PARKED, since: "2026-07-31T15:00:00Z", question: "И ещё?" }], {
-      waiting: [],
-      stalled: [],
-      parked: first.parked,
-    });
+    //
+    // AND THE SHAPE OF THE REPEAT IS THE POST-155 ONE (thread 155): the park belongs to the
+    // THREAD, so a repeat does NOT move `since` — the standing park is unchanged and what says
+    // "asked again" is a later LETTER carrying the same park, which is what the feed holds.
+    const first = withPark([PARKED], EMPTY, { declaredParks: [PARKED] });
+    const later = withPark(
+      [PARKED],
+      { waiting: [], stalled: [], parked: first.parked },
+      { declaredParks: [PARKED, CARRIED] },
+    );
 
     expect(later.freshParked).toEqual([]);
     // NOT SILENCE, THOUGH — a downgrade (see the next test): the repeat is a line, and the
-    // line goes in a letter somebody else's fresh event is already sending.
+    // line goes in a letter somebody else's fresh event is already sending. The question in it
+    // is the DECLARATION's, because that is the park that stands.
     expect(later.restatedParked).toHaveLength(1);
     expect(later.lines.map((line) => line.text)).toEqual([
-      "still standing, asked again (not a new question): ❓ 023-x ждёт твоего решения: И ещё?",
+      `still standing, asked again (not a new question): ❓ 023-x ждёт твоего решения: ${PARKED.question}`,
     ]);
+  });
+
+  it("the same carrying letter is not printed twice — the mark rides in the state file", () => {
+    // THE PRICE OF READING THE CLASS OUT OF THE FEED (thread 155): a letter does not go away,
+    // so a repeat found in it is true FOR EVER unless the box remembers having said it. And a
+    // park permanently restated is a park the reminder round can never reach again — 043's
+    // muteness, rebuilt by hand. The memory is `parked[].restated`.
+    const first = withPark([PARKED], EMPTY, { declaredParks: [PARKED] });
+    const said = withPark(
+      [PARKED],
+      { waiting: [], stalled: [], parked: first.parked },
+      { declaredParks: [PARKED, CARRIED] },
+    );
+
+    expect(said.parked).toEqual([{ ...PARKED, restated: CARRIED.since }]);
+
+    const again = withPark(
+      [PARKED],
+      { waiting: [], stalled: [], parked: said.parked },
+      { declaredParks: [PARKED, CARRIED] },
+    );
+
+    expect(again.restatedParked).toEqual([]);
+    expect(again.lines).toEqual([]);
+  });
+
+  it("a state file written before the column reads as `nothing said yet`, not as noise", () => {
+    // THE UPGRADE (thread 155, point (vi) of the statement): a `parked` row of four columns is
+    // every state file written before this field existed. It must read as "this box has never
+    // said `asked again` about this park" — the truth about it — and cost at most one honest
+    // repeat line on the first tick, never a call and never a silenced reminder.
+    const legacy = parseNotifyState("parked\tjohn\t023-x\t2026-07-31T11:08:20Z\n");
+
+    expect(legacy.parked).toEqual([
+      { person: "john", thread: "023-x", since: PARKED.since, question: "", asks: false },
+    ]);
+
+    const first = withPark([PARKED], legacy, { declaredParks: [PARKED, CARRIED] });
+
+    expect(first.freshParked).toEqual([]);
+    expect(first.restatedParked).toHaveLength(1);
+    // AND THE FIFTH COLUMN IS WRITTEN BACK, so the second tick is quiet: the round trip through
+    // the file is the assert, not the object — the value has to survive the state file.
+    expect(renderNotifyState({ waiting: [], stalled: [], parked: first.parked })).toBe(
+      `parked\tjohn\t023-x\t${PARKED.since}\t${CARRIED.since}\n`,
+    );
+    const second = withPark(
+      [PARKED],
+      parseNotifyState(renderNotifyState({ waiting: [], stalled: [], parked: first.parked })),
+      { declaredParks: [PARKED, CARRIED] },
+    );
+
+    expect(second.restatedParked).toEqual([]);
   });
 
   it("a repeat rides in a letter, it does not raise one — the send reads the fresh counts", () => {
     // The trigger and the composition of the letter are two different things (thread 030): the
     // `notify --write` door sends on `fresh`/`freshParked`/`freshStalled`/… and never on the
     // message being non-empty, so a plan whose only line is a repeat delivers nothing.
-    const first = withPark([PARKED]);
-    const later = withPark([{ ...PARKED, since: "2026-07-31T15:00:00Z", question: "И ещё?" }], {
-      waiting: [],
-      stalled: [],
-      parked: first.parked,
-    });
+    const first = withPark([PARKED], EMPTY, { declaredParks: [PARKED] });
+    const later = withPark(
+      [PARKED],
+      { waiting: [], stalled: [], parked: first.parked },
+      { declaredParks: [PARKED, CARRIED] },
+    );
 
     expect(later.fresh).toEqual([]);
     expect(later.freshStalled).toEqual([]);
     expect(later.freshParked).toEqual([]);
-    // AND THE STATE OF A TICK THAT SAID NOTHING KEEPS THE STAMP THAT WAS ANNOUNCED: the
-    // courier ticks every few minutes, so a quiet tick recording the repeat as told would
-    // turn the downgrade into a disappearance — the very swap this thread exists to undo.
-    // Only the STAMP is rolled back — the question is not stored in the state file at all,
-    // it is re-read from the message every tick, and this list is only ever written out.
-    expect(later.parkedIfSilent).toEqual([{ ...PARKED, question: "И ещё?" }]);
-    expect(later.parked).toEqual([
-      { ...PARKED, since: "2026-07-31T15:00:00Z", question: "И ещё?" },
-    ]);
+    // AND THE STATE OF A TICK THAT SAID NOTHING KEEPS THE REPEAT OWED: the courier ticks every
+    // few minutes, so a quiet tick recording the carrying letter as told would turn the
+    // downgrade into a disappearance — the very swap this thread exists to undo. Since 155 it
+    // is the MARK that is rolled back rather than the stamp: `since` is the declaration and
+    // does not move under a repeat at all.
+    expect(later.parkedIfSilent).toEqual([PARKED]);
+    expect(later.parked).toEqual([{ ...PARKED, restated: CARRIED.since }]);
   });
 
   it("a park LIFTED and asked again later rings — the memory is the composition, not a journal", () => {
@@ -454,19 +512,49 @@ describe("a thread frozen behind a person — the third class of event (thread 0
     expect(again.lines[0]?.text).toBe("❓ 023-x ждёт твоего решения: Новый?");
   });
 
-  it("the one gap, named: a lift and a new park inside ONE tick window are a line, not a call", () => {
-    // THE HONEST COST OF THE PAIR KEY, asserted rather than left to be discovered: if the
-    // person answers and a NEW question is parked before the courier has ticked once, the
-    // composition was never empty and the new question is read as a repeat. It is a race in
-    // a single tick window, and what it loses is the ring — never the question.
-    const first = withPark([PARKED]);
+  it("a lift and a NEW park inside one tick window RING — the ledger is asked, not the composition", () => {
+    // THE GAP THAT THE PAIR KEY USED TO COST, CLOSED (thread 155, point (ii)): if the person
+    // answers and a NEW question is parked before the courier has ticked once, the composition
+    // was never empty — so `freshStandingParked`, which asked "is this pair announced", read the
+    // new question as a repeat and printed "asked again (not a new question)" about it. A new
+    // question to a human with no buzz at all.
+    //
+    // What is asked now is the LEDGER, by pair AND stamp (thread 129): the new declaration is
+    // its own message and is not in it, so it rings.
+    const first = withPark([PARKED], EMPTY, { declaredParks: [PARKED] });
+    const fresh = { ...PARKED, since: "2026-07-31T15:00:00Z", question: "Совсем другое?" };
     const straightAway = withPark(
-      [{ ...PARKED, since: "2026-07-31T15:00:00Z", question: "Совсем другое?" }],
-      { waiting: [], stalled: [], parked: first.parked },
+      [fresh],
+      { waiting: [], stalled: [], parked: first.parked, asked: first.asked },
+      { declaredParks: [PARKED, fresh] },
     );
 
-    expect(straightAway.freshParked).toEqual([]);
-    expect(straightAway.restatedParked).toHaveLength(1);
+    expect(straightAway.freshParked).toEqual([fresh]);
+    expect(straightAway.restatedParked).toEqual([]);
+    expect(straightAway.lines.map((line) => line.text)).toEqual([
+      "❓ 023-x ждёт твоего решения: Совсем другое?",
+    ]);
+  });
+
+  it("ANOTHER park declared on top, then the person parked again, RINGS — the second shape of the same window", () => {
+    // THE FORM FOUND BY MEASUREMENT ON THE LIVE MAIL (thread 155, 2026-09-08, feed of 155
+    // itself): a park on a person stops standing not only on `park-lifted` but also when a
+    // `run:`/`pr:` park is declared over it in the same thread — the walk returns the LAST
+    // declaration of any value. Then the person is parked again, and the pair's row never left
+    // `state.parked`, so the new question was read as a repeat exactly as above. Live: #16
+    // (`run:330`) → #21, and #27 (`park-lifted`) → #35, both inside twenty-four hours.
+    const first = withPark([PARKED], EMPTY, { declaredParks: [PARKED] });
+    const again = { ...PARKED, since: "2026-07-31T18:09:17Z", question: "А теперь?" };
+    const after = withPark(
+      [again],
+      { waiting: [], stalled: [], parked: first.parked, asked: first.asked },
+      // The `run:` park itself is not a person-park and does not appear here at all — what the
+      // feed hands the courier is the two person-parks, and the second one is a new message.
+      { declaredParks: [PARKED, again] },
+    );
+
+    expect(after.freshParked).toEqual([again]);
+    expect(after.restatedParked).toEqual([]);
   });
 
   it("a parked thread is NOT also reported as stalled — the two say opposite things", () => {
@@ -827,17 +915,55 @@ describe("a live park REMINDED about — the ninth class of event (thread 043, �
     expect(result.lines.map((line) => line.kind)).toEqual(["unaccepted-stale-park", "parked"]);
   });
 
-  it("a restatement and a reminder are never two lines about one question", () => {
+  it("a restatement and a reminder are never two lines about one question — and the REMINDER wins", () => {
     // Д-2's downgrade already puts a line about this key in this letter; a reminder beside it
-    // is the two-lines-about-one-id noise thread 023 removed.
-    const restated = at(
-      "2026-08-29T09:00:00Z",
-      [{ ...PARK, since: "2026-08-29T02:00:00Z", question: "Ну так гасим?" }],
-      announced([PARK]),
+    // is the two-lines-about-one-id noise thread 023 removed. WHICH of the two is dropped is
+    // decided the other way round since thread 155, and by measurement rather than by taste:
+    //
+    //  - the repeat rides in somebody else's letter and NEVER raises one, while the reminder is
+    //    the only line that raises its own. Letting the repeat win on a quiet box means the line
+    //    stays owed for ever and the park can never be reminded again — 043's muteness, rebuilt;
+    //  - and it changes nothing the human is shown TODAY: `restatedParked` cannot be filled at
+    //    all on the current head, so the reminder already wins every such tick — the process
+    //    test of 043 · 155 asserts exactly that with a repeat one hour old in the feed.
+    const seen = announced([PARK]);
+    const carrying = { ...PARK, since: "2026-08-29T02:00:00Z", question: "Ну так гасим?" };
+    const restated = at("2026-08-29T09:00:00Z", [PARK], seen, {
+      declaredParks: [PARK, carrying],
+    });
+
+    expect(restated.remindedParked).toHaveLength(1);
+    expect(restated.restatedParked).toEqual([]);
+    expect(restated.lines.map((line) => line.kind)).toEqual(["parked"]);
+    // AND THE REPEAT IS RECORDED AS TOLD BY THAT LETTER, not left owed: the reminder line
+    // stands in the same slot and says the same question, so a repeat line about it next tick
+    // would be the second line Д-2 was spent removing.
+    expect(restated.parked).toEqual([{ ...PARK, restated: carrying.since }]);
+  });
+
+  it("the reminder round does not go mute for ever after the first repeat (thread 155, point (v))", () => {
+    // THE DEADLOCK THIS DIFF HAD TO NOT BUILD, asserted end to end: a repeat found in the feed
+    // is true for as long as the letter is in the feed, and the letter never leaves it. Without
+    // the mark — or with the repeat keeping its precedence over the reminder — the park would be
+    // restated for ever and the guard would silence the reminder for ever with it, which is the
+    // ten parks of 2026-08-29 all over again.
+    const carrying = { ...PARK, since: "2026-08-29T02:00:00Z", question: "Ну так гасим?" };
+    const declaredParks = [PARK, carrying];
+    const first = at("2026-08-29T09:00:00Z", [PARK], announced([PARK]), { declaredParks });
+
+    expect(first.remindedParked).toHaveLength(1);
+
+    // Twelve hours on, with the SAME carrying letter still sitting in the feed: the cadence of
+    // 043 keeps running.
+    const later = at(
+      "2026-08-29T21:30:00Z",
+      [PARK],
+      { waiting: [], stalled: [], parked: first.parked, reminded: first.reminded },
+      { declaredParks },
     );
 
-    expect(restated.restatedParked).toHaveLength(1);
-    expect(restated.remindedParked).toEqual([]);
+    expect(later.remindedParked).toHaveLength(1);
+    expect(later.remindedParked[0]?.age).toBe("11d 12h");
   });
 
   it("a park that asks nothing is never reminded — `asks` is the message's own word", () => {
