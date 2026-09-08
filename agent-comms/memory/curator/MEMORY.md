@@ -116,3 +116,4 @@
 - [Дверь `merge-gate` двигает `FETCH_HEAD`](merge-gate-clobbers-fetch-head.md) — замер после её вызова печатает пустой дифф и врёт молча
 - [Отказ доступа не принимается на своём репозитории](access-refusal-class-cannot-be-accepted-here.md) — публичный + мелкогранулярный токен = отказа не бывает; приёмка рукой john на приватном
 - [Незавершённость чека — это `bucket`](check-state-is-read-from-bucket.md) — `state` не знает слова `PENDING`: цикл выходит мгновенно и врёт «готово»
+- [Своя кнопка merge заводит слив за 23 с](own-merge-starts-a-drain-that-waits-for-me.md) — слив ждёт ИМЕННО эту сессию: merge — последнее действие хода
