@@ -162,4 +162,4 @@
 | 168-drain-line-names-a-session-twice | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 170-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | Постановка по слову john (чат 2026-09-08 ~11:14Z): НАРЕЗАТЬ НОВЫЙ ТЕГ, несущий 70ec1ff9, и объявить… |
-| 170-mail-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-08 | Происхождение треда (первой строкой, как требует норма заведения): тред заведён ролью curator из св… |
+| 170-mail-body-inside-checkout | curator, dev-core | normal | open | dev-core | run:338 · 2026-09-08 | 2026-09-08 | Дверь места тела письма поставлена: PR #338, голова a21ae079, жду checks |
