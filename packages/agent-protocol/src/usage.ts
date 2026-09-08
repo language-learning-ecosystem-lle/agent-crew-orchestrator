@@ -521,17 +521,19 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # forward ('--parked-on <the same value>'), or name the lift:
                               # --park-lifted <person|pr:N|run:N>: THE PARK IS OVER AND THIS LETTER SAYS WHICH
                               # ONE IT ENDS. The value must MATCH the standing park — a flag taking any word
-                              # would be a door teaching its reader to type past it. Nothing is written to the
-                              # header by it and no norm of the lift is touched: it is the letter naming what
-                              # it already does. A stale value (the park was lifted by somebody else between
+                              # would be a door teaching its reader to type past it. SINCE 2026-09-08 (155,
+                              # decision of john, variant «А») THIS IS THE ONE LIFT A LETTER HAS: it is written
+                              # into the header as 'park-lifted:', the reader ends the park on it, and after it
+                              # the thread is not parked. A stale value (the park was lifted by somebody else between
                               # the read and the write) is a NOTE, not a refusal — two roles write into one
                               # thread at once, which is the whole subject of 058
-                              # --delivers <person>: this message carries the WORD OF THAT PERSON (030) —
-                              # the one thing that lifts a park on them, together with 'status: closed'.
-                              # Since 2026-08-22 nothing else does: a turn of somebody else's, a report
-                              # of a role, the circuit's own trace leave the park standing. The name is
-                              # the one '--parked-on' takes (wake.mode='self'); it lifts the park on THAT
-                              # person only, raises nobody, and leaves the message ordinary
+                              # --delivers <person>: this message carries the WORD OF THAT PERSON (030).
+                              # IT NO LONGER LIFTS THE PARK ON THEM (155, 2026-09-08): the word arriving
+                              # and the question the thread was frozen on being closed are two facts, and
+                              # only the second ends a park. The door passes the letter with a NOTE saying
+                              # the park stands and naming '--park-lifted <person>' as the way to end it.
+                              # The name is the one '--parked-on' takes (wake.mode='self'); it raises
+                              # nobody and leaves the message ordinary
                               # --merged-pr <n>: this message announces that PR as landed — every thread
                               # parked on 'pr:<n>' lifts on it, though the announcement is informational
                               # ANYWHERE IN THE MAIL (023): the notifier writes into the thread named in

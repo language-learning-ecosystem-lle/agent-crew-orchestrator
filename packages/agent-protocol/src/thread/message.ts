@@ -329,9 +329,12 @@ export type MessageFields = {
    * the norm prescribes.
    *
    * So this is not a second `waiting-on`: the turn stays where it is (a scalar, one holder),
-   * and this field says that it is FROZEN. A park on a PERSON lifts on the word of that person
-   * ({@link MessageFields.delivers}) and on `status: closed`, and on nothing else since
-   * 2026-08-22; the event parks (`pr:`, `run:`) keep the wide walk of `standingParkOf`.
+   * and this field says that it is FROZEN. SINCE 2026-09-08 (thread 155, decision of john,
+   * variant «А») the park belongs to the THREAD and not to the last message: it stands from this
+   * declaration until it is ENDED BY NAME ({@link MessageFields.parkLifted}) or the thread is
+   * closed, and no other letter touches it. Repeating the same value in a later message is a
+   * report carrying the park forward, not a new park — `since`, the question, the ground and the
+   * holder stay those of the message that declared it.
    *
    * Only a role that wakes ITSELF (`wake.mode: 'self'`) may be named here; a role the daemon
    * can raise is not something to park behind — that is `waiting-on`.
@@ -349,6 +352,23 @@ export type MessageFields = {
    */
   readonly parkGround?: string;
   /**
+   * THE PARK THIS MESSAGE ENDS (thread 155, decision of john 2026-09-08, variant «А») — the ONE
+   * hand-made lift, and since that decision one of the only two things that lift a park at all
+   * (the other being `status: closed`).
+   *
+   * IT HAD TO BECOME A FIELD, and that is the whole of the change rather than a detail of it.
+   * `--park-lifted` existed since thread 058 as a DOOR — it refused a letter naming a park other
+   * than the standing one — and left nothing in the header: the letter carrying it lifted the
+   * park SIDEWAYS, by handing the turn on, through the wide lift of 042. Take the wide lifts away
+   * without writing the declaration down and every park becomes immortal; write it down and the
+   * lift is exactly what its writer said it was.
+   *
+   * The value MATCHES the park it ends — the same string `parked-on` was written with — and the
+   * door checks that match while the flags can still be retyped. Here, as with every other field
+   * of the tolerant reader, only the SHAPE is demanded.
+   */
+  readonly parkLifted?: string;
+  /**
    * WHOSE WORD THIS MESSAGE CARRIES — the one lift of a park on a person (thread 030, defect
    * (в1); decision of john 2026-08-22, `PROTOCOL.md` "ЛИФТ ПАРКОВКИ НА ЧЕЛОВЕКЕ СУЖЕН ДО СЛОВА
    * САМОГО ЧЕЛОВЕКА").
@@ -365,10 +385,14 @@ export type MessageFields = {
    * `parked-on: <person>` takes, checked at the writing door for the same reason (a reader of an
    * append-only feed cannot fix what is written; here the demand is on the SHAPE only).
    *
-   * WHAT IT DOES NOT DO: it lifts the park on the person it NAMES and no other (a park on
-   * somebody else and both event parks are untouched), it raises nobody and spends nothing, and
-   * it leaves the message ordinary — `waiting-on` and `expects` are declared and judged in it
-   * exactly as always. No permission gates it: the courier of a decision is any role.
+   * WHAT IT DOES NOT DO, AND SINCE 2026-09-08 THAT INCLUDES LIFTING (thread 155, decision of
+   * john, variant «А»): it says the word has arrived, it does not say the question is answered.
+   * Measured in the feed of 155 itself: a delivery of john's word ABOUT A NEIGHBOUR'S FINDING
+   * lifted a park standing on a question john had not yet seen, and the question went on
+   * unanswered with no park over it. The park is ended by name now
+   * ({@link MessageFields.parkLifted}) and by nothing else. It raises nobody and spends nothing,
+   * and it leaves the message ordinary — `waiting-on` and `expects` are declared and judged in
+   * it exactly as always. No permission gates it: the courier of a decision is any role.
    */
   readonly delivers?: string;
   /**
@@ -879,6 +903,21 @@ export const parseMessageFile = (raw: string): Message => {
     return value;
   });
 
+  // `park-lifted` names the park this message ENDS (thread 155), and it takes exactly the shape
+  // `parked-on` takes, because it repeats a value written by one: a lift naming something no park
+  // could ever have been written with is a lift of nothing. Shape only here, for the reason
+  // stated above — that the value MATCHES the standing park is a question with the feed in hand,
+  // and it is asked at the writing door, where it can still be retyped.
+  const parkLifted = soft(() => {
+    const value = raws.get("park-lifted");
+    if (value !== undefined && !ROLE.test(value) && !PARK_EVENT.test(value)) {
+      throw new MessageFormatError(
+        `'park-lifted: ${value}' — expected the park this message ends, written as the park itself is (the id of a role or an event: 'pr:<number>', 'run:<number>')`,
+      );
+    }
+    return value;
+  });
+
   // `delivers` names a PERSON, and the check that this name is one the feed cannot move lives
   // at the writing door beside `parked-on`'s, for the reason stated there. Here, as there, only
   // the SHAPE is demanded — and the event forms are NOT accepted: a merge delivers nobody's
@@ -962,6 +1001,7 @@ export const parseMessageFile = (raw: string): Message => {
     ...(priority === undefined ? {} : { priority: priority as ThreadPriorityValue }),
     ...(parkedOn === undefined ? {} : { parkedOn }),
     ...(parkGround === undefined ? {} : { parkGround }),
+    ...(parkLifted === undefined ? {} : { parkLifted }),
     ...(delivers === undefined ? {} : { delivers }),
     ...(parkMover === undefined ? {} : { parkMover }),
     ...(mergedPr === undefined ? {} : { mergedPr }),
@@ -1016,6 +1056,10 @@ export const renderMessageFile = (message: Message): string => {
     // Directly under `parked-on` and above its other qualifiers: the two lines read as one
     // statement — what freezes the turn, and the fact that freeze was taken against (thread 155).
     ...(fields.parkGround === undefined ? [] : [`park-ground: ${fields.parkGround}`]),
+    // Directly under `parked-on` too, and for the plainest reason there is: the two lines are the
+    // two ends of one state — the letter that froze the thread and the letter that ends it — and
+    // a reader scanning a feed for "is this thread parked" must find both in the same place.
+    ...(fields.parkLifted === undefined ? [] : [`park-lifted: ${fields.parkLifted}`]),
     // Beside `parked-on` for the same reason `merged-pr` is: one freezes a turn behind a
     // person, this one says that the person has spoken.
     ...(fields.delivers === undefined ? [] : [`delivers: ${fields.delivers}`]),

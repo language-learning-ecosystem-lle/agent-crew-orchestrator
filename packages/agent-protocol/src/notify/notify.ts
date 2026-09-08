@@ -1600,9 +1600,29 @@ export const planNotifications = (input: {
   // `expects: none` says it wants nothing of anybody, and ❓ over it is a lie by mark.
   const askingParked = parked.filter((park) => park.asks);
   const freshStandingParked = askingParked.filter((park) => !seenParks.has(parkedKey(park)));
-  // THE REPEAT, TOLD FROM THE FIRST TELLING BY THE STAMP AND BY NOTHING ELSE (thread 030,
+  // THE REPEAT WAS TOLD FROM THE FIRST TELLING BY THE STAMP AND BY NOTHING ELSE (thread 030,
   // Д-2). An informational re-park is not here for the same reason it is not in `freshParked`:
   // `asks` is the message's own word, and 016 re-declared its park daily asking nothing.
+  //
+  // AND THAT DISCRIMINATOR IS DEAD SINCE 2026-09-08 (thread 155). The park now belongs to the
+  // THREAD and `since` is the point of its DECLARATION, so a repeat of the same question under
+  // the same key no longer moves the stamp — and this filter, whose whole test is "the key was
+  // announced AND the stamp has moved", can no longer be filled by a repeat at all. Measured,
+  // not deduced: `notify.process.test.ts`, "THE COURIER'S REPEAT DISCRIMINATOR IS DEAD".
+  //
+  // TWO CONSEQUENCES, AND BOTH ARE NAMED WHERE THEY LAND rather than repaired here, because a
+  // repair is a new rule about what the courier says to a person and that is john's to make:
+  //
+  //  - {@link restatedPrefix} — "still standing, asked again (not a new question): " — is no
+  //    longer printed for a repeat, and neither is the `(restated on …)` count line;
+  //  - what DOES still reach this filter is the one shape in which the stamp legitimately
+  //    changes under an unchanged key: a park LIFTED and a NEW park declared on the same
+  //    person in the same thread between two ticks of the courier, so the key never left
+  //    `state.parked`. That is a NEW question, and calling it "asked again (not a new
+  //    question)" is a false sentence which ALSO subtracts it from `freshStandingParked` and
+  //    from the reminder round below — a new question to a human with no buzz at all. The
+  //    window is narrow (it closes on any tick in between) and it is not repaired in thread
+  //    155's diff; it is written down here so that the next hand finds it named.
   const restatedParked = askingParked.filter((park) => {
     const announced = seenParks.get(parkedKey(park));
     return announced !== undefined && announced !== park.since;
@@ -1716,7 +1736,12 @@ export const planNotifications = (input: {
   //    rings as a call in this very letter. Reminding about it in the same message would be the
   //    same question twice under two prefixes;
   //  - IT IS NOT A RESTATEMENT — Д-2's downgrade already puts a line about this key in this
-  //    letter, and two lines about one question is what Д-2 was spent removing;
+  //    letter, and two lines about one question is what Д-2 was spent removing. SINCE 2026-09-08
+  //    (thread 155) A REPEAT NEVER REACHES THIS GUARD: `restatedParked` above can no longer be
+  //    filled by one, so for the class this condition was written against it is unreachable, and
+  //    the only thing it now stops is the lift-and-re-declare window named up there — which is a
+  //    NEW question and should not be silenced by it. Left in place deliberately: removing it is
+  //    part of the same decision as the class itself, and that decision is john's;
   //  - IT HAS STOOD LONGER THAN THE FIRST THRESHOLD, measured from the message that declared it;
   //  - AND THE INTERVAL SINCE THE LAST REMINDER HAS RUN OUT. No stamp in the state means it has:
   //    that is the state of every box upgrading into this class, and the ten parks measured on

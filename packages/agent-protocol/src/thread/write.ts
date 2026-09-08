@@ -89,6 +89,12 @@ export type NewMessageInput = {
    * without a word (the lesson of 075).
    */
   readonly parkGround?: string;
+  /**
+   * THE PARK THIS MESSAGE ENDS (thread 155) — carried through this door for the reason
+   * `park-ground` is: both writing commands come through here, and a field one of them passes
+   * and the other drops goes into an append-only feed without a word (the lesson of 075).
+   */
+  readonly parkLifted?: string;
   /** The PR this message announces as merged — it lifts the parks that wait on it (thread 023). */
   readonly mergedPr?: number;
   /**
@@ -181,6 +187,7 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
     ...(input.priority === undefined ? {} : { priority: input.priority }),
     ...(input.parkedOn === undefined ? {} : { parkedOn: input.parkedOn }),
     ...(input.parkGround === undefined ? {} : { parkGround: input.parkGround }),
+    ...(input.parkLifted === undefined ? {} : { parkLifted: input.parkLifted }),
     ...(input.delivers === undefined ? {} : { delivers: input.delivers }),
     ...(input.parkMover === undefined ? {} : { parkMover: input.parkMover }),
     ...(input.mergedPr === undefined ? {} : { mergedPr: input.mergedPr }),
@@ -248,6 +255,12 @@ export type NewThreadInput = {
   /** The fact the park on the opening message is taken against (thread 155). */
   readonly parkGround?: string;
   /**
+   * THE PARK THIS MESSAGE ENDS (thread 155) — carried through this door for the reason
+   * `park-ground` is: both writing commands come through here, and a field one of them passes
+   * and the other drops goes into an append-only feed without a word (the lesson of 075).
+   */
+  readonly parkLifted?: string;
+  /**
    * The verdict of a review round and its PR (thread 042) — passed through for the reason
    * `delivers` and `parked-on` are: the first message is a message, and a rule held by one
    * command of the pair is the lesson of 075. The pair is judged in `planNewMessage`, once.
@@ -300,6 +313,7 @@ export const planNewThread = (input: NewThreadInput): PlannedFile[] => {
     ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),
     ...(input.parkedOn === undefined ? {} : { parkedOn: input.parkedOn }),
     ...(input.parkGround === undefined ? {} : { parkGround: input.parkGround }),
+    ...(input.parkLifted === undefined ? {} : { parkLifted: input.parkLifted }),
     ...(input.delivers === undefined ? {} : { delivers: input.delivers }),
     ...(input.parkMover === undefined ? {} : { parkMover: input.parkMover }),
     ...(input.verdict === undefined ? {} : { verdict: input.verdict }),

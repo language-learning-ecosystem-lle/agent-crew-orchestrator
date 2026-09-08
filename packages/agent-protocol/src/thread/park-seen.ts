@@ -48,9 +48,13 @@
  * delivery step named no verdict about the park, this door refused, and an `approve` reached the
  * PR comment and the review status but not the feed — the ONE channel that wakes anybody.
  *
- * WHY IT FIRES AT MOST ONCE PER PARK. A park is lifted by the next message that does not
- * repeat it (`parkingOf`), so the only letter this door can ever stop is the FIRST one after
- * the declaration — which is the incident letter, and no ordinary traffic behind it.
+ * AND SINCE 2026-09-08 IT ASKS THIS OF EVERY LETTER, not only of the first one (thread 155,
+ * decision of john, variant «А»). Until then a park was lifted by the next message that did not
+ * repeat it, so the only letter this door could ever stop was the FIRST one after the declaration
+ * — the incident letter, with no ordinary traffic behind it. Now the park stands until it is
+ * ended by name, so every letter into a frozen thread is asked the same question. That is the
+ * cost of the trade and it was taken deliberately: the writer is answering it in one flag, and
+ * what it buys is that nobody ends a park without meaning to.
  */
 import type { Parking } from "./thread.js";
 
@@ -72,13 +76,24 @@ const describePark = (parking: Parking): string => {
     : `the merge of PR #${parking.pr}`;
 };
 
-/** The one thing that ADDRESSES this park — the field that carries what it waits for. */
+/**
+ * The one thing that ADDRESSES this park — the field that carries what it waits for.
+ *
+ * SINCE 2026-09-08 THIS IS NOT THE SAME AS "WHAT LIFTS IT", and the two were one sentence in
+ * the refusal until they came apart (thread 155, decision of john, variant «А»). An event park
+ * still lifts on its own address, because no machine can name a lift; a park on a PERSON does
+ * not — `--delivers` says the word has ARRIVED, not that the question is answered, and the
+ * refusal must not go on telling its reader otherwise.
+ */
 const addressOf = (parking: Parking): string => {
   if (parking.kind === "person") return `--delivers ${parking.person}`;
   return parking.kind === "run"
     ? `--verdict <approve|needs-fixes> --pr ${parking.pr}`
     : `--merged-pr ${parking.pr}`;
 };
+
+/** Does carrying that address END the park, or only speak to it? */
+const addressLifts = (parking: Parking): boolean => parking.kind !== "person";
 
 /**
  * DOES THIS MESSAGE SAY ANYTHING ABOUT THE PARK STANDING ON THE THREAD.
@@ -88,13 +103,18 @@ const addressOf = (parking: Parking): string => {
  *
  * Three ways to pass, and each is a different statement rather than a way of clicking OK:
  *  · CARRY WHAT IT WAITS FOR — `--delivers <person>` / `--merged-pr N` / `--verdict … --pr N`.
- *    These are the fields that lift the park by themselves; a letter carrying one is the answer
- *    arriving, and it names the park by construction;
+ *    The letter is the thing arriving, and it names the park by construction. For an EVENT park
+ *    that is also what lifts it; for a park on a person it is not, and has not been since
+ *    2026-09-08 (thread 155, variant «А») — the word arriving is not the question being
+ *    answered, and the door says which of the two the letter did;
  *  · CARRY THE PARK FORWARD — `--parked-on <the same value>`: the question still stands and this
- *    letter is a report beside it;
+ *    letter is a report beside it. It is a REPORT and no longer a re-declaration: the park keeps
+ *    the `since`, the question, the ground and the holder of the letter that declared it;
  *  · NAME THE LIFT — `--park-lifted <the same value>`: the park is over and the letter says which
  *    one it ends. The value must MATCH the standing park: a flag that takes any word would be a
- *    door that teaches its reader to type past it.
+ *    door that teaches its reader to type past it. Since variant «А» this is the ONLY lift a hand
+ *    can declare, so the flag now leaves a FIELD in the header — `park-lifted:` — and the reader
+ *    of the feed ends the park on it.
  */
 export const judgeParkSeen = (input: {
   readonly thread: string;
@@ -161,7 +181,25 @@ export const judgeParkSeen = (input: {
   }
   if (lifted === value) return { ok: true };
   if (input.parkedOn === value) return { ok: true };
-  if (parking.kind === "person" && input.delivers === parking.person) return { ok: true };
+  // DECLARING A DIFFERENT PARK OVER A STANDING ONE IS REFUSED BY NAME (thread 155, §3.2 of
+  // curator's statement) — a direct consequence of the park belonging to the thread: two parks
+  // cannot stand on one thread, and the reader would silently keep the older one. The cure is
+  // one line and it is in the refusal.
+  if (input.parkedOn !== undefined && input.parkedOn !== value) {
+    return {
+      ok: false,
+      reason: `--parked-on '${input.parkedOn}' — '${input.thread}' is ALREADY parked on '${value}' (${describePark(parking)}, since ${parking.since}), and a park belongs to the thread: a second one declared over it would stand for nobody, because the reader ends a park only on its own name. End the standing one first — '--park-lifted ${value}' — and declare '${input.parkedOn}' in the same letter or the next one`,
+    };
+  }
+  if (parking.kind === "person" && input.delivers === parking.person)
+    // THE WORD ARRIVING IS NOT THE PARK ENDING, and the letter is told so instead of being left
+    // to assume the old behaviour (thread 155, variant «А»). It passes: it plainly speaks to the
+    // park. What it no longer does is end it, and that has to be said out loud in the one place
+    // the writer is looking.
+    return {
+      ok: true,
+      note: `--delivers ${parking.person}: '${input.thread}' stays PARKED behind ${describePark(parking)} since ${parking.since}${parking.holder === undefined ? "" : `, declared on ${parking.holder}'s turn`}. Carrying the word is not ending the question it was parked on — since 2026-09-08 a park is ended by name and by nothing else. If this word IS the answer, add '--park-lifted ${value}'`,
+    };
   if (parking.kind === "event" && input.mergedPr === parking.pr) return { ok: true };
   // A ROUND IS OVER WHEN ITS PR IS MERGED TOO (`parkingOf` reads it that way): the verdict it
   // waited for cannot arrive after the button, so an announcement of that merge addresses the
@@ -181,19 +219,26 @@ export const judgeParkSeen = (input: {
   // it was written for — it breaks the link that returns the turn after the button, and the one
   // that carries a verdict into the only channel that wakes the author.
   //
-  // WHAT IT DOES NOT DO. It lifts nothing: the letter passes the door unchanged, so the park
-  // stands exactly as `parkingOf` reads it, and the ONE thing that lifts an event park is the
-  // field the notifier already carries (`--merged-pr N`, matched above). And it is not silent —
-  // the note names the park the letter landed beside, because the next reader of that thread
-  // sees a live-looking letter under a frozen question and must be able to tell why.
+  // AND THE NOTE STATES WHAT IT COMPUTED, NOT WHAT IT ASSUMED — the defect measured in thread
+  // 155 (dev-core's letter of 2026-09-07T18:39:30Z, §1(B′) and §1(D)) and its whole cure. The
+  // sentence printed here used to be `the park is NOT lifted and NOT touched by it`,
+  // unconditionally; under the lifts of the day it was FALSE in most of the classes it was
+  // printed over — a machine letter handing the turn to somebody other than the holder ended the
+  // person park (042), and any moving letter ended an event park (023). A door that says nothing
+  // is worse than no door; one that says the opposite of what happens is worse than silent.
+  //
+  // Under variant «А» the computation has one branch left, and it is the branch of §3.4: a
+  // letter carrying the park's OWN ADDRESS ends it, and those letters have already returned
+  // above. Everything reaching this line leaves the park standing — so the sentence is now
+  // TRUE BY MEASUREMENT rather than by hope, and it names what would have changed it.
   if (input.machineWriter === true) {
     return {
       ok: true,
-      note: `'${input.thread}' is PARKED behind ${describePark(parking)} since ${parking.since}${holder}, and this letter is a MACHINE EVENT — it is not asked what it does about the park.${question} The letter is written as it is; the park is NOT lifted and NOT touched by it`,
+      note: `'${input.thread}' is PARKED behind ${describePark(parking)} since ${parking.since}${holder}, and this letter is a MACHINE EVENT — it is not asked what it does about the park.${question} The letter is written as it is; the park is NOT lifted by it — since 2026-09-08 a park ends only when a letter NAMES it ('--park-lifted ${value}')${addressLifts(parking) ? `, or when the event it waits for is announced by number ('${addressOf(parking)}'), which this letter does not carry` : ""}`,
     };
   }
   return {
     ok: false,
-    reason: `thread '${input.thread}' is PARKED behind ${describePark(parking)} since ${parking.since}${holder}, and this message says nothing about it.${question} A letter written into a standing park reads as if the thread were alive — measured on 2026-08-30: the report of a session raised 31 seconds before the park landed two minutes after it, and the call to the human showed that report instead of the question the thread was frozen on. Say what THIS letter does about the park: '${addressOf(parking)}' if it carries what the park waits for (that is what lifts it), '--parked-on ${value}' if the question still stands and your letter is a report beside it, or '--park-lifted ${value}' if the park is over and you are naming it as you write`,
+    reason: `thread '${input.thread}' is PARKED behind ${describePark(parking)} since ${parking.since}${holder}, and this message says nothing about it.${question} A letter written into a standing park reads as if the thread were alive — measured on 2026-08-30: the report of a session raised 31 seconds before the park landed two minutes after it, and the call to the human showed that report instead of the question the thread was frozen on. Say what THIS letter does about the park: '${addressOf(parking)}' if it carries what the park waits for (${addressLifts(parking) ? "that is what lifts it" : "which since 2026-09-08 speaks to the park without ending it"}), '--parked-on ${value}' if the question still stands and your letter is a report beside it, or '--park-lifted ${value}' if the park is over and you are naming it as you write`,
   };
 };
