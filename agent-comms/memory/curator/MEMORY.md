@@ -68,7 +68,8 @@
 - [Круг ревьюера судит за минуты](review-circle-verdict-lands-in-minutes.md) — метка → вердикт 4,5–12 мин: своей работы брать на верхнюю границу
 - [Норму от починки отличает дифф](norm-or-repair-is-read-in-the-diff.md) — переписана фраза, которой норма записана в доках, — гард 3 к john
 - [Точечное слово john не закрывает гард 3 дважды](pointwise-john-word-does-not-close-guard3-again.md) — граница лежит абзацем НИЖЕ слова; совпадение класса — не основание
-- [Парк ставится ПОСЛЕ вердикта](park-goes-after-the-verdict-not-before.md) — парк на john при летящем круге глотает письмо `reviewer-pr`
+- [Парк ставится ПОСЛЕ вердикта](park-goes-after-the-verdict-not-before.md) — глотает письмо `reviewer-pr` парк на ЧЕЛОВЕКЕ; `run:<pr>` над летящим кругом правилен
+- [Гард 2 краснеет своим же кругом](guard2-reddens-from-its-own-review-circle.md) — `review=IN_PROGRESS`: кнопки в этот ход нет по построению
 - [Каталог транскриптов выдаёт учётку](transcript-dir-reveals-the-account.md) — `find … -printf` под `TZ=UTC` читает подъём роли ЧУЖОГО контура
 - [Каталог учётки называет свой аккаунт и тариф](config-dir-names-its-account-and-tier.md) — `.claude.json` → `oauthAccount.organizationRateLimitTier`
 - [Группы приезжают от менеджера пользователя](groups-come-from-the-user-manager.md) — рестарт юнита группу не подтягивает: креды держит `systemd --user` (PPID 1)
