@@ -123,3 +123,4 @@
 - [`head` поверх `thread show` режет НОВЕЙШЕЕ](head-on-thread-show-cuts-the-newest.md) — лента старейшим вперёд, обрезка молчит: `--tail`
 - [`--park-ground` отказывает прозе](park-ground-takes-only-two-machine-forms.md) — форм две; парку на человеке основание не нужно
 - [Запись самоперезапуска однослотовая](self-restart-record-is-single-slot.md) — затирается следующим ремонтом: поля мерятся журналом, штамп дрейфа на 4–5 с раньше
+- [Бамп схемы — кнопка john](schema-version-bump-is-johns-button.md) — конфиг обязан ехать тем же диффом: гард 4 STOP на любом новом поле
