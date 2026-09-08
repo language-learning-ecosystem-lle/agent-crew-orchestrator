@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-08T15:41:12.399Z",
+  "writtenAt": "2026-09-08T15:41:55.791Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "155-park-has-no-checkable-ground",
       "state": "running",
       "deadline": "2026-09-08T16:35:03Z"
+    },
+    {
+      "role": "curator",
+      "thread": "173-daemon-self-restart",
+      "state": "running",
+      "deadline": "2026-09-08T16:21:52Z"
     }
   ]
 }
