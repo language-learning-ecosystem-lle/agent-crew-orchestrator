@@ -100,6 +100,38 @@ describe("ghRefusalHint", () => {
     expect(hint).not.toContain("checks: read");
     expect(hint).not.toContain("actions: read");
   });
+
+  it("promises the second ask only on the path the door actually asks again without", () => {
+    // Found by the reviewer of #341 (thread 172): the branch above was chosen by the ACTOR
+    // alone, so a `repository.projectV2` refused to the same personal token was answered
+    // "the door drops the refused node and reads the checks from the runs of Actions" —
+    // while `forbiddenChecksRollup` returns `undefined` for it, no second ask happens, and
+    // the call dies with `was not read through gh`. The hint described a repair the door
+    // did not perform: thread 026 in a third wording.
+    const hint = ghRefusalHint(
+      asThrown("GraphQL: Resource not accessible by personal access token (repository.projectV2)"),
+    );
+
+    expect(hint).toContain("PERSONAL ACCESS TOKEN");
+    expect(hint).toContain("repository.projectV2");
+    // The two claims that would be false here — the substitution, and a scope to add.
+    expect(hint).not.toContain("runs of Actions");
+    expect(hint).not.toContain("checks: read");
+    expect(hint).not.toContain("actions: read");
+    // And it says what IS true: nothing stood in for the refused node.
+    expect(hint).toContain("was not read");
+  });
+
+  it("keeps the gate on the path when the actor is an installation token too", () => {
+    // The same seam on the other actor: `repository.projectV2` refused `by integration`
+    // takes the guess branch, which never claimed a substitution.
+    const hint = ghRefusalHint(
+      asThrown("GraphQL: Resource not accessible by integration (repository.projectV2)"),
+    );
+
+    expect(hint).not.toContain("runs of Actions");
+    expect(hint).toContain("A guess and not the cause");
+  });
 });
 
 describe("forbiddenChecksRollup — the actor is read, never demanded (thread 172)", () => {

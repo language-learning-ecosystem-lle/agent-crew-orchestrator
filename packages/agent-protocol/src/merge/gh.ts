@@ -428,6 +428,16 @@ export const pullRequestFacts = (
  * repository refuses this node to every token they can mint. For that actor the sentence
  * says what is true instead: the node is out of reach and the door reads the checks from
  * the runs of Actions.
+ *
+ * BUT THAT SENTENCE IS ABOUT AN ACTION THE DOOR ONLY TAKES ON ONE PATH, so it is gated by
+ * the SAME decision that takes it — {@link forbiddenChecksRollup}, the path, and not the
+ * actor (found by the reviewer of #341, thread 172). Read by the actor alone it promised
+ * "the door drops the refused node and reads the checks from the runs of Actions" for a
+ * `repository.projectV2` refused to the same personal token — where no second ask happens
+ * at all and the call dies with `was not read through gh`. A hint that describes a repair
+ * the door did not perform is the defect of thread 026 in a third wording: it talks over
+ * the fact instead of reading it. Off that path the sentence says what is true — nothing
+ * substitutes, and the read did not happen.
  */
 export const ghRefusalHint = (message: string): string => {
   if (!notAccessibleBy.test(message)) return "";
@@ -435,7 +445,9 @@ export const ghRefusalHint = (message: string): string => {
   const named = path === undefined || path.length === 0 ? undefined : path;
   const where = named === undefined ? "the path it refused" : `\`${named}\``;
   if (/not accessible by [^(\n]*personal access token/i.test(message))
-    return ` — GitHub refuses a resource by name, not a token by scope: ${where} was refused to a PERSONAL ACCESS TOKEN, and a fine-grained one has no \`checks\` permission to grant — this node is out of reach of any token you can mint for a private repository. Not a scope to add: the door drops the refused node and reads the checks from the runs of Actions on the head instead`;
+    return forbiddenChecksRollup(message) === undefined
+      ? ` — GitHub refuses a resource by name, not a token by scope: ${where} was refused to a PERSONAL ACCESS TOKEN, and the fine-grained set has no permission that grants every resource — some have none to add at all. This path is NOT the checks node the door asks a second time without, so nothing stands in for it: the call failed whole, and whatever needed ${where} was not read`
+      : ` — GitHub refuses a resource by name, not a token by scope: ${where} was refused to a PERSONAL ACCESS TOKEN, and a fine-grained one has no \`checks\` permission to grant — this node is out of reach of any token you can mint for a private repository. Not a scope to add: the door drops the refused node and reads the checks from the runs of Actions on the head instead`;
   const scope =
     named !== undefined && /workflowRun|checkSuite/i.test(named)
       ? "an Actions resource — `actions: read`"

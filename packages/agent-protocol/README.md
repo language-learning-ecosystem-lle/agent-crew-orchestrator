@@ -3246,7 +3246,12 @@ went on exiting 2 with no guard printed (measured by john on 2026-09-08 against 
 installed `0.2.13`). The actor is now read as whatever GitHub put there and the decision
 stays with the path. To the holder of a personal token the hint also stops naming
 `checks: read`: there is no such fine-grained permission to add, and the sentence says the
-node is out of reach and that the door reads the runs of Actions instead. The line
+node is out of reach and that the door reads the runs of Actions instead — **but only where
+that is what the door does.** The substitution is decided by the path, so the hint promising
+it is gated by the same path: a `repository.projectV2` refused to the very same personal
+token gets no second ask, and there the sentence says nothing stood in for the node and the
+read did not happen. A hint that describes a repair the door did not perform is the defect
+of thread 026 in a third wording — it talks over the fact instead of reading it. The line
 `merge-gate: GitHub refused '<path>' on this token — the pull request was re-read without
 that field, and guard 2 judges the runs of Actions instead` is printed, and the guard's own
 detail names the source it used. That reading is WIDER than the rollup — it carries runs
