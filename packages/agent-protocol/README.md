@@ -1923,6 +1923,25 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # of the same thread rings again. It raises its own letter, for the reason
                             # the reminder does; with no clock and on a box with no `direct` target
                             # there is no watchdog at all, which is the honest answer, not a default
+                            # AND A SECOND WATCHMAN THAT IS NOT A NOTIFICATION EITHER — TWO THREADS
+                            # UNDER ONE NUMBER (thread 159, john's word of 2026-09-08): with `--write`
+                            # it folds the threads THIS RUN HAS ALREADY LOADED and rings on a number
+                            # carried by more than one directory OF WHICH AT LEAST ONE HALF IS `open`.
+                            # Zero new calls of anything — the number is the first three characters of
+                            # the directory name and the status a field of the `_meta.md` already read
+                            # THE LETTER GOES INTO A STANDING ADDRESS (`thread-number-collision`,
+                            # `--ensure-thread`), from `github`, `--expects none`, WITH THE TURN ON
+                            # `curator` — a finding is about TWO threads at once, so there is no half
+                            # to write it into, and a letter with no turn raises nobody
+                            # SAID ONCE PER COLLISION: the mark (`number-collision number:NNN:a,b`)
+                            # carries the HALVES, so a third namesake rings again; it is lifted only by
+                            # the pair ceasing to satisfy the criterion — the number divorced or EVERY
+                            # half closed — and never by one tick's silence. A tick that found pairs
+                            # and rang about none SAYS SO, or a missed search would read as a quiet one
+                            # WHAT IT DOES NOT DO: it renames nothing, adds no field to `_meta.md`,
+                            # hardcodes no list of directories, and cannot catch the collision BEFORE
+                            # the fact — no form can (the chat hand writes into the branch past every
+                            # command), so it is declared as catching it after, inside the tick
                             # AND ONE CLASS THAT IS NOT A NOTIFICATION AT ALL — THE WATCHMAN OF
                             # MERGEABILITY (thread 097): with `--write` it asks `gh` for the open pull
                             # requests once, and a branch that STOPPED APPLYING to its base gets a
