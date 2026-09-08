@@ -119,3 +119,4 @@
 - [Своя кнопка merge заводит слив за 23 с](own-merge-starts-a-drain-that-waits-for-me.md) — слив ждёт ИМЕННО эту сессию: merge — последнее действие хода
 - [Приёмка самоперезапуска не спрашивается дважды](self-restart-ack-is-not-asked-twice.md) — звонить john, только если исполняемое НЕ менялось
 - [Гард 3 у бампа версии — слово john о приёмке](version-bump-ascends-to-johns-acceptance.md) — исключение полевого дефекта тут не нужно
+- [`head` поверх `thread show` режет НОВЕЙШЕЕ](head-on-thread-show-cuts-the-newest.md) — лента старейшим вперёд, обрезка молчит: `--tail`
