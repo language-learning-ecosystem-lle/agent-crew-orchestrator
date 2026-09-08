@@ -48,10 +48,17 @@ describe("judgeParkSeen", () => {
     expect(verdict.reason).toContain("--park-lifted john");
   });
 
-  it("lets through the letter that CARRIES the word the park waits for", () => {
-    expect(judgeParkSeen({ thread: "903-acme", parking: personPark, delivers: "john" })).toEqual({
-      ok: true,
-    });
+  it("lets the word through AND SAYS the park is not ended by it (155)", () => {
+    // Until 2026-09-08 `--delivers john` lifted this park, and the door passed the letter without
+    // a word. Under variant «А» it passes still — it plainly speaks to the park — but the writer
+    // is told, in the one place they are looking, that carrying the word is not closing the
+    // question, and told the one line that would close it.
+    const verdict = judgeParkSeen({ thread: "903-acme", parking: personPark, delivers: "john" });
+    expect(verdict.ok).toBe(true);
+    if (!verdict.ok) return;
+    expect(verdict.note).toContain("stays PARKED behind a decision of john's");
+    expect(verdict.note).toContain("since 2026-08-30T14:24:50Z");
+    expect(verdict.note).toContain("--park-lifted john");
   });
 
   it("lets through the letter that carries the park FORWARD", () => {
@@ -170,9 +177,14 @@ describe("judgeParkSeen", () => {
       expect(verdict.note).toContain("PARKED behind a decision of john's");
       expect(verdict.note).toContain("since 2026-08-30T14:24:50Z");
       expect(verdict.note).toContain("declared on curator's turn");
-      expect(verdict.note).toContain("NOT lifted and NOT touched");
-      // And it does not teach the workflow the three exits it cannot choose between.
-      expect(verdict.note).not.toContain("--park-lifted");
+      // THE NOTE SAYS WHAT IS TRUE AND NOT ONE WORD MORE (defect Д1 of thread 155): it used to
+      // read "NOT lifted and NOT touched by it" about every machine letter, including the ones
+      // that carried the park's OWN ADDRESS and did end it. Since variant «А» everything that
+      // reaches this branch really does leave the park standing — so the note may say so, and it
+      // now also names what WOULD end it instead of leaving the writer to guess.
+      expect(verdict.note).toContain("the park is NOT lifted by it");
+      expect(verdict.note).toContain("--park-lifted john");
+      // And it still does not teach the workflow the exits it cannot choose between.
       expect(verdict.note).not.toContain("--parked-on");
     });
 

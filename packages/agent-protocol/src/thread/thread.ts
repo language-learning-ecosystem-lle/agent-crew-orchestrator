@@ -627,10 +627,13 @@ export type ParkSpan = {
  *
  * THE SPANS ARE READ BY REPLAYING THE FEED, not by a second rule about lifting. Each prefix of
  * the thread is asked the same question the live reader asks — `standingParkOf`, the one walk
- * that knows what declares a park and what lifts it — so a park that ends because its TURN
- * ended (the narrowing of #104) ends here on the same message, and a rule that drifts from the
- * live one cannot be written twice. The cost is a walk per message, on feeds of tens of
- * messages, in a command that already parses the whole mail.
+ * that knows what declares a park and what lifts it — so this function has no rule of its own to
+ * drift from the live one. Since 2026-09-08 (thread 155, variant «А») that means a span ends
+ * where a letter ENDS THE PARK BY NAME (`park-lifted:`), where the event park is answered by its
+ * own address, or where the feed ends; a park no longer ends because the TURN it was declared on
+ * ended (the narrowing of #104 went out with the lift it narrowed), and the spans followed that
+ * change without a line of this function being touched. The cost is a walk per message, on feeds
+ * of tens of messages, in a command that already parses the whole mail.
  *
  * A SPAN OPEN AT THE END IS LEFT OPEN (`to` absent): whether "still parked" means "up to now"
  * is the caller's clock, and this function has none.
@@ -811,10 +814,6 @@ const declaredAt = (thread: Thread, found: number, value: string): number => {
  */
 const declaresVerdict = (message: Message): boolean =>
   message.fields.verdict !== undefined && message.fields.pr !== undefined;
-
-/** Does this message move anybody — by asking, or by naming whose turn it now is? */
-const movesSomebody = (message: Message): boolean =>
-  message.fields.expects !== "none" || typeof message.fields.waitingOn === "string";
 
 /** How wide a question may be before it stops being one line in a phone notification. */
 const QUESTION_WIDTH = 140;
