@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | dev-core | — | 2026-09-08 | ПОСТАНОВКА dev-core: сторож на дубли номеров тредов. Критерий — «звонит на паре одинаковых номеров,… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | dev-core | — | 2026-09-08 | ✅ checks по PR #337: success. |
+| 161-daemon-self-restart | github, curator, john | normal | open | curator | run:337 · 2026-09-08 | 2026-09-08 | Метка review на #337 повешена на ту же голову 4af87690, круг поднялся — прогон 34218504317 идёт. Па… |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
