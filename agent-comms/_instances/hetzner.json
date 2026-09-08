@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-08T11:43:54.881Z",
+  "writtenAt": "2026-09-08T11:45:32.725Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "170-mail-body-inside-checkout",
       "state": "running",
       "deadline": "2026-09-08T12:43:51Z"
-    },
-    {
-      "role": "curator",
-      "thread": "170-cut-the-tag-with-the-letter-fix",
-      "state": "draining",
-      "deadline": "2026-09-08T12:14:51Z"
     }
   ]
 }
