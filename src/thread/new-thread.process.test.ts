@@ -760,3 +760,55 @@ describe("new-thread refuses a number taken while it was delivering (thread 159)
     expect(inOrigin(contest)).toContain("agent-comms/160-a-free-number/_meta.md");
   });
 });
+
+/**
+ * THE BODY FILE THAT MUST NOT LIE IN A TREE, ON `new-thread` (thread
+ * `170-mail-body-inside-checkout`) — the same door as `new-message`'s, in the same place,
+ * because one command of the pair refusing what its neighbour writes is a rule nobody can
+ * hold in their head (the manner of 075).
+ */
+describe("new-thread — the body file that lies inside a checkout (thread 170)", () => {
+  const bodyInside = (contest: Contour, text = "The statement of work.\n"): string => {
+    const path = join(contest.repo, ".thread-body.md");
+    writeFileSync(path, text);
+    return path;
+  };
+
+  it("REFUSES it by name and opens NOTHING — no thread on disk, nothing in the feed", () => {
+    const contest = contour();
+
+    const result = open({ ...contest, body: bodyInside(contest) });
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("new-thread —");
+    expect(result.out).toContain("lies inside the git checkout");
+    expect(result.out).toContain("mktemp -d -p /tmp");
+    expect(existsSync(join(contest.root, "040-new"))).toBe(false);
+    expect(inOrigin(contest)).not.toContain("040-new");
+  });
+
+  it("stands BEHIND the number check: a taken number is answered first, by declared order", () => {
+    // The order is a decision (`cli.ts`, `newThread`): a taken number means the thread
+    // cannot be opened under this id AT ALL — the caller has to re-address, not merely
+    // move a file — so that refusal is worth more to them than the one about the body.
+    const contest = contour();
+    mkdirSync(join(contest.root, "040-taken-by-somebody-else"), { recursive: true });
+
+    const result = open({ ...contest, body: bodyInside(contest) });
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("already taken by");
+    expect(result.out).not.toContain("lies inside the git checkout");
+  });
+
+  it("stands AHEAD of the body's content: the place is answered before the prose", () => {
+    const contest = contour();
+    const body = bodyInside(contest, "Ход никому не передаю.\n");
+
+    const result = openWith({ ...contest, body }, ["--expects", "none"]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("lies inside the git checkout");
+    expect(result.out).not.toContain("says the turn is released");
+  });
+});
