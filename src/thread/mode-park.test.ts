@@ -65,15 +65,32 @@ describe("modeParks — the parks that ask nobody (thread 063)", () => {
   });
 
   // The same walk `parkingOf` does, and no second reading of the feed: a park that has been
-  // LIFTED is not a mode any more — it is not a park at all.
-  it("says nothing about a park the word of that person has already lifted", () => {
+  // LIFTED is not a mode any more — it is not a park at all. Since 2026-09-08 (thread 155,
+  // variant «А») what lifts it is a letter that NAMES it, and the word of the person arriving
+  // (`delivers:`) no longer does — so both halves are asserted here, and the fixture that used to
+  // carry only the delivery now carries the naming too.
+  it("says nothing about a park a letter has ENDED BY NAME", () => {
     const lifted = thread([
       message({ parkedOn: "john", expects: "none" }),
-      message({ from: "curator", date: "2026-09-02T11:31:00Z", delivers: "john" }),
+      message({
+        from: "curator",
+        date: "2026-09-02T11:31:00Z",
+        delivers: "john",
+        parkLifted: "john",
+      }),
     ]);
 
     expect(parkedThreads([lifted])).toEqual(new Map());
     expect(modeParks([lifted])).toEqual(new Set());
+  });
+
+  it("and a park the word merely REACHED is still a mode (155) — `delivers` ends nothing", () => {
+    const carried = thread([
+      message({ parkedOn: "john", expects: "none" }),
+      message({ from: "curator", date: "2026-09-02T11:31:00Z", delivers: "john" }),
+    ]);
+
+    expect(modeParks([carried])).toEqual(new Set([carried.id]));
   });
 
   it("a closed thread declares nothing — the acceptance is the answer", () => {

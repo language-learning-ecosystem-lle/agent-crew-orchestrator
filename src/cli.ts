@@ -4024,6 +4024,11 @@ const newMessage = (argv: readonly string[]): void => {
   const delivers = deliversFrom(argv, { registry });
   const parkMover = parkMoverFrom(argv, { registry });
   const parkGround = parkGroundFrom(argv, { parkedOn, threadsRoot: root });
+  // THE PARK THIS LETTER ENDS (thread 155, decision of john 2026-09-08): parsed here, beside the
+  // other qualifiers of the park, because since that decision it is not only a door — it is a
+  // FIELD of the header, and the reader of the feed ends the park on it. It is checked against
+  // the park actually standing below, where the flags can still be retyped.
+  const parkLifted = flag(argv, "--park-lifted");
   // A PARK BY MEANING THAT IS NOT A PARK BY FIELD (thread 022) — checked here, where the flags
   // can still be retyped, because the feed is append-only and such a header cannot be taken
   // back: it names its own author as the one who acts next, asks for something, and says
@@ -4054,9 +4059,8 @@ const newMessage = (argv: readonly string[]): void => {
   // A LETTER INTO A THREAD THAT IS ALREADY PARKED MUST NAME THE PARK (thread 058, (B.3)) —
   // judged here, where the flags can still be retyped and before `--write` is looked at, for
   // the reason `provenance` is: a dry run is the preview of the write, and a preview that
-  // succeeds where the write refuses is a lie. What lifts a park is not touched — the standing
-  // one is READ (`parkingOf`) and the letter is asked what it says about it.
-  const parkLifted = flag(argv, "--park-lifted");
+  // succeeds where the write refuses is a lie. What lifts a park is not re-decided here — the
+  // standing one is READ (`parkingOf`) and the letter is asked what it says about it.
   // A receiver about to be OPENED has no feed and therefore no park — asking would read a
   // directory that does not exist and answer "unreadable", which is a true sentence about
   // nothing and a refusal about the wrong thing.
@@ -4203,6 +4207,7 @@ const newMessage = (argv: readonly string[]): void => {
       ...(priority === undefined ? {} : { priority }),
       ...(parkedOn === undefined ? {} : { parkedOn }),
       ...(parkGround === undefined ? {} : { parkGround }),
+      ...(parkLifted === undefined ? {} : { parkLifted }),
       ...(delivers === undefined ? {} : { delivers }),
       ...(parkMover === undefined ? {} : { parkMover }),
       ...(mergedPr === undefined ? {} : { mergedPr }),

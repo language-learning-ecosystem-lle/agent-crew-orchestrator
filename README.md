@@ -2099,8 +2099,10 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # waits for (`--delivers` / `--merged-pr` / `--verdict --pr`), carry the park
                             # forward (`--parked-on <the same value>`), or name the lift:
                             # --park-lifted <person|pr:N|run:N>: THE PARK IS OVER AND THIS LETTER SAYS WHICH
-                            # ONE IT ENDS. The value must MATCH the standing park; nothing is written to the
-                            # header by it. A stale value — the park was lifted by somebody else between the
+                            # ONE IT ENDS. The value must MATCH the standing park. SINCE 2026-09-08 (thread
+                            # 155, decision of john, variant «А») THIS IS THE ONE LIFT A LETTER HAS: it is
+                            # written into the header as `park-lifted:`, every reader of the feed ends the
+                            # park on it, and after it the thread is not parked. A stale value — the park was lifted by somebody else between the
                             # read and the write, which is the very subject of 058 — is a NOTE, not a refusal
                             # AND IT IS ASKED OF RAISED SESSIONS, NOT OF JOB STEPS (thread 072, decision of
                             # john 2026-09-02, widened 2026-09-04): a letter from a participant nobody of ours
@@ -2217,8 +2219,12 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # LEGAL together with `--expects none`: the PARK AS A MODE — a line of state
                             # that calls nobody (016, 052). The door refused it from 034 until 2026-08-04
                             # --delivers <person>: THIS MESSAGE CARRIES THE WORD OF THAT PERSON (thread 030,
-                            # decision of john 2026-08-22) — the one lift of a park on them, beside
-                            # `status: closed`. A person does not write into the mail: the decision arrives
+                            # decision of john 2026-08-22). IT NO LONGER LIFTS THE PARK ON THEM (thread 155,
+                            # 2026-09-08): the word ARRIVING and the question the thread was frozen on being
+                            # CLOSED are two facts, and only the second ends a park — a park is ended by
+                            # `--park-lifted` and by `status: closed`, and by nothing else. The door passes
+                            # this letter with a NOTE saying the park stands and naming the flag that would
+                            # end it. A person does not write into the mail: the decision arrives
                             # in a letter of a courier role, and by the header such a letter is
                             # indistinguishable from any other message with a turn in it — so the courier
                             # SAYS it, in the one field a reader can trust (reading the body is forbidden
@@ -2391,10 +2397,14 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # A PAIR, and the door refuses a half: `--verdict` without `--pr` is an outcome
                             # with no address, `--pr` without `--verdict` says nothing happened. The reader
                             # of the feed drops a half too, so writing one would be writing to nobody
-                            # WHAT IT DOES: opens a NEW TURN at the SAME holder (the norm of 29.08, point
-                            # (ii)) — a park on a person declared on the previous turn stops reaching this
-                            # one. WHAT IT DOES NOT: it lifts no park on a person (that is `--delivers` and
-                            # `status: closed`), it touches neither `pr:` nor `run:` parks, it raises nobody
+                            # WHAT IT DOES SINCE 2026-09-08 (thread 155): it is the OWN ADDRESS of a
+                            # `run:N` park — the round that park was waiting for, named back by its own
+                            # number — and ends it. Until that day it opened a NEW TURN at the SAME holder
+                            # (the norm of 29.08, point (ii)) and a park on a person declared on the previous
+                            # turn stopped reaching this one; that lift went out with the other two. WHAT IT
+                            # DOES NOT: it lifts no park on a person (that is `--park-lifted` and
+                            # `status: closed`), it does not touch a `pr:` park (that waits for the BUTTON,
+                            # and its own address is `--merged-pr`), it raises nobody
                             # and spends nothing, and it replaces no line of the body — the header is a
                             # machine-readable duplicate, not a new genre of letter
                             # NO PERMISSION GATES IT and the sender's ROLE IS NOT CHECKED against the config:

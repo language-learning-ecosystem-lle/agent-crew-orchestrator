@@ -318,25 +318,47 @@ describe("parkedOnOf — the turn frozen behind a person (R27)", () => {
     expect(parkedOnOf(parked({}))).toBe("john");
   });
 
-  it("'delivers: john' LIFTS IT — the word of the person, carried by whoever relays it", () => {
-    // The one lift, and it is a declaration of the courier: a person does not write into the
-    // mail, and no other header field says whether their answer has arrived.
-    expect(parkedOnOf(parked({ from: "curator", delivers: "john" }))).toBeUndefined();
+  it("'delivers: john' LEAVES IT STANDING — the word arrived, the question is not closed (155)", () => {
+    // UNTIL 2026-09-08 THIS LIFTED IT (thread 030, decision of 2026-08-22, defect (в1)): the word
+    // of the person the park named, said by whoever carried it. It lifted on the word ARRIVING and
+    // never asked what the word was about. Variant «А» of thread 155 took that lift out: a park
+    // belongs to the THREAD, and only a letter that ends it BY NAME (`park-lifted:`) or the
+    // closing of the thread ends it. The delivery still passes the door — with a note saying the
+    // word arrived and the question the thread is frozen on is not closed.
+    expect(parkedOnOf(parked({ from: "curator", delivers: "john" }))).toBe("john");
+  });
+
+  it("'park-lifted: john' LIFTS IT — the one lift a letter has since 2026-09-08 (155)", () => {
+    expect(parkedOnOf(parked({ from: "curator", parkLifted: "john" }))).toBeUndefined();
+  });
+
+  it("'park-lifted: <ANOTHER value>' lifts nothing — the name must be the park that stands", () => {
+    expect(parkedOnOf(parked({ from: "curator", parkLifted: "maria" }))).toBe("john");
   });
 
   it("'delivers: <ANOTHER person>' does not lift it — the delivery names one person", () => {
     expect(parkedOnOf(parked({ from: "curator", delivers: "maria" }))).toBe("john");
   });
 
-  it("a delivery lifts it from BEHIND later traffic — the walk remembers, it does not stop", () => {
-    // The courier says the word and hands the turn on; the roles then work in the thread. The
-    // park is lifted by the message that carried the word, not re-frozen by the ones after it.
-    const thread = parked({ from: "curator", delivers: "john", waitingOn: "dev-core" });
+  it("A NAMED LIFT HOLDS FROM BEHIND later traffic — the walk remembers, it does not stop", () => {
+    // The shape of the old delivery case, kept: the letter that ends the park is not undone by
+    // the ordinary work that follows it. What changed on 2026-09-08 is WHICH letter ends it —
+    // `park-lifted:`, not `delivers:`.
+    const thread = parked({ from: "curator", parkLifted: "john", waitingOn: "dev-core" });
     const after: Message = {
       fields: { from: "dev-core", date: "2026-07-30T03:00:00Z", expects: "ack" },
       text: "сделано",
     };
     expect(parkedOnOf({ ...thread, messages: [...thread.messages, after] })).toBeUndefined();
+  });
+
+  it("A DELIVERY BEHIND LATER TRAFFIC leaves it standing too — nothing about it lifts (155)", () => {
+    const thread = parked({ from: "curator", delivers: "john", waitingOn: "dev-core" });
+    const after: Message = {
+      fields: { from: "dev-core", date: "2026-07-30T03:00:00Z", expects: "ack" },
+      text: "сделано",
+    };
+    expect(parkedOnOf({ ...thread, messages: [...thread.messages, after] })).toBe("john");
   });
 
   it("a delivery BEFORE the park lifts nothing — it answered the question that came first", () => {
@@ -404,16 +426,30 @@ describe("parkedOnOf — the turn frozen behind a person (R27)", () => {
     expect(parkedOnOf(thread)).toBe("john");
   });
 
-  it("THE COURIER OF A DECISION LIFTS IT — and now by the field, not by the shape of its header", () => {
+  it("THE COURIER OF A DECISION LIFTS NOTHING SINCE 2026-09-08 — it reports, it does not unfreeze", () => {
     // Thread 023, live repros (040, 044, 016): curator relaying john's decision and handing the
-    // turn on writes 'expects: none'. The delivery is the same message it always was; since
-    // 2026-08-22 it carries the fact in a field a reader can trust.
+    // turn on writes 'expects: none'. From 2026-08-22 to 2026-09-08 that letter lifted the park by
+    // its `delivers:` field. Variant «А» of 155 ended it on john's own argument: the worst case
+    // after the change is a FORGOTTEN park, and a forgotten park must be VISIBLE. A courier who
+    // means the question closed says so by name — one more flag on the same letter.
     const thread = parked({
       from: "curator",
       worker: "claude-ai",
       expects: "none",
       waitingOn: "dev-core",
       delivers: "john",
+    });
+    expect(parkedOnOf(thread)).toBe("john");
+  });
+
+  it("THE SAME COURIER SAYING IT BY NAME lifts it — `delivers` and `park-lifted` on one letter", () => {
+    const thread = parked({
+      from: "curator",
+      worker: "claude-ai",
+      expects: "none",
+      waitingOn: "dev-core",
+      delivers: "john",
+      parkLifted: "john",
     });
     expect(parkedOnOf(thread)).toBeUndefined();
   });
@@ -470,18 +506,22 @@ describe("parkedOnOf — a park on a person is a park ON A TURN (thread 042)", (
     waitingOn: "curator",
   });
 
-  it("THE 4 h 16 m OF a consumer: the turn moved to another role, so the park covers nobody", () => {
-    // 2026-08-28, the case the norm was written on. Two letters after the park the turn stood on
-    // `dev-acme`, a role waiting for nothing from john — and the daemon printed
+  it("THE 4 h 16 m OF a consumer: the turn moved on, AND SINCE 155 THE PARK STANDS ANYWAY", () => {
+    // 2026-08-28, the case the END-OF-TURN lift was written on. Two letters after the park the
+    // turn stood on `dev-acme`, a role waiting for nothing from john — and the daemon printed
     // `⏸ PARKED behind a decision of john (R27)` 201 times, a true sentence about the thread and
     // a false one about the pair. Between `lease-released 12:13:54Z` and `lease-acquired
-    // 16:29:49Z` the journal has not one line.
+    // 16:29:49Z` the journal has not one line. THAT MEASUREMENT STANDS; the lift it bought does
+    // not. Variant «А» (155, 2026-09-08) weighed the two errors against each other: the park that
+    // outlives its turn costs a silent pair until somebody notices, and john chose that over a
+    // park that dies without anyone saying so — because the first is visible in the digest and
+    // the second is invisible everywhere.
     const feed = thread(
       declared,
       message("2026-08-28T12:13:16Z", { from: "dev-acme", waitingOn: "curator" }),
       message("2026-08-28T12:14:09Z", { from: "github", expects: "none", waitingOn: "dev-acme" }),
     );
-    expect(parkedOnOf(feed)).toBeUndefined();
+    expect(parkedOnOf(feed)).toBe("john");
   });
 
   it("AT THE SAME HOLDER A ROLE'S OWN REPORT LEAVES IT STANDING — the narrowing of 22.08 kept", () => {
@@ -496,24 +536,24 @@ describe("parkedOnOf — a park on a person is a park ON A TURN (thread 042)", (
     expect(parkedOnOf(feed)).toBe("john");
   });
 
-  it("AT THE SAME HOLDER AN ACTIONABLE OUTCOME OPENS A NEW TURN — red CI, green `checks`", () => {
-    // The second half of the norm, and the header carries the whole judgement already: the
-    // notifier names the role on `failure`/`timed_out`/… and on a green `checks` over a PR
-    // without the `review` label, and stays silent (no `waiting-on`) on the trace class. So an
-    // outcome is "the turn is handed over WITHOUT a question in it", which no report ever is.
+  it("AN ACTIONABLE OUTCOME AT THE SAME HOLDER OPENS NOTHING — the outcome lift went out (155)", () => {
+    // What stood here until 2026-09-08: an outcome — "the turn handed over WITHOUT a question in
+    // it", which no report ever is — ended the turn the park was declared on, and with it the
+    // park. It went out with the rest of the end-of-turn lift under variant «А»: a park on a
+    // PERSON is not answered by a machine reporting a build.
     const feed = thread(
       declared,
       message("2026-08-28T12:20:00Z", { from: "github", expects: "none", waitingOn: "curator" }),
     );
-    expect(parkedOnOf(feed)).toBeUndefined();
+    expect(parkedOnOf(feed)).toBe("john");
   });
 
-  it("THE VERDICT OF A ROUND OPENS ONE TOO — the 19 minutes of a consumer (042, norm of 29.08)", () => {
-    // THE LIVE WINDOW the norm was measured on: a consumer, 2026-08-28, park at 17:34Z on curator's own
-    // turn, and six minutes later the verdict `17-40-11Z-reviewer-pr.md` — `expects: answer`,
-    // `waiting-on: curator`, no park of its own. The turn never changed holder, so nothing in
-    // the header said the wait was over, and the pair stood until 17:59Z. Since the fields
-    // exist, the DECLARED PAIR says it: the round ended, and this is a new turn.
+  it("THE VERDICT OF A ROUND OPENS NOTHING AGAINST A PERSON-PARK — it is not john's word", () => {
+    // THE LIVE WINDOW the end-of-turn lift was measured on: a consumer, 2026-08-28, park at 17:34Z
+    // on curator's own turn, and six minutes later the verdict `17-40-11Z-reviewer-pr.md` —
+    // `expects: answer`, `waiting-on: curator`, no park of its own; the pair stood until 17:59Z.
+    // Since 2026-09-08 the verdict pair is the OWN ADDRESS of a `run:N` park and of nothing else
+    // (§3.4 of 155): a park on john waits for john, and no round of review answers him.
     const feed = thread(
       declared,
       message("2026-08-28T17:40:11Z", {
@@ -523,7 +563,7 @@ describe("parkedOnOf — a park on a person is a park ON A TURN (thread 042)", (
         pr: 108,
       }),
     );
-    expect(parkedOnOf(feed)).toBeUndefined();
+    expect(parkedOnOf(feed)).toBe("john");
   });
 
   it("THE SAME LETTER WITHOUT THE FIELDS OPENS NOTHING — the price the norm named out loud", () => {
@@ -587,18 +627,19 @@ describe("parkedOnOf — a park on a person is a park ON A TURN (thread 042)", (
     expect(parkedOnOf(feed)).toBe("john");
   });
 
-  it("THE TURN COMING BACK DOES NOT REVIVE IT — the third turn is not the parked one", () => {
-    // A park is declared on ONE turn. Once the turn has gone to somebody else that turn is over,
-    // and a later handover back to the same role starts a new one, which inherits no freeze.
+  it("THE TURN GOING ROUND THE ROLES CHANGES NOTHING — the park is not on a turn any more", () => {
+    // Until 2026-09-08 a park was declared on ONE turn: once the turn had gone to somebody else
+    // that turn was over, and a later handover back started a new one that inherited no freeze.
+    // Under variant «А» the park is a property of the THREAD, so the turn may travel all it likes.
     const feed = thread(
       declared,
       message("2026-08-28T12:13:16Z", { from: "curator", waitingOn: "dev-acme" }),
       message("2026-08-28T12:30:00Z", { from: "dev-acme", waitingOn: "curator" }),
     );
-    expect(parkedOnOf(feed)).toBeUndefined();
+    expect(parkedOnOf(feed)).toBe("john");
   });
 
-  it("'delivers' STILL LIFTS IT WHOLE — the word of the person outranks whose turn it is", () => {
+  it("'delivers' LATE IN THE FEED LIFTS NOTHING EITHER — one rule, wherever the letter sits", () => {
     const feed = thread(
       declared,
       message("2026-08-28T12:13:16Z", { from: "curator", waitingOn: "dev-acme" }),
@@ -606,6 +647,20 @@ describe("parkedOnOf — a park on a person is a park ON A TURN (thread 042)", (
         from: "curator",
         expects: "none",
         delivers: "john",
+        waitingOn: "dev-acme",
+      }),
+    );
+    expect(parkedOnOf(feed)).toBe("john");
+  });
+
+  it("AND `park-lifted` LATE IN THE FEED DOES LIFT IT — through the traffic in between", () => {
+    const feed = thread(
+      declared,
+      message("2026-08-28T12:13:16Z", { from: "curator", waitingOn: "dev-acme" }),
+      message("2026-08-28T12:30:00Z", {
+        from: "curator",
+        expects: "none",
+        parkLifted: "john",
         waitingOn: "dev-acme",
       }),
     );
@@ -807,9 +862,40 @@ describe("personParksOf — the declarations a LIFTED park leaves behind (thread
         asks: true,
       },
     ]);
-    // And the standing one is still exactly what `parkingOf` says it is — the two readers do
-    // not disagree about the park in force, they answer different questions.
-    expect(parkingOf(feed)?.since).toBe("2026-08-22T18:30:00Z");
+    // AND THE STANDING ONE IS THE FIRST DECLARATION, NOT THE LAST MENTION (155, §3.2). Until
+    // 2026-09-08 `parkingOf` answered `18:30:00Z` here: the walk went backwards and stopped on the
+    // first `parked-on:` it met, so a second letter naming the SAME park was read as a new park
+    // with a new `since` — and the ground and the question of the original went with it. Since
+    // variant «А» the second letter is a report CARRYING the park forward, and the park keeps the
+    // fields of the letter that DECLARED it.
+    expect(parkingOf(feed)?.since).toBe("2026-08-22T17:44:22Z");
+  });
+
+  it("A PARK CARRIED FORWARD KEEPS ALL FOUR FIELDS of its declaration (155, §3.2 and Д2)", () => {
+    // The direct test of Д2: the re-declaration below carries neither ground nor the original
+    // question, and it is written on a different turn. Nothing of it reaches the standing park.
+    const feed = thread([
+      at(
+        "2026-08-22T17:44:22Z",
+        { parkedOn: "john", parkGround: "решение о правах", waitingOn: "curator" },
+        "# Сузить ли снятие парковки?",
+      ),
+      at("2026-08-22T18:10:30Z", { from: "github", waitingOn: "dev-core" }, "PR #61 merged"),
+      at(
+        "2026-08-22T18:30:00Z",
+        { parkedOn: "john", waitingOn: "dev-core" },
+        "Докладываю: жду того же",
+      ),
+    ]);
+
+    expect(parkingOf(feed)).toMatchObject({
+      kind: "person",
+      person: "john",
+      since: "2026-08-22T17:44:22Z",
+      question: "Сузить ли снятие парковки?",
+      ground: "решение о правах",
+      holder: "curator",
+    });
   });
 
   it("carries `asks` — a park declared as a MODE asked nothing, so its lift owes nothing", () => {
@@ -901,19 +987,37 @@ describe("parkingOf — a park on an EVENT (thread 023, variant A)", () => {
     expect(parkingOf(thread([parked, ci]))?.kind).toBe("event");
   });
 
-  it("a message that ASKS lifts it — the answer arriving is the answer arriving", () => {
+  it("A MESSAGE THAT ASKS LIFTS NOTHING — the wide lift of the event park went out (155)", () => {
+    // Until 2026-09-08 any letter that moved somebody — asked a question or named whose turn it
+    // now was — lifted an event park (thread 023, `movesSomebody`). Variant «А» took that out:
+    // what lifts a `pr:` park is the MERGE it names, and what lifts a `run:` park is the VERDICT
+    // on that PR. Traffic in the thread is traffic.
     const parked = message({ parkedOn: "pr:127" });
     const asked = message({ from: "curator", date: "2026-07-31T12:40:00Z", expects: "answer" });
-    expect(parkingOf(thread([parked, asked]))).toBeUndefined();
+    expect(parkingOf(thread([parked, asked]))?.pr).toBe(127);
   });
 
-  it("an ACTIONABLE outcome lifts it — it hands the turn over without asking (048)", () => {
+  it("AN ACTIONABLE OUTCOME LIFTS NOTHING EITHER — red CI on the very PR is not its merge", () => {
+    // The sharpest of the three, and the reason the wide lift looked right for so long: the
+    // notifier hands the turn over on a red run, so the pair does get raised. It is raised by the
+    // NOTIFIER, though, and not by the park ending — and the park is what the thread is frozen on.
     const parked = message({ parkedOn: "pr:127" });
     const red = announcement(
       { waitingOn: "dev-core", date: "2026-07-31T12:40:00Z" },
       "❌ CI по PR #127: `failure`.",
     );
-    expect(parkingOf(thread([parked, red]))).toBeUndefined();
+    expect(parkingOf(thread([parked, red]))?.pr).toBe(127);
+  });
+
+  it("AND `park-lifted: pr:127` ends it BY NAME — the writer's own way out (155, §3.1)", () => {
+    const parked = message({ parkedOn: "pr:127" });
+    const lifted = message({
+      from: "curator",
+      date: "2026-07-31T12:40:00Z",
+      expects: "none",
+      parkLifted: "pr:127",
+    });
+    expect(parkingOf(thread([parked, lifted]))).toBeUndefined();
   });
 
   // THE RACE OF THE PARK WRITTEN BEHIND ITS OWN CONDITION (thread 032, 2026-08-23). This read
@@ -1028,20 +1132,24 @@ describe("parkingOf — a park on the ROUND running on a PR (thread 019)", () =>
     ).toBe(163);
   });
 
-  it("the verdict lifts it — a message that asks somebody for something", () => {
+  it("A VERDICT WITHOUT THE FIELDS LIFTS NOTHING — prose in the body is not a declaration (020)", () => {
+    // This lifted until 2026-09-08, and it lifted for the wrong reason: not because the round had
+    // ended but because the letter moved somebody. Since variant «А» the round park is ended by
+    // its OWN ADDRESS — the pair `verdict:`+`pr:` in the HEADER — and a body that says the word
+    // is not a header field. Reading a verdict out of the body is forbidden to this net (020).
     const parked = message({ parkedOn: "run:163" });
     const ci = announcement({ date: "2026-08-02T09:15:07Z" }, "CI: success");
     const verdict = message(
       { from: "reviewer-pr", date: "2026-08-02T09:20:00Z", expects: "answer" },
       "verdict: approve",
     );
-    expect(parkingOf(thread([parked, ci, verdict]))).toBeUndefined();
+    expect(parkingOf(thread([parked, ci, verdict]))?.pr).toBe(163);
   });
 
-  it("THE HEADER FIELDS OF THAT VERDICT CHANGE NOTHING HERE (042) — the event walk is untouched", () => {
-    // The pair of 29.08 belongs to the person park: it opens a new turn at the same holder. An
-    // event park has always lifted on the first message that MOVES anybody, and the verdict does
-    // move somebody with or without the fields — so this is a regression, not a new lift.
+  it("THE HEADER FIELDS OF THAT VERDICT ARE NOW THE WHOLE LIFT (155, §3.4) — the own address", () => {
+    // The event park waits for a MACHINE, and a machine cannot write `--park-lifted`. So the one
+    // lift left to it is the event it named, named back by its own identifier: for `run:N` that is
+    // the declared pair `verdict:`+`pr: N`, and both halves are demanded, exactly as at the door.
     const parked = message({ parkedOn: "run:163" });
     const declaredVerdict = message(
       {
@@ -1054,20 +1162,28 @@ describe("parkingOf — a park on the ROUND running on a PR (thread 019)", () =>
       "verdict: needs-fixes",
     );
     expect(parkingOf(thread([parked, declaredVerdict]))).toBeUndefined();
-    // Said as a comparison rather than as a constant, because the claim is "nothing changed":
-    // the same letter without the fields answers the same, on the round park and on the button
-    // park alike (both lift on the first message that moves anybody).
-    const undeclared = message(
-      { from: "reviewer-pr", date: "2026-08-02T09:20:00Z", expects: "answer" },
+    // And it is the ADDRESS that lifts, not the traffic: the same letter about ANOTHER PR leaves
+    // the park standing, and so does the same letter with only half the pair.
+    const elsewhere = message(
+      {
+        from: "reviewer-pr",
+        date: "2026-08-02T09:20:00Z",
+        expects: "answer",
+        verdict: "needs-fixes",
+        pr: 149,
+      },
       "verdict: needs-fixes",
     );
+    expect(parkingOf(thread([parked, elsewhere]))?.pr).toBe(163);
+    const halfPair = message(
+      { from: "reviewer-pr", date: "2026-08-02T09:20:00Z", expects: "answer", verdict: "approve" },
+      "verdict: approve",
+    );
+    expect(parkingOf(thread([parked, halfPair]))?.pr).toBe(163);
+    // The button park is not the round park: `pr:163` waits for a MERGE, and a verdict on 163 is
+    // not one. Its own address is `merged-pr`, tested by the merge cases beside this one.
     const button = message({ parkedOn: "pr:163", date: "2026-08-02T09:10:00Z" });
-    expect(parkedOnOf(thread([button, declaredVerdict]))).toBe(
-      parkedOnOf(thread([button, undeclared])),
-    );
-    expect(parkedOnOf(thread([parked, declaredVerdict]))).toBe(
-      parkedOnOf(thread([parked, undeclared])),
-    );
+    expect(parkingOf(thread([button, declaredVerdict]))?.pr).toBe(163);
   });
 
   it("the merge of THAT PR lifts it, wherever it was announced — the round cannot end twice", () => {
@@ -1090,17 +1206,19 @@ describe("parkingOf — a park on the ROUND running on a PR (thread 019)", () =>
     expect(parkingOf(thread([ci, parked]))?.kind).toBe("run");
   });
 
-  it("THE LIVE INCIDENT OF 023: an ACTIONABLE outcome DOES lift it (2026-08-03)", () => {
+  it("THE LIVE INCIDENT OF 023 kept as history — the actionable outcome no longer lifts (155)", () => {
     // The `failure` of #177 was delivered at 06:23:44Z into a thread parked on `run:177`; the
     // park did not lift, the pair stood dead for 3.5 hours with an actionable red in front of
-    // it, and a human noticed the silence. The notifier names the role on the actionable class
-    // (048, form (б)) and leaves the field out on the trace class — which is where this reads.
+    // it, and a human noticed the silence. THAT is what the wide lift was bought with on
+    // 2026-08-03, and the measurement is not withdrawn. What variant «А» withdraws is the lift:
+    // the red of a run is not the VERDICT of the round the park named, and the pair here is
+    // raised by the notifier's own `waiting-on`, which this walk does not read either way.
     const parked = message({ parkedOn: "run:177", date: "2026-08-03T06:15:46Z" });
     const red = announcement(
       { date: "2026-08-03T06:23:44Z", waitingOn: "dev-core" },
       "❌ CI по PR #177: `failure`.",
     );
-    expect(parkingOf(thread([parked, red]))).toBeUndefined();
+    expect(parkingOf(thread([parked, red]))?.pr).toBe(177);
   });
 
   it("a GREEN trace still lifts nothing — that is the case the narrow form was built for", () => {
@@ -1109,23 +1227,20 @@ describe("parkingOf — a park on the ROUND running on a PR (thread 019)", () =>
     expect(parkingOf(thread([parked, green]))?.pr).toBe(177);
   });
 
-  it("THE SECOND LIVE INCIDENT OF 023: a GREEN outcome CARRYING THE TURN lifts it (2026-08-03)", () => {
-    // The lift is read from ONE FACT — does the message move anybody — and never from a list of
-    // conclusions, which is what makes this case need no second rule. It is the same predicate
-    // the red of #177 above goes through; the only thing that changed under it is the notifier,
-    // which since #187 names the author's role on a GREEN `checks` of a PR with no `review`
-    // label (048, form (б)): the turn is the one action of hanging the label.
-    //
+  it("THE SECOND LIVE INCIDENT OF 023, and it does not lift any more either (155)", () => {
     // Live, and the reason this test exists: 11:51:59Z parked on `run:188`, 11:59:46Z the green
     // arrived carrying `waiting-on: dev-core`, and the pair still stood — for over an hour, to
-    // a human's eye and not the circuit's. The park was NOT the cause, and the test says so by
-    // construction: this is the very state of that feed, and it lifts.
+    // a human's eye and not the circuit's. Until 2026-09-08 the walk answered that with the wide
+    // lift ("does this letter move anybody"), which is the predicate the red of #177 above also
+    // went through. Under variant «А» the `run:188` park is ended by the verdict of the round on
+    // #188 and by a letter naming it; a green `checks` is neither, and the raise of the pair is
+    // the notifier's business, not the park's.
     const parked = message({ parkedOn: "run:188", date: "2026-08-03T11:51:59Z" });
     const green = announcement(
       { date: "2026-08-03T11:59:46Z", waitingOn: "dev-core" },
       "✅ CI по PR #188: `success`. Метка `review` не повешена — ход у автора.",
     );
-    expect(parkingOf(thread([parked, green]))).toBeUndefined();
+    expect(parkingOf(thread([parked, green]))?.pr).toBe(188);
   });
 
   it("a DECLARED NULL is not a handover — it moves the turn to nobody", () => {
@@ -1219,10 +1334,14 @@ describe("parkSpansOf — FOR HOW LONG the thread was frozen behind a park (thre
     waitingOn: "curator",
   });
   // `~10-05-00Z-curator.md` — the lift, the word of john carried by the courier. The pair was
-  // raised 39 seconds later (`journal.jsonl`: `lease-acquired curator × 042` at 10:05:39Z).
+  // raised 39 seconds later (`journal.jsonl`: `lease-acquired curator × 042` at 10:05:39Z). THE
+  // FIELD LETTER CARRIED `delivers: john` AND THAT IS WHAT LIFTED IT THEN; since 2026-09-08 the
+  // same courier ends the park by naming it, so the fixture carries both — the word that arrived
+  // and the statement that the question it was parked on is closed.
   const lifted = message("2026-08-29T10:05:00Z", {
     from: "curator",
     delivers: "john",
+    parkLifted: "john",
     waitingOn: "curator",
   });
 
@@ -1251,11 +1370,12 @@ describe("parkSpansOf — FOR HOW LONG the thread was frozen behind a park (thre
     expect(spans).toEqual([{ kind: "person", on: "john", from: "2026-08-29T03:27:44Z" }]);
   });
 
-  it("A PARK WHOSE TURN ENDED ENDS HERE TOO — one walk, not a second rule about lifting", () => {
-    // The narrowing of #104: a park is declared on a TURN, and a later `waiting-on` naming
-    // another role ends it. The spans are replayed through `standingParkOf` for exactly this
-    // reason — a rule written twice is a rule that drifts, and the freeze the courier subtracts
-    // must be the freeze the scheduler obeyed.
+  it("A PARK WHOSE TURN ENDED DOES NOT END HERE EITHER — one walk, not a second rule (155)", () => {
+    // Until 2026-09-08 this closed the span at 04:00:00Z: the narrowing of #104 said a park was
+    // declared on a TURN, and a later `waiting-on` naming another role ended it. The spans are
+    // replayed through `standingParkOf` and have no rule of their own, so when variant «А» took
+    // that lift out of the live reader the history followed it without a line of `parkSpansOf`
+    // being touched — which is the whole point of replaying instead of writing the rule twice.
     const spans = parkSpansOf(
       thread(
         declared,
@@ -1264,9 +1384,7 @@ describe("parkSpansOf — FOR HOW LONG the thread was frozen behind a park (thre
       ),
     );
 
-    expect(spans).toEqual([
-      { kind: "person", on: "john", from: "2026-08-29T03:27:44Z", to: "2026-08-29T04:00:00Z" },
-    ]);
+    expect(spans).toEqual([{ kind: "person", on: "john", from: "2026-08-29T03:27:44Z" }]);
   });
 
   it("a re-declaration after a lift is a SECOND span, not one span with a hole in it", () => {
@@ -1294,6 +1412,10 @@ describe("parkSpansOf — FOR HOW LONG the thread was frozen behind a park (thre
     // behind the round on PR #126 from 09:29:02Z; the courier's `frozen` set covered every tick
     // the park STOOD on and none of the ticks after it lifted at 09:59:02Z, so the pair walked
     // out of a 30-minute freeze carrying it as time the box was free to raise it in.
+    //
+    // The lifting letter of that window was the reviewer's verdict, and since 2026-09-08 it ends
+    // the park by the run park's OWN ADDRESS — the declared pair `verdict:`+`pr: 126` (155, §3.4).
+    // The window is unchanged; what carries it is now a header field and not the traffic.
     const spans = parkSpansOf(
       thread(
         message("2026-08-30T09:29:02Z", {
@@ -1301,7 +1423,12 @@ describe("parkSpansOf — FOR HOW LONG the thread was frozen behind a park (thre
           waitingOn: "curator",
           parkedOn: "run:126",
         }),
-        message("2026-08-30T09:59:02Z", { from: "reviewer-pr", waitingOn: "curator" }),
+        message("2026-08-30T09:59:02Z", {
+          from: "reviewer-pr",
+          waitingOn: "curator",
+          verdict: "approve",
+          pr: 126,
+        }),
       ),
     );
 
