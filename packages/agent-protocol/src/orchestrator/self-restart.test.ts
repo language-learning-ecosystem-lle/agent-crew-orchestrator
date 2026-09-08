@@ -51,10 +51,12 @@ import {
   SELF_RESTART_EXIT_CODE,
   SELF_RESTART_MAX_ATTEMPTS,
   type SelfRestartBlock,
+  type SelfRestartMemory,
   selfRestartArgv,
   selfRestartEvent,
   selfRestartForm,
   selfRestartVerdict,
+  selfRestartWent,
   spawnSelfRestart,
   versionRepairVerdict,
   type WorkingTreeState,
@@ -433,6 +435,9 @@ describe("the memory of the EVENT — the four facts that have to outlive the pr
       to: target,
       behind: 13,
       waitedForSec: 7200,
+      repair: "went",
+      wentAt: "2026-09-06T13:00:00Z",
+      drainSince: "2026-09-06T11:00:00Z",
       at: "2026-09-06T13:00:00Z",
     });
   });
@@ -482,6 +487,105 @@ describe("the memory of the EVENT — the four facts that have to outlive the pr
       attempts: attemptsFor(memory, "d".repeat(40)),
     });
     expect(verdict).toMatchObject({ kind: "go", attempt: 1 });
+  });
+});
+
+/**
+ * A MATCHING SHA IS NOT A REPAIR (thread 173) — the field case, taken from the box.
+ *
+ * On 2026-09-08 this daemon drained for a drift of one commit, and then ended by the STOP
+ * FLAG rather than by the repair: `.orchestrator/daemon.log` has neither `git pull --ff-only`
+ * nor `leaving with code 75` in that window, and it has both in the episode forty minutes
+ * earlier. It was raised again, loaded the target off a checkout that was already on it, and
+ * `target === loaded` matched — so the letter reported a self-restart that never ran, dated
+ * it by the start of the drain, and printed ten minutes of waiting as `0 с` because both
+ * numbers came out of one untouched pair of stamps.
+ */
+describe("the record that says WHICH of the two it is", () => {
+  /** `.orchestrator/self-restart.json` as it stood on the box, field for field. */
+  const drained: SelfRestartMemory = {
+    target: "d3a07723a799c414de9c7275bb4340653cdb7998",
+    attempts: 0,
+    at: "2026-09-08T12:30:57Z",
+    drainSince: "2026-09-08T12:30:57Z",
+    from: "5b9795aea4619e3b2ff8de8ca9c8b4ea1e0f2c11",
+    behind: 1,
+  };
+  const arrived = selfRestartEvent({ memory: drained, loaded: drained.target });
+
+  it("calls an untouched drain record what it is — the go never wrote over it", () => {
+    expect(selfRestartWent(drained)).toBe(false);
+    expect(arrived?.repair).toBe("unrecorded");
+  });
+
+  it("gives no wait rather than the zero the untouched pair subtracts to", () => {
+    // The subtraction is `at - drainSince`, and in this record they are ONE stamp: the
+    // zero is not a measurement, it is the shape of the file. Ten minutes of drain — the
+    // very cost the letter exists to report — were printed as none.
+    expect(arrived?.waitedForSec).toBeUndefined();
+  });
+
+  it("hands over no moment of the go, and keeps the drain stamp under its own name", () => {
+    expect(arrived?.wentAt).toBeUndefined();
+    expect(arrived?.drainSince).toBe("2026-09-08T12:30:57Z");
+    // The stamp still travels — the lock on repeated letters is keyed on it — but under a
+    // field no sentence of the letter may print as "when it went".
+    expect(arrived?.at).toBe("2026-09-08T12:30:57Z");
+  });
+
+  it("still reports the event: the box IS running the target, and silence is the worse half", () => {
+    expect(arrived).toMatchObject({ from: drained.from, to: drained.target, behind: 1 });
+  });
+
+  it("reads the same record as a repair once the go has written over it", () => {
+    const went: SelfRestartMemory = { ...drained, at: "2026-09-08T12:40:41Z", went: true };
+    expect(selfRestartWent(went)).toBe(true);
+    expect(selfRestartEvent({ memory: went, loaded: went.target })).toMatchObject({
+      repair: "went",
+      wentAt: "2026-09-08T12:40:41Z",
+      // 12:30:57 → 12:40:41 — the wait the box actually spent, said as a number for once.
+      waitedForSec: 584,
+    });
+  });
+
+  it("takes the declaration ALONE, without asking the stamps to agree with it", () => {
+    // The two halves are separate on purpose: a build that re-stamps `at` differently must
+    // not be able to turn a declared go into an unrecorded one.
+    expect(selfRestartWent({ ...drained, went: true })).toBe(true);
+  });
+
+  it("reads a record OLDER than the declaration by its shape, and never as a false negative", () => {
+    // A drain the `go` re-stamped: one stamp moved past the other, which only the go does.
+    expect(selfRestartWent({ ...drained, at: "2026-09-08T12:40:41Z" })).toBe(true);
+    // A `go` that took no drain at all: the drain writer always stamps `drainSince`, so a
+    // record without one cannot be a drain record.
+    expect(
+      selfRestartWent({ target: drained.target, attempts: 1, at: "2026-09-08T12:40:41Z" }),
+    ).toBe(true);
+  });
+
+  it("carries the declaration through a round trip and trusts nothing but `true` in it", () => {
+    const went: SelfRestartMemory = { ...drained, at: "2026-09-08T12:40:41Z", went: true };
+    expect(parseSelfRestartMemory(renderSelfRestartMemory(went))).toEqual(went);
+    // Anything else in that place is not a go this box can vouch for — dropped, as every
+    // other untrusted field is, so the letter says the fact is unknown instead of a wrong one.
+    expect(parseSelfRestartMemory('{"target":"c","attempts":1,"at":"t","went":"yes"}')).toEqual({
+      target: "c",
+      attempts: 1,
+      at: "t",
+    });
+  });
+
+  it("the drain the tick writes carries no declaration — it is written before any go", () => {
+    const stamp = rememberSelfRestartDrain({
+      memory: undefined,
+      target: drained.target,
+      from: drained.from ?? "",
+      behind: 1,
+      at: "2026-09-08T12:30:57Z",
+    });
+    expect(stamp?.went).toBeUndefined();
+    expect(stamp === undefined ? undefined : selfRestartWent(stamp)).toBe(false);
   });
 });
 

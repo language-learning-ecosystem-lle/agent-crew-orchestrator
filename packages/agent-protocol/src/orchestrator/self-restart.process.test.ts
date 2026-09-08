@@ -636,6 +636,19 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
         readFileSync(join(home.repo, ".orchestrator", "self-restart.json"), "utf8"),
       );
       expect(began?.drainSince).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      // AND THE DRAIN RECORD DOES NOT CLAIM A GO (thread 173). It is written before the
+      // restart and the restart may never come — the field case ended by the stop flag —
+      // so the successor that finds THIS record must read it as what it is. Asserted here
+      // rather than in a unit because the record is written by the tick, and the whole
+      // defect was that the file on disk did not say which of the two it held.
+      expect(began?.went).toBeUndefined();
+      const midDrain = selfRestartEvent({
+        memory: began,
+        loaded: git(home.repo, "rev-parse", "origin/main").trim(),
+      });
+      expect(midDrain?.repair).toBe("unrecorded");
+      expect(midDrain?.waitedForSec).toBeUndefined();
+      expect(midDrain?.wentAt).toBeUndefined();
       // "What the code WAS" is stamped while it still is: the successor can only ever read
       // the SHA it now runs, so a `from` taken after the restart would name the wrong end.
       expect(began?.from).toBe(git(home.repo, "rev-parse", "HEAD").trim());
@@ -667,6 +680,12 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
       expect(memory?.drainSince).toBe(began?.drainSince);
       expect(memory?.from).toBe(began?.from);
       expect(memory?.behind).toBe(1);
+      // AND THIS ONE THE `go` ADDED. It is the only field of the record that separates a
+      // repair this box decided from a tree somebody else moved under it, and it exists
+      // nowhere but here — the tick writes it, and no unit over the writer can prove the
+      // tick called the writer.
+      expect(memory?.went).toBe(true);
+      expect(memory?.at).not.toBe(memory?.drainSince);
 
       // And the successor, reading that file and nothing else, recognises the restart as
       // its own and gets all four facts of it — the input of the letter, end to end.
@@ -678,6 +697,8 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
       expect(event?.to).toBe(git(home.repo, "rev-parse", "origin/main").trim());
       expect(event?.behind).toBe(1);
       expect(event?.waitedForSec).toBeGreaterThanOrEqual(0);
+      expect(event?.repair).toBe("went");
+      expect(event?.wentAt).toBe(memory?.at);
     },
     3 * HANG_CEILING_MS,
   );

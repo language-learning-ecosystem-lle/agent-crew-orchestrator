@@ -12822,6 +12822,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           memory.drainSince !== undefined
             ? { drainSince: memory.drainSince }
             : {}),
+          // AND THE GO DECLARES ITSELF (thread 173). Everything above is also true of the
+          // drain record this one overwrites; what is true of NEITHER a drain nor a tree
+          // somebody else moved is that a `go` was decided here, at this stamp. Without the
+          // declaration the successor read an interrupted drain as a landed repair and
+          // wrote a letter that said so.
+          went: true,
         }),
       );
     } catch (error) {

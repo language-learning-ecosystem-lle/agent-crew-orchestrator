@@ -24,6 +24,9 @@ const full: SelfRestartEvent = {
   to: "7db145ba901a521621eaed0f1fb89a146ebec8c3",
   behind: 18,
   waitedForSec: 4230,
+  repair: "went",
+  wentAt: "2026-09-06T17:00:00Z",
+  drainSince: "2026-09-06T15:49:30Z",
   at: "2026-09-06T17:00:00Z",
 };
 
@@ -82,7 +85,7 @@ describe("planSelfRestartLetter — the four facts john required", () => {
 
 describe("planSelfRestartLetter — a fact that is NOT KNOWN is said, not dropped", () => {
   /** The whole complaint of this thread is that silence and absence look alike. */
-  const old: SelfRestartEvent = { to: full.to, at: full.at };
+  const old: SelfRestartEvent = { to: full.to, at: full.at, repair: "went", wentAt: full.at };
 
   it("says that the previous sha is not recorded, rather than leaving the line out", () => {
     const { body } = planSelfRestartLetter({ change: changed, event: old, root });
@@ -422,7 +425,7 @@ describe("the letter says WHY it was written, now that most restarts get none", 
   it("claims no vigil when none is recorded: a wait it cannot prove is not asserted", () => {
     const { body } = planSelfRestartLetter({
       change: changed,
-      event: { to: full.to, at: full.at },
+      event: { to: full.to, at: full.at, repair: "went", wentAt: full.at },
       root,
     });
     expect(body).not.toContain("ДОЖДАЛСЯ живых сессий");
@@ -484,5 +487,95 @@ describe("the seam: the memory that survived the exit → the letter", () => {
     expect(selfRestartEvent({ memory, loaded: "0000000000000000000000000000000000000000" })).toBe(
       undefined,
     );
+  });
+
+  /**
+   * THE FIELD CASE OF THREAD 173, end to end: the record the box actually left on disk on
+   * 2026-09-08, through `selfRestartEvent`, into the body a human read. The letter that
+   * went said the box "починил своё дерево и поднялся на новом коде", dated the restart
+   * `12:30:57Z` and priced the drain at `0 с` — and curator measured all three against
+   * `daemon.log` and found no repair in it at all.
+   */
+  describe("the drain that was interrupted — a matching sha reported as a repair", () => {
+    const interrupted: SelfRestartMemory = {
+      target: "d3a07723a799c414de9c7275bb4340653cdb7998",
+      attempts: 0,
+      at: "2026-09-08T12:30:57Z",
+      drainSince: "2026-09-08T12:30:57Z",
+      from: "5b9795aea4619e3b2ff8de8ca9c8b4ea1e0f2c11",
+      behind: 1,
+    };
+    const event = selfRestartEvent({ memory: interrupted, loaded: interrupted.target });
+    const body = (): string => {
+      expect(event).toBeDefined();
+      return planSelfRestartLetter({
+        change: changed,
+        event: event as SelfRestartEvent,
+        root,
+        served: "/home/lle/projects/agent-crew-orchestrator",
+      }).body;
+    };
+
+    it("never prices the drain at zero — the very cost the letter is written to report", () => {
+      expect(body()).not.toContain("сколько ждал сессии:** 0 с");
+      expect(body()).toMatch(/сколько ждал сессии:.*не записано/);
+    });
+
+    it("does not date the restart by the start of the drain", () => {
+      expect(body()).toMatch(/когда пошёл:.*не записано/);
+      // The stamp may still appear — as the start of the drain, under that name — and it
+      // may never stand alone after "когда пошёл:".
+      expect(body()).not.toContain("**когда пошёл:** 2026-09-08T12:30:57Z");
+      expect(body()).toContain("НАЧАЛО СЛИВА");
+    });
+
+    it("does not report a repair, in the heading or in the opening sentence", () => {
+      expect(body()).not.toContain("перезапустил себя");
+      expect(body()).not.toContain("без руки");
+      expect(body()).not.toContain("починил своё дерево");
+      expect(body()).not.toContain("ДОЖДАЛСЯ живых сессий");
+      expect(body()).toContain("РЕМОНТА ЗА НИМ НЕ ЗАПИСАНО");
+    });
+
+    it("still says what IS known — the shas, the distance and the circuit", () => {
+      // The narrowing is of the CLAIM, not of the report: the box is running new code and
+      // a silence about that is the failure this whole package exists to prevent.
+      expect(body()).toContain("5b9795aea461");
+      expect(body()).toContain("d3a07723a799");
+      expect(body()).toContain("1 коммит");
+      expect(body()).toContain("/home/lle/projects/agent-crew-orchestrator");
+    });
+
+    it("gives curator somewhere to look instead of an unanswerable doubt", () => {
+      expect(body()).toContain("daemon.log");
+      expect(body()).toContain("leaving with code 75");
+    });
+
+    it("the SAME record, once the go has written over it, is the ordinary letter again", () => {
+      const went = selfRestartEvent({
+        memory: { ...interrupted, at: "2026-09-08T12:40:41Z", went: true },
+        loaded: interrupted.target,
+      });
+      expect(went).toBeDefined();
+      const said = planSelfRestartLetter({
+        change: changed,
+        event: went as SelfRestartEvent,
+        root,
+      }).body;
+      expect(said).toContain("ДОЖДАЛСЯ живых сессий");
+      expect(said).toContain("9 мин (584 с)");
+      expect(said).toContain("**когда пошёл:** 2026-09-08T12:40:41Z");
+    });
+
+    it("the journal line of an undelivered letter carries the same caution", () => {
+      // It is the ONLY trace of an event nobody was told about — dating it by a drain stamp
+      // would reproduce the defect where it is harder still to catch.
+      const said = describeUndeliveredSelfRestartLetter({
+        event: event as SelfRestartEvent,
+        cause: "the delivery exited 1",
+      });
+      expect(said).not.toContain("since 2026-09-08T12:30:57Z");
+      expect(said).toContain("no stamp");
+    });
   });
 });
