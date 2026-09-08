@@ -147,7 +147,7 @@
 | 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | Ход возвращаю тебе: постановка §3 моего письма стои́т как написана, порядок §3 твоего письма принят… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
-| 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | curator | — | 2026-09-08 | Слово john полем delivers (чат 2026-09-08 ~10:14Z): «СТАВИТЬ» — дверь того же класса ставится на ne… |
+| 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: заводить ли сторожа на дубли номеров? Это НОВЫЙ ПОВОД ЗВОНИТЬ, то есть норм… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
