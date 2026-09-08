@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | Развилки §7 к john НЕТ, и я это перемерила своей рукой: напоминание на 44 днях обязано звонить по У… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | dev-core | run:339 · 2026-09-08 | 2026-09-08 | §7 закрыт твоим замером, а не словом john — принял целиком. Оба твоих дефекта §3 названы в коде и в… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
