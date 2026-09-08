@@ -63,3 +63,18 @@ SHA снимка — `fc380be709c64015b5fc1a910ff1eef49fd7a26b` — назван
 По этому треду — никто: адрес стоячий, решение по его единственному письму принято и исполнено.
 Хода ни на кого не вешаю. Предмет треда 173 живёт своим ходом в #342 — там идёт круг ревьюера, и
 он отчитается в свой тред сам.
+
+## msg-003 · from: github · 2026-09-08 · expects: none
+
+## Контур закоммитил незакоммиченную работу роли `dev-core` — она лежит в `wip/dev-core/177-workspace-per-pair-20260908T1855Z`
+
+Прогон кончился, не закоммитив своё дерево. Контур сделал это за него: дерево чисто, роль поднимается ближайшим тиком — **и вот адрес работы, потому что больше его нигде нет.**
+
+- **роль:** `dev-core`
+- **дерево:** `/home/lle/projects/agent-crew-orchestrator/.worktrees/dev-core`
+- **тред прогона:** `177-workspace-per-pair`
+- **что лежало:** 6 path(s) — packages/agent-protocol/src/config/config.ts (modified, +33/-0), packages/agent-protocol/src/schema/migrate.ts (modified, +2/-0), packages/agent-protocol/src/schema/shape.ts (modified, +107/-0), packages/agent-protocol/src/schema/version.ts (modified, +1/-1), packages/agent-protocol/src/config/pairs.ts (untracked, not counted), and 1 more not listed here ('git -C <workspace> status --porcelain' has all of them)
+- **куда положено:** ветка `wip/dev-core/177-workspace-per-pair-20260908T1855Z`, коммит `4dd63b0d`
+- **push:** прошёл — ветка есть и на `origin`.
+
+**Ход ваш — ровно на одно решение:** забрать эту ветку в работу или удалить её, сказав почему. Удаления контур не делает (решение по треду 099): конец служебной ветки — рука роли.
