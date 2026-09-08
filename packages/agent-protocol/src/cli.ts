@@ -42,7 +42,7 @@ import {
 } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir, hostname, tmpdir } from "node:os";
-import { dirname, isAbsolute, join, relative, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DEFAULT_CONFIG_PATH } from "./config/config.js";
@@ -520,6 +520,10 @@ import {
 import {
   describeDeliveredSelfRestartLetter,
   describeUndeliveredSelfRestartLetter,
+  type ExecutableChange,
+  type ExecutableFootprint,
+  executableChange,
+  executableFootprint,
   planSelfRestartDelivery,
   planSelfRestartLetter,
   type SelfRestartMemo,
@@ -7144,6 +7148,69 @@ const rememberSelfRestartMemo = (path: string, memo: SelfRestartMemo): void => {
 };
 
 /**
+ * WHERE THE CODE THIS PROCESS RUNS LIVES ON THE DISK (thread 161) — the nearest ancestor of
+ * the entry module that holds a `package.json`, which is the unit that gets installed and
+ * therefore the unit whose change is a change of the executable.
+ *
+ * It is asked of the RUNNING process rather than read from config, because that is the only
+ * answer that is true for both shapes this daemon comes in: a checkout it was started from
+ * with `tsx`, and an installed dependency somewhere in `node_modules`. `undefined` — the
+ * walk found nothing (a bundled or single-file launch); the footprint then narrows to the
+ * manifests, which is the safe direction: manifests move on every version bump.
+ */
+const entryPackageDir = (): string | undefined => {
+  const entry = process.argv[1];
+  if (entry === undefined) return undefined;
+  let dir = dirname(resolve(entry));
+  for (;;) {
+    if (existsSync(join(dir, "package.json"))) return dir;
+    const up = dirname(dir);
+    if (up === dir) return undefined;
+    dir = up;
+  }
+};
+
+/**
+ * DID THE RESTART MOVE ANYTHING THIS DAEMON EXECUTES — the IO half of
+ * {@link executableChange}: one `git diff --name-only` in the checkout the code was dated
+ * against, and every way it can fail is an `unmeasured` that POSTS the letter.
+ *
+ * `-z` because a path with a space in it is a path, and a diff read line-wise would split
+ * one file into two names that match no footprint — an error in the direction of silence,
+ * which is the one direction this module is not allowed to fail in.
+ */
+const measureExecutableChange = (input: {
+  readonly checkout: string;
+  readonly footprint: ExecutableFootprint;
+  readonly event: SelfRestartEvent;
+}): ExecutableChange => {
+  if (input.event.from === undefined)
+    return executableChange({
+      footprint: input.footprint,
+      changed: undefined,
+      why: "the memory of the restart predates the `from` field, so there is no earlier sha to diff against",
+    });
+  const said = gitAsk([
+    "-C",
+    input.checkout,
+    "diff",
+    "--name-only",
+    "-z",
+    input.event.from,
+    input.event.to,
+  ]);
+  return executableChange({
+    footprint: input.footprint,
+    ...(said === undefined
+      ? {
+          changed: undefined,
+          why: `'git diff --name-only ${input.event.from.slice(0, 12)} ${input.event.to.slice(0, 12)}' would not read in '${input.checkout}'`,
+        }
+      : { changed: said.split("\0").filter((path) => path !== "") }),
+  });
+};
+
+/**
  * POSTING THE SELF-RESTART (thread 141, package 3) — the IO half of
  * `planSelfRestartLetter`, and the second place the daemon writes into the mail.
  *
@@ -7161,6 +7228,8 @@ const rememberSelfRestartMemo = (path: string, memo: SelfRestartMemo): void => {
 const postSelfRestartLetter = (input: {
   readonly event: SelfRestartEvent;
   readonly served: string;
+  /** The checkout this process dated its code against — where the two shas can be diffed. */
+  readonly codeCheckout: string;
   readonly mailRoot: string;
   /** Where this box's last delivered letter is remembered. */
   readonly memo: string;
@@ -7169,13 +7238,29 @@ const postSelfRestartLetter = (input: {
 }): string => {
   const signature = selfRestartSignature(input.event);
   const remembered = readSelfRestartMemo(input.memo);
+  const packageDir = entryPackageDir();
+  const entry = process.argv[1];
+  const footprint = executableFootprint({
+    checkout: input.codeCheckout,
+    ...(packageDir === undefined ? {} : { packageDir }),
+    ...(entry === undefined ? {} : { entry: resolve(entry) }),
+  });
+  const change = measureExecutableChange({
+    checkout: input.codeCheckout,
+    footprint,
+    event: input.event,
+  });
   const decided = planSelfRestartDelivery({
     signature,
     ...(remembered === undefined ? {} : { memo: remembered }),
+    event: input.event,
+    footprint,
+    change,
   });
   if (!decided.post) return decided.said;
   const letter = planSelfRestartLetter({
     event: input.event,
+    change,
     served: input.served,
     root: input.mailRoot,
     ...(input.repo === undefined ? {} : { repo: input.repo }),
@@ -13530,6 +13615,10 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
             `agent-protocol: daemon — ${postSelfRestartLetter({
               event: restarted,
               served: servedCheckout,
+              // The DIFF is asked of the checkout the code was dated against, not of the
+              // served one: they are the same tree on this circuit and two different trees
+              // on a box that serves a repository it does not run from.
+              codeCheckout: vintage.checkout,
               mailRoot: rootOr(argv, () => paths.mailRoot),
               memo: paths.selfRestartLetters,
               ...(flag(argv, "--repo") === undefined
