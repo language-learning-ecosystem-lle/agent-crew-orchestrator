@@ -566,8 +566,22 @@ describe("notify as a command", () => {
     // move, the raised role finds its question unanswered and writes it out again, and every
     // repeat used to be a second call on a human's phone. Two about aco-028 and two about
     // acme-102 on 2026-08-21/22, one question each.
+    //
+    // WHAT MOVED HERE AND WHY (thread 155, §7 and curator's §2): the fixture used to be the
+    // absolute `2026-07-25T20:00:00Z` of its neighbours, and the second declaration used to
+    // give the park a FRESH `since`. Under the new norm the stamp is the point of the FIRST
+    // declaration and never moves again, so this fixture stood 44 days and the age pass rang
+    // it as a REMINDER (thread 043, Д-4) — the command printed `1 reminded … 023-x (reminded
+    // john, 44d 14h)` and delivered a letter, and the assert below caught it. That reminder is
+    // not a side effect of the new norm but the RESTORATION of 043, which the moving stamp had
+    // been silencing: while every repeat reset the clock, a park could never grow old enough
+    // to be reminded about. So the thresholds are not touched (they are 043's norm, and thread
+    // 155 changes no norm about them) — the FIXTURE is made young instead, and this test keeps
+    // its own axis exactly: a repeat inside the first three hours gives neither a new call nor
+    // a reminder. The old parks are the subject of the test below, which is where 043 lives.
     const contest = contour({ stalledAfter: 10_000_000 });
-    contest.park("023-x", { asks: true });
+    const declared = agedBy(0, 2);
+    contest.park("023-x", { asks: true, date: declared });
     contest.commit();
     run(contest, ["--write"]);
     expect(JSON.parse(readFileSync(contest.delivered, "utf8")).text).toContain(
@@ -575,36 +589,105 @@ describe("notify as a command", () => {
     );
     rmSync(contest.delivered);
 
-    contest.park("023-x", { asks: true, date: "2026-07-26T09:00:00Z", body: "А теперь чинить?" });
+    contest.park("023-x", { asks: true, date: agedBy(0, 1), body: "А теперь чинить?" });
     const again = run(contest, ["--write"]);
 
-    // NO SECOND BUZZ: nothing was delivered at all, and the courier's line names the repeat
-    // by its own number rather than passing it off as news.
+    // NO SECOND BUZZ: nothing was delivered at all, and the courier says the question is not
+    // new. It is two hours old, so the reminder round has nothing to say about it either —
+    // and that word is asserted by its ABSENCE, because a reminder here would be the second
+    // call this test exists to forbid, wearing another prefix.
     expect(existsSync(contest.delivered)).toBe(false);
-    expect(again.out).toContain("1 parked, 1 of them asking, 0 of those new, 1 restated");
+    expect(again.out).toContain("1 parked, 1 of them asking, 0 of those new");
+    expect(again.out).not.toContain("reminded");
     expect(again.out).toContain("nothing to announce");
     // AND THE QUIET TICK DID NOT EAT THE REPEAT: the state still carries the stamp that was
     // ANNOUNCED, so the line is still owed. Recording the new stamp here would make the
-    // downgrade a disappearance — the courier ticks every few minutes.
-    expect(readFileSync(contest.state, "utf8")).toContain(
-      "parked\tjohn\t023-x\t2026-07-25T20:00:00Z",
-    );
+    // downgrade a disappearance — the courier ticks every few minutes. Under the new norm the
+    // announced stamp and the declaration are the same date for good.
+    expect(readFileSync(contest.state, "utf8")).toContain(`parked\tjohn\t023-x\t${declared}`);
 
-    // A FRESH EVENT ELSEWHERE SENDS THE LETTER, AND THE REPEAT RIDES IN IT — the trigger of
-    // the delivery and the composition of the message are two different things.
+    // A FRESH EVENT ELSEWHERE SENDS THE LETTER, and the park does not ride in it as news.
+    // What the letter says ABOUT THE REPEAT is measured one test below, where the courier's
+    // dead discriminator is the subject; here it is enough that the repeat is not a call.
     contest.thread("016-x", "john");
     const third = run(contest, ["--write"]);
 
     const text = JSON.parse(readFileSync(contest.delivered, "utf8")).text as string;
     expect(text).toContain("⏳ твой ход: 016-x");
-    expect(text).toContain(
-      "still standing, asked again (not a new question): your decision: 023-x — А теперь чинить?",
-    );
-    expect(third.out).toContain("023-x (restated on john)");
-    // Told at last, so the stamp moves — and the tick after this one is silent about it.
-    expect(readFileSync(contest.state, "utf8")).toContain(
-      "parked\tjohn\t023-x\t2026-07-26T09:00:00Z",
-    );
+    expect(text).not.toContain("your decision: 023-x");
+    expect(third.out).not.toContain("of those new, 1");
+  });
+
+  it("AN OLD PARK IS REMINDED WITH ITS TRUE AGE, AND THE REPEAT IS STILL NOT NEWS (thread 043, Д-4 · 155)", () => {
+    // JOHN'S ARGUMENT FOR VARIANT «А», TURNED INTO AN ASSERT (thread 155). Variant (а) — the
+    // park belongs to the thread and its stamp is the point of DECLARATION — was bought for
+    // one thing above all: a forgotten park must be VISIBLE, because the error it makes is
+    // otherwise invisible. This test is where that is paid out.
+    //
+    // Before 155 the stamp moved to the last mention, so `standing` was measured from the
+    // repeat and a park re-declared often enough NEVER reached PARK_REMINDER_AFTER_MINUTES.
+    // The class 043 was opened by — ten parks on john on 2026-08-29, the oldest eleven days,
+    // none mentioned since the tick that declared it — was therefore unreachable by exactly
+    // the parks that needed it most. The field measurement of that is thread 155's own §7:
+    // this same fixture at 44 days rang a reminder the moment the stamp stopped moving.
+    //
+    // The two halves hold AT ONCE, and that is the point: Д-2 says a repeat is not a new call
+    // (`0 of those new`), 043 says an old question must not go quiet (`1 reminded`), and the
+    // age printed is the TRUE one — measured from the declaration, not from the last time
+    // somebody restated it.
+    const contest = contour({ stalledAfter: 10_000_000 });
+    contest.park("023-x", { asks: true, date: agedBy(44, 14) });
+    contest.commit();
+    run(contest, ["--write"]);
+    rmSync(contest.delivered);
+
+    contest.park("023-x", { asks: true, date: agedBy(0, 1), body: "А теперь чинить?" });
+    const again = run(contest, ["--write"]);
+
+    expect(again.out).toContain("1 parked, 1 of them asking, 0 of those new");
+    expect(again.out).toContain("1 reminded");
+    expect(again.out).toContain("023-x (reminded john, 44d 14h)");
+    // AND THE REMINDER IS A REAL BUZZ, not a line of a digest nobody sends: 043's whole claim
+    // is that the question stops being invisible, and a `nothing to announce` here would mean
+    // the courier remembered the park and told nobody.
+    const text = JSON.parse(readFileSync(contest.delivered, "utf8")).text as string;
+    expect(text).toContain("44d 14h");
+    // THE CADENCE IS REMEMBERED so the next tick is quiet — 043's twelve hours, in the state.
+    expect(readFileSync(contest.state, "utf8")).toContain("remind\tjohn\t023-x\t");
+  });
+
+  it("THE COURIER'S REPEAT DISCRIMINATOR IS DEAD, AND IT IS MEASURED RATHER THAN DESCRIBED (thread 155, §3.1)", () => {
+    // A DEGRADATION OF THE BASE CODE, NOT OF THIS DIFF — and that is why it is a test and not
+    // a comment. `notify.ts` is not changed by thread 155 by a single line of behaviour, so a
+    // reviewer reading the diff cannot see this: the courier told a repeat from a first telling
+    // by the STAMP AND BY NOTHING ELSE (`notify.ts`, the `restatedParked` filter, thread 030,
+    // Д-2), and after 155 the stamp never moves. So `restatedParked` can no longer be filled by
+    // a repeat at all: the line `still standing, asked again (not a new question): ` is dead for
+    // this case, and the reminder round's `restatedKeys` guard is unreachable through it.
+    //
+    // WHAT IS NOT DECIDED HERE: whether the class should be removed, or the discriminator
+    // repaired, is a norm about what the courier says to a person — curator carries it to john
+    // separately, and it does not hold this diff. What thread 155 owes is that the degradation
+    // is a FACT IN THE SUITE and not prose in a comment; this is that fact.
+    const contest = contour({ stalledAfter: 10_000_000 });
+    contest.park("023-x", { asks: true, date: agedBy(0, 2) });
+    contest.commit();
+    run(contest, ["--write"]);
+    rmSync(contest.delivered);
+
+    // THE REPEAT: the same pair, the same thread, a later message asking the same thing again —
+    // literally the shape `--parked-on <the same>` puts on disk.
+    contest.park("023-x", { asks: true, date: agedBy(0, 1), body: "А теперь чинить?" });
+    contest.thread("016-x", "john");
+    const after = run(contest, ["--write"]);
+
+    const text = JSON.parse(readFileSync(contest.delivered, "utf8")).text as string;
+    expect(text).toContain("⏳ твой ход: 016-x");
+    // THE CLASS IS EMPTY. Both of its outlets are silent: the prefix in the letter and the
+    // courier's own count line on stdout.
+    expect(text).not.toContain("still standing, asked again (not a new question): ");
+    expect(after.out).not.toContain("restated");
+    expect(after.out).toContain("1 parked, 1 of them asking, 0 of those new");
   });
 
   it("A PARK LIFTED WITH NO ANSWER IS A LINE, AND THE LINE WAITS FOR A LETTER (thread 030, (в2))", () => {
