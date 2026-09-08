@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-08T17:14:39.133Z",
+  "writtenAt": "2026-09-08T17:14:49.081Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,18 +11,11 @@
     {
       "account": "lle-main",
       "window": "five_hour",
-      "since": "2026-09-08T17:14:39Z",
-      "role": "dev-core",
+      "since": "2026-09-08T17:14:49Z",
+      "role": "curator",
       "until": "2026-09-08T18:50:00Z",
       "stated": true
     }
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "176-daemon-self-restart",
-      "state": "running",
-      "deadline": "2026-09-08T17:54:00Z"
-    }
-  ]
+  "leases": []
 }
