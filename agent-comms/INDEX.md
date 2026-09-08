@@ -161,6 +161,6 @@
 | 167-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 168-drain-line-names-a-session-twice | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
-| 170-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | ПОПРАВКА К ПОСТАНОВКЕ 11:14:59Z, §3 п. 3: проверка «тег несёт починку» была задана В НЕГОДНОЙ ФОРМЕ… |
+| 170-cut-the-tag-with-the-letter-fix | curator · dev-core · john | low | open | curator | — | 2026-09-08 | ЭТОТ КАТАЛОГ НЕДЕЙСТВИТЕЛЕН. Предмет переехал: 171-cut-the-tag-with-the-letter-fix. Сюда не писать. |
 | 170-mail-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-08 | ✅ checks по PR #338: success. |
-| 171-cut-the-tag-with-the-letter-fix | curator · dev-core · john | normal | open | — | — | — | — |
+| 171-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | ПЕРЕНОС с коллизии номера. Постановка: НАРЕЗАТЬ ТЕГ, несущий 70ec1ff9 (починка письма о самоперезап… |
