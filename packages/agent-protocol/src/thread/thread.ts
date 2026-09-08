@@ -683,122 +683,51 @@ export const parkSpansOf = (thread: Thread): readonly ParkSpan[] => {
 };
 
 /**
- * WHERE A PARK STILL STANDS — the index of the message that declared it. ONE WALK, and since
- * 2026-08-22 TWO CRITERIA in it: the event parks (`pr:`, `run:`) lift on the first message that
- * MOVES ANYBODY, and the park on a PERSON lifts on `delivers: <that person>`. The walk therefore
- * no longer stops at a moving message — it remembers it, because behind that message there may
- * stand a park the message does not touch.
+ * WHERE A PARK STILL STANDS — the index of the message that DECLARED it.
  *
- * SINCE 2026-08-29 THE PERSON PARK IS ALSO READ AGAINST THE TURN IT WAS DECLARED ON (thread 042,
- * decision of john, `PROTOCOL.md` "ПАРКОВКА НА ЧЕЛОВЕКЕ ОБЪЯВЛЯЕТСЯ НА ХОД, А НЕ НА ТРЕД
- * НАВСЕГДА"). The narrowing of 22.08 said WHAT lifts a park and never said WHAT IT WAS SET ON,
- * so `parked-on` stayed a property of the THREAD and outlived the turn it was declared for. The
- * park is now the pair "holder × thread", the holder being the `waiting-on` of the declaring
- * message, and a NEW TURN does not inherit it: a later `waiting-on` naming another role ends it,
- * and so does an outcome handed to the same holder without a question in it. A park whose
- * message declared no holder is untouched by all of this — see the walk itself.
+ * SINCE 2026-09-08 A PARK BELONGS TO THE THREAD AND NOT TO THE LAST MESSAGE (thread 155,
+ * decision of john, variant «А», `PROTOCOL.md`). It stands from the letter that declared it
+ * until a letter ENDS IT BY NAME (`park-lifted: <the same value>`) or the thread is closed, and
+ * its fields — `since`, the question, the ground, the holder — are the declaring letter's for
+ * as long as it stands.
  *
- * SINCE 2026-09-02 BOTH OF THOSE ARE HEARD ONLY FROM A SESSION THAT COULD HAVE SEEN THE PARK
- * (thread 081, decision of john, `PROTOCOL.md` "ОСНОВАНИЕ — ПОЛЕ ПРОВЕНАНСА В ШАПКЕ ПИСЬМА").
- * The pair (i)/(ii) above reads the header of a LATER message — but "later in the feed" and
- * "written in answer to the park" are not the same thing when a session is raised concurrently
- * with the announcement: the letter was composed by a run that started before the park existed
- * and had no way of knowing about it. The new field of provenance says which it is —
- * `raised: <UTC stamp>`, the moment the circuit started the writer — and a claim raised STRICTLY
- * before the park's date opens no new turn. A claim without the field is heard as before: that
- * degeneracy is the norm's, not the code's, and it is why nothing in the existing feed moves.
- * `delivers:` and `status: closed` are outside this filter at any moment of raising — the word
- * of the person and the closing of the thread lift a park always.
+ * THE THREE LIFTS THIS WALK USED TO HAVE, and what each of them cost, because they are not
+ * deleted quietly — they were measured, they were decisions of john's, and the reader after this
+ * one is owed the history:
  *
- * WHY THE PERSON PARK LEFT THE COMMON WALK (thread 030, defect (в1), decision of john
- * 2026-08-22, `PROTOCOL.md`). The wide lift was defended by an ASYMMETRY of the price: lifting
- * early cost one empty raise, not lifting cost a thread frozen with the answer already inside it
- * until a human noticed (046 stood 12 hours). Thread 030 closed the expensive half by
- * measurement — a standing park with an unanswered question is counted and RINGS (`N parked, K
- * of them asking`), and one that has been lifted goes into the digest as a line instead
- * of vanishing from the composition — so the narrowing now pays that price instead: a forgotten
- * `delivers` is read by the human in the NEXT digest, not half a day later. What it buys is the
- * defect the wide lift kept producing: the park was lifted by the class of messages it was set
- * against — the circuit's own trace and the role's own report — and the raise it bought found a
- * thread still waiting for the person.
+ *  · `delivers: <the same person>` (thread 030, decision of 2026-08-22, defect (в1)) — the word
+ *    of the person the park named, said by whoever carried it. It lifted on the word ARRIVING
+ *    and never asked what the word was about. Measured in the feed of 155 on 2026-09-07: a
+ *    delivery of john's word about a NEIGHBOUR'S FINDING lifted the park standing on a question
+ *    john had not yet seen, and that question went on unanswered with no park over it;
+ *  · THE END OF THE TURN THE PARK WAS DECLARED ON (thread 042, decision of 2026-08-29; narrowed
+ *    by the provenance of the writer in thread 081, 2026-09-02) — a later letter naming somebody
+ *    else in `waiting-on`. It was bought against a real cost, and that cost was real: a park
+ *    declared on curator's turn stood over the next pair of the same thread for 4 h 16 m, with
+ *    201 ticks of `PARKED behind a decision of john` — true about the thread, false about the
+ *    pair. Under variant «А» the same case is answered by ending the park, not by outliving it;
+ *  · ANY MESSAGE THAT MOVED ANYBODY, for the event parks (thread 023) — the wide walk that made
+ *    `pr:`/`run:` parks lift on the first live letter behind them.
  *
- * The delivery has to be a FIELD: a person does not write into the mail, their word arrives in a
- * letter of a courier role, and "has the answer come" does not follow from `from`/`expects`/
- * `waiting-on` at all, while reading it out of the body is forbidden to this net by the norm of
- * 020. Narrowing to `from:` of the parker instead was considered and rejected — it lifts the
- * park on the role's own echo, which repairs one half and leaves the other silent.
- *
- * Everything below describes the walk of the EVENT parks, which is unchanged.
- *
- * The walk exists because the circuit announces its OWN events (`from: github`,
- * `expects: none`) about the very thing being waited for, and they are not the thing being
- * waited for. It happened live within minutes of the form being proposed (thread 019,
- * 2026-08-02): the park of 09:12:57Z was lifted at 09:15:07Z by "CI по PR #163 — success", the
- * pair was raised at 09:16:13Z, the door refused it because the review round still had twelve
- * minutes to run, and the session had nothing to do. The `pr:` park was narrowed to the same
- * walk for the same reason, one thread later (023, curator's statement of 2026-08-03): a turn
- * frozen behind a merge button is not released by the circuit reporting some other PR's
- * outcome, and the raise it bought found nothing to do.
- *
- * THE PERSON PARK JOINED THEM LAST, and it was measured too (023, decision of john
- * 2026-08-04). The wide lift used to be defended as the safety against a thread frozen behind a
- * human forever; on 2026-08-03 the safety fired at its own circuit — the park on john was
- * lifted by the merge notifier of #192 (`from: github`, `expects: none`, no `waiting-on`),
- * announcing a merge curator had pressed herself three minutes earlier. It bought an empty
- * curator session and a gap of THREE SECONDS between that raise and the `restart` button the
- * raise then held up (`023-daemon-parallelism/messages/2026-08-03T19-57-08Z-curator.md` §1).
- * From that day until 2026-08-22 all three kinds had ONE criterion of lifting, on the reading
- * that the courier of a decision moves somebody by construction — it either names who acts on it
- * (`waiting-on: <role>`) or asks for something (`expects` != none). What that reading could not
- * tell apart is the courier from anybody ELSE holding a turn, and thread 030 measured the cost;
- * the person park is now lifted by the courier SAYING SO (`delivers`), and the paragraphs below
- * describe the walk the event parks kept.
- *
- * So the walk backwards is over the messages that MOVE NOBODY, and stops at the first message
- * that does. Two things move somebody, and the header carries both:
- *
- * - `expects != none` — the message asks somebody for something: the verdict, and every other
- *   kind of answer;
- * - `waiting-on: <role>` DECLARED with a role in it — the message hands the turn over without
- *   asking anything. This is the ACTIONABLE CI OUTCOME (thread 048, form (б)): the notifier
- *   names the role on `failure`/`timed_out`/`startup_failure`/`action_required` and leaves the
- *   field out entirely on the trace class (`success`, `cancelled`, …). The distinction is
- *   therefore read where the notifier already writes it, and no body text is parsed.
- *
- *   It cost 3.5 hours of a dead pair to learn (thread 023, 2026-08-03): the `failure` of #177
- *   was delivered at 06:23:44Z into a thread parked on `run:177`, the park did not lift, the
- *   role held its turn with an actionable red in front of it, and the silence was noticed by a
- *   human at 09:40Z.
- *
- *   The trace class has EXACTLY ONE exception, and it is about an ACTION rather than an outcome
- *   (thread 023, 2026-08-03, decision of john): a green `checks` on a PR that does NOT yet carry
- *   the `review` label names the AUTHOR's role, because the norm of 03.08 puts that label up
- *   AFTER a green `checks` on the same head — the author has exactly one move there and it is
- *   theirs. It reaches this walk the same way every handover does, through `waiting-on: <role>`
- *   in the header, so nothing here changes. Everything else green stays silent: a PR that
- *   ALREADY carries the label (the round is running — case 048), the outcome of a PREVIOUS head,
- *   and a run without the `checks` job. The trace of a round ALREADY RUNNING therefore lifts
- *   nothing, exactly as it did — that is the case the narrow form was built for.
- *
- * A declared NULL (`waiting-on: —`) is not a handover: it zeroes the holder of the turn and
- * moves the thread to nobody, so it is skipped like any other announcement.
+ * WHAT REPLACED THEM is one field and one boundary: the hand says `--park-lifted`, and an event
+ * park still lifts on ITS OWN ADDRESS (the merge of the PR it names, the verdict of the round it
+ * names) because no machine can write that flag. john's argument for the trade, in his words: it
+ * exchanges an INVISIBLE error for a VISIBLE one. A park that goes out by itself is seen by
+ * nobody until it is too late; a park somebody forgot to end is a column in the registry, a line
+ * in every digest, and a human walking the parks several times a day.
  */
 const standingParkOf = (thread: Thread): number | undefined => {
-  // What the walk has seen SINCE the park it is about to find — the facts the lifts are made of.
-  // They are collected on the way down and read at the park, because which of them applies is
-  // known only when the kind of the park is: the same message lifts an event park and leaves a
-  // person park standing.
-  let moved = false;
-  const delivered = new Set<string>();
-  // THE TURNS OPENED SINCE (thread 042): every role a later message HANDED THE TURN TO, and the
-  // ones it handed it to WITHOUT ASKING FOR ANYTHING. The first list answers "did the turn the
-  // park was declared on end", the second "did the turn it was declared on get its outcome".
+  // WHAT THE WALK HAS SEEN SINCE THE PARK IT IS ABOUT TO FIND, and since 2026-09-08 the list is
+  // two entries long where it used to be four — because both of these are ADDRESSED AT A PARK BY
+  // NAME, and nothing else lifts one any more:
   //
-  // LISTS AND NOT SETS SINCE 2026-09-02 (thread 081), because each entry now carries the moment
-  // its writer was RAISED, and whether that entry counts is a question only the park can answer:
-  // the comparison is against the park's own date, and walking backwards we do not have it yet.
-  const handedTo: ParkLiftClaim[] = [];
-  const outcomeFor: ParkLiftClaim[] = [];
+  //  · `park-lifted: <the same value>` — the hand ending it, the only lift a writer declares;
+  //  · the verdict of the round an event park was declared to wait for (`verdict:`/`pr: N` against
+  //    a `run:N` park). The merge — `merged-pr: N` against `pr:N` and `run:N` alike — is judged one
+  //    level up, in `parkingOf`, against the WHOLE mail: the notifier writes into the PR's own
+  //    thread, which is not this one (thread 023).
+  const lifted = new Set<string>();
+  const verdicts = new Set<number>();
   for (let at = thread.messages.length - 1; at >= 0; at -= 1) {
     const message = thread.messages[at];
     if (message === undefined) return undefined;
@@ -807,118 +736,73 @@ const standingParkOf = (thread: Thread): number | undefined => {
     // legal step of the walk, so the order is what keeps it from being walked over.
     const on = message.fields.parkedOn;
     if (on !== undefined) {
+      // ENDED BY NAME AND BY NOTHING ELSE (thread 155, decision of john 2026-09-08, variant «А»).
+      if (lifted.has(on)) return undefined;
       const named = parkedOnKind(on);
-      if (named.kind === "person") {
-        // THE PERSON PARK LIFTS ON THE WORD OF THAT PERSON (thread 030, defect (в1), decision of
-        // john 2026-08-22): `delivers: <the same person>`, said by whoever carries the word. A
-        // park on somebody else is not lifted by it — the state names one person, and so does
-        // the delivery. This one lifts the park for the whole thread, whoever holds the turn.
-        if (delivered.has(named.person)) return undefined;
-        const holder = message.fields.waitingOn;
-        // A PARK THAT NAMES NO TURN KEEPS ITS POWER OVER THE WHOLE THREAD (thread 042): the feed
-        // does not say whose turn it was declared on — a declared NULL zeroes the holder and an
-        // absent field inherits one written elsewhere — and guessing would turn the legitimate
-        // MODE park (016, 052) into a raise. This is the pre-042 park, and it behaves as it did.
-        if (typeof holder !== "string") return at;
-        // THE PARK IS ON A TURN, AND A NEW TURN DOES NOT INHERIT IT (thread 042, decision of john
-        // 2026-08-29, `PROTOCOL.md`): a later message naming somebody ELSE in `waiting-on` ended
-        // the turn the park was declared on, and the pair that holds the thread now is not
-        // waiting for a human — it is waiting to be raised. Measured at a consumer on 2026-08-28: a
-        // park declared on curator's turn stood over the next pair of the same thread for
-        // 4 h 16 m, with 201 ticks of `PARKED behind a decision of john` — true about the thread
-        // and false about the pair. The turn coming BACK to the same role later does not revive
-        // it either: that is a third turn, not the parked one, which is why this is a set of
-        // everything seen and not the last handover alone.
-        //
-        // AND SINCE 2026-09-02 A CLAIM IS ONLY HEARD IF ITS WRITER COULD HAVE SEEN THE PARK
-        // (thread 081, decision of john, `PROTOCOL.md` "ОСНОВАНИЕ — ПОЛЕ ПРОВЕНАНСА В ШАПКЕ
-        // ПИСЬМА"). A session raised BEFORE the park was announced never read it, so its letter
-        // is not an answer to it — it is the letter it was going to write anyway. Measured at a
-        // consumer on 2026-08-30: the circuit raised a role at 14:24:19Z, curator parked the
-        // thread at 14:24:50Z, and the role's letter landed at 14:26:53Z — 31 seconds too late
-        // to have been about anything. The park left the courier's composition, the human was
-        // shown a last line with no park in it, and the standing question was never asked.
-        // The filter is on THESE TWO LISTS ONLY: `delivered` above is the word of the person
-        // themselves and lifts at any moment of raising, and so does `status: closed`.
-        for (const claim of handedTo)
-          if (claim.to !== holder && sawThePark(claim, message.fields.date)) return undefined;
-        // AND AT THE SAME HOLDER, THE ACTIONABLE OUTCOME OPENS ONE TOO (same norm, second half):
-        // a message that hands the turn over WITHOUT asking anything is the circuit's outcome —
-        // the red CI, and the green `checks` on a PR that does not yet carry the `review` label
-        // — the same class the event parks lift on, read from the same two header fields. What
-        // it is NOT is the class the narrowing of 22.08 bought: the role's own report asks
-        // (`expects` != none) and the trace of the circuit (`success` echo, merge-notify) hands
-        // the turn to nobody, so neither says the wait is over.
-        //
-        // THE THIRD MEMBER OF THE LIST — THE REVIEWER'S VERDICT — reaches this walk since
-        // 2026-08-29 (decision of john, thread 042, `PROTOCOL.md` "ПУНКТ (ii) ПОЛУЧАЕТ ЧИТАЕМЫЙ
-        // ПРИЗНАК"), and it needed a sign of its own because by `expects`/`waiting-on` alone it is
-        // a letter of a role with `expects: answer`, indistinguishable from a report. The sign is
-        // the DECLARED PAIR `verdict:`/`pr:` in the header — the sender's role is deliberately
-        // NOT read against the config — so no body text is parsed here either, and a letter
-        // written before the fields existed carries none and opens nothing, exactly as it did.
-        return outcomeFor.some(
-          (claim) => claim.to === holder && sawThePark(claim, message.fields.date),
-        )
-          ? undefined
-          : at;
-      }
-      // The event parks keep the walk exactly as it was: they wait for a machine event, and the
-      // first message that MOVES anybody says the wait is over.
-      return moved ? undefined : at;
+      // THE PARK'S OWN ADDRESS STILL LIFTS IT, and this is the boundary of the decision rather
+      // than an exception to it: an event park waits for a MACHINE, and a machine cannot write
+      // `--park-lifted`. The round it named is over when the verdict about that number arrives —
+      // the DECLARED PAIR `verdict:`/`pr:` in the header, the sign of 042, no body text read.
+      // Take this away and `pr:`/`run:` parks become a class of threads frozen for ever with no
+      // ceiling under them, which is the invisible failure variant «А» was chosen against.
+      if (named.kind === "run" && verdicts.has(named.pr)) return undefined;
+      // AND IT STANDS WHERE IT WAS DECLARED, not where it was last mentioned (thread 155, §3.2 of
+      // curator's statement). Repeating the same value in a later letter is a REPORT BESIDE the
+      // park — which is what the door of 058 asks every writer for — and until this walk was
+      // changed that honest repetition re-declared the park: new `since`, a `question` taken from
+      // the first line of the REPORT, a new `holder`, and the `park-ground` gone entirely. Three
+      // of those four fields are what the courier shows the human, so the price of obeying the
+      // door was a human shown somebody else's question and a wrong age.
+      return declaredAt(thread, at, on);
     }
-    const delivers = message.fields.delivers;
-    if (delivers !== undefined) delivered.add(delivers);
-    const waitingOn = message.fields.waitingOn;
-    if (typeof waitingOn === "string") {
-      const claim: ParkLiftClaim = {
-        to: waitingOn,
-        ...(message.fields.raised === undefined ? {} : { raised: message.fields.raised }),
-      };
-      handedTo.push(claim);
-      // The outcome is stated in one of two ways, and both are header fields: the circuit hands
-      // the turn over without asking anything (`expects: none`), or a message DECLARES the
-      // verdict of a round (thread 042). The verdict's own `expects` is `answer` and stays that:
-      // the reviewer asks the author for fixes or curator for the button, and the norm of
-      // `REVIEWER.md` does not move a line — what the pair adds is the OUTCOME being readable.
-      if (message.fields.expects === "none" || declaresVerdict(message)) outcomeFor.push(claim);
-    }
-    // The walk does not stop here any more, it REMEMBERS: a message that moves somebody lifts an
-    // event park, and behind it there may still stand a park on a person that it does not touch.
-    if (movesSomebody(message)) moved = true;
+    const ends = message.fields.parkLifted;
+    if (ends !== undefined) lifted.add(ends);
+    const pr = message.fields.pr;
+    if (pr !== undefined && declaresVerdict(message)) verdicts.add(pr);
   }
   return undefined;
 };
 
 /**
- * A LATER MESSAGE'S CLAIM ON THE PARK IT WALKED PAST (thread 042 for `to`, thread 081 for
- * `raised`): who it handed the turn to, and when its own writer was raised. Collected on the
- * way down and judged at the park, because both halves of the judgement — the holder the park
- * was declared on and the date it was declared at — belong to the park, not to the claim.
+ * THE MESSAGE THAT DECLARED THE PARK STANDING AT {@link found} — walking back through the
+ * letters that merely CARRY IT FORWARD (`parked-on: <the same value>`), which is what the door of
+ * 058 requires of every writer into a parked thread.
+ *
+ * The walk stops on three things, and each is a different park: a `park-lifted` of the same value
+ * (an OLDER park of the same name, already ended — the one standing began after it), a
+ * declaration of a DIFFERENT park (older still, and not this one), or the beginning of the feed.
+ * A letter that ends the park and declares it again in one breath is the start of the new one.
  */
-type ParkLiftClaim = { readonly to: string; readonly raised?: string };
+const declaredAt = (thread: Thread, found: number, value: string): number => {
+  let declared = found;
+  for (let at = found - 1; at >= 0; at -= 1) {
+    const message = thread.messages[at];
+    if (message === undefined) break;
+    if (message.fields.parkedOn === value) {
+      declared = at;
+      if (message.fields.parkLifted === value) break;
+      continue;
+    }
+    if (message.fields.parkLifted === value) break;
+    if (message.fields.parkedOn !== undefined) break;
+  }
+  return declared;
+};
 
-/**
- * COULD THE WRITER OF THIS CLAIM HAVE SEEN THE PARK (thread 081)?
+/*
+ * WHAT STOOD HERE UNTIL 2026-09-08, named rather than deleted in silence (thread 155): the claim
+ * of a later message on the park it walked past (`ParkLiftClaim` — who it handed the turn to and
+ * when its writer was RAISED, thread 042 for the first half, 081 for the second), the judgement
+ * of whether that writer could have SEEN the park (`sawThePark`), and `movesSomebody` — the test
+ * that made any live letter lift an event park (thread 023).
  *
- * Three answers, and all three are the norm's rather than this function's:
- *
- *  - NO `raised:` at all → YES. The overwhelming majority of the feed, plus every message a
- *    human or a workflow writes, and the norm names the degeneracy explicitly: a message
- *    without the field lifts a park exactly as it did before the field existed;
- *  - `raised:` at or AFTER the park's date → YES. Equality lands on "saw it" deliberately: a
- *    session raised in the same second as the announcement is a doubt, and the doubt is
- *    settled towards LIFTING, which costs one empty raise instead of a frozen thread;
- *  - `raised:` STRICTLY BEFORE it → NO. This is the whole narrowing.
- *
- * Compared as STRINGS, which is exact for the two canonical spellings and nothing else is
- * reachable here: `raised:` parses only as a full UTC stamp (`isRaisedAt`), and a park's date is
- * either that or the bare date of a migrated message — where `'2026-08-30' < '2026-08-30T…Z'`
- * puts every stamp of that day AFTER the park, i.e. on the lifting side, which is again the
- * direction the norm chose for doubt.
+ * All three were machinery of the wide lifts, and all three went out with them under variant «А».
+ * The narrowing of 081 was the sharpest of the lot and its measurement is worth carrying: the
+ * circuit raised a role at 14:24:19Z, curator parked the thread at 14:24:50Z, and the role's
+ * letter landed at 14:26:53Z — 31 seconds too late to have been an answer to anything, and it
+ * lifted the park all the same. Under variant «А» that letter lifts nothing whatever its writer
+ * knew, so the provenance no longer has a lift to narrow.
  */
-const sawThePark = (claim: ParkLiftClaim, parkedAt: string): boolean =>
-  claim.raised === undefined || claim.raised >= parkedAt;
 
 /**
  * Does this message DECLARE the verdict of a review round (thread 042)? Both halves are demanded
