@@ -264,6 +264,24 @@ export type SelfRestartMemory = {
   readonly from?: string;
   /** How far behind the ref the box was at that moment; absent when it could not be counted. */
   readonly behind?: number;
+  /**
+   * THE STAMP OF THE GO ITSELF — written by the `go` path and by nothing else (thread 173).
+   *
+   * Without it the successor cannot tell WHICH RECORD it is holding, and the field case is
+   * exactly that: on 2026-09-08 the box drained, the drain record was written, and then the
+   * process ended by the STOP FLAG instead of by the repair. It came up again, loaded the
+   * target off a checkout somebody else had already moved, and {@link selfRestartEvent} —
+   * whose whole test is `target === loaded` — recognised itself in a record the go path had
+   * never touched. The letter then said "the box repaired its tree and came up on new code",
+   * printed the START OF THE DRAIN as "when it went", and printed the ten minutes it had
+   * waited as `0 с`, because both numbers came out of the same untouched pair of stamps.
+   *
+   * So the go declares itself here, and a record without it is read as what it is: a drain
+   * that was interrupted by something the box did not record. Optional because a memory
+   * written before this field carries no such declaration — and for those the shape of the
+   * record still tells the two apart (see {@link selfRestartWent}).
+   */
+  readonly went?: true;
 };
 
 export const renderSelfRestartMemory = (memory: SelfRestartMemory): string =>
@@ -296,6 +314,10 @@ export const parseSelfRestartMemory = (raw: string): SelfRestartMemory | undefin
       ...(typeof value.behind === "number" && Number.isInteger(value.behind) && value.behind >= 0
         ? { behind: value.behind }
         : {}),
+      // ONLY THE LITERAL `true` IS A DECLARATION. Anything else in that position is not a
+      // go the box can vouch for, and the same rule as the fields above applies: what
+      // cannot be trusted is not carried, and the letter then says the fact is unknown.
+      ...(value.went === true ? { went: true as const } : {}),
     };
   } catch {
     return undefined;
@@ -352,11 +374,19 @@ export const rememberSelfRestartDrain = (input: {
  * and it is answered with `undefined` rather than with a letter about somebody else's
  * restart.
  *
+ * AND THE COMPARISON IS NOT A PROOF THAT THE REPAIR RAN (thread 173). It proves one thing —
+ * this process executes the sha some earlier process was trying to reach — and a box whose
+ * checkout was moved by other means arrives at exactly the same match: the field case ended
+ * by the stop flag, was raised again, and loaded the target off a tree that was already
+ * there. What the memory ALSO carries is {@link selfRestartWent}, and the event says which
+ * of the two it is instead of assuming the good one.
+ *
  * `waitedFor` is a SUBTRACTION of two stamps, not a duration anybody stored: the drain
- * began at `drainSince` and ended when the box wrote its `go` at `at`. Both are optional in
+ * began at `drainSince` and ended when the box wrote its `go` at `at`. It is asked ONLY of a
+ * recorded go — in a record the go never touched, `at` is still the drain stamp and the
+ * subtraction is a zero BY CONSTRUCTION, which is the shape of a lie. Both are optional in
  * the file, and an unparseable or backwards pair yields `undefined` — "how long it waited"
- * is then simply not known, which is a thing the letter can say and a negative number is
- * not.
+ * is then simply not known, which is a thing the letter can say and a zero is not.
  */
 export type SelfRestartEvent = {
   /** The SHA the box was executing before the restart; absent — the memory predates the field. */
@@ -366,9 +396,42 @@ export type SelfRestartEvent = {
   readonly behind?: number;
   /** How long the box waited the live sessions out, in whole seconds. */
   readonly waitedForSec?: number;
-  /** When the box decided to go — the end of the wait and the moment of the restart. */
+  /**
+   * WHAT THE MEMORY PROVES ABOUT THE PATH THIS BOX CAME UP BY.
+   *
+   * `went` — the go path wrote this record, so the restart is the box's own repair and
+   * every stamp in it is the stamp of that decision. `unrecorded` — the record is a drain
+   * the go never advanced: the box IS running the target, and by what path is unknown to it.
+   */
+  readonly repair: "went" | "unrecorded";
+  /**
+   * WHEN THE BOX DECIDED TO GO — the end of the wait and the moment of the restart, and
+   * present ONLY on a recorded go. There is no such moment in an interrupted drain, and the
+   * one stamp that record does hold means something else entirely.
+   */
+  readonly wentAt?: string;
+  /** When the drain began, when the record carries it — the only stamp `unrecorded` has. */
+  readonly drainSince?: string;
+  /**
+   * THE STAMP THE RECORD CARRIES, whatever it turned out to mean — the event's identity for
+   * the lock on repeated letters, and never a sentence of one. Printing it as "when it
+   * went" is the defect of thread 173.
+   */
   readonly at: string;
 };
+
+/**
+ * DID THE GO PATH WRITE THIS RECORD — the question the field case turned on.
+ *
+ * The declaration is read first, and for a record older than the declaration the SHAPE
+ * answers it: `rememberSelfRestartDrain` writes `at` and `drainSince` as ONE stamp and never
+ * touches the record again, while the go re-stamps `at` (and a go that took no drain writes
+ * no `drainSince` at all). So a record carrying a drain whose `at` has not moved past it is
+ * the one thing the go cannot have produced — the ticks that could re-stamp it are half a
+ * minute apart, and the go of that same tick would have declared itself.
+ */
+export const selfRestartWent = (memory: SelfRestartMemory): boolean =>
+  memory.went === true || memory.drainSince === undefined || memory.at !== memory.drainSince;
 
 export const selfRestartEvent = (input: {
   readonly memory: SelfRestartMemory | undefined;
@@ -377,14 +440,18 @@ export const selfRestartEvent = (input: {
 }): SelfRestartEvent | undefined => {
   const { memory } = input;
   if (memory === undefined || memory.target !== input.loaded) return undefined;
+  const went = selfRestartWent(memory);
   const began = memory.drainSince === undefined ? Number.NaN : Date.parse(memory.drainSince);
   const ended = Date.parse(memory.at);
-  const waited = Math.round((ended - began) / 1000);
+  const waited = went ? Math.round((ended - began) / 1000) : Number.NaN;
   return {
     ...(memory.from === undefined ? {} : { from: memory.from }),
     to: memory.target,
     ...(memory.behind === undefined ? {} : { behind: memory.behind }),
     ...(Number.isFinite(waited) && waited >= 0 ? { waitedForSec: waited } : {}),
+    repair: went ? "went" : "unrecorded",
+    ...(went ? { wentAt: memory.at } : {}),
+    ...(memory.drainSince === undefined ? {} : { drainSince: memory.drainSince }),
     at: memory.at,
   };
 };

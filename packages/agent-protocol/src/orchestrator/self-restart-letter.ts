@@ -215,12 +215,23 @@ export const executableChange = (input: {
  * "СКОЛЬКО ЖДАЛ СЕССИЮ", and the case where the answer is not known.
  *
  * `waitedForSec` is a subtraction of two stamps and it is ABSENT whenever the memory
- * predates `drainSince` or the pair came out backwards. That absence is said in words
- * rather than printed as a zero: "waited nothing" and "how long it waited is not recorded"
- * are different facts about the box, and the second one is the one that tells a reader the
- * file was written by older code.
+ * predates `drainSince`, the pair came out backwards, or the go never advanced the record
+ * it is subtracted from. That absence is said in words rather than printed as a zero:
+ * "waited nothing" and "how long it waited is not recorded" are different facts about the
+ * box, and the field case of thread 173 is what the difference costs — ten minutes of drain,
+ * during which the box raised nobody, printed as `0 с`, in the very letter written to say
+ * what the restart cost.
+ *
+ * WHICH OF THE ABSENCES IT IS gets named, because the two send a reader to different places:
+ * an old memory is a fact about the code that wrote the file, an unrecorded go is a fact
+ * about how this box came up.
  */
-const waitedLine = (sec: number | undefined): string => {
+const waitedLine = (event: SelfRestartEvent): string => {
+  const sec = event.waitedForSec;
+  if (event.repair === "unrecorded")
+    return `- **сколько ждал сессии:** не записано — ход себя в памяти не отметил, а лежащий там штамп — начало слива${
+      event.drainSince === undefined ? "" : ` (\`${event.drainSince}\`)`
+    }, из которого длительность не вычитается`;
   if (sec === undefined)
     return "- **сколько ждал сессии:** не записано — файл памяти писан кодом до `drainSince`";
   if (sec < 60) return `- **сколько ждал сессии:** ${sec} с`;
@@ -239,11 +250,19 @@ const waitedLine = (sec: number | undefined): string => {
  * reached only with `live.length > 0` — so a known wait PROVES there were live sessions and
  * that every one of them closed by itself. With no wait recorded the box went straight to
  * `go`, and the sentence says nothing about sessions rather than inventing a vigil.
+ *
+ * AND THE REPAIR IS CLAIMED NO MORE UNCONDITIONALLY THAN THE WAIT WAS (thread 173). The
+ * event's `repair` says whether the go path wrote the record this letter is made of; when it
+ * did not, the box is running the target and NOTHING here knows by whose hand — so the
+ * sentence says that, in the same place a reader looks for the good news, instead of
+ * reporting a repair whose only evidence is a matching sha.
  */
-const drainSentence = (sec: number | undefined): string =>
-  sec === undefined
-    ? "Ящик починил своё дерево и поднялся на новом коде."
-    : "Ящик ДОЖДАЛСЯ живых сессий — ни одна не была порвана, он пошёл только после того, как закрылась последняя, — починил своё дерево и поднялся на новом коде.";
+const drainSentence = (event: SelfRestartEvent): string =>
+  event.repair === "unrecorded"
+    ? "Ящик ИСПОЛНЯЕТ новый код, но РЕМОНТА ЗА НИМ НЕ ЗАПИСАНО: память самоперезапуска осталась записью слива — ход по пути ремонта себя в ней не отметил. Совпал только SHA, а этим же совпадением кончается и подъём другой рукой: стоп-флаг и новый запуск, оператор, супервизор. Отчётом о состоявшемся самоперезапуске это письмо не является."
+    : event.waitedForSec === undefined
+      ? "Ящик починил своё дерево и поднялся на новом коде."
+      : "Ящик ДОЖДАЛСЯ живых сессий — ни одна не была порвана, он пошёл только после того, как закрылась последняя, — починил своё дерево и поднялся на новом коде.";
 
 /**
  * WHY THIS LETTER EXISTS AT ALL, now that most restarts do not get one. The narrowing is
@@ -275,10 +294,18 @@ export const planSelfRestartLetter = (input: {
   readonly ref?: string;
 }): SelfRestartLetter => {
   const { event } = input;
+  const unrecorded = event.repair === "unrecorded";
   const body = [
-    `## Демон перезапустил себя на новый код — без руки, и вот чего это стоило`,
+    // THE HEADING IS A CLAIM TOO, and on the unrecorded branch the old one was the false
+    // half of the letter in six words ("перезапустил СЕБЯ", "БЕЗ РУКИ") — read by anybody
+    // scanning the feed, and by every reader who goes no further than the title.
+    unrecorded
+      ? `## Демон исполняет новый код — но самоперезапуска за ним не записано`
+      : `## Демон перезапустил себя на новый код — без руки, и вот чего это стоило`,
     "",
-    `${drainSentence(event.waitedForSec)} Ход никому не нужен для ремонта — он уже сделан; это отчёт о нём, потому что тихий самоперезапуск ничем не лучше тихого дрейфа.`,
+    unrecorded
+      ? `${drainSentence(event)} Ход нужен для ПРОВЕРКИ, а не для ремонта: дрейф закрыт — код сошёлся с ref, — но чем именно он закрыт, ящик не знает.`
+      : `${drainSentence(event)} Ход никому не нужен для ремонта — он уже сделан; это отчёт о нём, потому что тихий самоперезапуск ничем не лучше тихого дрейфа.`,
     "",
     ...(input.served === undefined ? [] : [`- **контур:** \`${input.served}\``]),
     `- **какой код был:** ${
@@ -292,11 +319,23 @@ export const planSelfRestartLetter = (input: {
         ? "не записано — файл памяти писан кодом до поля `behind`"
         : `${event.behind} коммит(ов)`
     }`,
-    waitedLine(event.waitedForSec),
-    `- **когда пошёл:** ${event.at}`,
+    waitedLine(event),
+    // "WHEN IT WENT" IS A FACT ABOUT THE GO, so it is printed only when a go was recorded.
+    // The record of an interrupted drain holds one stamp and it answers a different
+    // question — printing that one here is what told the field reader the box went at
+    // 12:30:57 when at 12:30:57 it had only started waiting.
+    event.wentAt === undefined
+      ? `- **когда пошёл:** не записано — хода по пути ремонта в памяти нет${
+          event.drainSince === undefined
+            ? ""
+            : `; \`${event.drainSince}\` в ней — это НАЧАЛО СЛИВА, а не момент перезапуска`
+        }`
+      : `- **когда пошёл:** ${event.wentAt}`,
     executableLine(input.change),
     "",
-    "**Ход curator — ровно на одно действие:** прочитать это и, если отчёт полон, донести john. Ремонта здесь нет: дрейф уже закрыт, а звонок о дрейфе (тред 141, #301) на этот ящик больше не придёт.",
+    unrecorded
+      ? "**Ход curator — ровно на одно действие:** прочитать это и донести john ВМЕСТЕ С ТЕМ, ЧЕГО ЗДЕСЬ НЕТ. Ремонтировать нечего: дрейф закрыт и звонок о дрейфе (тред 141, #301) на этот ящик больше не придёт. Чем он закрыт — вопрос к `.orchestrator/daemon.log` за окно между двумя эпохами: строки `SELF-RESTART: git pull --ff-only` и `leaving with code 75` есть у состоявшегося ремонта и нет ни у чего другого."
+      : "**Ход curator — ровно на одно действие:** прочитать это и, если отчёт полон, донести john. Ремонта здесь нет: дрейф уже закрыт, а звонок о дрейфе (тред 141, #301) на этот ящик больше не придёт.",
   ].join("\n");
   return {
     waitingOn: SELF_RESTART_WAITING_ON,
@@ -381,7 +420,15 @@ export const describeUndeliveredSelfRestartLetter = (input: {
   readonly event: SelfRestartEvent;
   readonly cause: string;
 }): string =>
-  `letter — NOT DELIVERED to the standing address '${SELF_RESTART_SLUG}' (turn for '${SELF_RESTART_WAITING_ON}'): ${input.cause}. The restart itself STANDS — the box is running ${shortSha(input.event.to)} since ${input.event.at}; nobody has been told, so this line is the only trace`;
+  `letter — NOT DELIVERED to the standing address '${SELF_RESTART_SLUG}' (turn for '${SELF_RESTART_WAITING_ON}'): ${input.cause}. The restart itself STANDS — the box is running ${shortSha(input.event.to)}${
+    // THE LOG LINE CARRIES THE SAME CAUTION THE LETTER DOES (thread 173): this is the only
+    // trace of an event nobody was told about, and "since <at>" over an unrecorded go would
+    // date the restart by the start of a drain — the defect, reproduced in the log where it
+    // is even harder to catch.
+    input.event.wentAt === undefined
+      ? ", and the go path left no stamp — when and by what hand it came up is not recorded"
+      : ` since ${input.event.wentAt}`
+  }; nobody has been told, so this line is the only trace`;
 
 /** The delivered letter, as one line of the same journal — the counterpart of the above. */
 export const describeDeliveredSelfRestartLetter = (): string =>
