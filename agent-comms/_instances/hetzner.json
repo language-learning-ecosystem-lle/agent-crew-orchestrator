@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-08T14:38:17.848Z",
+  "writtenAt": "2026-09-08T14:40:32.643Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "172-merge-gate-still-falls-on-private",
+      "state": "running",
+      "deadline": "2026-09-08T15:40:29Z"
+    },
     {
       "role": "curator",
       "thread": "176-daemon-self-restart",
