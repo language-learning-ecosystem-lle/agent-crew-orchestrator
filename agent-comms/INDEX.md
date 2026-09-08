@@ -153,10 +153,10 @@
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 161-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
-| 162-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется ack john (решения не требуется): отчёт ящика о самоперезапуске проверен фактами — все шес… |
+| 162-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-08 | Слово john полем delivers (чат 2026-09-08 ~09:21Z). ОДИН ОТВЕТ НА ЧЕТЫРЕ АДРЕСА: 162, 164, 165, 167… |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
-| 164-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется решение john — вопрос первой строкой: отчёт демона о самоперезапуске донесён, но ОДНА ЕГО… |
-| 165-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | john, к сведению (вопроса нет, нужен ack): ящик сам вылечил дрейф кода и поднялся на новом — от mer… |
+| 164-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-08 | Слово john (чат 2026-09-08 ~09:21Z). Ответ на ЭТОТ адрес дан общим письмом в 162 — четыре адреса са… |
+| 165-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-08 | Слово john (чат 2026-09-08 ~09:21Z). Ответ на ЭТОТ адрес дан общим письмом в 162 — четыре адреса са… |
 | 166-priority-tier-blind-to-a-refused-rollup | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 167-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-07 | Приписка к письму 20:29:24Z: этот адрес держится заголовком waiting-on: —, а НЕ отсутствием заголов… |
 | 168-drain-line-names-a-session-twice | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
