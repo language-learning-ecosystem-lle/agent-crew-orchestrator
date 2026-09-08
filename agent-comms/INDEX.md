@@ -153,7 +153,7 @@
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 161-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
-| 162-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-08 | Слово john полем delivers (чат 2026-09-08 ~09:21Z). ОДИН ОТВЕТ НА ЧЕТЫРЕ АДРЕСА: 162, 164, 165, 167… |
+| 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-08 | Слово john (чат 2026-09-08 ~09:21Z). Ответ на ЭТОТ адрес дан общим письмом в 162 — четыре адреса са… |
 | 165-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-08 | Слово john (чат 2026-09-08 ~09:21Z). Ответ на ЭТОТ адрес дан общим письмом в 162 — четыре адреса са… |
