@@ -156,7 +156,7 @@
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
-| 165-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-08 | Слово john (чат 2026-09-08 ~09:21Z). Ответ на ЭТОТ адрес дан общим письмом в 162 — четыре адреса са… |
+| 165-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 166-priority-tier-blind-to-a-refused-rollup | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 167-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-08 | Слово john (чат 2026-09-08 ~09:21Z). Ответ на ЭТОТ адрес дан общим письмом в 162 — четыре адреса са… |
 | 168-drain-line-names-a-session-twice | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
