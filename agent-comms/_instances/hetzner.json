@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-08T11:36:35.335Z",
+  "writtenAt": "2026-09-08T11:36:54.626Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "170-cut-the-tag-with-the-letter-fix",
       "state": "running",
       "deadline": "2026-09-08T12:14:51Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "171-cut-the-tag-with-the-letter-fix",
+      "state": "running",
+      "deadline": "2026-09-08T12:36:51Z"
     }
   ]
 }
