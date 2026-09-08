@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-08T11:40:49.162Z",
+  "writtenAt": "2026-09-08T11:41:18.500Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "155-park-has-no-checkable-ground",
+      "state": "running",
+      "deadline": "2026-09-08T12:41:14Z"
+    },
     {
       "role": "curator",
       "thread": "170-cut-the-tag-with-the-letter-fix",
