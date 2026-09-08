@@ -120,3 +120,4 @@
 - [Приёмка самоперезапуска не спрашивается дважды](self-restart-ack-is-not-asked-twice.md) — звонить john, только если исполняемое НЕ менялось
 - [Гард 3 у бампа версии — слово john о приёмке](version-bump-ascends-to-johns-acceptance.md) — исключение полевого дефекта тут не нужно
 - [`head` поверх `thread show` режет НОВЕЙШЕЕ](head-on-thread-show-cuts-the-newest.md) — лента старейшим вперёд, обрезка молчит: `--tail`
+- [`--park-ground` отказывает прозе](park-ground-takes-only-two-machine-forms.md) — форм две; парку на человеке основание не нужно
