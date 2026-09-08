@@ -111,6 +111,32 @@ export const ghPullRequestWithoutChecksSchema = ghPullRequestSchema.omit({
 export type GhPullRequestWithoutChecks = z.infer<typeof ghPullRequestWithoutChecksSchema>;
 
 /**
+ * THE SENTENCE GITHUB REFUSES A RESOURCE WITH — and it NAMES THE ACTOR, which is the whole
+ * reason this is one shared expression instead of the literal string both readers below
+ * used to carry.
+ *
+ * `Resource not accessible by integration` is how an INSTALLATION token is refused, and for
+ * six weeks it was the only form written down here — because inside Actions, as a GitHub
+ * App, it is the only form this contour had ever been answered with. A FINE-GRAINED
+ * PERSONAL TOKEN is refused with `Resource not accessible by personal access token`, and
+ * THAT is the form the consumer's private repository answers a session's own token with:
+ * measured by john on 2026-09-08 against the installed `0.2.13` (thread 172), where the
+ * whole door still died with no guard printed at all. The repair of thread 160 was correct
+ * in every other part and never fired, because it did not recognise the refusal it was
+ * written for — the class it was measured from had been reported in the OTHER wording.
+ *
+ * So the actor is read as whatever GitHub put there, and the decision keeps being made by
+ * the PATH — which is the fact this file has trusted since thread 026. The actor is bounded
+ * to one line and to the text before the parenthesis on purpose: the message of
+ * `execFileSync` begins with the echoed command line, and a form with no path named must
+ * keep answering "no path" rather than reach forward into somebody else's parentheses.
+ */
+const notAccessibleBy = /\bnot accessible by [^(\n]*/i;
+
+/** The same sentence, with the path GitHub named captured out of it. */
+const notAccessibleByPath = /\bnot accessible by [^(\n]*\(([^)]*)\)/i;
+
+/**
  * WHETHER THIS REFUSAL IS ABOUT THE CHECKS NODE AND NOTHING ELSE — the path GitHub named,
  * or `undefined` when the refusal is about something the second ask would not repair.
  *
@@ -119,10 +145,13 @@ export type GhPullRequestWithoutChecks = z.infer<typeof ghPullRequestWithoutChec
  * contains `statusCheckRollup` on EVERY failure — a `Could not resolve to a Repository`
  * included. A predicate that matched the word would drop the node on a refusal that had
  * nothing to do with it and then report the second failure instead of the first.
+ *
+ * AND NEVER THE ACTOR EITHER (thread 172): see {@link notAccessibleBy} for what reading one
+ * actor cost.
  */
 export const forbiddenChecksRollup = (message: string): string | undefined => {
-  if (!/not accessible by integration/i.test(message)) return undefined;
-  const path = /not accessible by integration\s*\(([^)]*)\)/i.exec(message)?.[1]?.trim();
+  if (!notAccessibleBy.test(message)) return undefined;
+  const path = notAccessibleByPath.exec(message)?.[1]?.trim();
   if (path === undefined || path.length === 0) return undefined;
   return /(^|\.)statusCheckRollup(\.|$)/i.test(path) ? path : undefined;
 };
@@ -391,18 +420,40 @@ export const pullRequestFacts = (
  * named instead of assuming one, and where the path does not decide it offers both
  * candidates. The reason `gh` returned is printed by the caller either way: that is the
  * fact, and this is only a reading of it.
+ *
+ * AND IT READS WHICH ACTOR WAS REFUSED (thread 172). "Add `checks: read`" is advice about a
+ * `permissions:` block, and it has an addressee: an installation token. Told to the holder
+ * of a FINE-GRAINED PERSONAL TOKEN it sends them after a permission that does not exist —
+ * the fine-grained set has no `checks` at all, which is exactly why the consumer's private
+ * repository refuses this node to every token they can mint. For that actor the sentence
+ * says what is true instead: the node is out of reach and the door reads the checks from
+ * the runs of Actions.
+ *
+ * BUT THAT SENTENCE IS ABOUT AN ACTION THE DOOR ONLY TAKES ON ONE PATH, so it is gated by
+ * the SAME decision that takes it — {@link forbiddenChecksRollup}, the path, and not the
+ * actor (found by the reviewer of #341, thread 172). Read by the actor alone it promised
+ * "the door drops the refused node and reads the checks from the runs of Actions" for a
+ * `repository.projectV2` refused to the same personal token — where no second ask happens
+ * at all and the call dies with `was not read through gh`. A hint that describes a repair
+ * the door did not perform is the defect of thread 026 in a third wording: it talks over
+ * the fact instead of reading it. Off that path the sentence says what is true — nothing
+ * substitutes, and the read did not happen.
  */
 export const ghRefusalHint = (message: string): string => {
-  if (!/not accessible by integration/i.test(message)) return "";
-  const path = /not accessible by integration\s*\(([^)]*)\)/i.exec(message)?.[1]?.trim();
+  if (!notAccessibleBy.test(message)) return "";
+  const path = notAccessibleByPath.exec(message)?.[1]?.trim();
   const named = path === undefined || path.length === 0 ? undefined : path;
+  const where = named === undefined ? "the path it refused" : `\`${named}\``;
+  if (/not accessible by [^(\n]*personal access token/i.test(message))
+    return forbiddenChecksRollup(message) === undefined
+      ? ` — GitHub refuses a resource by name, not a token by scope: ${where} was refused to a PERSONAL ACCESS TOKEN, and the fine-grained set has no permission that grants every resource — some have none to add at all. This path is NOT the checks node the door asks a second time without, so nothing stands in for it: the call failed whole, and whatever needed ${where} was not read`
+      : ` — GitHub refuses a resource by name, not a token by scope: ${where} was refused to a PERSONAL ACCESS TOKEN, and a fine-grained one has no \`checks\` permission to grant — this node is out of reach of any token you can mint for a private repository. Not a scope to add: the door drops the refused node and reads the checks from the runs of Actions on the head instead`;
   const scope =
     named !== undefined && /workflowRun|checkSuite/i.test(named)
       ? "an Actions resource — `actions: read`"
       : named !== undefined && /statusCheckRollup|commit/i.test(named)
         ? "a Checks resource — `checks: read`"
         : "likely `checks: read` or `actions: read`";
-  const where = named === undefined ? "the path it refused" : `\`${named}\``;
   return ` — GitHub refuses a resource by name, not a token by scope: ${where} is ${scope}. A guess and not the cause: an installation token carries only what its job's \`permissions:\` lists, and \`claude-code-action\` exchanges only what \`additional_permissions\` asks for — unlisted is zeroed, not defaulted. Read the path above before adding a scope`;
 };
 
