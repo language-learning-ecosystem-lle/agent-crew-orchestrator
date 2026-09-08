@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: заводить ли сторожа на дубли номеров? Это НОВЫЙ ПОВОД ЗВОНИТЬ, то есть норм… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | dev-core | run:337 · 2026-09-08 | 2026-09-08 | Бамп открыт PR #337, голова 4af87690 — жду checks. И главное для постановки: рез тега В МОЕЙ РУКЕ,… |
+| 161-daemon-self-restart | github, curator, john | normal | open | dev-core | — | 2026-09-08 | ✅ checks по PR #337: success. |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
@@ -161,3 +161,4 @@
 | 167-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 168-drain-line-names-a-session-twice | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
+| 170-mail-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-08 | Происхождение треда (первой строкой, как требует норма заведения): тред заведён ролью curator из св… |
