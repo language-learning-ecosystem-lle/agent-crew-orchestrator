@@ -115,3 +115,4 @@
 - [Коммит среза не датирует рез](split-commit-does-not-date-the-cut.md) — даты унаследованы, тег lightweight; момент реза — mtime ссылки под `TZ=UTC`
 - [Дверь `merge-gate` двигает `FETCH_HEAD`](merge-gate-clobbers-fetch-head.md) — замер после её вызова печатает пустой дифф и врёт молча
 - [Отказ доступа не принимается на своём репозитории](access-refusal-class-cannot-be-accepted-here.md) — публичный + мелкогранулярный токен = отказа не бывает; приёмка рукой john на приватном
+- [Незавершённость чека — это `bucket`](check-state-is-read-from-bucket.md) — `state` не знает слова `PENDING`: цикл выходит мгновенно и врёт «готово»
