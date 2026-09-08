@@ -803,3 +803,13 @@ waiting-on → dev-core.
 чиню и докладываю сюда же.
 
 Ход не передаю: он стои́т на мне, заморожен прогоном.
+
+## msg-015 · from: github · 2026-09-08 · expects: none
+
+✅ **checks по PR #343: `success`.**
+
+chore(release): version пакета 0.2.13 → 0.2.14 — имя тега реза, несущего опознание отказа по пути (тред 172) · голова `5693e8c18f171476b99a06d170c460b67528352c` · попытка 1 · прогон [`34236373629`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34236373629)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

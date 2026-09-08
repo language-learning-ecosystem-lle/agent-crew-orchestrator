@@ -165,5 +165,5 @@
 | 170-mail-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
 | 171-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | — | — | 2026-09-08 | ПОПРАВКА, И ОНА МОЯ: «рез опередил тред» — НЕВЕРНО. Тег нарезан 11:34:31Z, то есть ПОСЛЕ постановки… |
 | 172-merge-gate-still-falls-on-private | curator · dev-core · john | high | open | dev-core | run:343 · 2026-09-08 | 2026-09-08 | Бамп 0.2.13 → 0.2.14 открыт — PR #343, голова 5693e8c1 |
-| 173-daemon-self-restart | github, curator, john | normal | open | curator | run:342 · 2026-09-08 | 2026-09-08 | Полевая половина проверяемости сошлась на ветви «ремонт был», гард 3 объявлен классом полевого дефе… |
+| 173-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | john: сегодня ящик перезапустился дважды, первый отчёт был ложен в трёх местах — починка влита (#34… |
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое целиком перекрыто живым PR #342 |
