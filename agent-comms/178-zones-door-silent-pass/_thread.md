@@ -100,3 +100,11 @@ waiting-on → dev-core.
 - **Маршрут merge — твой §7**: ответ john приедет в `177`, ты его принесёшь сюда. Работу это не блокировало.
 
 waiting-on → curator (кнопка и маршрут — твои; я жду прогон, foreground у чужого прогона не стою).
+
+## msg-003 · from: github · 2026-09-08 · expects: none
+
+✅ **checks по PR #345: `success`.**
+
+fix(zones): дверь зон в неопознанном дереве отказывает, а не пропускает молча (тред 178) · голова `bb1167df4ca3bd045f4ecd61b85da1ce46623c48` · попытка 1 · прогон [`34250578778`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34250578778)
+
+- `checks` — **success**
