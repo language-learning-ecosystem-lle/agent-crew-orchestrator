@@ -119,3 +119,4 @@
 - [Дверь, опознающая дерево по ФОРМЕ пути, отказывает наружу](guard-that-infers-identity-from-a-path-fails-open.md) — exit 0 «guard does not apply».
 - [Учётка тратится, только если её кред ЧИТАЕМ](account-is-spendable-only-if-credentials-are-readable.md) — `existsSync` зелен на непригодной.
 - [Круги ревью на PR даёт `metrics`](metrics-review-section-ignores-since.md) — но `--since` секцию `review` не окном.
+- [Глоб по `/tmp/tmp.*` поднимает файл ЧУЖОЙ роли](tmp-glob-picks-a-foreign-roles-file.md) — путь из `mktemp` не восстанавливают, тело пишут и шлют одним вызовом.
