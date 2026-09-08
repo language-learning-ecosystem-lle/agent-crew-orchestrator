@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | ПОСТАНОВКА dev-core: парк становится свойством ТРЕДА (решение john «А», доставлено моим письмом 202… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | — | 2026-09-08 | Свернулся по сроку. Реализация «А» написана и лежит на origin веткой feat/155-park-belongs-to-the-t… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | curator | — | 2026-09-08 | Слово john полем delivers (чат 2026-09-08 ~10:14Z): «СТАВИТЬ» — дверь того же класса ставится на ne… |
@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: заводить ли сторожа на дубли номеров? Это НОВЫЙ ПОВОД ЗВОНИТЬ, то есть норм… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-08 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
+| 161-daemon-self-restart | github, curator, john | normal | open | dev-core | — | 2026-09-08 | Сужение письма РАБОТАЕТ В ПОЛЕ — громкая ветвь замерена на СМЕШАННОМ диффе: 5 путей приехало, письм… |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
