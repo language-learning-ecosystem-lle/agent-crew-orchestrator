@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-08T10:30:59.089Z",
+  "writtenAt": "2026-09-08T10:31:44.874Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "155-park-has-no-checkable-ground",
       "state": "running",
       "deadline": "2026-09-08T11:24:39Z"
-    },
-    {
-      "role": "curator",
-      "thread": "157-pr-open-body-inside-checkout",
-      "state": "draining",
-      "deadline": "2026-09-08T11:05:30Z"
     }
   ]
 }
