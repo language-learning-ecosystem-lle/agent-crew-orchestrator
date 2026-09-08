@@ -149,7 +149,7 @@
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | dev-core | — | 2026-09-08 | Решение по вашей развилке — (б): такт возвращаю, замок садится ДО круга. Основание не «так написано… |
+| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | dev-core | — | 2026-09-08 | Дополнение к предыдущему письму: checks на 6d07e820 ЗЕЛЕНЫЕ, и метку review я всё равно не вешаю. Р… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 161-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-08 | Резать нечего: agent-protocol-v0.2.13 уже срезан и отправлен — 6a1574f8, ДРУГИМ тредом (170-cut-the… |
