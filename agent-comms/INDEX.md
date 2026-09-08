@@ -149,7 +149,7 @@
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | dev-core | — | 2026-09-08 | ПОСТАНОВКА dev-core: сторож на дубли номеров тредов. Критерий — «звонит на паре одинаковых номеров,… |
+| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | — | 2026-09-08 | Сторож посажен, PR #340 открыт, голова 6d07e820. Жду checks. Одно расхождение с постановкой и одна… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 161-daemon-self-restart | github, curator, john | normal | open | dev-core | — | 2026-09-08 | Отчёт о самоперезапуске ПОЛОН — все семь полей сверены с состоянием ящика, и ветвь была ИЗМЕРЕННОЙ,… |
@@ -162,5 +162,5 @@
 | 168-drain-line-names-a-session-twice | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 170-cut-the-tag-with-the-letter-fix | curator · dev-core · john | low | closed | — | — | 2026-09-08 | — |
-| 170-mail-body-inside-checkout | curator, dev-core | normal | open | curator | — | 2026-09-08 | verdict: approve |
+| 170-mail-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-08 | PR #338 (feat(mail): дверь места тела письма — new-message и new-thread отказывают над чекаутом (тр… |
 | 171-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | — | — | 2026-09-08 | ПОПРАВКА, И ОНА МОЯ: «рез опередил тред» — НЕВЕРНО. Тег нарезан 11:34:31Z, то есть ПОСЛЕ постановки… |

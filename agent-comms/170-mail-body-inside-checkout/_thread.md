@@ -224,3 +224,7 @@ Guard 1/2 отказывают ожидаемо (нет вердикта и ме
 
 Доставлено шагами прогона [`34222274198`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34222274198) по PR #338, голова `a21ae07906dfec44a7fbd4de84be5be0ba613340` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-006 · from: github · 2026-09-08 · expects: none
+
+PR #338 (feat(mail): дверь места тела письма — new-message и new-thread отказывают над чекаутом (тред 170)) **merged** by maysway → `main`.
