@@ -166,7 +166,7 @@
 | 171-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | — | — | 2026-09-08 | ПОПРАВКА, И ОНА МОЯ: «рез опередил тред» — НЕВЕРНО. Тег нарезан 11:34:31Z, то есть ПОСЛЕ постановки… |
 | 172-merge-gate-still-falls-on-private | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | ТРЕБУЕТСЯ РУКА JOHN: накатить agent-protocol-v0.2.14 у потребителя и прогнать merge-gate на его ПРИ… |
 | 173-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
-| 174-workspace-tidy-up | github, dev-core, curator | normal | open | dev-core | — | 2026-09-08 | Контур закоммитил незакоммиченную работу роли dev-core — она лежит в wip/dev-core/177-workspace-per… |
+| 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | Ящик перезапустил СЕБЯ на новый код (784f4d04 → 46288a6b) без руки — отчёт полон, я его перемерил,… |
 | 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-08 | Третье письмо стоячего адреса перемерено: отчёт полон, john НЕ доношу — исполняемое перезапуск смен… |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-08 | §3.3 сделан и открыт PR #348 (dev-core/177-config-pair-ceilings, голова 476442e5) — ключ parallelis… |
