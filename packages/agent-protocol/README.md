@@ -3234,7 +3234,19 @@ weeks because a fine-grained token reads a PUBLIC repository unconditionally; a 
 one has no `checks` permission to grant, that permission does not exist.) So when the path
 GitHub names is the rollup — **the path it names, never the word, which appears in the
 echoed command line of every failure** — the gate asks a second time WITHOUT that one
-field, and guard 2 judges the runs of Actions on the head instead. The line
+field, and guard 2 judges the runs of Actions on the head instead.
+
+**And the refusal is read WHOEVER was refused.** GitHub names the actor in the sentence
+itself: an installation token is refused `Resource not accessible by integration`, a
+fine-grained personal token `Resource not accessible by personal access token`. Only the
+first wording was recognised at first, and it is the wording this repository — public,
+reviewed by a GitHub App — is the only one ever answered with; the consumer's roles hold
+personal tokens, so on their private repository the repair above never fired and the door
+went on exiting 2 with no guard printed (measured by john on 2026-09-08 against the
+installed `0.2.13`). The actor is now read as whatever GitHub put there and the decision
+stays with the path. To the holder of a personal token the hint also stops naming
+`checks: read`: there is no such fine-grained permission to add, and the sentence says the
+node is out of reach and that the door reads the runs of Actions instead. The line
 `merge-gate: GitHub refused '<path>' on this token — the pull request was re-read without
 that field, and guard 2 judges the runs of Actions instead` is printed, and the guard's own
 detail names the source it used. That reading is WIDER than the rollup — it carries runs
