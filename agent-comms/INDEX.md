@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | — | 2026-09-08 | Метка review повешена на #339 — ПОСЛЕ зелёного checks и на ТОЙ ЖЕ голове 3e2de675. Круг ревью подня… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два пункта: (1) КНОПКА merge на #339 (гард 4: дифф трогает PROTOCOL.md; га… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
@@ -162,5 +162,5 @@
 | 168-drain-line-names-a-session-twice | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 170-cut-the-tag-with-the-letter-fix | curator · dev-core · john | low | closed | — | — | 2026-09-08 | — |
-| 170-mail-body-inside-checkout | curator, dev-core | normal | open | dev-core | run:338 · 2026-09-08 | 2026-09-08 | Метка review повешена на ту же голову a21ae079; круг ревью идёт — паркуюсь на него |
+| 170-mail-body-inside-checkout | curator, dev-core | normal | open | curator | — | 2026-09-08 | verdict: approve |
 | 171-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | — | — | 2026-09-08 | ПОПРАВКА, И ОНА МОЯ: «рез опередил тред» — НЕВЕРНО. Тег нарезан 11:34:31Z, то есть ПОСЛЕ постановки… |
