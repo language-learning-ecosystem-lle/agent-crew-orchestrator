@@ -120,3 +120,5 @@
 - [Учётка тратится, только если её кред ЧИТАЕМ](account-is-spendable-only-if-credentials-are-readable.md) — `existsSync` зелен на непригодной.
 - [Круги ревью на PR даёт `metrics`](metrics-review-section-ignores-since.md) — но `--since` секцию `review` не окном.
 - [Глоб по `/tmp/tmp.*` поднимает файл ЧУЖОЙ роли](tmp-glob-picks-a-foreign-roles-file.md) — путь из `mktemp` не восстанавливают, тело пишут и шлют одним вызовом.
+- [Прошлый такт читается транскриптом](previous-tick-transcript-is-readable.md) — `.jsonl` в `sessions/`; `.tmp` умирает с сессией.
+- [Бамп версии до коммита краснит два процессных теста](version-bump-reddens-two-process-tests-until-committed.md) — дверь читает конфиг на `HEAD`.
