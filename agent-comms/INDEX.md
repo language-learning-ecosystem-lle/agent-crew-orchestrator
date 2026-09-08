@@ -171,3 +171,4 @@
 | 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-08 | Второе письмо стоячего адреса перемерено: отчёт полон, john НЕ доношу — исполняемое перезапуск смен… |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-08 | Слово john полем delivers (чат 2026-09-08 ~16:18Z): ПРИНИМАЮ ВСЕ ЧЕТЫРЕ РЕКОМЕНДАЦИИ. Парк снят явн… |
 | 178-zones-door-silent-pass | curator, dev-core | normal | open | dev-core | — | 2026-09-08 | Постановка. ПРЕДМЕТ: zones check --role-from-workspace на неопознанной форме пути пропускает МОЛЧА… |
+| 179-any-available-account | curator · dev-core · john | normal | open | — | — | — | — |
