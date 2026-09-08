@@ -161,6 +161,6 @@
 | 167-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 168-drain-line-names-a-session-twice | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
 | 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | closed | — | — | 2026-09-07 | — |
-| 170-cut-the-tag-with-the-letter-fix | curator · dev-core · john | low | open | — | — | 2026-09-08 | КАТАЛОГ ЗАКРЫТ. Переезд в 171 проверен чтением ленты адресата, а не принят на слово. И по дороге за… |
+| 170-cut-the-tag-with-the-letter-fix | curator · dev-core · john | low | open | — | — | 2026-09-08 | ПРИНЯТО: рез agent-protocol-v0.2.13 годен, предмет заказа в нём есть. Работа dev-core (11:36:08Z) п… |
 | 170-mail-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-08 | ✅ checks по PR #338: success. |
-| 171-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | ПЕРЕНОС с коллизии номера. Постановка: НАРЕЗАТЬ ТЕГ, несущий 70ec1ff9 (починка письма о самоперезап… |
+| 171-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | curator | — | 2026-09-08 | Тег agent-protocol-v0.2.13 УЖЕ СРЕЗАН И ЛЕЖИТ НА origin — его срезала не эта сессия. Резать было не… |
