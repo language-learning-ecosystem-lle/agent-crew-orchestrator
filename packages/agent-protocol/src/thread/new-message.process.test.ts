@@ -1930,7 +1930,16 @@ describe("a letter into a thread that is already parked (thread 058)", () => {
     expect(result.out).toContain("PARKED behind a decision of john's");
   });
 
-  it("WRITES the letter that names the lift", () => {
+  /**
+   * THE LIFT END TO END, AND IT IS THE JOINT THIS WHOLE CHANGE STANDS ON (thread 155, §3.1).
+   * The door has always ACCEPTED `--park-lifted`; until 2026-09-08 the flag left nothing behind
+   * it — no header field, nothing for the reader — and the park it "lifted" went only because
+   * the same letter handed the turn over and one of the three wide lifts fired. Take those out
+   * without making the field real and parks become immortal, which is why the outcome is read
+   * HERE, from the process: the flag → the header on disk → the next call of the same door
+   * finding no park to ask about. A unit at the call site sees none of those three.
+   */
+  it("WRITES the letter that names the lift — and the park is GONE for the next letter", () => {
     const contest = contour();
     park(contest);
 
@@ -1942,7 +1951,22 @@ describe("a letter into a thread that is already parked (thread 058)", () => {
     );
 
     expect(result.code).toBe(0);
-    expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(2);
+    const dir = join(contest.root, "016-x", "messages");
+    expect(readdirSync(dir)).toHaveLength(2);
+
+    // (1) THE FIELD IS ON DISK, in the header where the reader of the feed finds it.
+    const names = readdirSync(dir)
+      .filter((name) => name.endsWith(".md"))
+      .sort();
+    const landed = parseMessageFile(readFileSync(join(dir, names[1] as string), "utf8"));
+    expect(landed.fields.parkLifted).toBe("john");
+
+    // (2) AND THE PARK IS OVER FOR EVERY READER AFTER IT: the next ordinary letter — the very
+    // shape refused at the top of this block — goes through with nothing said about a park.
+    const next = write(contest, { AGENT_PROTOCOL_WORKER: "claude-code" });
+    expect(next.code).toBe(0);
+    expect(next.out).not.toContain("PARKED behind");
+    expect(readdirSync(dir)).toHaveLength(3);
   });
 
   it("WRITES the letter that carries the park forward, and the one that carries john's word", () => {
@@ -2023,7 +2047,14 @@ describe("a letter into a thread that is already parked (thread 058)", () => {
 
     expect(result.code).toBe(0);
     expect(result.out).toContain("PARKED behind a decision of john's");
-    expect(result.out).toContain("NOT lifted and NOT touched");
+    // THE NOTE READ FROM THE OUTPUT OF THE PROCESS, which is the only level that proves what the
+    // writer actually sees. Until 2026-09-08 it read "NOT lifted and NOT touched by it" about
+    // every machine letter, including the ones carrying the park's OWN ADDRESS, which did end it
+    // — defect Д1 of thread 155. Since variant «А» everything reaching this branch really does
+    // leave the park standing, so the note may say so; and it now also names the one thing that
+    // WOULD end it instead of leaving the writer to work it out.
+    expect(result.out).toContain("the park is NOT lifted by it");
+    expect(result.out).toContain("--park-lifted john");
     expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(2);
   });
 
@@ -2050,7 +2081,8 @@ describe("a letter into a thread that is already parked (thread 058)", () => {
 
     expect(result.code).toBe(0);
     expect(result.out).toContain("PARKED behind a decision of john's");
-    expect(result.out).toContain("NOT lifted and NOT touched");
+    expect(result.out).toContain("the park is NOT lifted by it");
+    expect(result.out).toContain("--park-lifted john");
     expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(2);
     // The park it landed beside is untouched on disk as well: the letter carries no park field
     // and the verdict it DOES carry is in the header, where the reader of the feed finds it.

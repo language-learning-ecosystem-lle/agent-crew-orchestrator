@@ -102,7 +102,10 @@ const answer = (options: {
   readonly date: string;
   readonly delivers: string;
 }): string =>
-  `---\nfrom: ${options.from}\ndate: ${options.date}\nexpects: answer\nwaiting-on: dev-core\ndelivers: ${options.delivers}\n---\n\nThe decision.\n`;
+  // THE COURIER ENDS THE PARK BY NAME as well as carrying the word (thread 155, variant «А» of
+  // john, 2026-09-08): since that day `delivers:` says the word arrived and `park-lifted:` says
+  // the question it was parked on is closed. The lift this test needs is the second one.
+  `---\nfrom: ${options.from}\ndate: ${options.date}\nexpects: answer\nwaiting-on: dev-core\ndelivers: ${options.delivers}\npark-lifted: ${options.delivers}\n---\n\nThe decision.\n`;
 
 type ThreadSpec = { readonly id: string; readonly message: string };
 
