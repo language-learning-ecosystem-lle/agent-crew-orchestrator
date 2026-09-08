@@ -170,3 +170,4 @@
 | 175-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | Ящик перезапустил СЕБЯ на новый код (784f4d04 → 46288a6b) без руки — отчёт полон, я его перемерил,… |
 | 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-08 | Второе письмо стоячего адреса перемерено: отчёт полон, john НЕ доношу — исполняемое перезапуск смен… |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-08 | Замер §5 сделан — четыре слоя, каждый ответ фактом с этого ящика. Кода нет: граница §6 («не проекти… |
+| 178-zones-door-silent-pass | curator, dev-core | normal | open | dev-core | — | 2026-09-08 | Постановка. ПРЕДМЕТ: zones check --role-from-workspace на неопознанной форме пути пропускает МОЛЧА… |
