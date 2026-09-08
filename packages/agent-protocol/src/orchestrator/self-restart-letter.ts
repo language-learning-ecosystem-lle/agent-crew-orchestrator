@@ -23,7 +23,8 @@
  * delivery, reading its exit code, keeping the ledger — lives in `cli.ts` beside the tick.
  */
 
-import type { SelfRestartEvent } from "./self-restart.js";
+import { isAbsolute, relative } from "node:path";
+import { INSTALL_INPUTS, installNeeded, type SelfRestartEvent } from "./self-restart.js";
 
 /**
  * THE STANDING ADDRESS. No number in it: `--ensure-thread` takes whichever receiver of this
@@ -74,6 +75,143 @@ export type SelfRestartLetter = {
 const shortSha = (sha: string): string => (sha.length > 12 ? sha.slice(0, 12) : sha);
 
 /**
+ * WHAT THIS DAEMON ACTUALLY EXECUTES, as paths of the checkout its code was loaded from
+ * (thread 161, john 2026-09-07 through curator) — the measure that decides whether the
+ * restart is worth a letter at all.
+ *
+ * THE REPAIR STAYS BLIND AND THAT IS DELIBERATE: `code-age.ts` counts COMMITS, cannot tell
+ * a docs commit from a code one, and john does not touch that — judging a diff inside the
+ * safe condition would put an opinion where the box must be dumb. The opinion belongs
+ * HERE, on the letter, because a letter is what costs money: it names a turn, and every
+ * turn is a raised session. The field case that forced it (the consumer circuit, their
+ * thread 138): the box drained a live session and restarted for a drift of two markdown
+ * files — 64 lines of `docs/`, not one line of anything that runs.
+ *
+ * THE FOOTPRINT IS DERIVED, NOT LISTED. Two shapes, and one rule reaches both:
+ *   - the daemon runs FROM SOURCE inside the checkout (this circuit: `packages/agent-protocol`).
+ *     Then everything it can import lives under the package directory of its entry module,
+ *     and that directory — relative to the checkout — is the footprint;
+ *   - the daemon runs an INSTALLED package (the consumer circuit pins it as a dependency).
+ *     Then no file of the checkout is executed at all, and what decides which code comes up
+ *     is the manifest that pins the version — {@link INSTALL_INPUTS}, the same three files
+ *     the installer question is already asked over. This is the candidate the neighbours
+ *     named ("версия установленного пакета до и после"), reached without a second mechanism.
+ * The manifests are in the footprint in BOTH shapes: a lockfile move changes what
+ * `node_modules` holds, and that is a change of the executable even when no source moved.
+ */
+export type ExecutableFootprint = {
+  /** Directory prefixes, relative to the code checkout, whose contents this daemon runs. */
+  readonly dirs: readonly string[];
+  /** The package root IS the checkout root — then every path of it is executable. */
+  readonly whole: boolean;
+  /** What the above IS, in words the withheld line prints — a measure nobody can check is none. */
+  readonly means: string;
+};
+
+/**
+ * THE FOOTPRINT OF A RUNNING PROCESS, as a pure function over two paths the caller reads
+ * from the world: the checkout the code was dated against ({@link CodeVintage.checkout})
+ * and the nearest ancestor of the entry module that holds a `package.json`.
+ *
+ * `packageDir` ABSENT is TWO cases and they are not the same, which is why the entry itself
+ * is asked for as well:
+ *   - the entry lives INSIDE the checkout and no package boundary was found around it. The
+ *     boundary is then unknown, and the only answer that cannot lose a letter is "the whole
+ *     checkout is executable" — narrowing on a boundary nobody measured would withhold the
+ *     letter about a real code change, and a silence is the one failure this module may not
+ *     have;
+ *   - the entry is elsewhere on the disk (or unknown): the installed shape — nothing of the
+ *     checkout is executed, so only the manifests can move the executable. Same answer when
+ *     the package dir itself is outside the checkout, which is the field case's shape.
+ */
+export const executableFootprint = (input: {
+  readonly checkout: string;
+  readonly packageDir?: string;
+  /** The module this process was started with, absolute; absent — it could not be told. */
+  readonly entry?: string;
+}): ExecutableFootprint => {
+  const manifests = INSTALL_INPUTS.join(", ");
+  const under = (path: string | undefined): boolean => {
+    if (path === undefined) return false;
+    const rel = relative(input.checkout, path);
+    return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
+  };
+  if (input.packageDir === undefined)
+    return under(input.entry)
+      ? {
+          dirs: [],
+          whole: true,
+          means: `this daemon runs '${input.entry}', inside '${input.checkout}', and no package boundary was found around it — so every path of that checkout is treated as executable`,
+        }
+      : {
+          dirs: [],
+          whole: false,
+          means: `this daemon executes no file of '${input.checkout}' — its code is an installed package, and only ${manifests} can change which version comes up`,
+        };
+  const rel = relative(input.checkout, input.packageDir);
+  if (rel === "")
+    return {
+      dirs: [],
+      whole: true,
+      means: `the package this daemon runs IS '${input.checkout}' — every path of that checkout is executable`,
+    };
+  if (rel.startsWith("..") || isAbsolute(rel))
+    return {
+      dirs: [],
+      whole: false,
+      means: `this daemon runs code from '${input.packageDir}', which is outside '${input.checkout}' — only ${manifests} of that checkout can change which version comes up`,
+    };
+  return {
+    dirs: [rel],
+    whole: false,
+    means: `this daemon runs '${rel}' of '${input.checkout}', plus whatever ${manifests} install`,
+  };
+};
+
+/**
+ * DID THE RESTART CHANGE THE EXECUTABLE — the three answers, and the third one is the point
+ * of the type. "Not measured" is NOT "nothing changed": the diff may be unreadable, and the
+ * memory of a box running older code carries no `from` at all. Folding that into
+ * `untouched` would silence the very event this package exists to announce, on the one tick
+ * where nobody could check. It is folded into `changed` instead — the letter goes.
+ */
+export type ExecutableChange =
+  | { readonly kind: "changed"; readonly paths: readonly string[] }
+  | { readonly kind: "untouched" }
+  | { readonly kind: "unmeasured"; readonly why: string };
+
+/** How many of the changed paths the withheld/letter lines name before they say "…". */
+const NAMED = 5;
+
+export const describeExecutablePaths = (paths: readonly string[]): string =>
+  `${paths.slice(0, NAMED).join(", ")}${paths.length > NAMED ? ", …" : ""}`;
+
+/**
+ * THE MEASURE ITSELF, pure over the diff the caller read. `changed` is
+ * `git diff --name-only <from> <to>` in the code checkout; `undefined` means the caller
+ * could not read it, and `why` then says which of the reasons it was.
+ */
+export const executableChange = (input: {
+  readonly footprint: ExecutableFootprint;
+  readonly changed: readonly string[] | undefined;
+  readonly why?: string;
+}): ExecutableChange => {
+  if (input.changed === undefined)
+    return {
+      kind: "unmeasured",
+      why: input.why ?? "the diff between the two shas could not be read",
+    };
+  const hit = input.footprint.whole
+    ? [...input.changed]
+    : input.changed.filter(
+        (path) =>
+          installNeeded([path]) ||
+          input.footprint.dirs.some((dir) => path === dir || path.startsWith(`${dir}/`)),
+      );
+  return hit.length === 0 ? { kind: "untouched" } : { kind: "changed", paths: hit };
+};
+
+/**
  * "СКОЛЬКО ЖДАЛ СЕССИЮ", and the case where the answer is not known.
  *
  * `waitedForSec` is a subtraction of two stamps and it is ABSENT whenever the memory
@@ -93,12 +231,42 @@ const waitedLine = (sec: number | undefined): string => {
 };
 
 /**
+ * THE OPENING SENTENCE, and the fact it was not saying (thread 161, curator's §4: "оно не
+ * назвало, что слив дождался живой сессии — самое ценное в том такте").
+ *
+ * The old text claimed the wait unconditionally, which is the one thing a letter about a
+ * box must not do: `drainSince` is stamped ONLY on a `drain` verdict, and that verdict is
+ * reached only with `live.length > 0` — so a known wait PROVES there were live sessions and
+ * that every one of them closed by itself. With no wait recorded the box went straight to
+ * `go`, and the sentence says nothing about sessions rather than inventing a vigil.
+ */
+const drainSentence = (sec: number | undefined): string =>
+  sec === undefined
+    ? "Ящик починил своё дерево и поднялся на новом коде."
+    : "Ящик ДОЖДАЛСЯ живых сессий — ни одна не была порвана, он пошёл только после того, как закрылась последняя, — починил своё дерево и поднялся на новом коде.";
+
+/**
+ * WHY THIS LETTER EXISTS AT ALL, now that most restarts do not get one. The narrowing is
+ * invisible to a reader unless the letters that DO go say what they measured — otherwise
+ * the receiver silently changes meaning and nobody can tell a narrowed feed from a broken
+ * one. Two cases reach here; `untouched` is not one of them, because it never posts.
+ */
+const executableLine = (change: ExecutableChange): string =>
+  change.kind === "untouched"
+    ? "- **что сменилось в исполняемом:** ничего — и такое письмо не пишется вовсе (см. журнал: WITHHELD)"
+    : change.kind === "unmeasured"
+      ? `- **что сменилось в исполняемом:** НЕ ИЗМЕРЕНО — ${change.why}. Письмо ушло именно поэтому: неудавшийся замер не есть «ничего не изменилось»`
+      : `- **что сменилось в исполняемом:** ${change.paths.length} путь(ей) — ${describeExecutablePaths(change.paths)}`;
+
+/**
  * THE LETTER. The four facts john named are four lines of it, and each one is said even
  * when it is not known — a missing line reads as "there was nothing to say", and the whole
  * complaint this package answers is that silence and absence look alike.
  */
 export const planSelfRestartLetter = (input: {
   readonly event: SelfRestartEvent;
+  /** What the restart moved in the executable — the reason this letter is being written. */
+  readonly change: ExecutableChange;
   /** The circuit home this daemon serves — one box may run more than one. */
   readonly served?: string;
   /** Where the mail lives, and how the delivery is to reach its config. */
@@ -110,7 +278,7 @@ export const planSelfRestartLetter = (input: {
   const body = [
     `## Демон перезапустил себя на новый код — без руки, и вот чего это стоило`,
     "",
-    "Ящик дождался конца живых сессий, починил своё дерево и поднялся на новом коде. Ход никому не нужен для ремонта — он уже сделан; это отчёт о нём, потому что тихий самоперезапуск ничем не лучше тихого дрейфа.",
+    `${drainSentence(event.waitedForSec)} Ход никому не нужен для ремонта — он уже сделан; это отчёт о нём, потому что тихий самоперезапуск ничем не лучше тихого дрейфа.`,
     "",
     ...(input.served === undefined ? [] : [`- **контур:** \`${input.served}\``]),
     `- **какой код был:** ${
@@ -126,6 +294,7 @@ export const planSelfRestartLetter = (input: {
     }`,
     waitedLine(event.waitedForSec),
     `- **когда пошёл:** ${event.at}`,
+    executableLine(input.change),
     "",
     "**Ход curator — ровно на одно действие:** прочитать это и, если отчёт полон, донести john. Ремонта здесь нет: дрейф уже закрыт, а звонок о дрейфе (тред 141, #301) на этот ящик больше не придёт.",
   ].join("\n");
@@ -219,6 +388,22 @@ export const describeDeliveredSelfRestartLetter = (): string =>
   `letter — the self-restart is posted to the standing address '${SELF_RESTART_SLUG}', turn for '${SELF_RESTART_WAITING_ON}'`;
 
 /**
+ * THE RESTART THAT MOVED NOTHING THIS BOX RUNS, as one line of the same journal (thread
+ * 161) — and it is LOUDER than the suppression above rather than quieter, because this is
+ * the branch where a human is told nothing at all. The restart still happened, the drain
+ * still spent whatever it spent, and the only trace either leaves is this line: it carries
+ * both shas, the footprint it measured and what that footprint means, so a reader who
+ * disagrees with the narrowing can check it instead of trusting it.
+ */
+export const describeWithheldSelfRestartLetter = (input: {
+  readonly event: SelfRestartEvent;
+  readonly footprint: ExecutableFootprint;
+}): string =>
+  `letter — WITHHELD, the restart changed NOTHING THIS DAEMON EXECUTES: ${
+    input.event.from === undefined ? "the code it came from" : shortSha(input.event.from)
+  }..${shortSha(input.event.to)} moves no path of the footprint (${input.footprint.means}), so the box is running the same program under a new sha. The restart itself STANDS and is not undone; what is not spent is the LETTER, and with it the turn of '${SELF_RESTART_WAITING_ON}' — a raised session is what a letter costs (john, 2026-09-07: деньги тратит письмо, а не перезапуск)`;
+
+/**
  * THE DECISION, as a pure function over the signature and what was remembered: post, or stay
  * quiet with a line that says why. Nothing here reads the disk — the caller owns both the
  * reading of the ledger and the writing of it, and writes ONLY after a delivery that
@@ -229,7 +414,24 @@ export const planSelfRestartDelivery = (input: {
   readonly signature: string;
   /** What the previous letter carried; absent — there was none. */
   readonly memo?: SelfRestartMemo;
-}): { readonly post: true } | { readonly post: false; readonly said: string } =>
-  input.memo !== undefined && input.memo.signature === input.signature
-    ? { post: false, said: describeSuppressedSelfRestartLetter({ memo: input.memo }) }
-    : { post: true };
+  /** The event, for the line the withheld branch prints. */
+  readonly event: SelfRestartEvent;
+  readonly footprint: ExecutableFootprint;
+  /** Whether this restart moved the executable at all — the narrowing of thread 161. */
+  readonly change: ExecutableChange;
+}): { readonly post: true } | { readonly post: false; readonly said: string } => {
+  // THE LOCK IS ASKED FIRST because it is about a letter that ALREADY went: a reader who
+  // has the letter must be told "you have it", not "there was nothing to tell you".
+  if (input.memo !== undefined && input.memo.signature === input.signature)
+    return { post: false, said: describeSuppressedSelfRestartLetter({ memo: input.memo }) };
+  // AND THE NARROWING SECOND, and it does NOT write the ledger: a withheld letter told
+  // nobody, so nothing about it needs remembering, and the line above is printed on every
+  // tick of the epoch exactly as the suppression line is. That repetition is the price of
+  // the branch being checkable in a log.
+  if (input.change.kind === "untouched")
+    return {
+      post: false,
+      said: describeWithheldSelfRestartLetter({ event: input.event, footprint: input.footprint }),
+    };
+  return { post: true };
+};

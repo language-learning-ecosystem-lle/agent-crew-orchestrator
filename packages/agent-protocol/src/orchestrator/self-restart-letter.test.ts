@@ -4,6 +4,10 @@ import {
   describeDeliveredSelfRestartLetter,
   describeSuppressedSelfRestartLetter,
   describeUndeliveredSelfRestartLetter,
+  describeWithheldSelfRestartLetter,
+  type ExecutableChange,
+  executableChange,
+  executableFootprint,
   planSelfRestartDelivery,
   planSelfRestartLetter,
   SELF_RESTART_SLUG,
@@ -23,6 +27,18 @@ const full: SelfRestartEvent = {
   at: "2026-09-06T17:00:00Z",
 };
 
+/** This circuit's shape: the daemon runs the package out of the checkout it is dated by. */
+const source = executableFootprint({
+  checkout: "/srv/aco",
+  packageDir: "/srv/aco/packages/agent-protocol",
+});
+
+/** The restart moved code — the only case in which a letter is planned at all. */
+const changed: ExecutableChange = {
+  kind: "changed",
+  paths: ["packages/agent-protocol/src/orchestrator/self-restart.ts"],
+};
+
 /** The flag's value, read out of the argv the plan hands to the child. */
 const flagValue = (argv: readonly string[], name: string): string | undefined => {
   const at = argv.indexOf(name);
@@ -31,28 +47,36 @@ const flagValue = (argv: readonly string[], name: string): string | undefined =>
 
 describe("planSelfRestartLetter — the four facts john required", () => {
   it("says what the code WAS and what it BECAME", () => {
-    const { body } = planSelfRestartLetter({ event: full, root });
+    const { body } = planSelfRestartLetter({ change: changed, event: full, root });
     expect(body).toContain("fd1c14a67121");
     expect(body).toContain("7db145ba901a");
   });
 
   it("says how far it was BEHIND", () => {
-    expect(planSelfRestartLetter({ event: full, root }).body).toContain("18 коммит");
+    expect(planSelfRestartLetter({ change: changed, event: full, root }).body).toContain(
+      "18 коммит",
+    );
   });
 
   it("says how long it WAITED for the sessions, in units a human reads", () => {
-    expect(planSelfRestartLetter({ event: full, root }).body).toContain("1 ч 10 мин (4230 с)");
+    expect(planSelfRestartLetter({ change: changed, event: full, root }).body).toContain(
+      "1 ч 10 мин (4230 с)",
+    );
   });
 
   it("names the moment it went — the stamp of the event, not of the letter", () => {
-    expect(planSelfRestartLetter({ event: full, root }).body).toContain("2026-09-06T17:00:00Z");
+    expect(planSelfRestartLetter({ change: changed, event: full, root }).body).toContain(
+      "2026-09-06T17:00:00Z",
+    );
   });
 
   it("names the circuit when the caller knows it, and says nothing about one when it does not", () => {
-    expect(planSelfRestartLetter({ event: full, root, served: "/srv/aco" }).body).toContain(
-      "/srv/aco",
+    expect(
+      planSelfRestartLetter({ change: changed, event: full, root, served: "/srv/aco" }).body,
+    ).toContain("/srv/aco");
+    expect(planSelfRestartLetter({ change: changed, event: full, root }).body).not.toContain(
+      "**контур:**",
     );
-    expect(planSelfRestartLetter({ event: full, root }).body).not.toContain("**контур:**");
   });
 });
 
@@ -61,43 +85,43 @@ describe("planSelfRestartLetter — a fact that is NOT KNOWN is said, not droppe
   const old: SelfRestartEvent = { to: full.to, at: full.at };
 
   it("says that the previous sha is not recorded, rather than leaving the line out", () => {
-    const { body } = planSelfRestartLetter({ event: old, root });
+    const { body } = planSelfRestartLetter({ change: changed, event: old, root });
     expect(body).toContain("какой код был:");
     expect(body).toContain("не записано");
   });
 
   it("says that the distance is not recorded", () => {
-    expect(planSelfRestartLetter({ event: old, root }).body).toMatch(
+    expect(planSelfRestartLetter({ change: changed, event: old, root }).body).toMatch(
       /сколько отставал:.*не записано/,
     );
   });
 
   it("says that the wait is not recorded — and never prints it as a zero", () => {
-    const { body } = planSelfRestartLetter({ event: old, root });
+    const { body } = planSelfRestartLetter({ change: changed, event: old, root });
     expect(body).toMatch(/сколько ждал сессии:.*не записано/);
     expect(body).not.toContain("сколько ждал сессии:** 0 с");
   });
 
   it("says a short wait in seconds and a middling one in minutes", () => {
-    expect(planSelfRestartLetter({ event: { ...full, waitedForSec: 42 }, root }).body).toContain(
-      "сколько ждал сессии:** 42 с",
-    );
-    expect(planSelfRestartLetter({ event: { ...full, waitedForSec: 600 }, root }).body).toContain(
-      "10 мин (600 с)",
-    );
+    expect(
+      planSelfRestartLetter({ change: changed, event: { ...full, waitedForSec: 42 }, root }).body,
+    ).toContain("сколько ждал сессии:** 42 с");
+    expect(
+      planSelfRestartLetter({ change: changed, event: { ...full, waitedForSec: 600 }, root }).body,
+    ).toContain("10 мин (600 с)");
   });
 });
 
 describe("planSelfRestartLetter — the delivery it asks for", () => {
   it("posts into the STANDING ADDRESS, opening a receiver when none is open", () => {
-    const { argv } = planSelfRestartLetter({ event: full, root });
+    const { argv } = planSelfRestartLetter({ change: changed, event: full, root });
     expect(flagValue(argv, "--ensure-thread")).toBe(SELF_RESTART_SLUG);
     expect(flagValue(argv, "--title")).toBeDefined();
   });
 
   it("names participants — `--ensure-thread` refuses without them, at the door", () => {
     const participants = flagValue(
-      planSelfRestartLetter({ event: full, root }).argv,
+      planSelfRestartLetter({ change: changed, event: full, root }).argv,
       "--participants",
     );
     expect(participants?.split(",")).toContain("curator");
@@ -105,7 +129,7 @@ describe("planSelfRestartLetter — the delivery it asks for", () => {
   });
 
   it("is sent from the system, expects nothing back, and still CARRIES A TURN", () => {
-    const { argv, waitingOn } = planSelfRestartLetter({ event: full, root });
+    const { argv, waitingOn } = planSelfRestartLetter({ change: changed, event: full, root });
     expect(flagValue(argv, "--from")).toBe("github");
     expect(flagValue(argv, "--expects")).toBe("none");
     expect(flagValue(argv, "--waiting-on")).toBe(SELF_RESTART_WAITING_ON);
@@ -113,19 +137,29 @@ describe("planSelfRestartLetter — the delivery it asks for", () => {
   });
 
   it("hands the turn to a ROLE and not to a person: a turn on `john` raises nobody", () => {
-    expect(planSelfRestartLetter({ event: full, root }).waitingOn).not.toBe("john");
+    expect(planSelfRestartLetter({ change: changed, event: full, root }).waitingOn).not.toBe(
+      "john",
+    );
   });
 
   it("carries the mail's own location through to the child, and omits what it was not given", () => {
-    const withAll = planSelfRestartLetter({ event: full, root, repo: "o/r", ref: "origin/main" });
+    const withAll = planSelfRestartLetter({
+      change: changed,
+      event: full,
+      root,
+      repo: "o/r",
+      ref: "origin/main",
+    });
     expect(flagValue(withAll.argv, "--root")).toBe(root);
     expect(flagValue(withAll.argv, "--repo")).toBe("o/r");
     expect(flagValue(withAll.argv, "--ref")).toBe("origin/main");
-    expect(planSelfRestartLetter({ event: full, root }).argv).not.toContain("--repo");
+    expect(planSelfRestartLetter({ change: changed, event: full, root }).argv).not.toContain(
+      "--repo",
+    );
   });
 
   it("writes: the file, the commit and the push are one action", () => {
-    expect(planSelfRestartLetter({ event: full, root }).argv).toContain("--write");
+    expect(planSelfRestartLetter({ change: changed, event: full, root }).argv).toContain("--write");
   });
 });
 
@@ -166,11 +200,24 @@ describe("planSelfRestartDelivery — the lock on the repeat", () => {
   };
 
   it("posts when nothing was ever posted", () => {
-    expect(planSelfRestartDelivery({ signature: selfRestartSignature(full) }).post).toBe(true);
+    expect(
+      planSelfRestartDelivery({
+        signature: selfRestartSignature(full),
+        event: full,
+        footprint: source,
+        change: changed,
+      }).post,
+    ).toBe(true);
   });
 
   it("STAYS QUIET on the tick that re-reads the same file — and says why in the journal", () => {
-    const plan = planSelfRestartDelivery({ signature: selfRestartSignature(full), memo });
+    const plan = planSelfRestartDelivery({
+      signature: selfRestartSignature(full),
+      memo,
+      event: full,
+      footprint: source,
+      change: changed,
+    });
     expect(plan.post).toBe(false);
     if (plan.post === false) {
       expect(plan.said).toContain(SELF_RESTART_SLUG);
@@ -180,7 +227,15 @@ describe("planSelfRestartDelivery — the lock on the repeat", () => {
 
   it("posts again for a NEW restart, though a letter about the previous one stands", () => {
     const next = selfRestartSignature({ ...full, at: "2026-09-06T19:00:00Z" });
-    expect(planSelfRestartDelivery({ signature: next, memo }).post).toBe(true);
+    expect(
+      planSelfRestartDelivery({
+        signature: next,
+        memo,
+        event: full,
+        footprint: source,
+        change: changed,
+      }).post,
+    ).toBe(true);
   });
 });
 
@@ -211,6 +266,179 @@ describe("the journal lines — a suppressed tick and a lost letter are both rea
 });
 
 /**
+ * THE NARROWING (thread 161, john through curator): the letter goes only when the restart
+ * CHANGED WHAT THIS DAEMON EXECUTES. The field case it answers is the consumer circuit's:
+ * a drift of two markdown files under `docs/` drained a live session and bought a turn.
+ */
+describe("executableFootprint — what the box runs, in both shapes it comes in", () => {
+  it("running FROM SOURCE: the package directory of the entry, relative to the checkout", () => {
+    expect(source.dirs).toEqual(["packages/agent-protocol"]);
+    expect(source.whole).toBe(false);
+    expect(source.means).toContain("packages/agent-protocol");
+  });
+
+  it("running an INSTALLED package: no path of the checkout, and the manifests say so", () => {
+    const installed = executableFootprint({
+      checkout: "/srv/lle",
+      packageDir: "/srv/lle/node_modules/agent-protocol",
+    });
+    // `node_modules` is inside the checkout here, and that is still the installed shape —
+    // what decides the version is the lockfile, not a source file somebody could edit.
+    expect(installed.dirs).toEqual(["node_modules/agent-protocol"]);
+    const elsewhere = executableFootprint({ checkout: "/srv/lle", packageDir: "/opt/aco" });
+    expect(elsewhere.dirs).toEqual([]);
+    expect(elsewhere.means).toContain("pnpm-lock.yaml");
+  });
+
+  it("no package dir at all is the installed shape, not an empty footprint", () => {
+    const bundled = executableFootprint({ checkout: "/srv/lle" });
+    expect(bundled.whole).toBe(false);
+    expect(bundled.means).toContain("installed package");
+  });
+
+  it("an entry INSIDE the checkout with no boundary around it narrows NOTHING", () => {
+    // The dangerous shape: a boundary nobody could measure must not become a narrowing,
+    // or a real code change is withheld. Unknown widens the footprint, never shrinks it.
+    const unbounded = executableFootprint({ checkout: "/srv/aco", entry: "/srv/aco/src/cli.ts" });
+    expect(unbounded.whole).toBe(true);
+    expect(executableChange({ footprint: unbounded, changed: ["CARD.md"] }).kind).toBe("changed");
+  });
+
+  it("a package root that IS the checkout makes every path of it executable", () => {
+    expect(executableFootprint({ checkout: "/srv/aco", packageDir: "/srv/aco" }).whole).toBe(true);
+  });
+});
+
+describe("executableChange — the measure the narrowing stands on", () => {
+  it("a docs-only drift moves NOTHING executable — the field case of the consumer circuit", () => {
+    expect(
+      executableChange({
+        footprint: source,
+        changed: ["docs/pin-rollout.md", "docs/pin-rollout-lle.md"],
+      }),
+    ).toEqual({ kind: "untouched" });
+  });
+
+  it("a source file under the package is a change, and it names which", () => {
+    const verdict = executableChange({
+      footprint: source,
+      changed: ["docs/x.md", "packages/agent-protocol/src/cli.ts"],
+    });
+    expect(verdict.kind).toBe("changed");
+    if (verdict.kind === "changed")
+      expect(verdict.paths).toEqual(["packages/agent-protocol/src/cli.ts"]);
+  });
+
+  it("a lockfile alone is a change of the executable in BOTH shapes — it moves what installs", () => {
+    expect(executableChange({ footprint: source, changed: ["pnpm-lock.yaml"] }).kind).toBe(
+      "changed",
+    );
+    const installed = executableFootprint({ checkout: "/srv/lle" });
+    expect(executableChange({ footprint: installed, changed: ["pnpm-lock.yaml"] }).kind).toBe(
+      "changed",
+    );
+    // …and a doc of the consumer repository still is not, though nothing of it is executed.
+    expect(executableChange({ footprint: installed, changed: ["docs/pin.md"] }).kind).toBe(
+      "untouched",
+    );
+  });
+
+  it("a diff nobody could read is UNMEASURED and never 'nothing changed'", () => {
+    const verdict = executableChange({
+      footprint: source,
+      changed: undefined,
+      why: "git would not read",
+    });
+    expect(verdict.kind).toBe("unmeasured");
+  });
+});
+
+describe("planSelfRestartDelivery — the narrowing, and what it must not swallow", () => {
+  it("WITHHOLDS the letter when the restart moved nothing this daemon runs", () => {
+    const plan = planSelfRestartDelivery({
+      signature: selfRestartSignature(full),
+      event: full,
+      footprint: source,
+      change: { kind: "untouched" },
+    });
+    expect(plan.post).toBe(false);
+    if (plan.post === false) {
+      expect(plan.said).toContain("WITHHELD");
+      // The line must let a reader CHECK the narrowing: both shas, and what was measured.
+      expect(plan.said).toContain("fd1c14a67121");
+      expect(plan.said).toContain("7db145ba901a");
+      expect(plan.said).toContain("packages/agent-protocol");
+      expect(plan.said).toContain(SELF_RESTART_WAITING_ON);
+    }
+  });
+
+  it("POSTS when the measure failed — a letter is not silenced by an unreadable diff", () => {
+    expect(
+      planSelfRestartDelivery({
+        signature: selfRestartSignature(full),
+        event: full,
+        footprint: source,
+        change: { kind: "unmeasured", why: "git would not read" },
+      }).post,
+    ).toBe(true);
+  });
+
+  it("says ALREADY POSTED rather than WITHHELD for a letter that went — they are two facts", () => {
+    const plan = planSelfRestartDelivery({
+      signature: selfRestartSignature(full),
+      memo: { signature: selfRestartSignature(full), at: "2026-09-06T17:00:05Z" },
+      event: full,
+      footprint: source,
+      change: { kind: "untouched" },
+    });
+    expect(plan.post).toBe(false);
+    if (plan.post === false) expect(plan.said).toContain("SUPPRESSED");
+  });
+});
+
+describe("the letter says WHY it was written, now that most restarts get none", () => {
+  it("names the executable paths that moved", () => {
+    const { body } = planSelfRestartLetter({ change: changed, event: full, root });
+    expect(body).toContain("что сменилось в исполняемом");
+    expect(body).toContain("packages/agent-protocol/src/orchestrator/self-restart.ts");
+  });
+
+  it("says outright that it went on an UNMEASURED restart, and why that is not silence", () => {
+    const { body } = planSelfRestartLetter({
+      change: { kind: "unmeasured", why: "git would not read" },
+      event: full,
+      root,
+    });
+    expect(body).toContain("НЕ ИЗМЕРЕНО");
+    expect(body).toContain("git would not read");
+  });
+
+  it("names the DRAIN — that it waited a live session out and tore none of them", () => {
+    const { body } = planSelfRestartLetter({ change: changed, event: full, root });
+    expect(body).toContain("ДОЖДАЛСЯ живых сессий");
+    expect(body).toContain("ни одна не была порвана");
+  });
+
+  it("claims no vigil when none is recorded: a wait it cannot prove is not asserted", () => {
+    const { body } = planSelfRestartLetter({
+      change: changed,
+      event: { to: full.to, at: full.at },
+      root,
+    });
+    expect(body).not.toContain("ДОЖДАЛСЯ живых сессий");
+    expect(body).toContain("поднялся на новом коде");
+  });
+});
+
+describe("the withheld journal line", () => {
+  it("says the restart itself STANDS — what is saved is the letter, not the repair", () => {
+    const said = describeWithheldSelfRestartLetter({ event: full, footprint: source });
+    expect(said).toContain("STANDS");
+    expect(said).toContain("NOTHING THIS DAEMON EXECUTES");
+  });
+});
+
+/**
  * THE SEAM, and it is the one this package is: the facts written by the process that died
  * (#309) reach a letter read by a human. A unit over the mapping does not measure it — what
  * is asserted here is that `selfRestartEvent`'s OUTPUT is what the letter's input consumes,
@@ -230,7 +458,7 @@ describe("the seam: the memory that survived the exit → the letter", () => {
     const event = selfRestartEvent({ memory, loaded: memory.target });
     expect(event).toBeDefined();
     if (event === undefined) return;
-    const { body } = planSelfRestartLetter({ event, root });
+    const { body } = planSelfRestartLetter({ change: changed, event, root });
     expect(body).toContain("fd1c14a67121");
     expect(body).toContain("7db145ba901a");
     expect(body).toContain("18 коммит");
@@ -247,7 +475,7 @@ describe("the seam: the memory that survived the exit → the letter", () => {
     const event = selfRestartEvent({ memory: old, loaded: old.target });
     expect(event).toBeDefined();
     if (event === undefined) return;
-    const { body } = planSelfRestartLetter({ event, root });
+    const { body } = planSelfRestartLetter({ change: changed, event, root });
     expect(body).toContain("7db145ba901a");
     expect(body).toContain("не записано");
   });

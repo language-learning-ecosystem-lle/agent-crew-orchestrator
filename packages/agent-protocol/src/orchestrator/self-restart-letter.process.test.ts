@@ -163,6 +163,15 @@ const contour = (roles: readonly unknown[]): { readonly repo: string; readonly c
   writeFileSync(join(repo, "CARD.md"), "the role card\n");
   writeFileSync(join(repo, ".gitignore"), "node_modules\nmailco/\n.orchestrator/\n");
   cpSync(SRC, join(repo, "src"), { recursive: true });
+  // NO `package.json` IS WRITTEN BESIDE THE SOURCES, and that is a fact the tests below
+  // stand on rather than an omission (thread 161). The narrowing asks which directory of the
+  // checkout the daemon executes, and the answer is the nearest `package.json` above its
+  // entry — here there is none above `src/cli.ts` inside the contour, so the box runs in the
+  // "boundary unknown" shape: every path of the checkout counts as executable. That is the
+  // SAFE side of the narrowing, and it is the one worth having at the seam — what a process
+  // test can prove that a unit cannot is that the tick reads the diff out of git at all.
+  // (One was written here and taken back out: a `package.json` beside the copied sources
+  // moves the module boundary and `zod` stops resolving from `src/config/config.ts`.)
   symlinkSync(NODE_MODULES, join(repo, "node_modules"), "dir");
   git(repo, "add", ".");
   git(repo, "commit", "-qm", "the loaded code");
@@ -358,6 +367,72 @@ describe("the successor tells the standing address what the restart cost — thr
 
       // THE LEDGER IS WRITTEN — and written only now, after an exit code of 0.
       expect(ledgerOf(repo)).toContain("2026-09-06T12:34:56Z");
+      expect(lettersIn(repo)).toBe(1);
+    },
+    3 * HANG_CEILING_MS,
+  );
+
+  /**
+   * THE NARROWING, AT THE SEAM (thread 161). The unit knows what `executableChange` answers
+   * over a list of paths; only the real door says whether the tick reads that list out of
+   * git at all, over the right pair of shas, in the right checkout — and the field case it
+   * answers is exactly a restart whose diff a unit would never have been handed.
+   *
+   * The memory is made to name a REAL earlier commit: the fixture's default `from` is forty
+   * `a`s, a sha no repository holds, and a diff against it cannot be read — which is the
+   * `unmeasured` branch and posts. Every assertion about withholding has to move off it.
+   */
+  const restartAcross = (repo: string, path: string | undefined, body: string): void => {
+    const before = git(repo, "rev-parse", "HEAD").trim();
+    if (path === undefined) git(repo, "commit", "-q", "--allow-empty", "-m", "nothing moved");
+    else {
+      writeFileSync(join(repo, path), body);
+      git(repo, "add", ".");
+      git(repo, "commit", "-qm", `moving ${path}`);
+    }
+    git(repo, "push", "-q", "origin", "main");
+    rememberRestart(repo, { from: before });
+  };
+
+  it(
+    "a restart that moved NOTHING this box executes writes no letter, and says so by name",
+    () => {
+      const { repo, cli } = contour([DEV_CORE, GITHUB, CURATOR, JOHN]);
+      // The whole checkout is executable in this fixture (see `contour`), so the only diff
+      // that moves nothing of it is an empty one. What is under test is the READING: the tick
+      // asks git for `from..to` in the code checkout and believes the answer. Which paths of
+      // a non-empty diff count is the unit's question, and it is asked there.
+      restartAcross(repo, undefined, "");
+
+      const said = tick(cli, repo);
+
+      expect(said).not.toContain("the LOADED CODE is not the ref");
+      expect(said).toContain("letter — WITHHELD");
+      expect(said).toContain("NOTHING THIS DAEMON EXECUTES");
+      // The line lets a reader check the narrowing instead of trusting it: what was measured.
+      expect(said).toContain("every path of that checkout is treated as executable");
+      // NOTHING WAS TOLD AND NOTHING WAS REMEMBERED: no receiver, no letter, no ledger — a
+      // withheld letter reached nobody, so a lock over it would silence the next real one.
+      expect(receiverOf(repo)).toBeUndefined();
+      expect(lettersIn(repo)).toBe(0);
+      expect(ledgerOf(repo)).toBeUndefined();
+      expect(turnsOf(repo, "curator")).not.toContain(SELF_RESTART_SLUG);
+    },
+    3 * HANG_CEILING_MS,
+  );
+
+  it(
+    "a restart that moved the PACKAGE still writes the letter, and it names what moved",
+    () => {
+      const { repo, cli } = contour([DEV_CORE, GITHUB, CURATOR, JOHN]);
+      restartAcross(repo, join("src", "moved.ts"), "export const moved = true;\n");
+
+      expect(tick(cli, repo)).toContain("the self-restart is posted to the standing address");
+      const receiver = receiverOf(repo);
+      expect(receiver, `no receiver of '${SELF_RESTART_SLUG}' in the feed`).toBeDefined();
+      const shown = readBack(repo, receiver as string);
+      expect(shown).toContain("что сменилось в исполняемом");
+      expect(shown).toContain("src/moved.ts");
       expect(lettersIn(repo)).toBe(1);
     },
     3 * HANG_CEILING_MS,
