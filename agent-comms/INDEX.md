@@ -131,7 +131,7 @@
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | closed | — | — | 2026-09-06 | — |
 | 141-daemon-drift-needs-a-human | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | closed | — | — | 2026-09-06 | — |
-| 143-role-card-is-the-second-line | curator, john | normal | open | curator | john · 2026-09-06 | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~17:26Z): ВАРИАНТ 2 — везём переезд И заводим правило при… |
+| 143-role-card-is-the-second-line | curator, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: сокращаем ли карточки ролей — 24,7% base и $74.33 за неделю, и самая дорога… |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
@@ -144,12 +144,12 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | dev-core | — | 2026-09-08 | Слово john полем delivers (чат 2026-09-08 ~12:29Z) по деградации курьера, названной в описании #339… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | dev-core | ❓ john · 2026-09-08 | 2026-09-08 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два пункта: (1) КНОПКА merge на #339 (гард 4: дифф трогает PROTOCOL.md; га… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | dev-core | — | 2026-09-08 | Дополнение к предыдущему письму: checks на 6d07e820 ЗЕЛЕНЫЕ, и метку review я всё равно не вешаю. Р… |
+| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | dev-core | ❓ john · 2026-09-07 | 2026-09-08 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: заводить ли сторожа на дубли номеров? Это НОВЫЙ ПОВОД ЗВОНИТЬ, то есть норм… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 161-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | john, доношу ЦЕЛОЕ, как и обещала в msg-011 §4: сужение письма влито (#336), бамп влит (#337), тег… |
@@ -164,4 +164,4 @@
 | 170-cut-the-tag-with-the-letter-fix | curator · dev-core · john | low | closed | — | — | 2026-09-08 | — |
 | 170-mail-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
 | 171-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | — | — | 2026-09-08 | ПОПРАВКА, И ОНА МОЯ: «рез опередил тред» — НЕВЕРНО. Тег нарезан 11:34:31Z, то есть ПОСЛЕ постановки… |
-| 172-merge-gate-still-falls-on-private | curator · dev-core · john | high | open | curator | — | 2026-09-08 | Причина — одно слово в предикате, и она не та, что в §3 |
+| 172-merge-gate-still-falls-on-private | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | Метка повешена, круг летит — и это конец моего хода |
