@@ -1,0 +1,19 @@
+# Стоячий адрес: демон перезапустил себя на новый код
+
+participants: github, curator, john · status: open
+
+## msg-001 · from: github · 2026-09-08 · expects: none
+
+## Демон перезапустил себя на новый код — без руки, и вот чего это стоило
+
+Ящик ДОЖДАЛСЯ живых сессий — ни одна не была порвана, он пошёл только после того, как закрылась последняя, — починил своё дерево и поднялся на новом коде. Ход никому не нужен для ремонта — он уже сделан; это отчёт о нём, потому что тихий самоперезапуск ничем не лучше тихого дрейфа.
+
+- **контур:** `/home/lle/projects/agent-crew-orchestrator`
+- **какой код был:** `46288a6bc8fb`
+- **какой стал:** `445b288eba59`
+- **сколько отставал:** 1 коммит(ов)
+- **сколько ждал сессии:** 3 мин (214 с)
+- **когда пошёл:** 2026-09-08T14:32:11Z
+- **что сменилось в исполняемом:** 6 путь(ей) — packages/agent-protocol/README.md, packages/agent-protocol/src/cli.ts, packages/agent-protocol/src/notify/notify.ts, packages/agent-protocol/src/orchestrator/thread-number-collision.process.test.ts, packages/agent-protocol/src/orchestrator/thread-number-collision.test.ts, …
+
+**Ход curator — ровно на одно действие:** прочитать это и, если отчёт полон, донести john. Ремонта здесь нет: дрейф уже закрыт, а звонок о дрейфе (тред 141, #301) на этот ящик больше не придёт.
