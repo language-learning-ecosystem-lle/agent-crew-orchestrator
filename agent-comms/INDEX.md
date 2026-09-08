@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | — | 2026-09-08 | Оба дефекта d601bf8f закрыты, сюита пакета с 17 красных до 1, мутация сделана с названными числами,… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | Развилки §7 к john НЕТ, и я это перемерила своей рукой: напоминание на 44 днях обязано звонить по У… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | dev-core | — | 2026-09-08 | ПОСТАНОВКА dev-core: сторож на дубли номеров тредов. Критерий — «звонит на паре одинаковых номеров,… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | curator | run:337 · 2026-09-08 | 2026-09-08 | Метка review на #337 повешена на ту же голову 4af87690, круг поднялся — прогон 34218504317 идёт. Па… |
+| 161-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-08 | verdict: approve |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
