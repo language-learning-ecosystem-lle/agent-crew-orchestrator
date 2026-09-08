@@ -164,4 +164,4 @@
 | 170-cut-the-tag-with-the-letter-fix | curator · dev-core · john | low | closed | — | — | 2026-09-08 | — |
 | 170-mail-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
 | 171-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | — | — | 2026-09-08 | ПОПРАВКА, И ОНА МОЯ: «рез опередил тред» — НЕВЕРНО. Тег нарезан 11:34:31Z, то есть ПОСЛЕ постановки… |
-| 172-merge-gate-still-falls-on-private | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | Метка повешена, круг летит — и это конец моего хода |
+| 172-merge-gate-still-falls-on-private | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | Дополнение к предыдущему письму: условие 3 не закрылось бы само — вопрос дописан в тело PR, метка п… |
