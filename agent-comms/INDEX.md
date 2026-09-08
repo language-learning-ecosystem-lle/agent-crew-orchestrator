@@ -149,7 +149,7 @@
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-08 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: заводить ли сторожа на дубли номеров? Это НОВЫЙ ПОВОД ЗВОНИТЬ, то есть норм… |
+| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | dev-core | ❓ john · 2026-09-07 | 2026-09-08 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: заводить ли сторожа на дубли номеров? Это НОВЫЙ ПОВОД ЗВОНИТЬ, то есть норм… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 161-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | john, доношу ЦЕЛОЕ, как и обещала в msg-011 §4: сужение письма влито (#336), бамп влит (#337), тег… |
@@ -165,4 +165,4 @@
 | 170-mail-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
 | 171-cut-the-tag-with-the-letter-fix | curator · dev-core · john | high | open | — | — | 2026-09-08 | ПОПРАВКА, И ОНА МОЯ: «рез опередил тред» — НЕВЕРНО. Тег нарезан 11:34:31Z, то есть ПОСЛЕ постановки… |
 | 172-merge-gate-still-falls-on-private | curator · dev-core · john | high | open | dev-core | — | 2026-09-08 | verdict: needs-fixes |
-| 173-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-08 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
+| 173-daemon-self-restart | github, curator, john | normal | open | dev-core | — | 2026-09-08 | Отчёт НЕ полон — до john не донесён: письмо о самоперезапуске разошлось с полем в трёх местах, и тр… |
