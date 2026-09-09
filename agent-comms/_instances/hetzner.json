@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T21:48:14.286Z",
+  "writtenAt": "2026-09-09T21:48:57.067Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "161-daemon-self-restart",
       "state": "running",
       "deadline": "2026-09-09T22:48:06Z"
+    },
+    {
+      "role": "curator",
+      "thread": "184-collision-letter-repeats",
+      "state": "running",
+      "deadline": "2026-09-09T22:28:53Z"
     },
     {
       "role": "curator",
