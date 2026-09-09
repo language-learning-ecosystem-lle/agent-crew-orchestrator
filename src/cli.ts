@@ -13259,9 +13259,17 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
       );
       return;
     }
-    if (run.kind === "sent") {
-      for (const line of run.lines) out(`agent-protocol: daemon — courier: ${line}`);
-    }
+    // THE WATCHMEN'S LINES BELONG TO EVERY TICK, NOT ONLY TO THE ONES THAT HAD SOMETHING TO
+    // SAY TO A HUMAN (thread 184, measured on the field 2026-09-09). These lines are not the
+    // digest — they are what the run said about ITS OWN work, and `quiet` used to drop all of
+    // them and print the summary alone. That is exactly backwards: a `quiet` tick is the tick
+    // whose watchmen are HOLDING their locks, so the one fact the journal existed to carry —
+    // "the pair was found, the letter is held, and here is why" — was unreachable precisely
+    // when it was true. Measured: every courier line in `.orchestrator/daemon.log` for hours
+    // read `nothing to announce` and not one of them named the number watchman, while the
+    // watchman was walking eight pairs on every tick. A silent watchman and a broken watchman
+    // are the same thing to a reader, and the journal is the only place this one reports.
+    for (const line of run.lines) out(`agent-protocol: daemon — courier: ${line}`);
     out(`agent-protocol: daemon — courier: ${run.summary}`);
   };
 
