@@ -128,3 +128,4 @@
 - [Ёмкость окна мерится долларами](window-capacity-is-measured-in-dollar-equivalent.md) — `total_cost_usd` у сессии и у круга; тариф — имя, не замер
 - [Сюита в worktree ломает контур](suite-in-a-worktree-breaks-the-contour.md) — общий `.git/config`: `origin` переписан, почта встала у всех
 - [Журнал курьера не оракул доставки](courier-journal-is-not-a-delivery-oracle.md) — «звонить не о чем» при 15 письмах: мерь приёмником
+- [Письмо самоперезапуска называет ОТПЕЧАТОК](self-restart-letter-names-the-footprint.md) — «смену исполняемого» с #352 мерит читатель одной командой
