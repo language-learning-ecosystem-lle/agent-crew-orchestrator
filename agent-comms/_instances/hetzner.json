@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T21:37:00.575Z",
+  "writtenAt": "2026-09-09T21:38:52.756Z",
   "roles": [
     "curator",
     "dev-core",
@@ -23,7 +23,7 @@
     {
       "role": "dev-core",
       "thread": "186-collapsing-probe-class-enumerated",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-09T22:36:07Z"
     }
   ]
