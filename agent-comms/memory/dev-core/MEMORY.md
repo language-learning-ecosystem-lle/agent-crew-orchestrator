@@ -31,7 +31,8 @@
 - [Число проверок перемеряется, а не переносится](test-counts-must-be-remeasured.md)
 - [Залогинен ли `gh` — меряется](bare-gh-in-a-session-has-no-login.md) — старый `. secrets.aco.env` рвёт `&&`-цепочку.
 - [Письмо себе — только `--expects none`](note-to-self-needs-expects-none.md)
-- [Класс упавшего круга — в артефакте прогона](failed-review-round-class-lives-in-the-artifact.md) — `claude-execution-output.json`, `-R`.
+- [Класс упавшего круга — в артефакте прогона](failed-review-round-class-lives-in-the-artifact.md) — `claude-execution-output.json`, `-R`; `num_turns: 1` = цена ноль.
+- [Парк под кругом умирает вместе с кругом](park-under-a-round-dies-with-the-round.md) — `--park-lifted`, а ресет пережидать своей сессией.
 - [Круг ревью читает СНИМОК почты](review-round-reads-a-snapshot-of-the-mail.md)
 - [Нетронутое тело PR — само доказательство](unedited-pr-body-can-be-the-proof.md)
 - [Повод заметки — не тред рождения](note-cause-is-not-the-birth-thread.md) — нет → `thread:` не писать вовсе.
