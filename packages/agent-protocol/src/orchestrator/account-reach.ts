@@ -20,11 +20,27 @@
  * reached for was the wrong one. This module turns that sentence into a refusal that names
  * the path, the mode, the owner and the user that cannot reach it.
  *
- * WHAT IT DOES NOT TOUCH. A role without `systemUser` — every role that runs on this
- * circuit today except one — takes no branch here at all: the session is raised as this
- * process's own user, the directory is the one this process already reads, and asking the
- * box about it would be a cost paid by everyone for one role. That is the same rule
- * {@link resolveSpawnIdentity} follows, and for the same reason.
+ * WHY IT NO LONGER KEYS ON `systemUser` — the correction of thread `179`, and the sentence
+ * this block used to carry is the defect. It said: a role without `systemUser` "takes no
+ * branch here at all: the session is raised as this process's own user, the directory is
+ * the one this process already reads". THE SECOND HALF DOES NOT FOLLOW FROM THE FIRST. An
+ * account directory is named by the MACHINE config and may sit in any home on the box; the
+ * user a role is raised as has nothing to do with who owns it. Measured on 2026-09-09 from
+ * a session of this circuit (`uid=1002(aco-hetzner)` — the very user both `claude-code`
+ * roles are raised as): `accounts.codex-main` is `/home/lle/.codex`, `0775 lle:lle`, and
+ * role `pilot-codex` is `active`, points at it and declares no `systemUser`. Its next lift
+ * would have died on the credentials exactly as `devops` did on 02.09 — same failure,
+ * same wrong diagnosis, and this door would have watched it go by.
+ *
+ * And the door that DOES look at the filesystem today confirms it rather than catching it:
+ * `doctor` on that same box answers `account: 'codex-main' token: … Permission denied` and
+ * `account: 'lle-second' token: Not logged in · Please run /login` — the second one is the
+ * vendor's word for a directory this box cannot READ, i.e. the misdiagnosis of thread 047
+ * still being printed, now about a role nobody switches users for.
+ *
+ * WHAT STILL TAKES NO BRANCH. A role pointed at NO account: the tool falls back to its own
+ * default home under the running user's `HOME`, which that user owns. There is no path
+ * named by anybody, so there is nothing to judge.
  */
 
 import type { Role } from "../roles/schema.js";
@@ -159,12 +175,29 @@ const describePath = (facts: PathFacts): string =>
     ? "unreadable"
     : `mode 0${facts.mode.toString(8).padStart(3, "0")}, owner uid ${facts.uid ?? "?"} gid ${facts.gid ?? "?"}`;
 
-const REPAIR = [
+const REPAIR_SWITCHED = [
   "Repair: give this role an account directory of its OWN, owned by that user, and log in",
   "UNDER that user (docs/box-setup.md §0.1a) — 'accounts.<id>.configDir' of the machine config,",
   "named by 'launch.account' of the role's card. Opening the daemon user's directory to the",
   "role instead hands a sandboxed identity the live token of the account other roles spend,",
   "which is the isolation the declaration exists to build.",
+].join(" ");
+
+/**
+ * THE OTHER REPAIR, and it is a different one on purpose. Nobody switched users here, so
+ * the directory is simply in the wrong home: the fix is an account this user can reach
+ * (log it in under THIS user, into a directory of this user's own home), or — when the
+ * directory really does belong to another identity — a `systemUser` on the card so that
+ * the role is raised as whoever owns it. Sending an operator to `chmod` a home that
+ * belongs to somebody else is the one repair this door must not name.
+ */
+const REPAIR_OWN = [
+  "Repair: point this role at an account this user can reach — log the account in UNDER this",
+  "user, into a directory of its own home, and name it in 'accounts.<id>.configDir' of the",
+  "machine config; or, when the directory belongs to another identity on purpose, declare",
+  "'systemUser' on the role's card so the session is raised as whoever owns it. Opening",
+  "another user's home to this one instead shares a live token across a boundary the box",
+  "was set up to keep.",
 ].join(" ");
 
 /**
@@ -182,23 +215,27 @@ export const accountReachRefusal = (input: {
   readonly account?: { readonly id: string; readonly configDir: string };
   readonly reach: AccountReach | undefined;
 }): string | undefined => {
-  // NOT A SWITCH — the session runs as this process's user, reading the directory this
-  // process reads. There is no second identity for the bits to be wrong for.
-  const as = input.as;
-  if (as.mode !== "sudo") return undefined;
   // NO ACCOUNT NAMED — the tool falls back to its own default home under the target user's
   // `HOME`, which that user owns. Whether the account there is logged in is the vendor's
   // answer and not a fact about permissions; this door does not invent one.
+  const as = input.as;
   const account = input.account;
   if (account === undefined) return undefined;
+  // WHICH USER THE BITS ARE JUDGED FOR — the switch target when there is one, and otherwise
+  // the user this supervisor already is. Both are read off `reach`, not off `as`: `SpawnAs`
+  // carries no name in the `self` shape, and the name is the caller's answer either way.
+  const who =
+    as.mode === "sudo"
+      ? `system user '${as.user}'`
+      : `the supervisor's own user${input.reach === undefined ? "" : ` '${input.reach.user}'`}`;
   const said = (why: string): string =>
     [
-      `role '${input.role.id}' is raised as system user '${as.user}' and pointed at account`,
+      `role '${input.role.id}' is raised as ${who} and pointed at account`,
       `'${account.id}' in '${account.configDir}', ${why}.`,
       "Refused before the spawn rather than left to the vendor: the session would come up, fail to",
       "read its credentials and exit as 'Not logged in', which reads as a dead token and puts the",
       "whole account on the shelf — including roles that never failed (thread 047-devops-role).",
-      REPAIR,
+      as.mode === "sudo" ? REPAIR_SWITCHED : REPAIR_OWN,
     ].join(" ");
   if (input.reach === undefined) {
     return said("and this run did not ask the box whether that user can reach it");
@@ -213,7 +250,15 @@ export const accountReachRefusal = (input: {
   // `permits` says `false` about everything it has no bits for — so judging one would turn
   // "this process may not look" into "this user may not pass", which is the same mistake in
   // the same door, one layer up.
-  const blocked = ancestors.find((facts) => !facts.blind && !permits(facts, identity, EXEC));
+  //
+  // AND AN ANCESTOR THE BOX SAYS IS NOT THERE IS ABSENCE, not a permission fact — the same
+  // rule the directory itself gets a few lines below, applied one layer up, and without it
+  // the widening of thread `179` would refuse every unswitched role whose account has not
+  // been logged in yet, naming a traversal that nothing denies. The switched case keeps
+  // judging absent ancestors exactly as it has since thread 047: there the path was to be
+  // MADE under that user's own home, so its absence is the defect being reported.
+  const judged = as.mode === "sudo" ? ancestors : ancestors.filter((facts) => facts.present);
+  const blocked = judged.find((facts) => !facts.blind && !permits(facts, identity, EXEC));
   if (blocked !== undefined) {
     return said(
       `which that user cannot traverse: '${blocked.path}' is ${blocked.present ? `${describePath(blocked)} — no 'x' for this user` : `absent or unreadable${blocked.detail === undefined ? "" : ` (${blocked.detail})`}`}`,
@@ -228,7 +273,29 @@ export const accountReachRefusal = (input: {
   // the field case this module was written for, and worse, because it would name a repair
   // that is already done. The vendor answers for what is inside the directory; this door
   // answers only for reaching it, and about this one it has nothing to say.
-  if (!dir.present && dir.blind === true) return undefined;
+  //
+  // AND THE ASYMMETRY IS THE WHOLE OF THE `self` CASE (thread `179`). When nobody switches
+  // users, the process that cannot `stat` the directory IS the process the session runs as
+  // — "the supervisor is not permitted to read the bits" and "the session will not be able
+  // to read the credentials" stop being two different sentences and become one. There is no
+  // second identity left for the blindness to be somebody else's, so silence here would be
+  // this door failing open on the one shape it can answer with certainty.
+  if (!dir.present && dir.blind === true) {
+    if (as.mode === "sudo") return undefined;
+    return said(
+      `which THIS user is not permitted to look at${dir.detail === undefined ? "" : ` (${dir.detail})`} — and with no switch of identity there is nobody else for that blindness to belong to`,
+    );
+  }
+  // ABSENCE IS NOT UNREADABILITY, and without a switch it is not this door's business
+  // (thread `179`). A directory that is simply not there yet is what `config set` calls
+  // ordinary — the login creates it — and a role may legitimately be pointed at one before
+  // a human has logged that subscription in. `EACCES` is the opposite: no login repairs it,
+  // because a login under the OTHER user rewrites a file that stays that user's. So the
+  // widening of this thread carries exactly the refusals a login cannot fix, and the
+  // switched case keeps the answer it has given since thread 047 — where the identity is
+  // somebody else's, an absent directory IS the defect, since that user's own home is where
+  // it was supposed to be made.
+  if (!dir.present && as.mode !== "sudo") return undefined;
   if (!dir.present) {
     return said(
       `which does not exist on this box${dir.detail === undefined ? "" : ` (${dir.detail})`}`,
