@@ -227,15 +227,26 @@ const homeContour = (options?: {
 };
 
 /**
- * THE TWO DOORS A DAEMON IS RAISED BY (thread 180) — `orchestrator daemon` is the one a
+ * THE THREE DOORS A DAEMON IS RAISED BY (thread 180) — `orchestrator daemon` is the one a
  * backgrounded `up` spawns, `orchestrator up --foreground` is the one every unit uses
- * (`ExecStart`, see `orchestrator/systemd.ts`). They run the SAME loop, so any protection
- * that lives at one of them and not the other is protection the box does not have on the
- * path it actually runs on — which is exactly the outage of 2026-09-09 ~13:15Z.
+ * (`ExecStart`, see `orchestrator/systemd.ts`), and `orchestrator up` backgrounded is the
+ * one a hand types. The first two run the SAME loop, so any protection that lives at one
+ * of them and not the other is protection the box does not have on the path it actually
+ * runs on — which is exactly the outage of 2026-09-09 ~13:15Z.
+ *
+ * THE THIRD IS HERE FOR A REASON THAT IS NOT SYMMETRY (curator's measurement, same
+ * thread). The backgrounded parent looks like a door that needs no protection of its own
+ * — "the child it spawns has its own" — and in the one case this file is about that is
+ * false: the parent's FIRST action is `pathsFrom`, two hundred lines before the spawn, so
+ * on a bumped config the parent leaves by the argument door and the child is never born.
+ * A door excluded by an untrue sentence in a comment is the same class of defect as the
+ * outage itself, so the sentence is not corrected — the door is let in and PINNED by the
+ * two cases below, exactly like the other two.
  */
 const DAEMON_DOORS = [
   ["orchestrator", "daemon"],
   ["orchestrator", "up", "--foreground"],
+  ["orchestrator", "up"],
 ] as const;
 
 /** One tick of a real daemon over `repo`, raised from `cli` — both streams AND the code. */
@@ -1116,7 +1127,7 @@ describe("a supervised daemon that finds itself behind its ref", () => {
  */
 describe("a daemon meeting a config newer than its build", () => {
   /**
-   * AND IT IS ASKED OF BOTH DOORS, NOT OF THE ONE THAT WAS FIXED (thread 180, curator's
+   * AND IT IS ASKED OF EVERY DOOR, NOT OF THE ONE THAT WAS FIXED (thread 180, curator's
    * addendum to the acceptance). The field outage of 2026-09-09 ~13:15Z is what a
    * one-door test buys: the survival switch stood in the DISPATCH branch of
    * `orchestrator daemon`, this case exercised that branch, and the box — raised by
@@ -1124,8 +1135,10 @@ describe("a daemon meeting a config newer than its build", () => {
    * verdict printed WITHOUT the `daemon — ` prefix that the repair path always carries.
    * Twenty minutes of silence and a five-step repair by hand, under a green suite.
    *
-   * So the door is a parameter now. A third place to start the loop will have to answer
-   * these same three assertions or say out loud that it is not a daemon.
+   * So the door is a parameter now, and the parameter already has three entries — the
+   * backgrounded `up` joined them when the sentence that excluded it turned out to be
+   * untrue ({@link DAEMON_DOORS}). A FOURTH place to raise the loop will have to answer
+   * these same assertions or say out loud that it is not a daemon.
    */
   for (const door of DAEMON_DOORS) {
     it(
@@ -1153,10 +1166,10 @@ describe("a daemon meeting a config newer than its build", () => {
    * `StartLimitBurst` intact: a supervisor told "2" stops instead of raising four more
    * processes into the same wall.
    *
-   * BOTH DOORS AGAIN, and here for the second half of the property: the doors must agree
-   * on the ending that CANNOT be repaired too, or `up --foreground` would leave by the
-   * argument door with a message that names no repair — which is the same silence as the
-   * outage, only shorter.
+   * EVERY DOOR AGAIN, and here for the second half of the property: the doors must agree
+   * on the ending that CANNOT be repaired too, or a door would leave by the argument door
+   * with a message that names no repair — which is the same silence as the outage, only
+   * shorter.
    */
   for (const door of DAEMON_DOORS) {
     it(

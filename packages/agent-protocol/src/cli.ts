@@ -14596,22 +14596,32 @@ const runningDaemon = (pidFile: string): number | undefined => {
  */
 /**
  * THE DOOR EVERY UNIT USES (thread 019, systemd) AND THEREFORE THE ONE THAT HAD TO BE
- * ASKED (thread 180). `--foreground` means "this process IS the daemon" — so it enters
+ * ASKED (thread 180). `--foreground` means "this process IS the daemon" — so `up` enters
  * `asDaemon` here, at the top, and not around the loop call two hundred lines below. The
- * difference is not stylistic: the FIRST config read of this command is `pathsFrom` on
- * the next line, thirty lines before anything called a daemon exists, and it is the read
- * that met the verdict in the field. Protection that starts after it is protection the
- * box does not have.
+ * difference is not stylistic: the FIRST config read of this command is `pathsFrom`, the
+ * first line of `orchestratorUpFrom`, thirty lines before anything called a daemon
+ * exists, and it is the read that met the verdict in the field. Protection that starts
+ * after it is protection the box does not have.
  *
- * The backgrounded form is deliberately left outside: it starts a CHILD `orchestrator
- * daemon`, that child is protected by its own door, and a parent that pulled the tree
- * under itself would be repairing a process that is about to exit anyway.
+ * AND THE BACKGROUNDED FORM ENTERS IT TOO — `up` is ONE command with one meaning, and
+ * the reason it was once excluded is measured to be false (curator, thread 180). The
+ * excluding block said: "it starts a CHILD `orchestrator daemon`, that child is protected
+ * by its own door, and a parent that pulled the tree under itself would be repairing a
+ * process that is about to exit anyway". In the ONE case this whole protection exists
+ * for, THERE IS NO CHILD: that same `pathsFrom` stands two hundred lines BEFORE the
+ * spawn, so a config bumped past this build takes the PARENT out by the argument door —
+ * `process.exit(2)`, the verdict printed bare, without the `daemon — ` prefix the repair
+ * path always carries — and the child whose own door would have protected it is never
+ * born. Nothing after the spawn reads the config, so the reverse shape (a repair pulled
+ * out from under a child that IS already running) has no reader to fire it.
+ *
+ * So both forms end a verdict the same way: the tree is pulled to the ref and the process
+ * hands back with `SELF_RESTART_EXIT_CODE`, for the supervisor — or, on this form, for
+ * the hand that typed `up` — to raise it again under a build that can read the config.
  */
 const orchestratorUp = async (argv: readonly string[]): Promise<void> => {
   const args = withOperatorRef(argv);
-  return args.includes("--foreground")
-    ? asDaemon(args, () => orchestratorUpFrom(args))
-    : orchestratorUpFrom(args);
+  return asDaemon(args, () => orchestratorUpFrom(args));
 };
 
 const orchestratorUpFrom = async (args: readonly string[]): Promise<void> => {

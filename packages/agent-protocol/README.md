@@ -5812,12 +5812,19 @@ into the loop was NOT enough, and that is measured rather than argued:** `up` re
 config with its own hand (`pathsFrom`, to know where the pid file and the log are) thirty
 lines before anything called a daemon exists, and that is the read which met the verdict in
 the field — a wrapper around the loop alone left `--foreground` exiting 2 exactly as before.
-So `--foreground` enters `asDaemon` at the TOP of `orchestrator up`. The backgrounded form
-stays outside it deliberately: it spawns a CHILD `orchestrator daemon` which carries its own
-protection, and a parent pulling the tree under itself would be repairing a process that is
-about to exit anyway. The test parameter is `DAEMON_DOORS` (`self-restart.process.test.ts`):
-both doors answer both endings, the repair (`75`, and the tree actually moved) and the
-unrepairable stand (`2`, `A hand is needed`).
+So `up` enters `asDaemon` at its TOP, before that read, **whichever way it is typed**. The
+backgrounded form was excluded at first on the ground that "it spawns a CHILD `orchestrator
+daemon` which carries its own protection", and that ground is false in the one case this
+protection exists for: the same `pathsFrom` stands two hundred lines BEFORE the spawn, so a
+bumped config takes the PARENT out by the argument door and the child that would have been
+protected is never born. Nothing after the spawn reads the config, so the reverse shape — a
+repair pulled out from under a child that is already running — has no reader to fire it.
+`up` is one command with one meaning: every form of it meets a verdict by repairing the tree
+and handing back with `SELF_RESTART_EXIT_CODE`, for a supervisor or for the hand that typed
+it to raise again under a build that can read the config. The test parameter is
+`DAEMON_DOORS` (`self-restart.process.test.ts`): all three doors answer both endings, the
+repair (`75`, and the tree actually moved) and the unrepairable stand (`2`, `A hand is
+needed`).
 
 Live sessions are deliberately NOT a condition of this path, unlike `selfRestartVerdict`'s
 zero-lease rule: a box whose every config read is refusing holds no session that can do any
