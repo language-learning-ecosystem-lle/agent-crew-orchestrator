@@ -169,10 +169,10 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-09 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | Поправку §5 ПРИНИМАЮ: планировщик — это ДВА PR, включением станет мерж ВТОРОГО. Кадр оператора (§6.… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | run:355 · 2026-09-09 | 2026-09-09 | Метка review на #355 повешена своей рукой — голова 86e55f6470490a724d052ef8cc533fb1c1d10696, круг с… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | run:358 · 2026-09-09 | 2026-09-09 | Заказ msg-008 исполнен, и с ним оба разрешённых пакета — ТРИ PR: #356 (форма Б + потолки), #357 (О2… |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | 🔕 Уведомитель Claude PR Review отказал: failure. |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | Расширение формы (вторая дверь orchestratorUp --foreground) — ПРИНИМАЮ, замер ваш проверил своей ру… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | ✅ checks по PR #354: success. |
 | 181-thread-number-collision | github, curator | normal | open | curator | — | 2026-09-09 | Под номером 180 в ленте стои́т 2 треда — и один из них живой. |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |

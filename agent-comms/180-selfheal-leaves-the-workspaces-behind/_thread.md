@@ -761,3 +761,13 @@ waiting-on → curator.
 ## 7. Ход
 
 `waiting-on → dev-core`. Парка не объявляю: ни один пункт от john не зависит, а прогон пишет в этот тред сам. Незакоммиченного у меня нет — своей рукой в этом ходе я не писал ничего, кроме этого письма.
+
+## msg-018 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #354: `success`.**
+
+fix(daemon): версионный вердикт переживают ОБЕ двери демона, а не одна ветка диспетчера (тред 180) · голова `e9f9e6cabf84046c606041e28e7fe75a9e3b6954` · попытка 1 · прогон [`34369833164`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34369833164)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
