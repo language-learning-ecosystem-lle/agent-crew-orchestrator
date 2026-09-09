@@ -133,3 +133,4 @@
 - [Безгитовая копия дерева краснит 4 теста](gitless-tree-copy-reddens-four-tests.md) — не дефект; исключается копией чистого `origin/main`
 - [Молчание сторожа мерится доставленным дайджестом](watcher-silence-needs-a-delivered-digest.md) — окно ищут по `telegram: delivered`: 16/16 мерит гейт ПЕЧАТИ, а не обход
 - [Журнал ящика отражает твой же вывод](daemon-log-echoes-your-own-output.md) — греп якорить `^`, иначе `tail -1` врёт
+- [Текст squash — усмотрение curator](squash-text-is-the-curators-call.md) — тело PR не правят, кладут `--subject`/`--body-file` на кнопке
