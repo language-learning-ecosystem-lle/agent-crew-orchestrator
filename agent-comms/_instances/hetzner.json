@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T20:01:44.966Z",
+  "writtenAt": "2026-09-09T20:01:52.945Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "155-park-has-no-checkable-ground",
       "state": "running",
       "deadline": "2026-09-09T20:41:41Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "186-collapsing-probe-class-enumerated",
+      "state": "running",
+      "deadline": "2026-09-09T21:01:49Z"
     }
   ]
 }
