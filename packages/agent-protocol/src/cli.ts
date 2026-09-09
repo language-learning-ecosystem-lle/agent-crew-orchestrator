@@ -12626,7 +12626,7 @@ const digestPublisherFor = (input: {
   };
 };
 
-const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
+const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> => {
   // S6: not a single path in the operational command — everything comes from the
   // config; the flags remain an override for checks on a copy of the mail.
   const paths = pathsFrom(argv);
@@ -14039,6 +14039,45 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   }
 };
 
+/**
+ * WHAT MAKES A PROCESS A DAEMON, IN ONE PLACE (thread 180).
+ *
+ * The survival of a version verdict used to be a property of ONE DISPATCH BRANCH —
+ * `orchestrator daemon` set the switch and caught the error, and the loop itself knew
+ * nothing about either. That is protection by the memory of whoever edits the dispatch,
+ * and on 2026-09-09 ~13:15Z the memory was not enough: the box of this circuit runs by
+ * `orchestrator up --foreground` (the form every unit's `ExecStart` uses), that door
+ * calls the same loop WITHOUT the switch, and a config bumped to protocol 27 under a
+ * build supporting 26 took it out by the argument door — `process.exit(2)` — with the
+ * verdict printed bare, without the `daemon — ` prefix the repair path always carries.
+ * Twenty minutes of a silent circuit and a five-step repair by a hand, under a green
+ * suite: the suite only ever asked the branch that had the switch.
+ *
+ * So the switch and the trap are named ONCE, here, and every door that starts the loop
+ * runs inside them — including the work a door does BEFORE the loop. That last clause is
+ * measured and not decorative: `up` reads the config itself (`pathsFrom`, to know where
+ * the pid file and the log live) before it ever calls the loop, so a wrapper around the
+ * loop alone leaves the `--foreground` door failing exactly as it failed in the field.
+ * The `argv` handed over is the one the repair reads `--ref` out of, which is why `up`
+ * passes its RESOLVED args (`withOperatorRef`) and not the operator's typing.
+ */
+const asDaemon = async (argv: readonly string[], run: () => Promise<void>): Promise<void> => {
+  // THE ONE COMMAND THAT SURVIVES A VERSION VERDICT (thread 040) — see
+  // `repairOnVersionVerdict` and the doc block of `self-restart.ts` for the outage that
+  // made it a decision instead of an exit code.
+  throwVersionVerdicts();
+  try {
+    await run();
+  } catch (error) {
+    if (!(error instanceof ProtocolVersionError)) throw error;
+    repairOnVersionVerdict(argv, error);
+  }
+};
+
+/** The daemon as a command: the loop, inside the protection every door of it shares. */
+const orchestratorDaemon = async (argv: readonly string[]): Promise<void> =>
+  asDaemon(argv, () => orchestratorDaemonLoop(argv));
+
 /** The journal shown to john (S4): the history of events in order, readably. */
 const orchestratorLog = (argv: readonly string[]): void => {
   const path = flag(argv, "--journal") ?? pathsFrom(argv).journal;
@@ -14555,8 +14594,27 @@ const runningDaemon = (pidFile: string): number | undefined => {
  * putting it there. Hence: named, with who and why, and `--clear-force` to say it out
  * loud.
  */
+/**
+ * THE DOOR EVERY UNIT USES (thread 019, systemd) AND THEREFORE THE ONE THAT HAD TO BE
+ * ASKED (thread 180). `--foreground` means "this process IS the daemon" — so it enters
+ * `asDaemon` here, at the top, and not around the loop call two hundred lines below. The
+ * difference is not stylistic: the FIRST config read of this command is `pathsFrom` on
+ * the next line, thirty lines before anything called a daemon exists, and it is the read
+ * that met the verdict in the field. Protection that starts after it is protection the
+ * box does not have.
+ *
+ * The backgrounded form is deliberately left outside: it starts a CHILD `orchestrator
+ * daemon`, that child is protected by its own door, and a parent that pulled the tree
+ * under itself would be repairing a process that is about to exit anyway.
+ */
 const orchestratorUp = async (argv: readonly string[]): Promise<void> => {
   const args = withOperatorRef(argv);
+  return args.includes("--foreground")
+    ? asDaemon(args, () => orchestratorUpFrom(args))
+    : orchestratorUpFrom(args);
+};
+
+const orchestratorUpFrom = async (args: readonly string[]): Promise<void> => {
   const paths = pathsFrom(args);
   const pidFile = flag(args, "--pid-file") ?? paths.daemonPid;
   const log = flag(args, "--daemon-log") ?? paths.daemonLog;
@@ -16324,16 +16382,11 @@ const main = async (argv: readonly string[]): Promise<void> => {
   } else if (command === "orchestrator" && subcommand === "run") {
     await orchestratorRun(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "daemon") {
-    // THE ONE COMMAND THAT SURVIVES A VERSION VERDICT (thread 040) — see
-    // `repairOnVersionVerdict` and the doc block of `self-restart.ts` for the outage that
-    // made it a decision instead of an exit code.
-    throwVersionVerdicts();
-    try {
-      await orchestratorDaemon(argv.slice(2));
-    } catch (error) {
-      if (!(error instanceof ProtocolVersionError)) throw error;
-      repairOnVersionVerdict(argv.slice(2), error);
-    }
+    // THE SURVIVAL OF A VERSION VERDICT IS NO LONGER A PROPERTY OF THIS BRANCH (thread
+    // 180): it moved into `asDaemon`, where every door of the loop shares it. The dispatch
+    // that carried it protected the one door the suite asked about and not the one the
+    // circuit runs on.
+    await orchestratorDaemon(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "log") {
     orchestratorLog(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "stop") {

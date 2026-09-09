@@ -5799,6 +5799,26 @@ exactly two endings and neither of them loops:
   type. The argument door is chosen deliberately here: a supervisor told `2` stops instead of
   raising four more processes into the same wall, so `StartLimitBurst` stays intact.
 
+**AND "THE DAEMON" IS THE LOOP, NOT ONE DISPATCH BRANCH** (thread 180, measured on this
+repository 2026-09-09 ~13:15Z — the same class, a year of design later). The switch and the
+trap lived in the `orchestrator daemon` branch of the dispatch, so the door the suite asked
+about was protected and the door the box RUNS ON was not: `orchestrator up --foreground` is
+the form every unit's `ExecStart` uses, it calls the same loop past the switch, and a config
+declaring protocol 27 under a build supporting 26 took the process out by the argument door
+— the verdict printed bare, without the `daemon — ` prefix the repair path always carries,
+twenty minutes of a silent circuit and a five-step repair by hand, under a green suite. Both
+are now callers of `asDaemon`, which is where the switch and the trap live. **Moving them
+into the loop was NOT enough, and that is measured rather than argued:** `up` reads the
+config with its own hand (`pathsFrom`, to know where the pid file and the log are) thirty
+lines before anything called a daemon exists, and that is the read which met the verdict in
+the field — a wrapper around the loop alone left `--foreground` exiting 2 exactly as before.
+So `--foreground` enters `asDaemon` at the TOP of `orchestrator up`. The backgrounded form
+stays outside it deliberately: it spawns a CHILD `orchestrator daemon` which carries its own
+protection, and a parent pulling the tree under itself would be repairing a process that is
+about to exit anyway. The test parameter is `DAEMON_DOORS` (`self-restart.process.test.ts`):
+both doors answer both endings, the repair (`75`, and the tree actually moved) and the
+unrepairable stand (`2`, `A hand is needed`).
+
 Live sessions are deliberately NOT a condition of this path, unlike `selfRestartVerdict`'s
 zero-lease rule: a box whose every config read is refusing holds no session that can do any
 protocol work, and the behaviour being replaced took those same sessions down with an exit 2

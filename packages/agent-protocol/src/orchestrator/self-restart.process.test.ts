@@ -226,18 +226,30 @@ const homeContour = (options?: {
   return { repo, cli: join(repo, "src", "cli.ts") };
 };
 
+/**
+ * THE TWO DOORS A DAEMON IS RAISED BY (thread 180) — `orchestrator daemon` is the one a
+ * backgrounded `up` spawns, `orchestrator up --foreground` is the one every unit uses
+ * (`ExecStart`, see `orchestrator/systemd.ts`). They run the SAME loop, so any protection
+ * that lives at one of them and not the other is protection the box does not have on the
+ * path it actually runs on — which is exactly the outage of 2026-09-09 ~13:15Z.
+ */
+const DAEMON_DOORS = [
+  ["orchestrator", "daemon"],
+  ["orchestrator", "up", "--foreground"],
+] as const;
+
 /** One tick of a real daemon over `repo`, raised from `cli` — both streams AND the code. */
 const tickRun = (
   cli: string,
   repo: string,
   env?: Readonly<Record<string, string>>,
+  door: readonly string[] = DAEMON_DOORS[0],
 ): { readonly said: string; readonly status: number | null } => {
   const ran = spawnSync(
     TSX,
     [
       cli,
-      "orchestrator",
-      "daemon",
+      ...door,
       "--ref",
       "origin/main",
       "--repo",
@@ -1103,21 +1115,35 @@ describe("a supervised daemon that finds itself behind its ref", () => {
  * not move is the crash loop this thread exists to end.
  */
 describe("a daemon meeting a config newer than its build", () => {
-  it(
-    "pulls and hands back instead of taking the exit its unit refuses to restart",
-    () => {
-      const { repo, cli } = homeContour({ pullable: true, bumpVersionOnRef: true });
-      const wanted = git(repo, "rev-parse", "origin/main").trim();
-      const ran = tickRun(cli, repo);
+  /**
+   * AND IT IS ASKED OF BOTH DOORS, NOT OF THE ONE THAT WAS FIXED (thread 180, curator's
+   * addendum to the acceptance). The field outage of 2026-09-09 ~13:15Z is what a
+   * one-door test buys: the survival switch stood in the DISPATCH branch of
+   * `orchestrator daemon`, this case exercised that branch, and the box — raised by
+   * `up --foreground`, the form every unit uses — went out by the argument door with the
+   * verdict printed WITHOUT the `daemon — ` prefix that the repair path always carries.
+   * Twenty minutes of silence and a five-step repair by hand, under a green suite.
+   *
+   * So the door is a parameter now. A third place to start the loop will have to answer
+   * these same three assertions or say out loud that it is not a daemon.
+   */
+  for (const door of DAEMON_DOORS) {
+    it(
+      `pulls and hands back instead of taking the exit its unit refuses to restart — via '${door.join(" ")}'`,
+      () => {
+        const { repo, cli } = homeContour({ pullable: true, bumpVersionOnRef: true });
+        const wanted = git(repo, "rev-parse", "origin/main").trim();
+        const ran = tickRun(cli, repo, undefined, door);
 
-      expect(ran.status).not.toBe(2);
-      expect(ran.status).toBe(SELF_RESTART_EXIT_CODE);
-      expect(ran.said).toContain("VERSION VERDICT");
-      expect(ran.said).toContain("git pull --ff-only");
-      expect(git(repo, "rev-parse", "HEAD").trim()).toBe(wanted);
-    },
-    2 * HANG_CEILING_MS,
-  );
+        expect(ran.status).not.toBe(2);
+        expect(ran.status).toBe(SELF_RESTART_EXIT_CODE);
+        expect(ran.said).toContain("VERSION VERDICT while running");
+        expect(ran.said).toContain("git pull --ff-only");
+        expect(git(repo, "rev-parse", "HEAD").trim()).toBe(wanted);
+      },
+      2 * HANG_CEILING_MS,
+    );
+  }
 
   /**
    * AND THE ENDING THAT CANNOT BE REPAIRED IS ONE FALL, NOT FIVE. `contour()` is a box
@@ -1126,24 +1152,31 @@ describe("a daemon meeting a config newer than its build", () => {
    * with the command a hand must type printed beside it. That is what keeps
    * `StartLimitBurst` intact: a supervisor told "2" stops instead of raising four more
    * processes into the same wall.
+   *
+   * BOTH DOORS AGAIN, and here for the second half of the property: the doors must agree
+   * on the ending that CANNOT be repaired too, or `up --foreground` would leave by the
+   * argument door with a message that names no repair — which is the same silence as the
+   * outage, only shorter.
    */
-  it(
-    "falls over once, loudly, when no pull of this tree could fix it",
-    () => {
-      const repo = contour();
-      writeFileSync(
-        join(repo, "agent-protocol.json"),
-        `${JSON.stringify({ ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION + 1 }, null, 2)}\n`,
-      );
-      git(repo, "commit", "-qam", "the schema bump");
-      git(repo, "push", "-q", "origin", "main");
-      const ran = tickRun(codeCheckout().cli, repo);
+  for (const door of DAEMON_DOORS) {
+    it(
+      `falls over once, loudly, when no pull of this tree could fix it — via '${door.join(" ")}'`,
+      () => {
+        const repo = contour();
+        writeFileSync(
+          join(repo, "agent-protocol.json"),
+          `${JSON.stringify({ ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION + 1 }, null, 2)}\n`,
+        );
+        git(repo, "commit", "-qam", "the schema bump");
+        git(repo, "push", "-q", "origin", "main");
+        const ran = tickRun(codeCheckout().cli, repo, undefined, door);
 
-      expect(ran.status).toBe(2);
-      expect(ran.said).toContain("VERSION VERDICT");
-      expect(ran.said).toContain("A hand is needed");
-      expect(ran.said).toContain("start limit stays intact");
-    },
-    2 * HANG_CEILING_MS,
-  );
+        expect(ran.status).toBe(2);
+        expect(ran.said).toContain("VERSION VERDICT");
+        expect(ran.said).toContain("A hand is needed");
+        expect(ran.said).toContain("start limit stays intact");
+      },
+      2 * HANG_CEILING_MS,
+    );
+  }
 });
