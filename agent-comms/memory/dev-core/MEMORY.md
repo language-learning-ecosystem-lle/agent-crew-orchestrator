@@ -122,3 +122,5 @@
 - [Глоб по `/tmp/tmp.*` поднимает файл ЧУЖОЙ роли](tmp-glob-picks-a-foreign-roles-file.md) — путь из `mktemp` не восстанавливают, тело пишут и шлют одним вызовом.
 - [Прошлый такт читается транскриптом](previous-tick-transcript-is-readable.md) — `.jsonl` в `sessions/`; `.tmp` умирает с сессией.
 - [Бамп версии до коммита краснит два процессных теста](version-bump-reddens-two-process-tests-until-committed.md) — дверь читает конфиг на `HEAD`.
+- [Заголовок тела `pr open` — ПЕРВЫЕ две строки](pr-open-body-header-is-two-first-lines.md) — подпись внизу дверь не видит.
+- [`doctor` печатает «Not logged in» и на нечитаемом каталоге](doctor-token-probe-reports-eacces-as-not-logged-in.md) — мерить права, а не логинить.
