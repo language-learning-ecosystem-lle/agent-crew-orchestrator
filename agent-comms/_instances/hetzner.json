@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T14:26:26.459Z",
+  "writtenAt": "2026-09-09T14:27:25.181Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "178-zones-door-silent-pass",
+      "state": "running",
+      "deadline": "2026-09-09T15:07:20Z"
+    }
+  ]
 }
