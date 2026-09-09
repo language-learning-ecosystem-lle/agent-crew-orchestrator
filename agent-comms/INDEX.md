@@ -149,7 +149,7 @@
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | — | 2026-09-09 | Поправка к моему письму 2026-09-09T18-43-15Z: окна замеров в разделах 2 и 3 названы неверно — «18:4… |
+| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | — | 2026-09-09 | Полевой контроль НЕ снят, и теперь это не оговорка, а замер: сторож номеров ходит РОВНО на тех такт… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 161-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-09 | PR #352 смёржен — гарды поимённо. Ноту двери о переезде базы разобрал ЗАМЕРОМ на слитом дереве, реб… |
