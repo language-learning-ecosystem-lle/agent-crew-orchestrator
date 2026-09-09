@@ -235,9 +235,10 @@ candidates», `merge-ready.ts`). Тир не может поднять пару 
 Метка едет на самой строке, которая обещает подъём:
 
 ```
-queue 1/2: curator×030-consult-lane — priority normal, waiting since … · ⛔ ROLE BUSY — curator is
-live on 058-concurrent-writers-one-thread; one session per role (its workspace is one), so this
-pair is not raised until that one ends
+queue 1/2: curator×030-consult-lane — priority normal, waiting since … · ⛔ ROLE BUSY — 1 of 1
+pair(s) allowed to curator are live ('parallelism.pairsPerRole' of the config, the default of 1 —
+the project has declared no parallelism), held by curator×058-concurrent-writers-one-thread; this
+pair is not raised until one of those ends
 ```
 
 - **Живая сессия и ручной холд названы ПОРОЗНЬ** (`busyRoles`, `snapshot.ts`): первая кончается

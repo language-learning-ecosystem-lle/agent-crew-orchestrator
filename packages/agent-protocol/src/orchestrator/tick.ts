@@ -59,6 +59,7 @@ import {
   MAX_CONSECUTIVE_RUNS,
 } from "./launch.js";
 import { foldLeases, isLeaseAlive, type LeaseView } from "./lease.js";
+import { describeOccupants } from "./priority.js";
 import {
   BOX_ACCOUNT,
   describeAccount,
@@ -781,23 +782,6 @@ export const describeSkip = (
       return `candidate ${pair} skipped: the ceiling of this BOX is full — ${skip.occupants?.length ?? 0} of ${skip.ceiling ?? 0} pair(s) allowed on one box are live ('parallelism.pairsPerInstance' of the config), held by ${describeOccupants(skip.occupants)}; ${skip.role} itself may be idle — what is full is the box, and this pair is raised as soon as any of those places is freed`;
   }
 };
-
-/**
- * WHO HOLDS THE PLACES, in one clause — the half of a full ceiling an operator can act on.
- *
- * `since` is printed when the caller said it and quietly left out when it did not: a
- * planner told nothing about the clock must not invent a word like "recently", and a
- * missing time is not worth a sentence of its own next to the pairs it belongs to.
- */
-const describeOccupants = (occupants: readonly RunningPair[] | undefined): string =>
-  occupants === undefined || occupants.length === 0
-    ? "sessions this planner was not told the names of"
-    : occupants
-        .map(
-          (held) =>
-            `${held.role}×${held.thread}${held.since === undefined ? "" : ` since ${held.since}`}`,
-        )
-        .join(", ");
 
 /**
  * The plan of this tick in one line — what is being raised, and what the global budget

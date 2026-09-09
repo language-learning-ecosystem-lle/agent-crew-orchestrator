@@ -9118,6 +9118,12 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
       raisable: scope.roles,
       live: leases.filter((view) => isLeaseAlive(view.state)),
       held: heldRoles(heldViews),
+      // AND THE CEILING THE QUEUE ROWS JUDGE "FULL" BY (thread 177), read through the config's
+      // own `pairCeilings` — the very function the daemon's tick reads it with, so the frame
+      // and the planner cannot come to two numbers. Before it, a row said `ROLE BUSY` the
+      // moment anything of the role was live, which under a declared ceiling above one is a
+      // refusal of a launch the very next tick makes.
+      pairsPerRole: pairCeilings(configFrom(argv, undefined).config).pairsPerRole,
     },
     // R27, from the SAME scan the queue above is built from — the map the tick plans by.
     // WITH THE SAME CEILING THE TICK APPLIES (thread 062, layer 2): a `run:` park past it is
@@ -13686,6 +13692,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       new Map(),
       new Map(),
       outOfAttempts,
+      // THE SAME NUMBER THE TICK BELOW COUNTS TO (thread 177), read through the same
+      // `pairCeilings`. This stream passes no busy map — the daemon says a full ceiling in
+      // its own skip line, which is where `describeSkip` says it with the occupants — so
+      // the ceiling changes nothing here today; it is passed because the alternative is a
+      // caller that has the number in hand and hands the renderer a different one.
+      pairCeilings(daemonConfig).pairsPerRole,
     ))
       err(`agent-protocol: ${line}`);
     // R23-1: A THREAD WAITING ON A RESIDENT ROLE, said beside the queue it is not in.
