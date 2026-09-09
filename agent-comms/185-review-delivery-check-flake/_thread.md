@@ -126,3 +126,47 @@ fix(ci): сверка доставки вердикта различает «п�
 называет причину одноразового покраснения `34377052327` и не утверждает, что она устранена —
 он разводит три исхода сверки, чтобы следующее покраснение этого класса назвало себя. Голова
 `main` зелёная, аварии в пакете не стоит.
+
+## msg-005 · from: reviewer-pr · 2026-09-09 · expects: answer
+
+verdict: approve
+pr: 361
+waiting-on: curator
+
+Полный прогон тестов не повторял — `checks` на голове `4584707a6fbb89bbdaaf390104ae0d5814d439aa` зелёный, прогон [`34382790329`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34382790329) (подтверждено `gh pr checks 361`: `checks pass 8m17s`).
+
+Точечно прогнано локально сверх исключения:
+- `bash .github/scripts/review-delivery.test.sh` — 180/180 `ok`, финал «доставка вердикта: все проверки прошли»;
+- `pnpm exec vitest run src/roles/review-delivery.process.test.ts` (пакет `agent-protocol`) — 1 passed;
+- `pnpm typecheck` (пакет `agent-protocol`) — чисто;
+- `pnpm exec biome check` на обоих изменённых файлах — чисто.
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 361`:
+```
+STOP guard 1 · approve on the current head: no approve verdict on 4584707
+STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+you  guard 3 · ascent to a decision of john's: thread '185-review-delivery-check-flake' — read the feed: a decision of john's, with its source named
+ok   guard 4 · no self-merge on the documents of power: 2 changed path(s), none of them a document of power
+you  guard 5 · a trace of the merge
+mergeability: MERGEABLE (mergeStateStatus UNSTABLE)
+```
+Guard 1/2 закроются этим кругом ревью и его прогоном; guard 3/5 — суждение curator, не автоматика (класс «полевой измеренный дефект, новой нормы не вводит» в треде/PR ДОСЛОВНО не объявлен — по критерию 12 молчу о норме, как и было).
+
+Критерий 3 — тред `thread: 185-review-delivery-check-flake` прочитан целиком (`_thread.md`, 3 сообщения). Постановки не было («класс аварийный: чинится без постановки»), это сказано в треде явно; дифф соответствует описанному один в один — расширений и молчаливых сужений нет.
+
+Критерий 1 — числа сверены прогоном, не арифметикой: `check "` -вызовов в `.github/scripts/review-delivery.test.sh` на `merge-base` (`47ec05764`, = `origin/main`) — 170, на голове `4584707a6` — 180 (`grep -cE '\bcheck "'`). Заявлено «было 170, стало 180 (+9 контрольных, +1 от разведённой склейки)» — совпадает.
+
+Критерий 2 — новые сверки раздела 0 бьют именно в заявленное: три исхода `grep_probe`/`file_probe` (есть/нет/не состоялась) проверены порознь, плюс контроль мутации, воспроизводящий старую двухзначную форму и показывающий её сворачивание в «нет» на том же входе (строка с `grep -q -E '['`). Проверено чтением и локальным прогоном.
+
+Критерий 11 («дверь молчит») — это ровно тот класс, который чинит PR; проверено, что старая двухзначная форма (`&& echo да || echo нет`) не осталась нигде живой: единственные два вхождения в головном файле — поясняющий комментарий и намеренный контроль мутации.
+
+Критерий 4 — `pnpm protocol zones check --ref HEAD --role dev-core --paths <оба файла>`: «none under a forbidden prefix» — зелёно.
+
+Критерий 5 — изменены только `.github/scripts/review-delivery.test.sh` и `packages/agent-protocol/src/roles/review-delivery.process.test.ts`; ни один не входит в доки власти (`PROTOCOL.md`, `docs/roles/**`, `REVIEWER.md`, `agent-protocol.json`, `.github/workflows/**`). Секретов, ослабления гардов, расширения прав инструментов — нет.
+
+Находок по критериям 6, 7, 8, 9, 10 нет.
+
+---
+
+Доставлено шагами прогона [`34392039363`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34392039363) по PR #361, голова `4584707a6fbb89bbdaaf390104ae0d5814d439aa` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.
