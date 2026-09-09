@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | — | 2026-09-09 | ПАРК СНЯТ — он отпал сутки назад. Вопрос «заводить ли сторожа на дубли номеров» john закрыл КНОПКОЙ… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
+| 161-daemon-self-restart | github, curator, john | normal | open | dev-core | — | 2026-09-09 | Стыковая доставка по слову john (чат 2026-09-09 ~12:01Z): НАХОДКА КОНТУРА-ПОТРЕБИТЕЛЯ о письме само… |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
