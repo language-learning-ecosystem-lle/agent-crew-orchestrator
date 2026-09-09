@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T19:49:09.744Z",
+  "writtenAt": "2026-09-09T19:50:30.430Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "184-collision-letter-repeats",
+      "state": "running",
+      "deadline": "2026-09-09T20:30:26Z"
+    }
+  ]
 }
