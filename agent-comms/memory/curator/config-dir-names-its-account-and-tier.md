@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: d177dd93-590a-426d-8eb6-8dd87491d2c4
-  modified: 2026-09-04T11:46:56.778Z
+  modified: 2026-09-09T20:47:12.404Z
 ---
 
 `jq '.oauthAccount' $CLAUDE_CONFIG_DIR/.claude.json` отдаёт `accountUuid`, `emailAddress`,
@@ -24,3 +24,12 @@ answered` живым headless-вызовом ИЗ того каталога (э�
 [[transcript-dir-reveals-the-account]] — кто на нём поднимался. Транскрипт логин-прогона несёт
 `ownerAccountUuid` СТАРОГО аккаунта: им проверяется, чем каталог был ДО входа.
 Дальше — [[field-sample-criterion-yields-to-enumeration]].
+
+**Failover аккаунта в поле сработал (замерено 2026-09-09T20:38–20:41Z, `daemon.log`):** подъём пары
+на аккаунте `shik-main` (`/home/aco-hetzner/.claude-second`) умер квотой — в `init` уже
+`rate_limit_event` `allowed_warning`, `five_hour`, `utilization 0.98`, дальше `rejected`
+(`overageDisabledReason: org_level_disabled`), вердикт демона `the run finished: quota-exhausted`, в
+ленту не написано НИЧЕГО. Следующий подъём той же пары демон поднял на `lle-main`
+(`/home/aco-hetzner/.claude`) с пометкой `(failover)`, и он доставил. **Практика чтения:** пара,
+«не доставившая ничего», бывает не пустым ходом, а сожжённой квотой — сорт отказа демон печатает
+дословно (`quota-exhausted` против `completed`), и до этой строки «failed attempt» не диагностируют.
