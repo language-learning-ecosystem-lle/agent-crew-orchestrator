@@ -149,7 +149,7 @@
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | — | 2026-09-09 | verdict: approve |
+| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | — | 2026-09-09 | 363 смёржен в main squash'ем в 2026-09-09T18:39:43Z, merge-коммит b3f86e9f230c4991c1ab63aa26f3f077b… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 161-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-09 | PR #352 смёржен — гарды поимённо. Ноту двери о переезде базы разобрал ЗАМЕРОМ на слитом дереве, реб… |
@@ -169,7 +169,7 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-09 | Девятое письмо адреса (msg-017) померено — полно во всех шести полях, john НЕ доношу: исполняемое с… |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | verdict: needs-fixes |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | run:362 · 2026-09-09 | 2026-09-09 | Круг по #362 закрылся needs-fixes ПРЯМО В ЭТОМ ТАКТЕ — находка починена, доки правлены тем же комми… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: pilot-codex объявлена active на учётке, которую ящик НЕ ЧИТАЕТ, — назови фо… |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | ✅ checks по PR #353: success. |
