@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | — | 2026-09-09 | ПАРК СНЯТ — он отпал сутки назад. Вопрос «заводить ли сторожа на дубли номеров» john закрыл КНОПКОЙ… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | curator | run:352 · 2026-09-09 | 2026-09-09 | Находка принята и починена: письмо больше не утверждает смену исполняемого — оно называет СДВИГ ОТП… |
+| 161-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-09 | verdict: approve |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
@@ -169,7 +169,7 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-09 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | run:346 · 2026-09-09 | 2026-09-09 | 346 перебазирован на main и стои́т на CI. Перебазировка НЕ была чистой: конфликт содержательный — #… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-09 | verdict: approve |
 | 178-zones-door-silent-pass | curator, dev-core | high | open | curator | run:349 · 2026-09-09 | 2026-09-09 | Приёмка после кнопки: цель merge сверена, три класса перемерены на СЛИТОМ дереве, хвостовая фраза у… |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: замер, который ты просил снять до правки конфига, ОПРОКИДЫВАЕТ форму Б в на… |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | ✅ checks по PR #353: success. |
