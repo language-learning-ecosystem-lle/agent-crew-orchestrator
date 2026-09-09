@@ -419,6 +419,36 @@ describe("renderParallelism — the live count and the room left", () => {
     expect(text).toContain("held by a human: curator");
   });
 
+  // THE COMBINATION THE HEAD AND THE LIST USED TO DISAGREE ON (reviewer, PR #362): a hold
+  // AND a declared box ceiling AND nothing live. The head counted with a formula of its
+  // own — `places - live - held × pairsPerRole` — and printed `1 free` directly above a
+  // `free:` line naming TWO roles. One state, two answers, in one frame.
+  it("with a box ceiling, the number in the head is the room the list below can take", () => {
+    const text = renderParallelism(p({ held: ["curator"], pairsPerRole: 2, pairsPerInstance: 3 }));
+    expect(text).toContain(
+      "parallelism: nobody is live — 3 place(s), 3 free, 1 role(s) held by a human",
+    );
+    expect(text).toContain("free: dev-core, dev-acme");
+  });
+
+  // The other side of the same arithmetic, and the reason the number is the SMALLER of two
+  // ceilings: here the named roles could take four places between them and the box has
+  // three, so the box is what bounds the room — a number taken from the list alone would
+  // promise capacity the tick will not give out.
+  it("the room is bounded by the box too, not only by whom the list names", () => {
+    const text = renderParallelism(
+      p({
+        raisable: ["dev-core", "curator", "dev-acme"],
+        live: [running("dev-core", "177-workspace-per-pair")],
+        pairsPerRole: 2,
+        pairsPerInstance: 2,
+      }),
+    );
+    // One place of two is live, so one is left — and it is left however many roles are idle.
+    expect(text).toContain("parallelism: 1 of 2 place(s) live");
+    expect(text).toContain("free: dev-core, curator, dev-acme");
+  });
+
   it("nobody live and every role held is saturation by the human, and says so", () => {
     const text = renderParallelism(p({ raisable: ["dev-core"], held: ["dev-core"] }));
     expect(text).toContain("0 free, 1 role(s) held by a human");

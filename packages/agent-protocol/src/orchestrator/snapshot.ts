@@ -469,11 +469,35 @@ export const renderParallelism = (p: Parallelism, now?: Date): string => {
   // ARE the roles, so "the box is full" and "every role is busy" are one state said twice —
   // and of the two wordings the role one is the one that names somebody to go and look at.
   const boxFull = p.pairsPerInstance !== undefined && p.live.length >= places;
+  /** Places of its OWN this role has left — the quantity `free:` judges a name by. */
+  const roomFor = (role: string): number => Math.max(0, pairsPerRole - (spentBy.get(role) ?? 0));
   const free = boxFull
     ? []
-    : p.raisable.filter(
-        (role) => (spentBy.get(role) ?? 0) < pairsPerRole && !heldHere.includes(role),
-      );
+    : p.raisable.filter((role) => roomFor(role) > 0 && !heldHere.includes(role));
+  /**
+   * HOW MUCH ROOM THE NUMBER IN THE HEAD IS ABOUT, AND IT IS THE SAME ARITHMETIC THE LIST
+   * BELOW IS BUILT FROM (reviewer, PR #362). It was a second, independent formula —
+   * `places - live - held × pairsPerRole` — and with a declared `pairsPerInstance` the two
+   * disagreed in the open: `nobody is live — 3 place(s), 1 free` printed directly above
+   * `free: dev-core, dev-acme`, two names under the number one. One state, two answers, in
+   * one frame, which is the very defect this block was rewritten to remove.
+   *
+   * IT IS THE SMALLER OF TWO CEILINGS, because a place is only room if somebody may take
+   * it: what the BOX has left (`pairsPerInstance` minus what is live) and what the roles
+   * NAMED on the `free:` line could take between them. Either alone lies — the box number
+   * counts room no raisable role may use, the roles' number counts room the box will not
+   * give out.
+   *
+   * A HOLD IS NO LONGER SUBTRACTED AS SPENT CAPACITY, and that reverses no earlier ruling
+   * of PR #100: there the number counted ROLES, and a held role plainly was not a free
+   * role. This number counts PLACES of the box, and a hold spends none of them — nothing
+   * is live. What the hold does is take its role off the `free:` line, and that is exactly
+   * how it enters this number now: through the list, not beside it.
+   */
+  const freePlaces = Math.min(
+    Math.max(0, places - p.live.length),
+    free.reduce((sum, role) => sum + roomFor(role), 0),
+  );
   // Where the capacity comes from, in the words of the config that declares it — and the
   // roles named as roles beside it, so the two numbers never stand bare next to each other.
   const spread =
@@ -489,12 +513,11 @@ export const renderParallelism = (p: Parallelism, now?: Date): string => {
       ? `parallelism: ${p.live.length} of ${places} place(s) live — ${spread}`
       : heldHere.length === 0
         ? `parallelism: nobody is live — ${places} place(s), all free (${spread})`
-        : // A HOLD SPENDS THE ROLE'S PLACES, ALL OF THEM (S5): a human takes `curator`,
-          // not one of `curator`'s two seats, and the circuit raises none of them until it
-          // is given back. Clamped at zero rather than trusted: a box ceiling below what
-          // its roles could hold is legal (v27 only refuses the reverse), and a frame is
-          // not the place to print a negative count of room.
-          `parallelism: nobody is live — ${places} place(s), ${Math.max(0, places - p.live.length - heldHere.length * pairsPerRole)} free, ${heldHere.length} role(s) held by a human (${spread})`;
+        : // A HOLD TAKES ITS ROLE OFF THE `free:` LINE (S5): a human takes `curator`, not
+          // one of `curator`'s two seats, and the circuit raises none of them until it is
+          // given back. The number beside it is `freePlaces` — the same arithmetic the
+          // list is built from, so the head and the line under it cannot disagree.
+          `parallelism: nobody is live — ${places} place(s), ${freePlaces} free, ${heldHere.length} role(s) held by a human (${spread})`;
   const lines = [head];
   for (const view of p.live) {
     // THE SAME VOCABULARY AS THE LINE ABOVE THIS BLOCK (thread 063). This renderer printed
