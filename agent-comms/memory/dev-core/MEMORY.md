@@ -108,7 +108,7 @@
 - [`npx tsc` гоняет чужой пакет и выходит нулём](npx-tsc-runs-a-foreign-package-and-exits-zero.md)
 - [Своё последнее письмо может быть про ЧУЖОЙ тред](own-last-letter-may-be-about-another-thread.md)
 - [Отсутствие тега в перечне ничего не доказывает](tag-suspect-list-is-measured-by-tree.md)
-- [Перенос парка вперёд — это НОВОЕ объявление](carrying-a-park-forward-redeclares-it.md) — теряет `since`, `question`, `holder`.
+- [Перенос парка вперёд НЕ заводит потолок заново](carrying-a-park-forward-does-not-restart-its-ceiling.md) — `since` у первого письма, 30 мин стареют от него.
 - [Общие факты — не общий вызов](shared-facts-have-more-than-one-consumer.md) — у поля есть второй потребитель.
 - [`is-ancestor` против тега реза отказывает ВСЕГДА](is-ancestor-against-a-split-tag-always-fails.md) — мерить тождеством дерева.
 - [Два способа потерять прогон сюиты до первого теста](vitest-run-invocation-traps.md) — репортёр `basic` и cwd под `--root`.
