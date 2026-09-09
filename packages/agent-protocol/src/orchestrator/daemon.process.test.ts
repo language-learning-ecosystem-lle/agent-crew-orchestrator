@@ -75,7 +75,11 @@ const WAITING_ON_RESIDENT =
   "---\nfrom: dev-core\ndate: 2026-07-25T10:00:00Z\nexpects: answer\nwaiting-on: curator\n---\n\nThe body.\n";
 
 /** The full circuit on disk — a bare origin, a code checkout and a mail checkout. */
-const contour = (options?: { readonly waiting?: boolean; readonly resident?: boolean }): string => {
+const contour = (options?: {
+  readonly waiting?: boolean;
+  readonly resident?: boolean;
+  readonly collision?: boolean;
+}): string => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-daemon-"));
   const origin = join(base, "origin.git");
   execFileSync("git", ["init", "--bare", "-q", "-b", "main", origin]);
@@ -104,6 +108,16 @@ const contour = (options?: { readonly waiting?: boolean; readonly resident?: boo
         ? ANSWERED
         : WAITING,
   );
+  // TWO THREADS UNDER ONE NUMBER, both open — the number watchman's one finding. They
+  // answer nobody (`expects: none`), so they add no wait and leave the second tick quiet,
+  // which is the whole point of the fixture that uses them.
+  if (options?.collision === true)
+    for (const slug of ["013-a", "013-b"]) {
+      const dir = join(mail, "agent-comms", slug);
+      mkdirSync(join(dir, "messages"), { recursive: true });
+      writeFileSync(join(dir, "_meta.md"), META);
+      writeFileSync(join(dir, "messages", "2026-07-25T10-00-00Z-curator.md"), ANSWERED);
+    }
   git(mail, "add", "agent-comms");
   git(mail, "commit", "-qm", "mail");
   git(mail, "push", "-q", "-u", "origin", "comms");
@@ -410,6 +424,44 @@ describe("the daemon says why it raised nobody (the defect of 2026-07-26)", () =
 
     expect(again.out).toContain("nothing to announce");
     expect(again.out).not.toContain("012-x (stalled");
+  });
+
+  it("a QUIET tick still names the watchman that is holding its lock (thread 184)", () => {
+    // THE SEAM, and it is the daemon's and not the courier's: `runNotify` says the number
+    // watchman's line on every tick that found pairs and rang about none of them, and
+    // `dialCourier` printed `run.lines` only when the digest went out. A tick whose watchmen
+    // are all holding their locks has nothing to announce BY CONSTRUCTION — so the one tick
+    // class where "found, held, and here is why" is true was the one class that never
+    // reached the journal. Measured on the field 2026-09-09: hours of courier lines reading
+    // `nothing to announce` and not one naming the watchman, while it walked eight pairs a
+    // tick. The mail cannot stand in for this — a watchman that is silent because it is
+    // holding and one that is silent because it is broken write the same nothing.
+    const repo = contour({ collision: true });
+    enable(repo);
+    // The lock, held from the start: the pair is ALREADY told about, so this tick's
+    // watchman finds it, rings about nothing, and is left with only the line to say. Seeded
+    // rather than earned by a first tick on purpose — the fact under test is what the daemon
+    // PRINTS, and making it depend on a child process delivering a letter would test that.
+    writeFileSync(
+      join(stateDir(repo), "notify.state"),
+      "number-collision\tnumber:013:013-a,013-b\n",
+      "utf8",
+    );
+
+    // The first tick announces the stall, so it is `sent` and printed its lines anyway. The
+    // SECOND one is the quiet one, and it is the one this test is about.
+    daemon(repo);
+    const again = daemon(repo);
+
+    expect(again.out).toContain("nothing to announce");
+    expect(again.out).toContain("number-collision — 1 number(s)");
+    expect(again.out).toContain("of which 1 still open (013)");
+    expect(again.out).toContain("already told about in 'thread-number-collision'");
+    // And the lock is still standing after the quiet tick — the line is a report about the
+    // state, not a replacement for it.
+    expect(readFileSync(join(stateDir(repo), "notify.state"), "utf8")).toContain(
+      "number-collision\tnumber:013:013-a,013-b",
+    );
   });
 
   it("a courier that cannot deliver leaves the daemon ALIVE and says so", () => {
