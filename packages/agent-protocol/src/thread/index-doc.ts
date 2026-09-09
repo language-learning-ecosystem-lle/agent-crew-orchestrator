@@ -47,6 +47,34 @@ const SUBJECT_WIDTH = 100;
 const ASKS_MARK = "❓";
 
 /**
+ * THE MARK OF THE OTHER HALF — a park on a person that asks NOBODY (`expects: none`, the
+ * mode of R27). It exists because until thread 155 the distinction was carried by the
+ * ABSENCE of {@link ASKS_MARK}, and an absence is not something a reader can check: the two
+ * cells were `❓ john · 2026-07-29` and `john · 2026-07-29`, and the second one — the one
+ * that owes nothing — is exactly the one a human scanning the column for "what is hanging
+ * on me since July" reads as a debt. The distinction was already in the machine (`asks`,
+ * and `modeParks` beside it) and already reached the frame in a whole sentence
+ * (`describeFreeze`); what it did not reach was the one column the register answers by.
+ *
+ * NOT `⏸`, THE FRAME'S GLYPH, and that is the point of choosing another: in `describeOrder`
+ * the pause stands before BOTH forms and means "parked at all", so the same glyph here —
+ * where it would mean "the mode one" and the asking park would go without it — reintroduces
+ * the very defect, one surface deep. `🔇` says what `expects: none` says in the author's own
+ * words: this thread is calling nobody. It is the same reading, not a second one: the set
+ * {@link modeParks} builds for the frame is spelled `mute` in this same file.
+ *
+ * THE NAME OF THE PERSON STAYS IN THE CELL (decision of curator, thread 155): INDEX is a
+ * REFLECTION of the threads, `john` there is the `parked-on:` of the declaring message letter
+ * for letter, and a register that drops it would be the drift this file exists against — and
+ * would drop the only thread to pull when the mode was declared by mistake.
+ *
+ * AND ONLY OVER A PARK ON A PERSON, for the same reason `❓` is: an event park (`pr:`/`run:`)
+ * calls nobody by construction, so "asks nobody" would be true of every one of them and
+ * would say nothing. The value names the event itself.
+ */
+const MODE_MARK = "🔇";
+
+/**
  * A cell of the table: the pipe is the column separator, and a question containing one
  * would silently split a row into two columns — the derived file would still be valid
  * markdown and would say something else. Escaped rather than dropped: the text is quoted
@@ -76,8 +104,10 @@ const parkCell = (parking: Parking | undefined): string => {
     parking.kind === "person"
       ? (parking.person ?? EMPTY)
       : `${parking.kind === "run" ? "run" : "pr"}:${parking.pr}`;
-  const asking = parking.kind === "person" && parking.asks ? `${ASKS_MARK} ` : "";
-  return `${asking}${on} · ${parking.since.slice(0, 10)}`;
+  // BOTH HALVES WEAR A MARK, so the reader never has to notice something that is not there
+  // (thread 155). An event park wears neither: the value names the event.
+  const mark = parking.kind === "person" ? `${parking.asks ? ASKS_MARK : MODE_MARK} ` : "";
+  return `${mark}${on} · ${parking.since.slice(0, 10)}`;
 };
 
 /**
@@ -144,7 +174,8 @@ const UNREADABLE_STATUS = "не прочитан";
  * `042-notifier-down` (a consumer) stood frozen on a small question for NINE DAYS while the failures
  * of a workflow addressed at it kept landing in a room where nobody works.
  *
- * `parked-on` and the ❓ answer "is there a queue to a person, and is a word being asked";
+ * `parked-on` and its two marks answer "is there a queue to a person, and is a word being
+ * asked" — ❓ when one is, 🔇 when the park is a mode and calls nobody (thread 155);
  * `priority` and `subject` are what turn the rows into a list one reads by importance rather
  * than an alphabetical table of contents. What deliberately did NOT come in: the state of a PR
  * and of the guards (that is GitHub's data, and a register built from the feed would lie about
