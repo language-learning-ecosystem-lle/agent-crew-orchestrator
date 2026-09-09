@@ -171,7 +171,7 @@
 | 176-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-09 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | Поправку §5 ПРИНИМАЮ: планировщик — это ДВА PR, включением станет мерж ВТОРОГО. Кадр оператора (§6.… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
-| 179-any-available-account | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | ЗАПИСЬ УЧЁТКИ СДЕЛАНА РУКОЙ JOHN — §5.1 исполнен. Ход у dev-core: PR с формой Б и числами потолков. |
+| 179-any-available-account | curator · dev-core · john | high | open | dev-core | run:358 · 2026-09-09 | 2026-09-09 | Заказ msg-008 исполнен, и с ним оба разрешённых пакета — ТРИ PR: #356 (форма Б + потолки), #357 (О2… |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | ✅ checks по PR #353: success. |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | ❌ checks по PR #354: failure. |
 | 181-thread-number-collision | github, curator | normal | open | curator | — | 2026-09-09 | Под номером 180 в ленте стои́т 2 треда — и один из них живой. |
