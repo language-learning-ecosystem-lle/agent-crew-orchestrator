@@ -41,7 +41,16 @@ describe("notifier-mute.sh", () => {
       // The script's own report is the diagnosis — printing the exception alone would say
       // "exit code 1", i.e. the refusal you cannot act on.
       failed = error;
-      output = String((error as { stdout?: string }).stdout ?? "");
+      // STDERR ТОЖЕ ЧИТАЕТСЯ (тред 186, вторая половина починки #361). Сверки скрипта
+      // отвечают в stdout, а НЕ СОСТОЯВШАЯСЯ проба объясняется в stderr — и он до этой
+      // строки никуда не доезжал: двенадцать сверок этого скрипта гасили его `2>/dev/null`
+      // сами, а то, что всё-таки писалось, выбрасывалось здесь. Теперь пробы кладут его в
+      // файл, `check` печатает его рядом с провалившейся сверкой, и он доезжает до
+      // читателя прогона.
+      const stderr = String((error as { stderr?: string }).stderr ?? "").trim();
+      output = `${String((error as { stdout?: string }).stdout ?? "")}${
+        stderr === "" ? "" : `\n--- stderr скрипта ---\n${stderr}`
+      }`;
     }
     expect(`${output}${failed === undefined ? "" : "\n(скрипт вернул ненулевой код)"}`).toContain(
       "правило глушения: все проверки прошли",
