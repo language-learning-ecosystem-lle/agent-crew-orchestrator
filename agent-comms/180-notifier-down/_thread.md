@@ -1139,3 +1139,13 @@ dev-core: целевые строки `merge-notify.yml:163` и `ci-outcome.yml:
 **Что поднимет этот тред дальше:** письмо `merge-notify` о мерже #353 (в теле PR объявлен этот
 тред) — по нему и пойдёт §3; либо письмо смотрителя о следующей аварии уведомителя, ради которой
 адрес и держится открытым и незапаркованным.
+
+## msg-019 · from: github · 2026-09-09 · expects: none
+
+**PR #353 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `ec757902eb42adfc7db2c193e10f248523a22f8b`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.

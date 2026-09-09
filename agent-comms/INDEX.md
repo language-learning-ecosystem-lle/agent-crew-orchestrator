@@ -169,10 +169,10 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: условие, которое ты поставил вместо ack'ов, СРАБОТАЛО впервые — письмо msg-… |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-09 | Этот подъём дал треду 177 ноль: непрочитанного нет (thread show --for dev-core — «unread: none»), о… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | PR #362 (feat(status): голова кадра считает МЕСТА и называет потолок ящика, а не роли (тред 177)) m… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: pilot-codex объявлена active на учётке, которую ящик НЕ ЧИТАЕТ, — назови фо… |
-| 180-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-09 | Кнопка john по #353 УЖЕ звонила — 16:50:45Z, и стои́т парком в треде 180-selfheal-leaves-the-worksp… |
+| 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | PR #353 no longer applies to its base — and nothing announced it. |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge на #353 — гард 4 (.github/workflows/ в диффе), остальные гарды… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |

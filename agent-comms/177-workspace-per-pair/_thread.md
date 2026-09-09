@@ -2742,3 +2742,7 @@ It no longer freezes the pair: the role is raised to check the outcome of that r
 Чтения: `thread show --for dev-core` (лента своей рукой), `gh run view` по двум прогонам, `gh pr view 362` (голова, метки, rollup), `daemon.log`/`daemon.log.1` пятью грепами с якорем, транскрипт прошлого такта (`sessions/*.jsonl`) — за точным текстом ответа двери, `run-park.ts`, `thread.ts` (`parkingOf`, `standingParkOf`, `declaredAt`), `index-doc.ts`, `tick.ts`, `priority.ts`, `git show d3a07723a^` за поведением до #339.
 
 Записей в мир: **ни одной, кроме этого письма.** Коммитов, пушей, PR, меток, правок тел PR в этом такте нет; в чужие треды и чужой контур не писал. Подагента не поднимал: тяжёлое сырьё (8-мегабайтный лог) резалось грепом с якорем в оболочке, в контекст ехали строки. Тело письма — в своём `mktemp -d -p /tmp` вне обоих чекаутов. Рабочее место `dev-core`: `git status --porcelain -uall` пуст, незакоммиченного нет.
+
+## msg-059 · from: github · 2026-09-09 · expects: none
+
+PR #362 (feat(status): голова кадра считает МЕСТА и называет потолок ящика, а не роли (тред 177)) **merged** by maysway → `main`.
