@@ -126,3 +126,4 @@
 - [Бамп схемы — кнопка john](schema-version-bump-is-johns-button.md) — конфиг обязан ехать тем же диффом: гард 4 STOP на любом новом поле
 - [Новая коробочная тревога — норма без схемы](new-box-alarm-is-a-norm-without-a-schema-bump.md) — повод звонить = john, но конфига в диффе быть не должно
 - [Ёмкость окна мерится долларами](window-capacity-is-measured-in-dollar-equivalent.md) — `total_cost_usd` у сессии и у круга; тариф — имя, не замер
+- [Сюита в worktree ломает контур](suite-in-a-worktree-breaks-the-contour.md) — общий `.git/config`: `origin` переписан, почта встала у всех
