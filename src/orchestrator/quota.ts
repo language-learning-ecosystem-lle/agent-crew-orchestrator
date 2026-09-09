@@ -41,18 +41,39 @@
  *
  * WHY `allowed` IS A PREFIX AND NOT AN EQUALITY — the correction the real data forced,
  * and the reason the whitelist is not written as `status !== "allowed"`. Counted over
- * every session log on this box: `allowed` 133, `allowed_warning` 13 (`rateLimitType`:
- * `five_hour` 140, `seven_day` 6). The vendor names a state that still PERMITS work
- * with the `allowed` prefix — `allowed_warning` means "76% of the seven-day window is
- * gone", i.e. keep going. A rule refusing on everything but the exact string `allowed`
- * would have declared the window closed on thirteen observations where it was open,
- * and would have done it on a warning that arrives long BEFORE the limit: the worst
- * false positive available here.
+ * every session log on this box (2026-09-09, 1581 streams): `allowed`/`five_hour` 1142,
+ * `allowed_warning`/`seven_day` 503, `allowed_warning`/`five_hour` 213. The vendor
+ * names a state that still PERMITS work with the `allowed` prefix — `allowed_warning`
+ * means "76% of the seven-day window is gone", i.e. keep going. A rule refusing on
+ * everything but the exact string `allowed` would have declared the window closed on
+ * 716 observations where it was open, and would have done it on a warning that arrives
+ * long BEFORE the limit: the worst false positive available here.
  *
- * WHAT WE HAVE STILL NEVER SEEN, said out loud: in none of those observations was the
- * status anything but permitting. The closed shape is therefore recognised by the
- * ABSENCE of the prefix rather than by a guessed enum value — we do not invent the
- * vendor's word for "closed", we refuse to read a status we do not know as permission.
+ * WHAT THE CLOSED SHAPE ACTUALLY LOOKS LIKE — measured, and this paragraph used to say
+ * the opposite. When it was written, no observation on this box carried anything but a
+ * permitting status, and it concluded that we do not know the vendor's word for
+ * "closed". WE DO NOW, and it arrived on 2026-08-30: the literal `rejected`, seen 13
+ * times in the same 1581 streams — 13 different sessions, always on `five_hour`, always
+ * carrying `resetsAt` and `rateLimitType`. Those 13 line up ONE FOR ONE with the 13
+ * `quota-exhausted` rows of this box's journal, so the structured layer caught every
+ * stall there has been and the prose layers were never the thing that fired.
+ *
+ * And the check of that last sentence is worth writing down, because it is layer 3's
+ * own failure mode caught in the act: the marker `usage limit reached` DOES appear in
+ * two streams of 08.09 — both of them sessions of the thread that was measuring this
+ * very question, quoting the marker in their own text. Neither is one of the 13. That
+ * is exactly the "a run READING about the limit" case the surface rule below exists for.
+ *
+ * `seven_day` has still never closed — 503 warnings and no refusal — and for anything
+ * built on top the difference matters: a five-hour window costs hours, a seven-day one
+ * costs a week of somebody's quota.
+ *
+ * THE RECOGNITION IS UNCHANGED BY THAT, and deliberately: the closed shape is still
+ * recognised by the ABSENCE of the `allowed` prefix rather than by matching `rejected`.
+ * The whitelist was right before the word was known and is right after it — an enum we
+ * do not own may grow a second closed value tomorrow, and a blacklist would read that
+ * one as permission. `rejected` is written down here as a FACT about the vendor, not as
+ * a condition in the code.
  *
  * WHY THE PROSE LAYERS ARE A SUBSTRING SEARCH AND NOT A PARSE. Those two reach the
  * supervisor in shapes JSON parsing cannot cover: an assistant text block, a `result`
