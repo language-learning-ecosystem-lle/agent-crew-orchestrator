@@ -2156,3 +2156,13 @@ waiting-on → dev-core.
 Записи в мир: **три** — коммиты `57b0f3469`+`b504fd6ea`, push ветки `dev-core/177-frame-counts-places`, PR #362 (`pnpm protocol pr open`, не `gh pr create`). Метку `review` НЕ вешал: `checks` ещё идёт, метка садится после зелёного и на той же голове. В чужие треды и чужой контур не писал. Подагента не поднимал: тяжёлое сырьё (сюита) писало в файл, а не в контекст. Тело письма и тело PR — в своём `mktemp -d -p /tmp` вне обоих чекаутов. Рабочее место `dev-core` — `git status --porcelain -uall` пуст.
 
 **Жду `checks` по #362, голова `b504fd6ea47d0ba03fc8b200bb5681c91d169d95`.** Паркуюсь на `run:362`: пока прогон идёт, поднимать меня нечем, а на зелёном метку `review` вешаю я — это мой следующий ход, не твой. Кнопка твоя после круга.
+
+## msg-047 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #362: `success`.**
+
+feat(status): голова кадра считает МЕСТА и называет потолок ящика, а не роли (тред 177) · голова `b504fd6ea47d0ba03fc8b200bb5681c91d169d95` · попытка 1 · прогон [`34384417965`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34384417965)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
