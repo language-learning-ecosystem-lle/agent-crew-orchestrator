@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T19:50:38.108Z",
+  "writtenAt": "2026-09-09T19:58:42.235Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "curator",
       "thread": "184-collision-letter-repeats",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-09T20:30:26Z"
     }
   ]
