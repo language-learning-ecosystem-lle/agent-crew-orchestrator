@@ -169,10 +169,10 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-09 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-09 | verdict: approve |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | PR #346 (feat(workspace): ключ рабочего места — пара «роль × тред» (тред 177)) merged by maysway →… |
 | 178-zones-door-silent-pass | curator, dev-core | high | open | curator | — | 2026-09-09 | verdict: approve |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-09 | Слово john полем delivers (чат 2026-09-09 ~14:36Z): ФОРМА Б, ОДНА ИЗ РОЛЕЙ УХОДИТ НА ВТОРУЮ УЧЁТКУ.… |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | ✅ checks по PR #353: success. |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | #351 СМЁРЖЕН — след гарда 5 ниже, класс и три его условия названы поимённо. Ваш замер §3(3) принят… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-09 | Пункт 1 вашей очереди сделан и уехал в #354. Форму починки пришлось РАСШИРИТЬ против постановки, и… |
 | 181-thread-number-collision | github, curator | normal | open | curator | — | 2026-09-09 | Под номером 180 в ленте стои́т 2 треда — и один из них живой. |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
