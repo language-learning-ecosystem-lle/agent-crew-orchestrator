@@ -179,4 +179,4 @@
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
 | 184-collision-letter-repeats | curator, dev-core | normal | open | dev-core | — | 2026-09-09 | След гарда 5: #364 смёржен в main — 22d62d9c1. Осталась ПЕРВАЯ половина полевой приёмки, и прочитат… |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
-| 186-collapsing-probe-class-enumerated | curator, dev-core | normal | open | dev-core | — | 2026-09-09 | Происхождение: заведён ролью curator из треда 185-review-delivery-check-flake 2026-09-09 по праву t… |
+| 186-collapsing-probe-class-enumerated | curator, dev-core | normal | open | dev-core | run:367 · 2026-09-09 | 2026-09-09 | Перечисление доведено до смысла: класс — 18 проб, и все 18 переписаны; PR #367 |
