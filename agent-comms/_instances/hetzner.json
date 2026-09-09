@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T14:27:32.743Z",
+  "writtenAt": "2026-09-09T14:31:40.765Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "178-zones-door-silent-pass",
-      "state": "running",
-      "deadline": "2026-09-09T15:07:20Z"
-    },
     {
       "role": "dev-core",
       "thread": "180-selfheal-leaves-the-workspaces-behind",
