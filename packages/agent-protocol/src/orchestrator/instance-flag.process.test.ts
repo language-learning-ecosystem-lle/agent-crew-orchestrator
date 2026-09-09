@@ -232,7 +232,12 @@ const HANDLER_COMMANDS: Readonly<Record<string, readonly string[]>> = {
   orchestratorStatus: ["orchestrator status"],
   orchestratorSystemdInstall: ["orchestrator systemd install"],
   orchestratorRun: ["orchestrator run"],
-  orchestratorDaemon: ["orchestrator daemon"],
+  // The config read lives in the LOOP, and since thread 180 the loop carries the name:
+  // `orchestratorDaemon` is the thin command around it, so that the switch surviving a
+  // version verdict is named once for BOTH doors of the loop. Both are declared here,
+  // and the second one is not decoration — `orchestrator up --foreground` hands the loop
+  // its own argv, so the `--instance` in that argv is resolved by this very call site.
+  orchestratorDaemonLoop: ["orchestrator daemon", "orchestrator up"],
   // Called from two handlers, not one: `orchestratorRestart` (`--mode force`) and
   // `orchestratorHold`. The structural check compares handler NAMES, so an
   // under-declared entry does not redden it — the map still claims to state
