@@ -532,6 +532,14 @@ import {
   snapshotShared,
 } from "./orchestrator/shared-places.js";
 import { type OperatorFrame, renderFrame } from "./orchestrator/snapshot.js";
+import {
+  describeStall,
+  foldStall,
+  parseStall,
+  renderStall,
+  type Stall,
+  stallAlarmDue,
+} from "./orchestrator/stall.js";
 import { stateWord } from "./orchestrator/state-word.js";
 import {
   daemonAlreadyUpRefusal,
@@ -12697,6 +12705,13 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   let ghOutage: GhOutage | undefined = existsSync(paths.mergeReadyOutage)
     ? parseGhOutage(readFile(paths.mergeReadyOutage, "merge-ready outage state"))
     : undefined;
+  // THE RUN OF TICKS THAT RAISED NOBODY (thread 180, `stall.ts`) — picked back up off disk
+  // for the reason the outage above is: the two standstills this counts lasted half an hour
+  // each, a self-restart in the middle of one is exactly what caused the first of them, and a
+  // counter that started from zero after it would never reach its threshold.
+  let stall: Stall | undefined = existsSync(paths.stall)
+    ? parseStall(readFile(paths.stall, "daemon stall state"))
+    : undefined;
 
   const tickMs = positiveInt(argv, "--tick", 30) * 1000;
   // The two gates of the loop, WITH THEIR SOURCES — printed in the banner below (R12).
@@ -13246,6 +13261,15 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     err(`agent-protocol: daemon [${pairKey(candidate)}] ${line}`);
 
   /**
+   * WHAT THIS TICK REFUSED AT THE DOOR, for the counter of standstills (thread 180,
+   * `stall.ts`). It is a buffer of the tick and not a return value of `launch` because
+   * `launch` is a closure built once and the refusals belong to the tick that called it;
+   * cleared where the plan is spent, read immediately after. Nothing reads it later, and
+   * nothing about a launch depends on it — the counter may only ever stay quiet.
+   */
+  const doorRefusals: string[] = [];
+
+  /**
    * Start one pair and return immediately. Everything that can throw is inside the
    * promise: an unhandled rejection would take down the daemon, which is the very class
    * of death the resilience half of D-2 has just removed from the config door.
@@ -13291,6 +13315,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     const identity = spawnIdentityFor({ role, exec: agent.exec.value });
     if (!identity.ok) {
       pairErr(candidate, identity.reason);
+      doorRefusals.push(identity.reason);
       return;
     }
     // AND THE CREDENTIALS THAT IDENTITY WOULD READ (msg-089 point 2) — said out loud for
@@ -13305,6 +13330,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     });
     if (unreachable !== undefined) {
       pairErr(candidate, unreachable);
+      doorRefusals.push(unreachable);
       return;
     }
     // The workspace and the continuation are settled PER LAUNCH: both are properties of
@@ -13330,6 +13356,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       // journal of the runs. Staying silent is not allowed either, hence a line on
       // every tick.
       pairErr(candidate, `skipped — its workspace is not usable: ${setup.reason}`);
+      doorRefusals.push(`its workspace is not usable: ${setup.reason}`);
       return;
     }
     pairOut(candidate, `ceilings: ${describeCeilings(ceilings)}`);
@@ -13686,10 +13713,11 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // pair lasts until a human looks at it, and a record every tick would drown the
     // journal of the runs; but the daemon's stream must never be silent about work it
     // is declining to do.
+    const plannerSkips: string[] = [];
     for (const skip of decision.skipped) {
-      err(
-        `agent-protocol: ${describeSkip(skip, gates.maxAttempts, kindForRole(argv, registry, skip.role))}`,
-      );
+      const line = describeSkip(skip, gates.maxAttempts, kindForRole(argv, registry, skip.role));
+      plannerSkips.push(line);
+      err(`agent-protocol: ${line}`);
     }
     // THREAD 036, STEP 3 — WHOSE MONEY THIS TICK SPENT, said ABOVE the skips' own reasons
     // and never folded into them. A `quota` skip says "this pair was not raised"; these
@@ -13942,7 +13970,31 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       process.exit(SELF_RESTART_EXIT_CODE);
     }
     const plan: readonly Candidate[] = handedOverToRepair ? [] : planned;
+    doorRefusals.length = 0;
     for (const candidate of plan) launch(candidate, events);
+    // THE TICK THAT LIFTED NOBODY IS COUNTED (thread 180). Two standstills of half an hour
+    // each on 2026-09-09 — one from role worktrees left behind by a self-restart, one from a
+    // config whose schema had passed the running build — were visible ONLY as these very
+    // lines in `daemon.log`, tick after tick, while the unit stayed `active` and the queue
+    // stayed full. The fold is pure and the write is one small file: like the outage counter
+    // above it, this cannot change what a tick does, and the worst it can do is stay quiet.
+    // `live.size` is what says the circuit moves — a busy role refusing the rest of the
+    // queue is the healthiest box there is, not a standstill.
+    try {
+      stall = foldStall({
+        previous: stall,
+        candidates: candidates.length,
+        moving: live.size,
+        refusals: [...doorRefusals, ...plannerSkips],
+        launching: !handedOverToRepair && decision.kind !== "disabled",
+        now: new Date(),
+      });
+      writeOut(paths.stall, renderStall(stall));
+      if (stall !== undefined && stallAlarmDue(stall))
+        err(`agent-protocol: ${describeStall(stall)}`);
+    } catch (error) {
+      err(`agent-protocol: daemon — the stall state was not written: ${(error as Error).message}`);
+    }
     // "Nothing was launched" IS AN OUTCOME AND IS SPOKEN OUT LOUD. Before this, both
     // of these branches were a bare comment: the daemon printed its banner and either
     // exited (`--once`) or went quiet for hours, and "no mail" looked exactly like
