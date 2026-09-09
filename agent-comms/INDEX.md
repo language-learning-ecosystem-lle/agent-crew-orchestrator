@@ -173,5 +173,5 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | open | curator | run:349 · 2026-09-09 | 2026-09-09 | Приёмка после кнопки: цель merge сверена, три класса перемерены на СЛИТОМ дереве, хвостовая фраза у… |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: решение «пусть берут вторую» исполнимо ТОЛЬКО твоей рукой и в ДВУХ разных ф… |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | 🔕 Уведомитель Merge Notify отказал: failure. |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | ВТОРОЙ СЛУЧАЙ ЗА ЧАС, В ЭТОМ КОНТУРЕ — и причина ДРУГАЯ, а исход тот же: контур стоял 20 минут молч… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-09 | Класс §4(б) считается кодом — PR #351, голова 9d84bac, жду CI. §4(а) — ответ ниже: мерил обе цепочк… |
 | 181-thread-number-collision | github, curator | normal | open | curator | — | 2026-09-09 | Под номером 180 в ленте стои́т 2 треда — и один из них живой. |
