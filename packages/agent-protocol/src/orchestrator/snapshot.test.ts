@@ -431,22 +431,27 @@ describe("renderParallelism — the live count and the room left", () => {
     expect(text).toContain("free: dev-core, dev-acme");
   });
 
-  // The other side of the same arithmetic, and the reason the number is the SMALLER of two
-  // ceilings: here the named roles could take four places between them and the box has
-  // three, so the box is what bounds the room — a number taken from the list alone would
-  // promise capacity the tick will not give out.
-  it("the room is bounded by the box too, not only by whom the list names", () => {
+  // THE OTHER SIDE OF THE SAME MINIMUM, AND IT IS ASSERTED WHERE THE NUMBER IS PRINTED
+  // (reviewer, PR #362, second round). The test that used to stand here named this
+  // property and could not have measured it: its scenario was in the `live.length > 0`
+  // branch, where the head prints no `N free` at all — `freePlaces` reaches the frame in
+  // exactly one branch, `nobody is live` with a hold, so a case that means to bind the
+  // number has to be built there. Here one role is named free and could take two places
+  // while the box has five left, so the ROLES bound the room; a number taken from the box
+  // alone would promise capacity no raisable role may use.
+  it("the room is bounded by whom the list names too, not only by the box", () => {
     const text = renderParallelism(
       p({
         raisable: ["dev-core", "curator", "dev-acme"],
-        live: [running("dev-core", "177-workspace-per-pair")],
+        held: ["curator", "dev-acme"],
         pairsPerRole: 2,
-        pairsPerInstance: 2,
+        pairsPerInstance: 5,
       }),
     );
-    // One place of two is live, so one is left — and it is left however many roles are idle.
-    expect(text).toContain("parallelism: 1 of 2 place(s) live");
-    expect(text).toContain("free: dev-core, curator, dev-acme");
+    expect(text).toContain(
+      "parallelism: nobody is live — 5 place(s), 2 free, 2 role(s) held by a human",
+    );
+    expect(text).toContain("free: dev-core");
   });
 
   it("nobody live and every role held is saturation by the human, and says so", () => {
