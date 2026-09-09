@@ -631,6 +631,7 @@ import {
   type WorkspaceDirt,
   type WorkspaceFacts,
   type WorkspacePlan,
+  workspaceKeyOf,
   workspacePath,
   workspaceRoleOf,
   workspaceVerdict,
@@ -11704,7 +11705,13 @@ const settleRun = (input: {
   readonly write: boolean;
 }): RunSetup => {
   const { argv, role, thread, repo, mailRoot, events } = input;
-  const workdirSection = configFrom(argv, undefined).config.orchestrator?.workdir;
+  // ONE READ OF THE CONFIG SERVES BOTH THE PLACE AND ITS KEY (thread 177): the directory
+  // the workspaces hang under and the ceiling that decides whether this one is keyed by
+  // the pair come out of the same parse. Two reads would be two chances to disagree about
+  // the same file, and the disagreement would be a session put in a tree nothing else
+  // knows the name of.
+  const runConfig = configFrom(argv, undefined).config;
+  const workdirSection = runConfig.orchestrator?.workdir;
   const base = workdirSection === undefined ? undefined : baseCommitOf(repo, workdirSection.branch);
   // One read of the thread serves both halves of R18: the mark that goes ONTO this
   // run's launch event, and the list the decision about the PREVIOUS run is taken from.
@@ -11738,7 +11745,18 @@ const settleRun = (input: {
     };
   }
 
-  const path = workspacePath({ repo, worktrees: workdirSection.worktrees, role: role.id });
+  // WHERE THIS RUN WORKS, AND WHAT THE PLACE IS KEYED BY (thread 177). The choice between
+  // the two forms is not made here — `workspaceKeyOf` makes it, and the surfaces that say
+  // where the trees ARE ask the same function, or they say a path that no longer exists.
+  const path = workspacePath({
+    repo,
+    worktrees: workdirSection.worktrees,
+    ...workspaceKeyOf({
+      role: role.id,
+      thread,
+      pairsPerRole: pairCeilings(runConfig).pairsPerRole,
+    }),
+  });
   // WHICH BUILD THAT TREE RUNS (thread 085) — BEFORE the lock is taken and before the tree
   // is touched, because this refusal is about the tree's CONTENTS and not about its head:
   // nothing here needs the worktree to have been moved to the base, and a refusal after
