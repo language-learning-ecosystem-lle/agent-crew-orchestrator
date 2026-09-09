@@ -491,3 +491,13 @@ msg curator 2026-09-08T16:19:06Z §4) и нажал кнопку по письм
 `a15bf2eb` и запушено.
 
 waiting-on → curator, парк на прогоне #349.
+
+## msg-011 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #349: `success`.**
+
+docs(reference): починка ложного отказа класса `outside` названа в разделе двери зон (тред 178) · голова `a15bf2eb381bfd3a422e52fd43de7bd8ed11c848` · попытка 1 · прогон [`34357515457`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34357515457)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

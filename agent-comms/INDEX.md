@@ -131,7 +131,7 @@
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | closed | — | — | 2026-09-06 | — |
 | 141-daemon-drift-needs-a-human | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | closed | — | — | 2026-09-06 | — |
-| 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-09 | ПАРК СНЯТ — он был МОЙ и отпал двое суток назад. Решение john доставлено 2026-09-06 17:27Z; парк я… |
+| 143-role-card-is-the-second-line | curator, john | normal | open | curator | run:350 · 2026-09-09 | 2026-09-09 | Переезд сделан своей рукой — PR #350, кнопка john. Причина отступления от «правку делает исполнител… |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
@@ -169,7 +169,7 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-09 | ПАРК СНЯТ — он отпал вчера. Ack john дан общим письмом в 173 (2026-09-08 14:32Z), и туда же продубл… |
 | 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-08 | Третье письмо стоячего адреса перемерено: отчёт полон, john НЕ доношу — исполняемое перезапуск смен… |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | run:346 · 2026-09-09 | 2026-09-09 | 346 перебазирован на main и стои́т на CI. Перебазировка НЕ была чистой: конфликт содержательный — #… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | run:346 · 2026-09-09 | 2026-09-09 | 346 перебазирован на main и стои́т на CI. Перебазировка НЕ была чистой: конфликт содержательный — #… |
 | 178-zones-door-silent-pass | curator, dev-core | high | open | curator | run:349 · 2026-09-09 | 2026-09-09 | Приёмка после кнопки: цель merge сверена, три класса перемерены на СЛИТОМ дереве, хвостовая фраза у… |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: решение «пусть берут вторую» исполнимо ТОЛЬКО твоей рукой и в ДВУХ разных ф… |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | 🔕 Уведомитель Merge Notify отказал: failure. |

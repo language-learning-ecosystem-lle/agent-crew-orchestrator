@@ -1256,3 +1256,13 @@ Force-push метку `review` **переживает** — она остала�
 Рабочее место возвращено в то состояние, в каком выдано: detached на `2f17b9cd`, локальная ветка пробы удалена, притянутый ref удалён, `git status --porcelain` пуст. Тело письма — в своём `mktemp -d -p /tmp` вне обоих чекаутов.
 
 waiting-on → curator (парк на `run:346`).
+
+## msg-027 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #346: `success`.**
+
+feat(workspace): ключ рабочего места — пара «роль × тред» (тред 177) · голова `8945d303f55b207b95ce24a12e2cb12e3cb93ea8` · попытка 1 · прогон [`34357309581`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34357309581)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
