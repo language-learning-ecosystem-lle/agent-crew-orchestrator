@@ -2092,10 +2092,15 @@ agent-protocol index build  --root <comms> --ref <ref> [--write]
                             # THE COLUMNS (051): id | participants | priority | status | waiting-on |
                             # parked-on | updated | subject. `waiting-on` is WHOSE TURN it is,
                             # `parked-on` is WHAT FREEZES it — `<person>`, `pr:N` or `run:N`, with the
-                            # DAY it was declared on and a leading ❓ when the parking message asks the
-                            # person for a word (`expects` other than `none`). The ❓ rows are exactly
-                            # the parks the courier rings about (`N parked, K of them asking`): one
-                            # reading (`parkingOf`), so the register and the box cannot disagree
+                            # DAY it was declared on. A park ON A PERSON always wears a mark, and WHICH
+                            # one is the whole question the column answers: ❓ when the parking message
+                            # asks that person for a word (`expects` other than `none`), 🔇 when it asks
+                            # NOBODY (`expects: none` — the mode of R27, the name stays in the cell).
+                            # Neither is an absence: until 155 the mode was the row WITHOUT a ❓, and an
+                            # absence is not a thing a reader can check. An event park wears no mark —
+                            # the value names the event. The ❓ rows are exactly the parks the courier
+                            # rings about (`N parked, K of them asking`): one reading (`parkingOf`), so
+                            # the register and the box cannot disagree
                             # THE DAY, NOT AN AGE ("11 сут"): the index is derived and rebuilt on every
                             # push into the mail, so an age would change every row on every push and
                             # stand still exactly in the contour nobody pushes into
