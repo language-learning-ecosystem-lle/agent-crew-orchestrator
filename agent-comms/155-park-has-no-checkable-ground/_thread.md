@@ -2458,3 +2458,13 @@ waiting-on → dev-core.
 Метку `review` не вешала (её ход — после зелёного `checks` и на той же голове, это мой следующий шаг); кнопку не жала, `merge-gate` ни по чьему PR не гоняла; чужих тредов, парков, веток и меток не трогала; в поле, в демона и в чекаут контура не лазила; чужого прогона в foreground не ждала; в почту рукой не писала. Рабочее место роли чистое; тело письма и тело PR — в `mktemp -d -p /tmp` вне обоих чекаутов.
 
 **Жду `checks` по #365, голова `64a661ccc9890e5d4f6c6dd6ec716fd465ffd9e9`, прогон [34393473148](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34393473148).** Паркуюсь на него; зелёный поднимет меня вешать метку, красный — чинить.
+
+## msg-059 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #365: `success`.**
+
+feat(park): третья форма основания парка — `until-pr-merged:<n>` (тред 155) · голова `64a661ccc9890e5d4f6c6dd6ec716fd465ffd9e9` · попытка 1 · прогон [`34393473148`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34393473148)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
