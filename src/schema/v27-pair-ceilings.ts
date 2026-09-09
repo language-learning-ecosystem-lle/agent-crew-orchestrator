@@ -31,11 +31,13 @@
  * field is read by the DAEMON, the longest-lived process here, which is exactly the reader
  * that died of the other sentence on 2026-07-31.
  *
- * WHAT THIS VERSION DELIBERATELY DOES NOT REACH. The planner still refuses a second pair of a
- * role by `role-busy` and still says «one session per role (its workspace is one)». Teaching
- * it the ceilings — and giving that refusal a text that names the CEILING instead of the
- * workspace — is the next pull request of this thread, and it rides on the key of the
- * workspace pair (#346), not on this number.
+ * WHAT THIS VERSION DELIBERATELY DID NOT REACH, AND WHERE IT WAS REACHED. When this step was
+ * written the planner still refused a second pair of a role by `role-busy` and still said
+ * «one session per role (its workspace is one)». It counts to these ceilings since #355 and
+ * names the number in its refusal; the operator's frame was taught the same in the pull
+ * request of the queue row. Neither rides on this number: both ride on the key of the
+ * workspace pair (#346), and this migration remains what it was — the announcement that makes
+ * a config newer than the build readable to it.
  */
 import type { MigrationEffect, MigrationStep } from "./step.js";
 

@@ -409,9 +409,9 @@ export const protocolConfigSchema = z.strictObject({
    * HOW MANY PAIRS «role × thread» RUN AT ONCE (v27, thread `177-workspace-per-pair`).
    *
    * ABSENCE IS TODAY, BIT FOR BIT, and that is the load-bearing requirement of the field
-   * rather than a courtesy: one pair per role (the planner's `role-busy`, whose text still
-   * says «one session per role») and no ceiling of this kind on the box — the global run
-   * budget keeps cutting the tail exactly as it did. The code lands in `main` changing
+   * rather than a courtesy: one pair per role (the planner's `role-busy`, which since #355
+   * counts to THIS number and reads its silence as the default of 1) and no ceiling of this
+   * kind on the box — the global run budget keeps cutting the tail exactly as it did. The code lands in `main` changing
    * NOTHING in the field until john writes the numbers, which is why the numbers travel in
    * their own pull request: `agent-protocol.json` is a document of power and the number IS
    * the decision.

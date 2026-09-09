@@ -4994,11 +4994,13 @@ a human can predict the queue without reading the code.
   false used to look exactly like a row where it is true. Four marks now ride in
   `describeOrder`, each beside the others rather than instead of them, because one pair can be
   held by several things at once and each of them ends differently: `⏸ PARKED …` (R27, and the
-  park that is a MODE is said apart from the park that asks a person), `⛔ ROLE BUSY — <role> is
-  live on <other thread>; one session per role …`, `⏸ HELD BY A CLOSED WINDOW — quota-paused
-  until <ISO> …`, and — when the live session stands on THIS row's own thread —
-  `↩ THE TURN CAME BACK TO A LIVE PAIR — <role> is live on <thread>, and that is the thread of
-  this very row …`. The last two of those are the same fact told apart: measured on one fixture,
+  park that is a MODE is said apart from the park that asks a person), `⛔ ROLE BUSY — <n> of <ceiling>
+  pair(s) allowed to <role> are live ('parallelism.pairsPerRole' of the config), held by
+  <pairs> …` (thread 177: the mark is issued when the role's places are FULL, and a role with a
+  place still free gets no mark at all), `⛔ ROLE HELD — <role> is held by a manual session of
+  <who> …` (S5: the whole role is out, places or no places), `⏸ HELD BY A CLOSED WINDOW —
+  quota-paused until <ISO> …`, and — when a live session of the role stands on THIS row's own
+  thread — `↩ THE TURN CAME BACK TO A LIVE PAIR — <role> is live on this very row's thread …`. The last two of those are the same fact told apart: measured on one fixture,
   the two frames differed by the thread id INSIDE one sentence and by nothing else, so a pair
   whose role is spent elsewhere and a pair whose own session was handed the turn back read as
   one state. They are not one: the first waits for capacity, the second is the busiest pair of

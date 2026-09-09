@@ -46,11 +46,12 @@
  * being talkative — a conversation where three roles spoke while one was awaited
  * would look older than one where the same handoff happened yesterday in silence.
  */
+import { DEFAULT_PAIRS_PER_ROLE } from "../config/config.js";
 import type { RoleId } from "../roles/schema.js";
 import type { Message, ThreadPriorityValue } from "../thread/message.js";
 import { type ParkedOn, parkedOnKind } from "../thread/thread.js";
 import { reviewRoundWord } from "./state-word.js";
-import type { Candidate } from "./tick.js";
+import type { Candidate, RunningPair } from "./tick.js";
 
 /**
  * The vocabulary lives with the PARSER (`thread/message.ts`), not here: the field is
@@ -259,20 +260,34 @@ export const rankCandidates = (input: {
 };
 
 /**
- * WHAT A BUSY ROLE IS DOING INSTEAD, and — when that is a session — WHICH THREAD IT STANDS ON
- * (thread 063, states 4/5).
+ * WHAT A BUSY ROLE IS DOING INSTEAD, and — when that is a session — WHICH PAIRS IT STANDS ON
+ * (thread 063, states 4/5; re-keyed to pairs in thread 177).
  *
- * The thread rides beside the words rather than being read back out of them, because the queue
- * row has to compare it with its own: a role live on ANOTHER thread and a role live on THIS
- * one are two different states of the pair, and until this field existed the frame printed one
- * sentence for both, differing by a thread id inside it and by nothing else. A manual hold
- * carries no thread — it is not a session standing anywhere — so it is never the second case.
+ * IT IS A LIST OF PAIRS AND NO LONGER ONE SENTENCE. Until thread 177 this type carried a
+ * single `doing` string and a single `thread`, because a role had one workspace and therefore
+ * one session: the two could not disagree. With `parallelism.pairsPerRole` of the config the
+ * role may hold N of them, and a field that fits one collapses the rest — measured on
+ * 2026-09-09 against two live pairs of `dev-core`, the map came back with ONE entry and the
+ * first pair had vanished, after which the row compared its own thread with a stranger's and
+ * called a returning turn a busy role. This is the same class the planner's `running` was
+ * moved off roles for, on the second surface.
+ *
+ * THE THREADS RIDE BESIDE THE WORDS rather than being read back out of them, because the queue
+ * row has to compare its own against ALL of them: a role live on other threads and a role live
+ * on THIS one are two different states of the pair, and one sentence for both differed by a
+ * thread id inside it and by nothing else. `since` rides along for the same reason the
+ * planner's refusal carries it — a full ceiling and a ceiling stuck behind a session that died
+ * without closing its lease read identically without it.
+ *
+ * A MANUAL HOLD IS A SEPARATE FIELD, not a pair with no thread: it is not a session standing
+ * anywhere, it takes the WHOLE role rather than one of its places (the tick refuses `held`
+ * before it counts anything), and the two are repaired apart.
  */
 export type RoleElsewhere = {
-  /** "live on 063-…", "held by a manual session of john" — what the row says after "is". */
-  readonly doing: string;
-  /** The thread of the live session, absent for a hold. */
-  readonly thread?: string | undefined;
+  /** Every LIVE pair of this role, in the order the frame's own section names them. */
+  readonly live: readonly RunningPair[];
+  /** Whom an ACTIVE manual hold on the role belongs to (S5). Absent when there is none. */
+  readonly heldBy?: string | undefined;
 };
 
 /**
@@ -307,12 +322,17 @@ export const describeOrder = (
    */
   modeParked: ReadonlySet<string> = new Set(),
   /**
-   * THE ROLES THAT CANNOT BE RAISED THIS TICK WHATEVER THE ORDER SAYS (thread 063, §2.3 row 2):
-   * role id → what it is doing instead ("live on 058-…", "held by a manual session"). One
-   * session per role — its workspace is one — so a row whose role is busy promises a launch
+   * WHAT EACH ROLE IS SPENDING ITS PLACES ON (thread 063, §2.3 row 2; re-keyed to pairs in
+   * thread 177): role id → its LIVE PAIRS and its manual hold. A role whose places are all
+   * spent cannot be raised this tick whatever the order says, so its row promises a launch
    * that is not coming, and it looks exactly like the row above it that is.
    *
-   * "Stands because the role is busy elsewhere" and "stands for no reason" were the same row
+   * IT IS THE LIST AND NOT A VERDICT, because the verdict needs the number beside it: the
+   * ceiling below decides whether these pairs mean "full" or "busy with room to spare", and a
+   * map that arrived already saying "busy" would have decided it in a place that cannot see
+   * the config.
+   *
+   * "Stands because the role's places are spent" and "stands for no reason" were the same row
    * in the operator's frame: the daemon says the first one in its skip line, and the frame has
    * no skip lines at all. Absent map, the row reads exactly as it did before.
    */
@@ -350,6 +370,22 @@ export const describeOrder = (
    * role alone would mark the fresh row too.
    */
   outOfAttempts: ReadonlyMap<string, SpentCeiling> = new Map(),
+  /**
+   * HOW MANY PAIRS OF ONE ROLE MAY BE LIVE AT ONCE — `parallelism.pairsPerRole` of the config
+   * (v27, thread 177), the very number the planner counts to.
+   *
+   * The row needs the NUMBER and not just the list, because "the role is elsewhere" stopped
+   * being a reason the moment the ceiling could exceed one: with a ceiling of 3 and one live
+   * pair the role has room, the tick will raise this pair, and a row saying `ROLE BUSY` would
+   * be a false refusal — the frame telling an operator to wait for a session that is not in
+   * the way. So the mark is not "something is live" but "the places are FULL", and the number
+   * is what makes those two different sentences.
+   *
+   * Defaulted to the config's own default rather than to a literal of this file: a caller that
+   * has not read the config gets exactly the behaviour of the world before the ceiling
+   * existed, and the two defaults cannot drift apart into two answers about one silence.
+   */
+  pairsPerRole: number = DEFAULT_PAIRS_PER_ROLE,
 ): string[] =>
   ordered.map((candidate, at) => {
     const waited =
@@ -380,18 +416,33 @@ export const describeOrder = (
     // AND TWO DIFFERENT THINGS SAID APART (thread 063, states 4/5). Measured before the second
     // sentence was written: rendered off one fixture, the two frames differed by the thread id
     // INSIDE this line and by nothing else, so an operator told them apart by comparing two
-    // identifiers within one sentence. They are not one state. "The role is on another thread"
-    // is capacity spent elsewhere and the pair waits its turn; "the role is live on THIS row's
+    // identifiers within one sentence. They are not one state. "The role's places are spent"
+    // is capacity gone elsewhere and the pair waits its turn; "the role is live on THIS row's
     // thread" is the mail handing the turn back to a pair that is still running — the busiest
     // pair of the frame, not a stuck one. The old tail was worse than silent on that second
     // form: `until that one ends` pointed at the very pair the row is about.
-    const sameThread = elsewhere?.thread !== undefined && elsewhere.thread === candidate.thread;
-    const taken =
-      elsewhere === undefined
-        ? ""
-        : sameThread
-          ? ` · ↩ THE TURN CAME BACK TO A LIVE PAIR — ${candidate.role} is ${elsewhere.doing}, and that is the thread of this very row: the mail asked this pair again while its own session still runs. Nothing else holds it — the live session takes that word in place if it is waiting for one, and otherwise the pair is raised anew the moment that session ends`
-          : ` · ⛔ ROLE BUSY — ${candidate.role} is ${elsewhere.doing}; one session per role (its workspace is one), so this pair is not raised until that one ends`;
+    //
+    // THE COMPARISON IS AGAINST EVERY LIVE PAIR OF THE ROLE (thread 177) and no longer against
+    // one of them: with two sessions live, asking only the last one made the frame call a
+    // returning turn a busy role, because the pair it should have matched had been dropped on
+    // the way in.
+    const sameThread = elsewhere?.live.some((pair) => pair.thread === candidate.thread) === true;
+    const taken = ((): string => {
+      if (elsewhere === undefined) return "";
+      if (sameThread)
+        return ` · ↩ THE TURN CAME BACK TO A LIVE PAIR — ${candidate.role} is live on this very row's thread: the mail asked this pair again while its own session still runs. Nothing else holds it — the live session takes that word in place if it is waiting for one, and otherwise the pair is raised anew the moment that session ends`;
+      // A HOLD OUTRANKS THE COUNT, because it is not a place spent but the whole role handed
+      // to a person (S5): the tick refuses `held` BEFORE it counts anything, so a role with
+      // room and a hold is still not raised, and a row that answered by the ceiling would
+      // promise a launch nobody is going to make.
+      if (elsewhere.heldBy !== undefined)
+        return ` · ⛔ ROLE HELD — ${candidate.role} is held by a manual session of ${elsewhere.heldBy}; the whole role is out of the circuit's hands, places or no places, until that hold is given back`;
+      // AND THE MARK IS "FULL", NOT "SOMETHING IS LIVE" (thread 177, acceptance 2 of curator's
+      // letter of 2026-09-09): under a ceiling above one, a role with a live pair and a free
+      // place is raised by the very next tick.
+      if (elsewhere.live.length < pairsPerRole) return "";
+      return ` · ⛔ ROLE BUSY — ${elsewhere.live.length} of ${pairsPerRole} pair(s) allowed to ${candidate.role} are live ('parallelism.pairsPerRole' of the config${pairsPerRole === 1 ? ", the default of 1 — the project has declared no parallelism" : ""}), held by ${describeOccupants(elsewhere.live)}; this pair is not raised until one of those ends`;
+    })();
     // THE CLOSED WINDOW, said on the row that promises the launch (thread 063). Beside the two
     // above and never instead of them, for the reason the freeze is beside the busy mark: a pair
     // can be held by three different things at once, and each of them is repaired — or waited
@@ -496,3 +547,25 @@ const describeFreeze = (
       return `PARKED behind a decision of ${on.person} (R27) — not raised until a message carries that word ('delivers: ${on.person}')`;
   }
 };
+
+/**
+ * WHO HOLDS THE PLACES, in one clause — the half of a full ceiling an operator can act on.
+ *
+ * `since` is printed when the caller said it and quietly left out when it did not: a
+ * planner told nothing about the clock must not invent a word like "recently", and a
+ * missing time is not worth a sentence of its own next to the pairs it belongs to.
+ *
+ * EXPORTED FOR THE OPERATOR'S QUEUE ROW (thread 177), which answers the same question the
+ * daemon's skip line answers and must answer it in the same words: two spellings of "who
+ * holds the places" is how the frame and the stream come to disagree in front of a human
+ * reading both.
+ */
+export const describeOccupants = (occupants: readonly RunningPair[] | undefined): string =>
+  occupants === undefined || occupants.length === 0
+    ? "sessions this planner was not told the names of"
+    : occupants
+        .map(
+          (held) =>
+            `${held.role}×${held.thread}${held.since === undefined ? "" : ` since ${held.since}`}`,
+        )
+        .join(", ");
