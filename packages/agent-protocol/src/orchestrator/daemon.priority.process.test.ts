@@ -557,9 +557,7 @@ describe("`status` — the live count and the freeze, where an operator reads th
     const result = status(repo);
 
     // One launchable role in this contour: `curator` is `claude.ai`, `john` is a human.
-    expect(result.out).toContain(
-      "parallelism: nobody is live — 1 role(s) this box raises, all free",
-    );
+    expect(result.out).toContain("parallelism: nobody is live — 1 place(s), all free");
   });
 
   it("a thread frozen behind a person is marked IN THE QUEUE, not only on the daemon's stream", () => {

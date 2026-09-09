@@ -38,6 +38,7 @@
  * because no daemon is alive" instead of quietly refreshing it (which a reader is
  * forbidden to do — see `mailCheckoutFreshness`).
  */
+import { DEFAULT_PAIRS_PER_ROLE } from "../config/config.js";
 import type { MailFreshness } from "../fs/git.js";
 import type { HeldMailLock } from "../thread/checkout-lock.js";
 import { type AuthShelf, describeAuthShelf } from "./auth.js";
@@ -109,6 +110,18 @@ export type Parallelism = {
    * cannot make the row silent by forgetting the number.
    */
   readonly pairsPerRole?: number | undefined;
+  /**
+   * HOW MANY PAIRS THIS BOX MAY RUN AT ONCE, SUMMED ACROSS ITS ROLES —
+   * `parallelism.pairsPerInstance` of the config (v27, thread 177), carried for the same
+   * reason as the number above: the head of this block counts PLACES, and a renderer that
+   * read the config itself would be a second source of the number the tick counts to
+   * (`describeSkip`, `box-busy`).
+   *
+   * Absent means the project declared no `parallelism` at all — the schema refuses half a
+   * declaration (v27), so a box with no ceiling of its own is a box at one pair per role,
+   * and the places are then the roles. Not "no ceiling".
+   */
+  readonly pairsPerInstance?: number | undefined;
 };
 
 export type OperatorFrame = {
@@ -412,22 +425,76 @@ export const shelvedRoles = (
  * The FREE roles are named, not just counted. A number answers "is there room"; the
  * names answer the question actually asked in front of a stalled contour — "room for
  * WHOM" — and that is the one that gets acted on.
+ *
+ * THE HEAD COUNTS PLACES, NOT ROLES (thread 177, curator's acceptance of 2026-09-09).
+ * It counted roles — `new Set(live.map(v => v.role))` — which was lossless while a role
+ * had one workspace and could not hold two. Measured on the merged tree of #359 with
+ * `pairsPerRole: 2`: TWO live pairs of `dev-core` and ONE live pair of `dev-core` print
+ * the same head (`1 of 3 role(s) live`) and the same `free:` line, and the two states
+ * differ in what the box has left — no place for that role in the first, one place in the
+ * second. The operator was left to count the `▶` rows by hand, which is the very thing
+ * D-4 exists to spare them.
+ *
+ * AND THE TWO NUMBERS ARE NOT ONE. `raisable.length` and `parallelism.pairsPerInstance`
+ * are both 3 in the field config of this box today, and they answer different questions —
+ * how many roles this run may raise (R13, narrowed by the operator's flags) and how many
+ * pairs the box may hold at once. Each is printed with the word that names it, so a
+ * reader who does not know the code tells them apart by the text and not by the accident
+ * of the values agreeing.
+ *
+ * WHAT IS STILL COUNTED IN ROLES, on purpose: a hold is taken on a ROLE (S5) — a human
+ * takes `curator`, not one of `curator`'s places — and `free:` names roles because "room
+ * for WHOM" is answered by a name to raise, not by a number.
  */
 export const renderParallelism = (p: Parallelism, now?: Date): string => {
-  const capacity = p.raisable.length;
-  const busy = new Set(p.live.map((view) => view.role));
+  const roles = p.raisable.length;
+  const pairsPerRole = p.pairsPerRole ?? DEFAULT_PAIRS_PER_ROLE;
+  // The places this run could spend. With no declared `parallelism` the box has no
+  // ceiling of its own and every role holds one pair, so the places ARE the roles — the
+  // number this block has always printed, under a word that now says what it counts.
+  const places = p.pairsPerInstance ?? roles * pairsPerRole;
+  // How many of a role's own places are live — the count `free:` judges room by. A role
+  // with one live pair out of two allowed is neither busy nor free-by-the-old-rule, and
+  // that is exactly the state the old subtraction had no name for.
+  const spentBy = new Map<string, number>();
+  for (const view of p.live) spentBy.set(view.role, (spentBy.get(view.role) ?? 0) + 1);
   const heldHere = p.raisable.filter((role) => p.held.includes(role));
-  const free = p.raisable.filter((role) => !busy.has(role) && !heldHere.includes(role));
+  // THE BOX CEILING IS A SEPARATE DOOR FROM THE ROLE'S (v27): a role can have a place
+  // left while the box has none, and `describeSkip` already tells those two apart in the
+  // daemon's stream (`role-busy` against `box-busy`). A `free:` line naming a role the
+  // tick cannot raise this minute would send the reader to wait for a launch that is not
+  // coming.
+  //
+  // ONLY WHERE THE BOX HAS A CEILING OF ITS OWN. With no declared `parallelism` the places
+  // ARE the roles, so "the box is full" and "every role is busy" are one state said twice —
+  // and of the two wordings the role one is the one that names somebody to go and look at.
+  const boxFull = p.pairsPerInstance !== undefined && p.live.length >= places;
+  const free = boxFull
+    ? []
+    : p.raisable.filter(
+        (role) => (spentBy.get(role) ?? 0) < pairsPerRole && !heldHere.includes(role),
+      );
+  // Where the capacity comes from, in the words of the config that declares it — and the
+  // roles named as roles beside it, so the two numbers never stand bare next to each other.
+  const spread =
+    p.pairsPerInstance === undefined
+      ? `one place per role, ${roles} role(s) this box raises — the project declares no 'parallelism'`
+      : `'parallelism.pairsPerInstance', spread over ${roles} role(s) this box raises at up to ${pairsPerRole} pair(s) each`;
   // FREE IS ONE SUBTRACTION, NOT TWO WORDINGS (reviewer, PR #100): a hold is capacity
   // spent whether or not anything is live, so the zero case says "all free" only when
   // nothing is held — otherwise the head counted the held role as room and the very
   // next line called it taken.
   const head =
     p.live.length > 0
-      ? `parallelism: ${busy.size} of ${capacity} role(s) live`
+      ? `parallelism: ${p.live.length} of ${places} place(s) live — ${spread}`
       : heldHere.length === 0
-        ? `parallelism: nobody is live — ${capacity} role(s) this box raises, all free`
-        : `parallelism: nobody is live — ${capacity} role(s) this box raises, ${free.length} free, ${heldHere.length} held by a human`;
+        ? `parallelism: nobody is live — ${places} place(s), all free (${spread})`
+        : // A HOLD SPENDS THE ROLE'S PLACES, ALL OF THEM (S5): a human takes `curator`,
+          // not one of `curator`'s two seats, and the circuit raises none of them until it
+          // is given back. Clamped at zero rather than trusted: a box ceiling below what
+          // its roles could hold is legal (v27 only refuses the reverse), and a frame is
+          // not the place to print a negative count of room.
+          `parallelism: nobody is live — ${places} place(s), ${Math.max(0, places - p.live.length - heldHere.length * pairsPerRole)} free, ${heldHere.length} role(s) held by a human (${spread})`;
   const lines = [head];
   for (const view of p.live) {
     // THE SAME VOCABULARY AS THE LINE ABOVE THIS BLOCK (thread 063). This renderer printed
@@ -440,16 +507,19 @@ export const renderParallelism = (p: Parallelism, now?: Date): string => {
     );
   }
   if (p.live.length > 0 || heldHere.length > 0) {
-    // Where the room went is named, not implied: busy, held, or both.
+    // Where the room went is named, not implied: busy, held, or both — and the box
+    // ceiling is named apart from either, because it is the one reason a role with a
+    // place of its own left is still not raisable.
     const spent = [
-      busy.size > 0 ? "busy" : undefined,
+      spentBy.size > 0 ? "out of places of its own" : undefined,
       heldHere.length > 0 ? "held by a human" : undefined,
     ]
       .filter((word) => word !== undefined)
       .join(" or ");
-    lines.push(
-      `  free: ${free.length === 0 ? `none — every role this box raises is ${spent}` : free.join(", ")}`,
-    );
+    const none = boxFull
+      ? `none — the ceiling of this BOX is full, ${p.live.length} of ${places} place(s) live ('parallelism.pairsPerInstance'); a role of it may still be idle`
+      : `none — every role this box raises is ${spent}`;
+    lines.push(`  free: ${free.length === 0 ? none : free.join(", ")}`);
   }
   if (heldHere.length > 0) {
     lines.push(`  held by a human: ${heldHere.join(", ")} — not the circuit's to raise (S5)`);
