@@ -78,3 +78,13 @@ grep не тронута — флаги и шаблон едут ему как �
 
 Жду `checks` по #361, голова `4584707a6`. Дальше по маршруту — снять и повесить метку
 `review` на зелёной голове, это мой же ход.
+
+## msg-003 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #361: `success`.**
+
+fix(ci): сверка доставки вердикта различает «правило нарушено» и «проба не состоялась» (тред 185) · голова `4584707a6fbb89bbdaaf390104ae0d5814d439aa` · попытка 1 · прогон [`34382790329`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34382790329)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
