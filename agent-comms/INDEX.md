@@ -131,7 +131,7 @@
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | closed | — | — | 2026-09-06 | — |
 | 141-daemon-drift-needs-a-human | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | closed | — | — | 2026-09-06 | — |
-| 143-role-card-is-the-second-line | curator, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: сокращаем ли карточки ролей — 24,7% base и $74.33 за неделю, и самая дорога… |
+| 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-09 | ПАРК СНЯТ — он был МОЙ и отпал двое суток назад. Решение john доставлено 2026-09-06 17:27Z; парк я… |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
