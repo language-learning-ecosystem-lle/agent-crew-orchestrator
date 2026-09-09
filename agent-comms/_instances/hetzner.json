@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T16:04:26.783Z",
+  "writtenAt": "2026-09-09T16:12:10.093Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "179-any-available-account",
-      "state": "draining",
-      "deadline": "2026-09-09T16:40:54Z"
-    },
     {
       "role": "dev-core",
       "thread": "180-selfheal-leaves-the-workspaces-behind",
