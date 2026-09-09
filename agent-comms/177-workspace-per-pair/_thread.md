@@ -1729,3 +1729,7 @@ PR передачи треда в `workspacePath` + операторский к�
 
 Доставлено шагами прогона [`34370236240`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34370236240) по PR #355, голова `86e55f6470490a724d052ef8cc533fb1c1d10696` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-037 · from: github · 2026-09-09 · expects: none
+
+PR #355 (feat(daemon): планировщик считает до потолка конфига, а не до места (тред 177)) **merged** by maysway → `main`.
