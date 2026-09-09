@@ -138,3 +138,4 @@
 - [Класс «полевой дефект» требует фразы АВТОРА о границе нормы](field-defect-class-needs-the-authors-own-boundary-sentence.md) — гард 4 её не заменяет; слать не дожидаясь запроса.
 - [Какой код напечатал строку — доказывает её ТЕКСТ](log-line-text-proves-which-binary-printed-it.md) — подстрока, введённая коммитом; время такта — из имени файла в `sessions/`.
 - [Дерево ПАРЫ может быть без `node_modules`](pair-worktree-may-have-no-node-modules.md) — почту гонять из главного чекаута.
+- [Момент «демон встал на новый код» — строка `daemon — code:`](daemon-log-dates-its-own-code.md) — T0 окна приёмки; окно склеивать из `daemon.log.1`+`daemon.log`.
