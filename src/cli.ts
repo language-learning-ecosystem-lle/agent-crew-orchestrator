@@ -3659,6 +3659,13 @@ const parkMoverFrom = (
  * already resolved. The `frozen:` form is deliberately NOT checked this way: its thread is half
  * of a PAIR and a pair is legitimately named before its thread has any mail of its own.
  *
+ * `until-pr-merged:<n>` IS NOT CHECKED HERE EITHER, and for the opposite reason to the one above:
+ * its mistake is not quiet. A number nothing answers to costs one note on the next tick — the
+ * mail either says that PR is merged or it does not — while the check that would catch it is a
+ * call to a forge this command does not make and must not learn to make in order to write a
+ * letter. A number ALREADY merged when the park is declared is likewise named by the note, which
+ * is the case this form was measured on (thread 155).
+ *
  * No permission gates it, for the reason none gates a park.
  */
 const parkGroundFrom = (
@@ -13699,14 +13706,20 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
     // A thread this box does not have is `undefined` — not a note: the door refuses that name at
     // the moment it can still be retyped, and a reader of an append-only feed repairs nothing.
     const byId = new Map(threads.map((thread) => [thread.id, thread]));
+    // THE THIRD FORM ASKS THE SAME SET THE PARKS THEMSELVES ARE JUDGED AGAINST (thread 155):
+    // `until-pr-merged:<n>` is answered by the `merged-pr:` letters of this very mail, computed
+    // ONCE here and handed to both readers — a park standing behind a merge and a park grounded on
+    // one may not disagree about which pull requests have landed.
+    const merged = mergedPrs(threads);
     const gone: readonly GroundedPark[] = groundsGone(
       threads.map((thread) => ({
         thread: thread.id,
-        parking: parkingOf(thread, mergedPrs(threads)),
+        parking: parkingOf(thread, merged),
       })),
       {
         frozen: new Set(outOfAttempts.keys()),
         key: frozenPairKey,
+        merged,
         deliveredSince: (thread, since) => {
           const named = byId.get(thread);
           if (named === undefined) return undefined;

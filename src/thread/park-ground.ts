@@ -34,7 +34,7 @@
  *  · ONCE PER TRANSITION, not once per tick — {@link foldGroundNotes}. A sentence repeated 71
  *    times is a sentence nobody reads.
  *
- * TWO FORMS, and each one is the measurement of a case above:
+ * THREE FORMS, and each one is the measurement of a case:
  *
  *  · `frozen:<role>×<thread>` — case (3). The ground that was named in a letter to john, that was
  *    already false when the letter was written, and that this box can answer WITHOUT ASKING
@@ -43,6 +43,22 @@
  *    a ready PR. The word of a person reaches this circuit in exactly one readable way — a letter
  *    carrying `delivers: <person>` — so "he has not answered yet" has an address in the SAME MAIL
  *    the tick already scans, and no new source is added for it either.
+ *  · `until-pr-merged:<n>` — THE PARK ANSWERED BY A BUTTON AND NOT BY A WORD, priced at 40 days
+ *    13 hours in a consumer circuit (statement of work, curator 2026-09-09, §2). Thread `016`
+ *    there parked on 2026-07-29 asking john for guard 3 over PR #74; he answered it two days later
+ *    BY MERGING (`merged_at 2026-07-31T11:27:50Z`), and the park then stood 38 more days. Neither
+ *    of the two forms above sees it: the pair is not frozen, and no `delivers` letter is coming
+ *    because the question was already answered by the hand on the button. The address is the one
+ *    the mail already carries — `merged-pr:` on a letter of the circuit — so this form, like the
+ *    other two, asks a source the tick has already read.
+ *
+ * WHAT `until-pr-merged:` DOES NOT SEE, said out loud rather than stretched: a PR CLOSED WITHOUT A
+ * MERGE. The statement of work names both outcomes ("the ground falls away when the PR is merged
+ * or closed"), and only the first has an address in this mail — a merge is announced by
+ * `merged-pr:` and a close is announced by nothing. Reading the second out of a source this box
+ * does not have would be a check that never runs wearing the name of one that does, so the form
+ * answers the half it can and the other half stays where it is today: with the hand that reads the
+ * thread. It costs nothing to widen once a closing letter exists.
  *
  * THE WINDOW OF THE SECOND FORM IS MEASURED FROM THE PARK, not from the beginning of the thread
  * (statement of work, §3.5): a `delivers` that was already lying in the feed when the park was
@@ -65,7 +81,7 @@ import type { Parking } from "./thread.js";
 /** The separator of a pair as the circuit writes it everywhere; `*` is the ASCII spelling. */
 const PAIR_SEPARATORS = ["×", "*"] as const;
 
-/** WHAT a `park-ground` value names. Two kinds today — see the head of this file. */
+/** WHAT a `park-ground` value names. Three kinds today — see the head of this file. */
 export type ParkGround =
   | {
       readonly kind: "frozen";
@@ -82,6 +98,13 @@ export type ParkGround =
       readonly thread: string;
       /** The value as the writer typed it, for every sentence that quotes it. */
       readonly raw: string;
+    }
+  | {
+      readonly kind: "until-pr-merged";
+      /** The pull request whose merge ends the ground. */
+      readonly pr: number;
+      /** The value as the writer typed it, for every sentence that quotes it. */
+      readonly raw: string;
     };
 
 /** The id of a thread, as every other door of this package spells it. */
@@ -89,7 +112,7 @@ const THREAD_ID = "[A-Za-z0-9][A-Za-z0-9._-]*";
 
 /** The shape a header value must have to be read at all — the tolerant reader's only demand. */
 export const PARK_GROUND = new RegExp(
-  `^(?:frozen:[a-z0-9][a-z0-9-]*[×*]${THREAD_ID}|no-delivers-since:${THREAD_ID})$`,
+  `^(?:frozen:[a-z0-9][a-z0-9-]*[×*]${THREAD_ID}|no-delivers-since:${THREAD_ID}|until-pr-merged:[1-9][0-9]*)$`,
 );
 
 /**
@@ -101,6 +124,12 @@ export const PARK_GROUND = new RegExp(
  */
 export const parseParkGround = (raw: string): ParkGround | undefined => {
   if (!PARK_GROUND.test(raw)) return undefined;
+  if (raw.startsWith("until-pr-merged:")) {
+    // The regex already refuses `0`, an empty tail and a leading zero, so the number is a number
+    // and the raw is the writer's own spelling of it — nothing to canonicalise here.
+    const pr = Number(raw.slice("until-pr-merged:".length));
+    return { kind: "until-pr-merged", pr, raw: `until-pr-merged:${pr}` };
+  }
   if (raw.startsWith("no-delivers-since:")) {
     const thread = raw.slice("no-delivers-since:".length);
     if (thread === "") return undefined;
@@ -133,7 +162,7 @@ export const judgeParkGround = (raw: string): ParkGroundVerdict => {
   if (ground !== undefined) return { ok: true, ground };
   return {
     ok: false,
-    reason: `--park-ground '${raw}' — this field names the FACT the park waits on, in a form the box can ask; the two forms it knows are 'frozen:<role>×<thread>' ("stands while that pair is frozen", ASCII '*' for the '×') and 'no-delivers-since:<thread>' ("stands while no letter in that thread carries 'delivers:'", counted from this park onwards). A ground it cannot read is a check that never runs, which is the silence this field was added to end (thread 155). Waiting for a person's decision needs no ground at all — leave the field off and the park behaves exactly as it always has`,
+    reason: `--park-ground '${raw}' — this field names the FACT the park waits on, in a form the box can ask; the three forms it knows are 'frozen:<role>×<thread>' ("stands while that pair is frozen", ASCII '*' for the '×'), 'no-delivers-since:<thread>' ("stands while no letter in that thread carries 'delivers:'", counted from this park onwards) and 'until-pr-merged:<n>' ("stands while PR #n is not merged", answered by the 'merged-pr:' letters of this mail). A ground it cannot read is a check that never runs, which is the silence this field was added to end (thread 155). Waiting for a person's decision needs no ground at all — leave the field off and the park behaves exactly as it always has`,
   };
 };
 
@@ -178,6 +207,15 @@ export const groundsGone = (
      * about a typo, which the door refuses at the moment it can still be retyped.
      */
     readonly deliveredSince: (thread: string, since: string) => boolean | undefined;
+    /**
+     * THE PULL REQUESTS THIS MAIL SAYS ARE MERGED — the one question of the third form, and the
+     * very set every other reader of a `pr:` park is judged against (`mergedPrs`), so a park
+     * standing behind a merge and a park GROUNDED on one cannot disagree about who has landed.
+     *
+     * Passed in for the reason `frozen` is: this module stays free of the mail and of the tick,
+     * and the two halves are one map computed once.
+     */
+    readonly merged: ReadonlySet<number>;
   },
 ): readonly GroundedPark[] => {
   const gone: GroundedPark[] = [];
@@ -187,6 +225,13 @@ export const groundsGone = (
     if (ground === undefined) continue;
     if (ground.kind === "frozen") {
       if (input.frozen.has(input.key(ground.role, ground.thread))) continue;
+    } else if (ground.kind === "until-pr-merged") {
+      // No window here, and the asymmetry with the form above is the measurement, not an
+      // oversight: a `delivers` already lying in the feed is not an answer to a question asked
+      // after it, whereas a PR that was ALREADY MERGED when the park was declared makes the park
+      // false at the moment it is written — which is exactly case (3) of this file, and naming it
+      // is the point. The door cannot catch that one: the writer parks in the same breath.
+      if (!input.merged.has(ground.pr)) continue;
     } else if (input.deliveredSince(ground.thread, parking.since) !== true) continue;
     gone.push({
       thread,
@@ -247,10 +292,11 @@ export const foldGroundNotes = (
  * the same. Each one says the fact in the tense of NOW, so it can be checked by the hand that
  * reads it rather than believed.
  */
-const groundIsGone = (ground: ParkGround): string =>
-  ground.kind === "frozen"
-    ? `the pair ${ground.role}×${ground.thread} is NOT frozen now`
-    : `thread ${ground.thread} HAS a letter carrying 'delivers:' since then`;
+const groundIsGone = (ground: ParkGround): string => {
+  if (ground.kind === "frozen") return `the pair ${ground.role}×${ground.thread} is NOT frozen now`;
+  if (ground.kind === "until-pr-merged") return `PR #${ground.pr} IS merged`;
+  return `thread ${ground.thread} HAS a letter carrying 'delivers:' since then`;
+};
 
 /**
  * THE SENTENCE. It says the four things its reader needs and no diagnosis: which thread, what
