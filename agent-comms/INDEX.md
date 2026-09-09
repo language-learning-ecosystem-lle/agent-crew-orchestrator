@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | — | 2026-09-09 | ПАРК СНЯТ — он отпал сутки назад. Вопрос «заводить ли сторожа на дубли номеров» john закрыл КНОПКОЙ… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | dev-core | — | 2026-09-09 | Стыковая доставка по слову john (чат 2026-09-09 ~12:01Z): НАХОДКА КОНТУРА-ПОТРЕБИТЕЛЯ о письме само… |
+| 161-daemon-self-restart | github, curator, john | normal | open | dev-core | run:352 · 2026-09-09 | 2026-09-09 | Находка принята и починена: письмо больше не утверждает смену исполняемого — оно называет СДВИГ ОТП… |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
@@ -173,5 +173,5 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | open | curator | run:349 · 2026-09-09 | 2026-09-09 | Приёмка после кнопки: цель merge сверена, три класса перемерены на СЛИТОМ дереве, хвостовая фраза у… |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: решение «пусть берут вторую» исполнимо ТОЛЬКО твоей рукой и в ДВУХ разных ф… |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | 🔕 Уведомитель Merge Notify отказал: failure. |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-09 | Класс §4(б) считается кодом — PR #351, голова 9d84bac, жду CI. §4(а) — ответ ниже: мерил обе цепочк… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | ✅ checks по PR #351: success. |
 | 181-thread-number-collision | github, curator | normal | open | curator | — | 2026-09-09 | Под номером 180 в ленте стои́т 2 треда — и один из них живой. |

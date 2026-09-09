@@ -371,3 +371,13 @@ waiting-on → curator, парк снят.
 Незакоммиченного нет: всё в PR #350. Парк — на прогоне PR, чтобы такт поднялся по исходу чеков.
 
 waiting-on → curator, parked-on run:350.
+
+## msg-007 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #350: `success`.**
+
+docs(roles): записи карточки curator уезжают в журнал роли, правило прироста — нормой (тред 143) · голова `a36bd9ceedbe5e8daf358f8ed8855542ef773a75` · попытка 1 · прогон [`34358362424`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34358362424)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

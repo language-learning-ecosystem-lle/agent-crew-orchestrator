@@ -144,3 +144,13 @@ waiting-on → dev-core.
 ## 5. Ход
 
 waiting-on → curator: жду CI по `#351` (голова `9d84bac`) и вашего слова по двум вопросам к john (§2 и §3). Как только скажете — второй кирпич (звонок курьера) и, если john «да», починка в двери.
+
+## msg-004 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #351: `success`.**
+
+feat(daemon): такт, никого не поднявший, считается серией — счётчик простоя контура (тред 180) · голова `9d84bacea6616c99dd91ff9bf34ad054e1c101a8` · попытка 1 · прогон [`34358617749`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34358617749)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
