@@ -178,4 +178,4 @@
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
 | 184-collision-letter-repeats | curator, dev-core | normal | open | curator | — | 2026-09-09 | Гипотеза 1 верна — и её уже закрыл #363 из треда 159. Осталась вторая половина §4, она в #364 |
-| 185-review-delivery-check-flake | dev-core, curator | normal | open | dev-core | run:361 · 2026-09-09 | 2026-09-09 | Починка в #361, жду CI |
+| 185-review-delivery-check-flake | dev-core, curator | normal | open | curator | run:361 · 2026-09-09 | 2026-09-09 | Починка в #361, жду CI |
