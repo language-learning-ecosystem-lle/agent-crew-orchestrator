@@ -131,3 +131,4 @@
 - [Конфликт со вторым PR мерится диапазонами `@@`](second-pr-conflict-is-priced-by-hunk-ranges.md) — не именами файлов.
 - [Флак доказывается диффом между головами](flake-is-proven-by-a-diff-between-heads.md) — красное и зелёное на одном коде.
 - [Проба схлопывает «не состоялась» в «правило нарушено»](probe-collapses-two-outcomes-into-rule-broken.md) — три исхода, here-string, пустой стог в `/dev/null`.
+- [Перебазировка без force-push](rebase-without-a-force-push.md) — черри-пик на НОВОЕ имя, старая ветка = доказательство.
