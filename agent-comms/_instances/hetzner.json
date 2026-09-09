@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T15:15:00.632Z",
+  "writtenAt": "2026-09-09T15:15:36.101Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "161-daemon-self-restart",
       "state": "running",
       "deadline": "2026-09-09T15:43:22Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "180-selfheal-leaves-the-workspaces-behind",
+      "state": "running",
+      "deadline": "2026-09-09T16:15:32Z"
     }
   ]
 }
