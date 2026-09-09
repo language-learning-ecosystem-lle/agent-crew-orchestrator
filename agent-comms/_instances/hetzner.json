@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T20:40:43.112Z",
+  "writtenAt": "2026-09-09T20:41:01.827Z",
   "roles": [
     "curator",
     "dev-core",
@@ -18,6 +18,12 @@
     }
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "161-daemon-self-restart",
+      "state": "running",
+      "deadline": "2026-09-09T21:20:58Z"
+    },
     {
       "role": "dev-core",
       "thread": "177-workspace-per-pair",
