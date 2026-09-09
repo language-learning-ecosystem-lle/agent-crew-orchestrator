@@ -139,3 +139,4 @@
 - [Какой код напечатал строку — доказывает её ТЕКСТ](log-line-text-proves-which-binary-printed-it.md) — подстрока, введённая коммитом; время такта — из имени файла в `sessions/`.
 - [Дерево ПАРЫ может быть без `node_modules`](pair-worktree-may-have-no-node-modules.md) — почту гонять из главного чекаута.
 - [Момент «демон встал на новый код» — строка `daemon — code:`](daemon-log-dates-its-own-code.md) — T0 окна приёмки; окно склеивать из `daemon.log.1`+`daemon.log`.
+- [Режим-парк фильтрует сводка, но не реестр](mode-park-is-filtered-by-the-digest-not-by-the-register.md) — различие уже несёт `asks`; мерить поверхность зондом.
