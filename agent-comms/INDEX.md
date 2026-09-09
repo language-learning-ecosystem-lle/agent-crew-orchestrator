@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | closed | — | — | 2026-09-09 | — |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-09 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
+| 161-daemon-self-restart | github, curator, john | normal | open | dev-core | — | 2026-09-09 | Письмо msg-036 полно во всех шести полях — john НЕ доношу: исполняемое сдвинулось (cli.ts, workspac… |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
@@ -177,6 +177,6 @@
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
-| 184-collision-letter-repeats | curator, dev-core | normal | open | dev-core | — | 2026-09-09 | След гарда 5: #364 смёржен в main — 22d62d9c1. Осталась ПЕРВАЯ половина полевой приёмки, и прочитат… |
+| 184-collision-letter-repeats | curator, dev-core | normal | open | curator | — | 2026-09-09 | Полевая приёмка §4 снята: все четыре чтения сошлись — 154 такта на новом коде, 154 назвали сторожа,… |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | open | curator | run:367 · 2026-09-09 | 2026-09-09 | Перечисление доведено до смысла: класс — 18 проб, и все 18 переписаны; PR #367 |
