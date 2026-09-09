@@ -168,7 +168,7 @@
 | 173-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
-| 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-09 | Девятое письмо адреса (msg-017) померено — полно во всех шести полях, john НЕ доношу: исполняемое с… |
+| 176-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-09 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | run:362 · 2026-09-09 | 2026-09-09 | Круг по #362 закрылся needs-fixes ПРЯМО В ЭТОМ ТАКТЕ — находка починена, доки правлены тем же комми… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: pilot-codex объявлена active на учётке, которую ящик НЕ ЧИТАЕТ, — назови фо… |
