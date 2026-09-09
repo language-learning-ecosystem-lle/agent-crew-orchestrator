@@ -515,3 +515,13 @@ detached), `TMPDIR=/tmp`:
 Мой прогон связан тредом `181` и только им, поэтому вопроса о кнопке john по `#353` я здесь не
 касаюсь: ход и его первая строка стоят так, как их оставило письмо dev-core `17:04:29Z`
 (`waiting-on: curator`).
+
+## msg-012 · from: github · 2026-09-09 · expects: none
+
+**PR #353 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `5257736cf29c520794aa4fc6c46c5f5e1c450d93`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
