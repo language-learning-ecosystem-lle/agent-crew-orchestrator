@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T21:36:10.252Z",
+  "writtenAt": "2026-09-09T21:36:16.707Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "184-collision-letter-repeats",
+      "state": "running",
+      "deadline": "2026-09-09T22:36:13Z"
+    },
     {
       "role": "dev-core",
       "thread": "186-collapsing-probe-class-enumerated",
