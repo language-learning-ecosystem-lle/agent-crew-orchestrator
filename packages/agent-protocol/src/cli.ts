@@ -27,6 +27,7 @@ import { createHash } from "node:crypto";
 import {
   appendFileSync,
   closeSync,
+  type Dirent,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -640,6 +641,7 @@ import {
   workspaceRoleOf,
   workspaceVerdict,
 } from "./orchestrator/workspace.js";
+import { checkWorkspaceDependencies, INSTALL_DIR } from "./orchestrator/workspace-dependencies.js";
 import {
   checkWorkspacePackage,
   manifestPin,
@@ -6962,6 +6964,48 @@ const workspacePackageFacts = (input: {
 };
 
 /**
+ * THE IO HALF OF THE DEPENDENCY CHECK (thread 161) — WHERE a tree has an install, asked of
+ * the disk and of nothing else: no package manager is started, no manifest is parsed, and
+ * no layout is assumed. The answer is a list of directories relative to `root`, `.` being
+ * the root itself.
+ *
+ * WHY IT WALKS AT ALL, AND WHY ONLY TWO LEVELS. In a pnpm workspace the install that
+ * actually matters is not the root one — a package's own dependencies live beside it, at
+ * `packages/<name>/node_modules`, and that is the directory whose absence killed the field
+ * case. Two levels reach it and stop: this runs at EVERY launch of every role, and a walk
+ * with no bottom would be a launch door that gets slower as somebody's repository grows.
+ *
+ * WHAT IS SKIPPED, AND WHY THAT IS NOT A CONVENIENCE. A directory that carries a `.git` of
+ * its own is a checkout in its own right, not part of this tree's install layout — and in
+ * THIS contour the role worktrees hang inside the repository, so without that skip the home
+ * checkout would report every other role's tree as an install root the workspace is missing.
+ * Dot-directories go for the same reason one level up, and `node_modules` itself is never
+ * descended into: a package's own dependencies are not this tree's.
+ */
+const installRootsOf = (root: string): readonly string[] => {
+  const found: string[] = [];
+  const scan = (relative: string, depth: number): void => {
+    const dir = relative === "." ? root : join(root, relative);
+    if (existsSync(join(dir, INSTALL_DIR))) found.push(relative);
+    if (depth === 0) return;
+    let entries: readonly Dirent[];
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name === INSTALL_DIR || entry.name.startsWith(".")) continue;
+      if (existsSync(join(dir, entry.name, ".git"))) continue;
+      scan(relative === "." ? entry.name : `${relative}/${entry.name}`, depth - 1);
+    }
+  };
+  scan(".", 2);
+  return found;
+};
+
+/**
  * IS THE WORKTREE LOCKED, AND BY WHOM — read through `git worktree list --porcelain`
  * rather than off the `locked` file inside the admin directory: the listing is the
  * public interface, and the file is an implementation detail we would be betting on.
@@ -11843,6 +11887,14 @@ type RunSetup =
       readonly world?: World;
       /** How the previous run ended — the one thing a resumed session is told about itself. */
       readonly previousReason?: string;
+      /**
+       * WHAT THE SESSION HAS TO KNOW ABOUT ITS OWN TREE BEFORE ITS FIRST COMMAND (thread
+       * 161) — present only when something is wrong with it, and the text is the whole
+       * message: the fact and the one line that repairs it. It travels on the setup rather
+       * than being measured in the prompt builder for the reason `workspace` does — the
+       * tree is resolved once, and a second measurement is a second chance to disagree.
+       */
+      readonly workspaceNote?: string;
       readonly lines: readonly string[];
     }
   | { readonly ok: false; readonly reason: string; readonly lines: readonly string[] };
@@ -12119,6 +12171,31 @@ const settleRun = (input: {
     });
     if (!signed.ok) return { ok: false, reason: signed.reason, lines };
   }
+  // CAN THIS TREE RUN A COMMAND AT ALL (thread 161) — asked LAST, because it is the only
+  // question here whose answer the plan above can change: a `create` made the directory a
+  // few lines ago, and an empty one is exactly what the check is looking for.
+  //
+  // NOT A REFUSAL, and the placement says why: after the tree exists and after the lock,
+  // on the way to a session that is going to be started regardless. An empty tree is the
+  // NORMAL state of a workspace made a moment ago (and, since the trees are keyed by the
+  // pair, the common one) — a door that refused it would refuse the circuit it lives in.
+  // What the session lacks is the fact, so the fact goes into its prompt and into the line
+  // a human reads, and the repair stays in a hand: nothing here installs anything (john's
+  // decision, thread 085 §4).
+  //
+  // ONLY ON A REAL LAUNCH: without `--write` no tree was created, so the measurement would
+  // be of a directory this run deliberately did not make, and the note would name a fault
+  // that the actual run repairs on its way in.
+  const dependencies = input.write
+    ? checkWorkspaceDependencies({
+        role: role.id,
+        path,
+        repo,
+        home: installRootsOf(repo),
+        tree: installRootsOf(path),
+      })
+    : ({ installed: true } as const);
+  if (!dependencies.installed) lines.push(`dependencies — ${dependencies.note}`);
   return {
     ok: true,
     workdir: path,
@@ -12126,6 +12203,7 @@ const settleRun = (input: {
     continuation,
     ...(world === undefined ? {} : { world }),
     ...(previousReason === undefined ? {} : { previousReason }),
+    ...(dependencies.installed ? {} : { workspaceNote: dependencies.note }),
     lines,
   };
 };
@@ -12225,6 +12303,12 @@ const promptForRun = (input: {
           deadline,
           windDownSeconds: input.windDownSeconds,
           mail: input.mail,
+          // THE TREE'S OWN FAULT TRAVELS INTO BOTH PROMPTS (thread 161): a resume inherits
+          // the tree of the run that was interrupted, and being interrupted before the
+          // dependencies were installed is one of the ways that run ended.
+          ...(input.setup.workspaceNote === undefined
+            ? {}
+            : { workspaceNote: input.setup.workspaceNote }),
         })
       : buildLaunchPrompt({
           role: input.role.id,
@@ -12233,6 +12317,9 @@ const promptForRun = (input: {
           deadline,
           windDownSeconds: input.windDownSeconds,
           mail: input.mail,
+          ...(input.setup.workspaceNote === undefined
+            ? {}
+            : { workspaceNote: input.setup.workspaceNote }),
         });
 };
 
