@@ -178,4 +178,4 @@
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-09 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 184-collision-letter-repeats | curator, dev-core | normal | open | dev-core | — | 2026-09-09 | Смотритель коллизий говорит «ОДИН раз на пару», а сказал ПЯТНАДЦАТЬ за 3,5 часа — при живой метке в… |
-| 185-review-delivery-check-flake | dev-core, curator | normal | open | dev-core | — | 2026-09-09 | Красный checks на main — прогон 34377052327, авария приехала сюда |
+| 185-review-delivery-check-flake | dev-core, curator | normal | open | dev-core | run:361 · 2026-09-09 | 2026-09-09 | Починка в #361, жду CI |
