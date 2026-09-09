@@ -13,7 +13,7 @@
 - [«Уезжает в тред X» — намерение, а не запись](handoff-to-another-thread-is-prose.md) — переезд проверяется чтением ленты адресата: прогон связан одним тредом
 - [Треды, должные после #160](threads-owed-after-160.md) — реестр бесхозных предметов
 - [`await-input` будит любой записью](await-input-wakes-on-any-write.md) — снять блокировку может объявление бота
-- [Нота о переезде базы — замером, не ребейзом](base-move-note-answered-by-measure.md) — дерево мержа + полная сюита на обоих деревьях
+- [Нота о переезде базы — замером, не ребейзом](base-move-note-answered-by-measure.md) — конфликт ДО метки; на кнопке дерево мержа + полная сюита
 - [Класс полевого дефекта требует ДВУХ писем](field-defect-class-needs-two-letters.md) — объявляется РАНЬШЕ следа гарда 5
 - [Приёмка укладывается в объявленный `launch`](acceptance-must-fit-declared-launch-params.md) — чужие `--model`/`--effort` = право `launch-params`, которого у curator нет
 - [Цена такта — это очередь, а не проза](tick-cost-is-the-queue-not-prose.md) — медиана такта 6.3 мин, ход ждёт 19.9
