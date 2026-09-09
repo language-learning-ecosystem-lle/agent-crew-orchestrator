@@ -61,6 +61,7 @@ import { describeQuotaShelf, type QuotaShelf } from "./quota.js";
 import { type ResidentWait, renderResidentWaits } from "./resident.js";
 import { stateWord, timeLeftWord } from "./state-word.js";
 import { renderStatus } from "./status.js";
+import type { RunningPair } from "./tick.js";
 
 /** Is the circuit able to raise anybody at all, and is anybody watching it. */
 export type CircuitState = {
@@ -79,11 +80,13 @@ export type CircuitState = {
 /**
  * HOW MANY SESSIONS THIS BOX CAN HOLD AT ONCE, AND WHAT IT IS HOLDING (D-4, thread 023).
  *
- * The degree of parallelism was never a parameter: it is the number of roles this box
- * raises, because a role has one workspace (R17) and a second session in it is refused
- * at the door. So the capacity is a FACT about the config, and the only question an
- * operator has in front of a running circuit is which part of it is spent — which is why
- * the three numbers are one line and not three sections.
+ * The degree of parallelism was never a parameter WHILE IT WAS ONE PER ROLE: the capacity was
+ * the number of roles this box raises, because a role had one workspace (R17) and a second
+ * session in it was refused at the door. Since thread 177 the number is DECLARED
+ * (`parallelism.pairsPerRole` of the config, v27) and the workspace is keyed by the pair, so
+ * the capacity is a fact the config states rather than one the file system enforces. What has
+ * not changed is the only question an operator has in front of a running circuit — which part
+ * of it is spent — and that is why the numbers are one line and not three sections.
  *
  * Until D-4 the frame printed every pair the journal knew, released ones included, and
  * left counting the LIVE ones to the reader. That is the number that decides whether the
@@ -96,6 +99,16 @@ export type Parallelism = {
   readonly live: readonly LeaseView[];
   /** Roles taken by a human (S5) — capacity that exists but is not the circuit's. */
   readonly held: readonly string[];
+  /**
+   * HOW MANY PAIRS OF ONE ROLE MAY BE LIVE AT ONCE — `parallelism.pairsPerRole` of the config
+   * (v27, thread 177), carried so the queue rows below can tell "the role's places are FULL"
+   * from "the role is doing something and has room left".
+   *
+   * Optional, and absent means the config's own default rather than "no ceiling": a frame
+   * built by a reader that has not read the config says what it always said, and a caller
+   * cannot make the row silent by forgetting the number.
+   */
+  readonly pairsPerRole?: number | undefined;
 };
 
 export type OperatorFrame = {
@@ -263,18 +276,32 @@ export const renderQueue = (
   parked: ReadonlyMap<string, string> = new Map(),
   /** Which of those parks ask nobody (`modeParks`, thread 063) — carried, not re-decided. */
   modeParked: ReadonlySet<string> = new Set(),
-  /** Roles that cannot be raised because they are elsewhere (thread 063) — role → what it is doing. */
+  /** What each role is spending its places on (threads 063/177) — role → its live pairs and its hold. */
   busy: ReadonlyMap<string, RoleElsewhere> = new Map(),
   /** Roles whose every account is shelved (thread 063) — role → the window that reopens first. */
   shelved: ReadonlyMap<string, string> = new Map(),
   /** Pairs the box has stopped raising (thread 140) — carried, not re-derived. */
   outOfAttempts: ReadonlyMap<string, SpentCeiling> = new Map(),
+  /**
+   * The ceiling the rows judge "full" by (`parallelism.pairsPerRole`, thread 177). Carried
+   * through rather than read here: this renderer is pure and a config read inside it would be
+   * a second source of the number the planner already counts to.
+   */
+  pairsPerRole?: number,
 ): string => {
   const lines = ["queue:"];
   if (queue.length === 0) {
     lines.push("  nobody is waiting on a role this box raises");
   } else {
-    for (const line of describeOrder(queue, parked, modeParked, busy, shelved, outOfAttempts))
+    for (const line of describeOrder(
+      queue,
+      parked,
+      modeParked,
+      busy,
+      shelved,
+      outOfAttempts,
+      pairsPerRole,
+    ))
       lines.push(`  ${line}`);
   }
   for (const note of notes) lines.push(`  ⚠ ${note}`);
@@ -286,29 +313,50 @@ export const renderQueue = (
  * (thread 063, §2.3 row 2).
  *
  * Two different things read as one row in this frame until it existed: a pair standing because
- * ITS ROLE IS ELSEWHERE (one session per role — the workspace is one), and a pair standing for
- * no reason at all. The daemon says the first out loud in a skip line; the operator's frame has
- * no skip lines, so the two looked identical there — and the second one is a defect while the
- * first one is the circuit working exactly as designed.
+ * ITS ROLE HAS NO PLACE LEFT, and a pair standing for no reason at all. The daemon says the
+ * first out loud in a skip line; the operator's frame has no skip lines, so the two looked
+ * identical there — and the second one is a defect while the first one is the circuit working
+ * exactly as designed.
+ *
+ * EVERY LIVE PAIR IS KEPT, NOT THE LAST ONE (thread 177). The value used to be one sentence
+ * about one session, because a role had one workspace and could not hold two; `busy.set(role, …)`
+ * inside a loop over `parallelism.live` was therefore lossless by construction. With
+ * `parallelism.pairsPerRole` above one it silently overwrites: measured 2026-09-09 with
+ * `dev-core` live on two threads, the map came back with a single entry and the FIRST pair was
+ * gone — after which the row compared its own thread against a stranger's, the count the row
+ * needs was off by one, and neither could be repaired by rewording the sentence.
  *
  * A LIVE SESSION AND A HOLD ARE NAMED APART, because they are repaired apart: the first ends by
- * itself, the second ends when a human gives the role back. An ACTIVE hold only — an expired one
+ * itself, the second ends when a human gives the role back. They are two FIELDS and not two
+ * writes to one, for the same loss: a role can be both held and live, and the last writer used
+ * to decide which of the two an operator was told about. An ACTIVE hold only — an expired one
  * is not capacity spent, and `renderHolds` already says so two blocks above.
  *
- * THE THREAD OF THE LIVE SESSION RIDES ALONG (thread 063, states 4/5) so the row can compare it
- * with its own — the whole difference between "the role is spent on another thread" and "the
- * mail handed the turn back to a session that is still running". The hold carries none: it is
- * not a session standing on a thread, and inventing one would be the frame guessing.
+ * THE THREADS OF THE LIVE SESSIONS RIDE ALONG (thread 063, states 4/5) so the row can compare
+ * its own against all of them — the whole difference between "the role's places are spent" and
+ * "the mail handed the turn back to a session that is still running". The hold carries none: it
+ * is not a session standing on a thread, and inventing one would be the frame guessing.
  */
 export const busyRoles = (
   parallelism: Parallelism,
   holds: readonly HoldView[] = [],
 ): ReadonlyMap<string, RoleElsewhere> => {
+  const live = new Map<string, RunningPair[]>();
+  for (const view of parallelism.live) {
+    const mine = live.get(view.role) ?? [];
+    // NO `since`: a `LeaseView` carries the DEADLINE of its run, not the moment it was
+    // raised, and "since" derived from a deadline would be a time this frame made up.
+    // `describeOccupants` leaves the clause out when it is not told — the same silence the
+    // planner's refusal keeps.
+    mine.push({ role: view.role, thread: view.thread });
+    live.set(view.role, mine);
+  }
   const busy = new Map<string, RoleElsewhere>();
-  for (const view of parallelism.live)
-    busy.set(view.role, { doing: `live on ${view.thread}`, thread: view.thread });
-  for (const hold of holds)
-    if (hold.active) busy.set(hold.role, { doing: `held by a manual session of ${hold.by}` });
+  for (const [role, pairs] of live) busy.set(role, { live: pairs });
+  for (const hold of holds) {
+    if (!hold.active) continue;
+    busy.set(hold.role, { live: busy.get(hold.role)?.live ?? [], heldBy: hold.by });
+  }
   return busy;
 };
 
@@ -573,6 +621,11 @@ export const renderFrame = (frame: OperatorFrame): string =>
       // like a promise of a launch for a pair the box will never raise is the one reading that
       // contradicts what `renderStatus` says three blocks up.
       spentCeilings(frame.leases),
+      // AND THE CEILING FROM THE SECTION THAT ALREADY CARRIES THE CAPACITY (thread 177), by
+      // the same rule as the three marks above: `renderParallelism` prints the places and
+      // this row judges whether they are spent, and two readings of one number is how the
+      // frame comes to refuse a launch the tick is about to make.
+      frame.parallelism.pairsPerRole,
     ),
     // Beside the queue, because it is the same question answered for the pairs that are
     // NOT in it: `renderResidentWaits` returns nothing when the project has no resident

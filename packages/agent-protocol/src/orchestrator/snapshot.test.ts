@@ -478,18 +478,21 @@ describe("renderQueue — the parked candidate is marked where the queue is read
         [
           "curator",
           {
-            doing: "live on 058-concurrent-writers-one-thread",
-            thread: "058-concurrent-writers-one-thread",
+            live: [{ role: "curator", thread: "058-concurrent-writers-one-thread" }],
           },
         ],
       ]),
     );
     const rows = text.split("\n").filter((line) => line.includes("queue "));
 
-    expect(rows[0]).toContain(
-      "⛔ ROLE BUSY — curator is live on 058-concurrent-writers-one-thread",
-    );
-    expect(rows[0]).toContain("one session per role");
+    expect(rows[0]).toContain("⛔ ROLE BUSY — 1 of 1 pair(s) allowed to curator are live");
+    expect(rows[0]).toContain("curator×058-concurrent-writers-one-thread");
+    // AND IT NAMES THE CEILING, NOT THE WORKSPACE (thread 177). The sentence this row used to
+    // carry said «one session per role (its workspace is one)» — a claim about a place, and
+    // the place stopped being the rule the moment the ceiling became a number.
+    expect(rows[0]).toContain("'parallelism.pairsPerRole' of the config");
+    expect(rows[0]).not.toContain("one session per role");
+    expect(rows[0]).not.toContain("its workspace is one");
     expect(rows[1]).not.toContain("ROLE BUSY");
   });
 
@@ -501,11 +504,11 @@ describe("renderQueue — the parked candidate is marked where the queue is read
       [],
       new Map([["030-consult-lane", "john"]]),
       new Set(["030-consult-lane"]),
-      new Map([["curator", { doing: "held by a manual session of lle" }]]),
+      new Map([["curator", { live: [], heldBy: "lle" }]]),
     );
 
     expect(text).toContain("PARKED as a MODE set by john");
-    expect(text).toContain("⛔ ROLE BUSY — curator is held by a manual session of lle");
+    expect(text).toContain("⛔ ROLE HELD — curator is held by a manual session of lle");
   });
 });
 
@@ -520,11 +523,48 @@ describe("busyRoles — what the queue row reads to know the launch is not comin
 
   it("a live pair makes its role busy, and names the thread it is busy WITH", () => {
     expect(busyRoles(parallelism([lease("dev-core", "063-state-model-rewrite")]))).toEqual(
+      new Map([["dev-core", { live: [{ role: "dev-core", thread: "063-state-model-rewrite" }] }]]),
+    );
+  });
+
+  // THREAD 177, THE LOSS THIS MAP WAS RE-KEYED FOR. `busy.set(role, …)` in a loop over the live
+  // pairs kept the LAST one: with a ceiling above 1 the first session vanished from the frame
+  // entirely, the count the row judges "full" by came out short, and the row of the vanished
+  // pair compared its own thread against a stranger's. Measured on 2026-09-09 with exactly this
+  // fixture before the field was a list.
+  it("TWO live pairs of ONE role are BOTH kept — the map is not the last writer's (thread 177)", () => {
+    expect(
+      busyRoles(
+        parallelism([lease("dev-core", "016-protocol-roadmap"), lease("dev-core", "035-notify")]),
+      ),
+    ).toEqual(
       new Map([
         [
           "dev-core",
-          { doing: "live on 063-state-model-rewrite", thread: "063-state-model-rewrite" },
+          {
+            live: [
+              { role: "dev-core", thread: "016-protocol-roadmap" },
+              { role: "dev-core", thread: "035-notify" },
+            ],
+          },
         ],
+      ]),
+    );
+  });
+
+  // A ROLE CAN BE BOTH, and one `set` per fact used to make the second erase the first: the
+  // operator was told about whichever the loops reached last, and the two are repaired apart.
+  it("a hold and a live pair of one role are two FIELDS, not two writes to one (thread 177)", () => {
+    const held: HoldView = {
+      role: "dev-core",
+      by: "lle",
+      taken: "2026-09-02T11:00:00Z",
+      expires: "2026-09-02T15:00:00Z",
+      active: true,
+    };
+    expect(busyRoles(parallelism([lease("dev-core", "035-notify")]), [held])).toEqual(
+      new Map([
+        ["dev-core", { live: [{ role: "dev-core", thread: "035-notify" }], heldBy: "lle" }],
       ]),
     );
   });
@@ -538,7 +578,7 @@ describe("busyRoles — what the queue row reads to know the launch is not comin
       active: true,
     };
     expect(busyRoles(parallelism([]), [held])).toEqual(
-      new Map([["curator", { doing: "held by a manual session of lle" }]]),
+      new Map([["curator", { live: [], heldBy: "lle" }]]),
     );
   });
 
@@ -738,15 +778,97 @@ describe("the queue row inside the whole frame — the wiring, not the folds (th
       .split("\n")
       .filter((line) => line.includes("queue "));
 
+  /**
+   * ACCEPTANCE 2 OF THREAD 177 (curator, 2026-09-09): "under a ceiling above one the row
+   * `ROLE BUSY` is not issued to a role that still has places". Before the ceiling reached
+   * this renderer the mark was `something of this role is live`, which under a declared
+   * ceiling of 2 is a refusal of a launch the very next tick makes — the frame telling an
+   * operator to wait for a session that is not in the way.
+   */
+  it("a ceiling above one and a place still free — the row says NOTHING (thread 177)", () => {
+    const rows = rowsOf({
+      ...base,
+      parallelism: { ...base.parallelism, pairsPerRole: 2 },
+    });
+    expect(rows[0]).toContain("curator×030-consult-lane");
+    expect(rows[0]).not.toContain("ROLE BUSY");
+    expect(rows[0]).not.toContain("⛔");
+  });
+
+  it("a ceiling above one and both places spent — the row names the NUMBER (thread 177)", () => {
+    const second: LeaseView = { ...busyLease, thread: "016-protocol-roadmap" };
+    const rows = rowsOf({
+      ...base,
+      leases: [busyLease, second],
+      parallelism: { ...base.parallelism, live: [busyLease, second], pairsPerRole: 2 },
+    });
+    expect(rows[0]).toContain("⛔ ROLE BUSY — 2 of 2 pair(s) allowed to curator are live");
+    // BOTH OCCUPANTS ARE NAMED — the half of a full ceiling an operator acts on, and the
+    // half the map used to drop.
+    expect(rows[0]).toContain("curator×058-concurrent-writers-one-thread");
+    expect(rows[0]).toContain("curator×016-protocol-roadmap");
+    // AND THE DEFAULT'S CLAUSE IS NOT PRINTED WHERE A NUMBER WAS DECLARED: it says the
+    // project has declared no parallelism, and this project has.
+    expect(rows[0]).not.toContain("the project has declared no parallelism");
+  });
+
+  /**
+   * THE STATE THE LOSS DESTROYED, MEASURED WHOLE (thread 177). Two live pairs of one role and
+   * two rows: the row of the pair that is ITSELF live must read "the turn came back", and the
+   * row beside it must read the full ceiling. With the map keyed by the role the first pair was
+   * dropped on the way in, so row one compared its own thread against the SECOND pair's and
+   * printed `ROLE BUSY — live on <the other thread>` about a pair whose own session was running.
+   */
+  it("two live pairs of one role: the returning turn and the full ceiling are told apart", () => {
+    const second: LeaseView = { ...busyLease, thread: "016-protocol-roadmap" };
+    const rows = rowsOf({
+      ...base,
+      leases: [busyLease, second],
+      parallelism: { ...base.parallelism, live: [busyLease, second], pairsPerRole: 2 },
+      queue: [
+        { role: "curator", thread: "016-protocol-roadmap", priority: "normal" },
+        { role: "curator", thread: "030-consult-lane", priority: "normal" },
+      ],
+    });
+    expect(rows[0]).toContain("↩ THE TURN CAME BACK TO A LIVE PAIR");
+    expect(rows[0]).not.toContain("ROLE BUSY");
+    expect(rows[1]).toContain("⛔ ROLE BUSY — 2 of 2 pair(s) allowed to curator are live");
+  });
+
+  // A HOLD IS NOT A PLACE (S5): the tick refuses `held` before it counts anything, so a role
+  // with room and a hold is still not raised, and a row answering by the ceiling alone would
+  // promise a launch nobody makes.
+  it("a hold outranks a free place — the row is HELD, not silent (thread 177)", () => {
+    const rows = rowsOf({
+      ...base,
+      leases: [],
+      parallelism: {
+        raisable: ["dev-core", "curator"],
+        live: [],
+        held: ["curator"],
+        pairsPerRole: 3,
+      },
+      holds: [
+        {
+          role: "curator",
+          by: "john",
+          taken: "2026-07-27T17:00:00Z",
+          expires: "2026-07-27T18:30:00Z",
+          active: true,
+        },
+      ],
+    });
+    expect(rows[0]).toContain("⛔ ROLE HELD — curator is held by a manual session of john");
+  });
+
   it("a role live on another thread is named BUSY on its queue row, off the frame's own sections", () => {
     // Nothing is handed in: the live pair is `frame.parallelism`, printed two blocks above.
     // Swap the two arguments of `busyRoles` and this row goes silent while the frame keeps
     // saying the role is live — the two readings of one box, disagreeing.
     const rows = rowsOf(base);
     expect(rows[0]).toContain("curator×030-consult-lane");
-    expect(rows[0]).toContain(
-      "⛔ ROLE BUSY — curator is live on 058-concurrent-writers-one-thread",
-    );
+    expect(rows[0]).toContain("⛔ ROLE BUSY — 1 of 1 pair(s) allowed to curator are live");
+    expect(rows[0]).toContain("held by curator×058-concurrent-writers-one-thread");
     expect(rows[1]).not.toContain("ROLE BUSY");
   });
 
@@ -763,7 +885,7 @@ describe("the queue row inside the whole frame — the wiring, not the folds (th
       queue: [{ role: "curator", thread: "058-concurrent-writers-one-thread", priority: "normal" }],
     });
     expect(rows[0]).toContain("THE TURN CAME BACK TO A LIVE PAIR");
-    expect(rows[0]).toContain("that is the thread of this very row");
+    expect(rows[0]).toContain("this very row's thread");
     expect(rows[0]).not.toContain("ROLE BUSY");
     // AND THE SELF-REFERENTIAL TAIL IS GONE WITH IT: "not raised until that one ends" pointed
     // at the pair the row is about, which reads as a dead end on the busiest pair of the frame.
@@ -783,8 +905,12 @@ describe("the queue row inside the whole frame — the wiring, not the folds (th
     })[0];
     expect(same).toContain("↩");
     expect(other).toContain("⛔");
-    expect(other).toContain("one session per role");
-    expect(same).not.toContain("one session per role");
+    expect(other).toContain("ROLE BUSY");
+    expect(same).not.toContain("ROLE BUSY");
+    // AND NEITHER OF THEM CARRIES THE DEAD MECHANISM ANY MORE (thread 177): the sentence used
+    // to explain the refusal by the workspace, and the workspace stopped being the rule.
+    expect(other).not.toContain("one session per role");
+    expect(other).not.toContain("its workspace is one");
   });
 
   it("a hold reaches the same row, and the two are named apart because they are repaired apart", () => {
@@ -802,7 +928,7 @@ describe("the queue row inside the whole frame — the wiring, not the folds (th
         },
       ],
     });
-    expect(rows[0]).toContain("⛔ ROLE BUSY — curator is held by a manual session of john");
+    expect(rows[0]).toContain("⛔ ROLE HELD — curator is held by a manual session of john");
   });
 
   it("a park that is a MODE reaches the row as a mode, not as a question to a person", () => {
