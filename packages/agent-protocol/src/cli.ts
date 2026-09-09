@@ -45,7 +45,7 @@ import { homedir, hostname, tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { DEFAULT_CONFIG_PATH } from "./config/config.js";
+import { DEFAULT_CONFIG_PATH, pairCeilings } from "./config/config.js";
 import { explainWithCredentials, platformEnvOf } from "./config/credentials.js";
 import {
   type LoadedConfig,
@@ -566,7 +566,13 @@ import {
   numberCollisionArgv,
   planNumberCollisionWatch,
 } from "./orchestrator/thread-number-collision.js";
-import { type Candidate, describePlan, describeSkip, planTick } from "./orchestrator/tick.js";
+import {
+  type Candidate,
+  describePlan,
+  describeSkip,
+  planTick,
+  type RunningPair,
+} from "./orchestrator/tick.js";
 import {
   describeDeliveredTidyUpLetter,
   describeStandingTidyUpIncident,
@@ -12644,6 +12650,13 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   const forceFlag = flag(argv, "--force-flag") ?? paths.forceFlag;
   const holdsDir = flag(argv, "--holds") ?? paths.holds;
 
+  // THE CONFIG ITSELF, beside the registry built from it — the planner asks it for the
+  // ceilings of parallelism (thread 177). Read ONCE at startup like everything else about
+  // the launch mode, and for the same reason: a number that changed under a running daemon
+  // would make "how many pairs did this box allow" a question about the moment rather than
+  // about the build, and a config that moved is a `git pull` away from the restart that
+  // re-reads it anyway.
+  const daemonConfig = configFrom(argv, undefined).config;
   const registry = registryFrom(argv, undefined);
   const childEnv = childEnvFrom(argv);
   const ids = registry.ids();
@@ -13242,12 +13255,29 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
    * registry that could not hold two entries for one role would hide a planner defect
    * instead of surviving it.
    */
-  const live = new Map<string, { readonly candidate: Candidate; readonly done: Promise<void> }>();
+  const live = new Map<
+    string,
+    { readonly candidate: Candidate; readonly done: Promise<void>; readonly since: string }
+  >();
   const pairKey = (candidate: Candidate): string => `${candidate.role}×${candidate.thread}`;
-  /** The roles this process is running right now — what the planner is told (D-2). */
+  /** The roles this process is running right now — what the drain of a restart is told. */
   const runningRoles = (): readonly string[] => [
     ...new Set([...live.values()].map((s) => s.candidate.role)),
   ];
+  /**
+   * THE PAIRS this process is running right now — what the PLANNER is told (D-2, and the
+   * ceilings of thread 177). Deliberately not `runningRoles` above: the planner counts to
+   * a number now, and a set of role ids cannot be counted — two sessions of one role are
+   * one member of it, so a ceiling of 2 handed roles would raise a third. `since` rides
+   * along so a full ceiling can say WHO holds it and from when, which is the difference
+   * between "the box is working" and "a dead session is sitting in a place".
+   */
+  const runningPairs = (): readonly RunningPair[] =>
+    [...live.values()].map((s) => ({
+      role: s.candidate.role,
+      thread: s.candidate.thread,
+      since: s.since,
+    }));
 
   /**
    * EVERY LINE OF A PARALLEL DAEMON CARRIES ITS PAIR (D-2, curator's point 3). With one
@@ -13432,7 +13462,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         live.delete(key);
       }
     })();
-    live.set(key, { candidate, done });
+    live.set(key, { candidate, done, since: startedAt.toISOString() });
   };
 
   /**
@@ -13674,9 +13704,13 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     const decision = planTick({
       enabled: existsSync(enableFlag),
       held,
-      // D-2: the roles this daemon is running RIGHT NOW. Before the tick stopped
+      // D-2: the pairs this daemon is running RIGHT NOW. Before the tick stopped
       // blocking there was nothing to tell it — a running role meant a sleeping daemon.
-      running: runningRoles(),
+      running: runningPairs(),
+      // THE CEILINGS OF THE PROJECT (thread 177, v27). One reader of `parallelism` and it
+      // is the config's own (`pairCeilings`); silence there is `pairsPerRole: 1` with no box
+      // ceiling, which is this planner's rule as it stood before the key existed.
+      ceilings: pairCeilings(daemonConfig),
       // The force flag stops the daemon as well (S4): its current session is put
       // down by the observer, and taking a new one is not allowed — otherwise the
       // next tick would raise a role right under the force.
