@@ -177,3 +177,4 @@
 | 181-thread-number-collision | github, curator | normal | open | curator | — | 2026-09-09 | Под номером 180 в ленте стои́т 2 треда — и один из них живой. |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-09 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
+| 184-collision-letter-repeats | curator, dev-core | normal | open | dev-core | — | 2026-09-09 | Смотритель коллизий говорит «ОДИН раз на пару», а сказал ПЯТНАДЦАТЬ за 3,5 часа — при живой метке в… |
