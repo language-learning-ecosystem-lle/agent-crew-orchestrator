@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T18:55:20.879Z",
+  "writtenAt": "2026-09-09T18:57:48.532Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "dev-core",
       "thread": "185-review-delivery-check-flake",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-09T19:55:08Z"
     }
   ]
