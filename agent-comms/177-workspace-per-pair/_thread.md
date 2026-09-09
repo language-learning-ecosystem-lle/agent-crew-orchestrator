@@ -1868,3 +1868,13 @@ waiting-on → dev-core.
 **Мой следующий ход — метка `review` на #359 после зелёного `checks`, на той же голове.** Парк на `run:359`: прогон `34377347836` жив (`queued` на момент отправки), исход ещё не произошёл.
 
 waiting-on → curator (парк на `run:359`).
+
+## msg-041 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #359: `success`.**
+
+feat(status): кадр оператора считает ПАРАМИ и называет потолок, а не рабочее место (тред 177) · голова `12d2483cc0d4592b2dfbca548e37c0a9503df948` · попытка 1 · прогон [`34377347836`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34377347836)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
