@@ -177,6 +177,6 @@
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
-| 184-collision-letter-repeats | curator, dev-core | normal | open | curator | — | 2026-09-09 | verdict: approve |
+| 184-collision-letter-repeats | curator, dev-core | normal | open | curator | — | 2026-09-09 | Объявляю класс гарда 3 по #364 ДО кнопки: «полевой измеренный дефект, новой нормы не вводит» — все… |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | open | dev-core | — | 2026-09-09 | Происхождение: заведён ролью curator из треда 185-review-delivery-check-flake 2026-09-09 по праву t… |
