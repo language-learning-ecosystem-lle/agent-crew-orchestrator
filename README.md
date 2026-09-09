@@ -317,6 +317,33 @@ project knowledge, exactly as with `powerDocuments` above.
 `--review-workflow` on its command line; the door is invoked by hand against a repository
 this config may not even describe.
 
+### How many pairs run at once — `parallelism`
+
+An optional top-level object with both halves required together: `pairsPerRole` is how many
+pairs «role × thread» ONE ROLE may have running at once, `pairsPerInstance` how many ONE BOX
+may have running summed across its roles.
+
+```json
+"parallelism": { "pairsPerRole": 2, "pairsPerInstance": 4 }
+```
+
+**Both halves, and that is not symmetry.** A per-role ceiling raised alone multiplies by
+however many roles a box raises — two roles at two pairs are four sessions on one account
+window — and the limiter measured in thread `177-workspace-per-pair` is that window, not
+disk (11 MB and 1.5 s per worktree). A config naming one half names the multiplication and
+not the bound. A box ceiling BELOW the role ceiling is refused by name for the mirror
+reason: no role could ever reach its own number, so one of the two is wrong.
+
+**Absence is today, bit for bit.** Without the key a role runs one pair at a time — the
+planner's own rule, whose refusal still says `one session per role` — and the box carries no
+ceiling of this kind at all: the global run budget cuts each tick exactly as it did. Note
+that the absent box half is NOT the number 1; a default of 1 there would stand down every
+second ROLE, which nothing does today.
+
+**The numbers are a decision, not a setting.** They say how much of somebody's subscription
+a project may spend at once, so in this repository they live in `agent-protocol.json` behind
+the merge door's guard 4 — the package ships the key and never fills it in.
+
 ### How this box invokes the mail — `mailCommand`
 
 An optional top-level string: the prefix a raised session types before `thread show` and
