@@ -9,7 +9,7 @@
  * test on the argv shape states the intent; only git itself proves that a deletion, a
  * rename out of the zone and a non-ASCII filename arrive as paths the guard can match.
  */
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -378,5 +378,164 @@ describe("zones check — the staged paths of a change against the role's zone",
     const result = check(repo);
 
     expect(result.code).toBe(0);
+  });
+});
+
+/**
+ * `--role-from-workspace` AGAINST THE THREE FORMS A CHECKOUT TAKES ON THE BOX (thread
+ * 178; the field measurement is thread 177, msg-002 of 2026-09-08 on base `1bac6218`).
+ *
+ * THE DEFECT THIS SUITE HOLDS DOWN, in its own numbers: one command, one FORBIDDEN path,
+ * two trees — `.worktrees/dev-core` refused it (exit 1) and `.worktrees/dev-core-177-probe`
+ * passed it (exit 0, "is not a role workspace, the guard does not apply"). A guard that
+ * enforces zones only in the directories where nobody renamed anything is not a guard,
+ * and the silent half of it is the dangerous half: the note reads like "nothing to check
+ * here" to a hook and to a human alike.
+ *
+ * It is a PROCESS test and not a unit because the classification was never what was
+ * broken — `workspaceRoleOf` answered exactly what it promised. What was broken is what
+ * this command DID with the answer, and that lives between the config loader, `repoOf` of
+ * the parent tree and the exit code, none of which a unit on the pure function reaches.
+ */
+describe("zones check --role-from-workspace — the class of the tree it stands in", () => {
+  /** The same config with R17's workspaces DECLARED: without them no tree is anybody's. */
+  const WITH_WORKSPACES = {
+    ...CONFIG,
+    orchestrator: {
+      state: ".orchestrator",
+      mailCheckout: "mailco",
+      ref: "HEAD",
+      workdir: { branch: "main", worktrees: ".worktrees" },
+    },
+  };
+
+  const boxWithWorkspaces = (): string => {
+    const repo = mkdtempSync(join(tmpdir(), "agent-protocol-zones-ws-"));
+    git(repo, "init", "-q", "-b", "main");
+    writeFileSync(
+      join(repo, "agent-protocol.json"),
+      `${JSON.stringify(WITH_WORKSPACES, null, 2)}\n`,
+    );
+    file(repo, `${FOREIGN}/main.py`, "print(1)\n");
+    git(repo, "add", "-A");
+    git(repo, "commit", "-qm", "base");
+    return repo;
+  };
+
+  /** A linked worktree at `<repo>/<where>`, detached at the base like the circuit's own. */
+  const worktree = (repo: string, where: string): string => {
+    const path = join(repo, where);
+    git(repo, "worktree", "add", "-q", "--detach", path);
+    return path;
+  };
+
+  /** The forbidden path, staged in THAT tree — the same change in every case below. */
+  const stageForbidden = (tree: string): void => {
+    file(tree, `${FOREIGN}/main.py`, "print(99)\n");
+    git(tree, "add", "-A");
+  };
+
+  /**
+   * Run the door the way a pre-commit hook does: from the tree, with no `--role` and no
+   * `--repo` — everything it knows about whose commit this is comes from the directory.
+   */
+  const inTree = (repo: string, cwd: string): { code: number; out: string } => {
+    const done = spawnSync(
+      TSX,
+      [CLI, "zones", "check", "--ref", "HEAD", "--role-from-workspace", "--staged"],
+      { cwd, encoding: "utf8", timeout: 60_000, env: sandbox(configHomeInside(repo)) },
+    );
+    return { code: done.status ?? -1, out: `${done.stdout ?? ""}${done.stderr ?? ""}` };
+  };
+
+  it("(в) in a ROLE'S workspace the forbidden path is refused — unchanged", () => {
+    const repo = boxWithWorkspaces();
+    const mine = worktree(repo, ".worktrees/dev-core");
+    stageForbidden(mine);
+
+    const said = inTree(repo, mine);
+
+    expect(said.code).toBe(1);
+    expect(said.out).toContain("'dev-core' may not write these paths");
+    expect(said.out).toContain(`${FOREIGN}/main.py`);
+  });
+
+  it("(б) in a tree under the workspaces that is NOBODY'S the door REFUSES, and names it", () => {
+    // The exact form of the field probe: a linked worktree beside the role's own, whose
+    // name merely starts with a role id. On 1bac6218 this printed a note and exited 0.
+    const repo = boxWithWorkspaces();
+    const probe = worktree(repo, ".worktrees/dev-core-177-probe");
+    stageForbidden(probe);
+
+    const said = inTree(repo, probe);
+
+    expect(said.code).not.toBe(0);
+    expect(said.code).toBe(2);
+    // Discipline 4 — the tree, the cause and the repair, each by name.
+    expect(said.out).toContain(probe);
+    expect(said.out).toContain("is not the workspace of any role");
+    expect(said.out).toContain("--role <id>");
+    expect(said.out).toContain("dev-core");
+    // ...and it must not be the sentence that used to let it through.
+    expect(said.out).not.toContain("the guard does not apply");
+  });
+
+  it("(б) the MAIL checkout is the same class — the form that exists without any probe", () => {
+    const repo = boxWithWorkspaces();
+    const mail = worktree(repo, ".worktrees/comms");
+    stageForbidden(mail);
+
+    const said = inTree(repo, mail);
+
+    expect(said.code).toBe(2);
+    expect(said.out).toContain(mail);
+    expect(said.out).toContain("is not the workspace of any role");
+  });
+
+  it("(а) a tree OUTSIDE the declared workspaces still passes, with a note", () => {
+    // A human's own linked checkout: the layout claims nothing about it, and a refusal
+    // here would be the guard reaching outside what it was given.
+    const repo = boxWithWorkspaces();
+    const aside = worktree(repo, "aside");
+    stageForbidden(aside);
+
+    const said = inTree(repo, aside);
+
+    expect(said.code).toBe(0);
+    expect(said.out).toContain(aside);
+    expect(said.out).toContain("outside the declared workspaces");
+  });
+
+  it("(а) the HOME checkout passes with the note — not with git's answer to another question", () => {
+    // Measured in the live contour on 2026-09-08: from the operator's own checkout this
+    // door exited 2 saying "'/home/…/..' is not inside a git repository". The tree above
+    // a home checkout is an ordinary directory, and blaming the caller's filesystem is a
+    // refusal naming a cause it does not have (discipline 4). No repository above means
+    // nothing above declares workspaces — the `outside` class, and its note.
+    const repo = boxWithWorkspaces();
+    stageForbidden(repo);
+
+    const said = inTree(repo, repo);
+
+    expect(said.code).toBe(0);
+    expect(said.out).toContain("outside the declared workspaces");
+    expect(said.out).not.toContain("is not inside a git repository");
+  });
+
+  it("no workspaces declared — the note stands and nothing is inferred from any path", () => {
+    const repo = mkdtempSync(join(tmpdir(), "agent-protocol-zones-ws-"));
+    git(repo, "init", "-q", "-b", "main");
+    writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(CONFIG, null, 2)}\n`);
+    file(repo, `${FOREIGN}/main.py`, "print(1)\n");
+    git(repo, "add", "-A");
+    git(repo, "commit", "-qm", "base");
+    const anywhere = join(repo, ".worktrees", "dev-core");
+    git(repo, "worktree", "add", "-q", "--detach", anywhere);
+    stageForbidden(anywhere);
+
+    const said = inTree(repo, anywhere);
+
+    expect(said.code).toBe(0);
+    expect(said.out).toContain("no workspaces declared");
   });
 });

@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   checkWorkspaceSignature,
+  classifyWorkspaceCheckout,
   classifyWorkspaceHead,
   createWorkspaceLocks,
   describeDirtyWorkspaceRepair,
@@ -87,6 +88,94 @@ describe("whose workspace a checkout is", () => {
     expect(
       workspaceRoleOf({ checkout: "/repo/.worktrees/dev-core", repo: "/repo", roles: ROLES }),
     ).toBeUndefined();
+  });
+});
+
+/**
+ * THE THREE CLASSES, ENUMERATED RATHER THAN SAMPLED (thread 178 §4.1). Everything that
+ * `workspaceRoleOf` answers `undefined` about is here, split by the only distinction its
+ * two callers need: is this tree INSIDE the declared workspaces, where a role was
+ * supposed to be readable from the path, or outside them, where nothing was ever claimed?
+ * The forms are this box's own — `.worktrees/curator`, `.worktrees/comms`, the probe
+ * worktree of thread 177 and a `/tmp` checkout.
+ */
+describe("what class a checkout falls in", () => {
+  const ROLES = ["dev-core", "curator"];
+  const ask = (checkout: string, worktrees: string | undefined = ".worktrees") =>
+    classifyWorkspaceCheckout({
+      checkout,
+      repo: "/repo",
+      ...(worktrees === undefined ? {} : { worktrees }),
+      roles: ROLES,
+    });
+
+  it("(в) the workspace of a role — the name and the whole path agree", () => {
+    expect(ask("/repo/.worktrees/dev-core")).toEqual({ kind: "role", role: "dev-core" });
+    expect(ask("/repo/.worktrees/curator")).toEqual({ kind: "role", role: "curator" });
+    // A trailing slash is not a different tree.
+    expect(ask("/repo/.worktrees/dev-core/")).toEqual({ kind: "role", role: "dev-core" });
+    expect(ask("/repo/.worktrees/dev-core", ".worktrees/")).toEqual({
+      kind: "role",
+      role: "dev-core",
+    });
+  });
+
+  it("(б) inside the declared workspaces and nobody's — the class that used to pass", () => {
+    // The mail checkout, which lives beside the workspaces in this very contour...
+    expect(ask("/repo/.worktrees/comms")).toEqual({ kind: "unowned" });
+    // ...the probe worktree of thread 177, whose name merely STARTS with a role's...
+    expect(ask("/repo/.worktrees/dev-core-177-probe")).toEqual({ kind: "unowned" });
+    // ...a role's name at the wrong depth (the path `workspacePath` never builds)...
+    expect(ask("/repo/.worktrees/nested/dev-core")).toEqual({ kind: "unowned" });
+    expect(ask("/repo/.worktrees/dev-core/sub")).toEqual({ kind: "unowned" });
+    // ...and a name that is a role of NO config.
+    expect(ask("/repo/.worktrees/reviewer-pr")).toEqual({ kind: "unowned" });
+  });
+
+  it("(а) outside the declared workspaces — the layout claims nothing about it", () => {
+    expect(ask("/repo")).toEqual({ kind: "outside" });
+    expect(ask("/tmp/agent-protocol-probe-xyz")).toEqual({ kind: "outside" });
+    // The same role NAME somewhere else is not a workspace and not inside one either.
+    expect(ask("/tmp/dev-core")).toEqual({ kind: "outside" });
+    expect(ask("/repo/apps/dev-core")).toEqual({ kind: "outside" });
+    // A sibling directory whose name merely begins with the declared one: containment,
+    // not string prefix.
+    expect(ask("/repo/.worktrees-old/dev-core")).toEqual({ kind: "outside" });
+    // Another repository altogether, workspaces and all.
+    expect(ask("/elsewhere/.worktrees/dev-core")).toEqual({ kind: "outside" });
+  });
+
+  it("no workspaces declared — every path is outside, none is un-owned", () => {
+    // Asked WITHOUT the key at all (a default parameter would swallow an explicit
+    // `undefined` and quietly test the declared case instead).
+    const none = (checkout: string) =>
+      classifyWorkspaceCheckout({ checkout, repo: "/repo", roles: ROLES });
+    expect(none("/repo/.worktrees/dev-core")).toEqual({ kind: "outside" });
+    expect(none("/repo/.worktrees/comms")).toEqual({ kind: "outside" });
+  });
+
+  it("the name-only answer is exactly the 'role' class — the neighbour's reading is unmoved", () => {
+    // `systemd install` reads `workspaceRoleOf`, and thread 178 must not have moved it:
+    // every class other than (в) still answers `undefined`, which is what that door
+    // passes with a note.
+    for (const path of [
+      "/repo/.worktrees/comms",
+      "/repo/.worktrees/dev-core-177-probe",
+      "/repo",
+      "/tmp/dev-core",
+    ]) {
+      expect(
+        workspaceRoleOf({ checkout: path, repo: "/repo", worktrees: ".worktrees", roles: ROLES }),
+      ).toBeUndefined();
+    }
+    expect(
+      workspaceRoleOf({
+        checkout: "/repo/.worktrees/curator",
+        repo: "/repo",
+        worktrees: ".worktrees",
+        roles: ROLES,
+      }),
+    ).toBe("curator");
   });
 });
 
