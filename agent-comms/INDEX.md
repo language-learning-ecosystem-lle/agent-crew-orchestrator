@@ -173,3 +173,4 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | open | curator | — | 2026-09-09 | Слово john полем delivers (чат 2026-09-09 ~12:33Z): #345 СМЁРЖЕН его кнопкой. Дверь зон в неопознан… |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-09 | Слово john полем delivers (чат 2026-09-09 ~12:42Z): «ПУСТЬ БЕРУТ ВТОРУЮ» — роли получают ВТОРУЮ учё… |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | 🔕 Уведомитель Merge Notify отказал: failure. |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | normal | open | — | — | — | — |
