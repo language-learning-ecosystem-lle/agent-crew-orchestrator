@@ -10215,8 +10215,16 @@ const pathFactsOf = (path: string): PathFacts => pathFactsFrom(path, statSync);
  * bits and the identity are both readable from here, and the permission rule is the
  * kernel's; judging them in a pure function is what makes this testable at all.
  *
- * RUN ONLY WHEN THE IDENTITY ACTUALLY SWITCHES — no role that runs on this circuit today
- * except one, exactly like the switch probe beside it.
+ * RUN FOR EVERY NAMED ACCOUNT, WITH OR WITHOUT A SWITCH (thread `179`). It used to be asked
+ * only when the card named a `systemUser`, and that was the defect: the account directory
+ * names the MACHINE config and may live in any home on the box, so the bits that decide
+ * whether the session reaches its credentials have nothing to do with whether the identity
+ * changes. Whose bits are judged is the caller's answer ({@link accountReachRefusalFor}):
+ * the switch target when there is one, otherwise the user this supervisor already is.
+ *
+ * NOT LIKE THE SWITCH PROBE BESIDE IT, and the difference is the point: {@link probeSwitch}
+ * and {@link spawnIdentityFor} stay conditional on the switch because they ask about the
+ * switch itself; this one asks about a directory, and a directory is there either way.
  */
 const accountReachFor = (input: {
   readonly user: string;
