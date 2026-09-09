@@ -400,10 +400,29 @@ describe("planSelfRestartDelivery — the narrowing, and what it must not swallo
 });
 
 describe("the letter says WHY it was written, now that most restarts get none", () => {
-  it("names the executable paths that moved", () => {
+  it("names the footprint paths that moved", () => {
     const { body } = planSelfRestartLetter({ change: changed, event: full, root });
-    expect(body).toContain("что сменилось в исполняемом");
+    expect(body).toContain("сдвинулся ли отпечаток установки");
     expect(body).toContain("packages/agent-protocol/src/orchestrator/self-restart.ts");
+  });
+
+  /**
+   * THE FINDING OF THE CONSUMER CIRCUIT (thread 161, curator 2026-09-09): the criterion is
+   * "a path that COULD move the program" and the line reported it as "the executable HAS
+   * changed". Their measured case — a lockfile moved by one workspace link in a neighbour's
+   * devDeps, `node_modules/agent-protocol` at the same version on both sides — is true by
+   * the criterion and false by that sentence, so what this asserts is the CAUTION, not a
+   * wording: a letter that states the change as a fact fails here.
+   */
+  it("does not claim the executable CHANGED — the measure is what could move it", () => {
+    const { body } = planSelfRestartLetter({
+      change: { kind: "changed", paths: ["pnpm-lock.yaml"] },
+      event: full,
+      root,
+    });
+    expect(body).not.toContain("что сменилось в исполняемом");
+    expect(body).toContain("МОГЛА сменить программу");
+    expect(body).toContain("ДЕЙСТВИТЕЛЬНО другая, здесь не измерено");
   });
 
   it("says outright that it went on an UNMEASURED restart, and why that is not silence", () => {
@@ -412,7 +431,7 @@ describe("the letter says WHY it was written, now that most restarts get none", 
       event: full,
       root,
     });
-    expect(body).toContain("НЕ ИЗМЕРЕНО");
+    expect(body).toContain("НЕ ИЗМЕРЕН");
     expect(body).toContain("git would not read");
   });
 
