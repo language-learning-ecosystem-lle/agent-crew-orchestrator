@@ -2569,7 +2569,14 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [
                             # owed, one that asks NOBODY ('expects: none') reads as a MODE the thread stands
                             # in: nothing is late, and the lift is named in both (thread 063),
                             # the neighbours' digests, and how old the mail on disk is; then the static half
-                            # (paths, permissions, resolution, where each role WORKS)
+                            # (paths, permissions, resolution, where each role WORKS — and that block
+                            # is read off the DISK, not predicted from the role list (thread 177):
+                            # above 'parallelism.pairsPerRole: 1' a session sits in '<role>@<thread>',
+                            # so every tree under the workspaces is listed by the pair it belongs to,
+                            # a role with no tree is still named, a name that is no role's place is
+                            # named and judged by nothing, and a tree the ceiling left behind says so
+                            # with thread 174-workspace-tidy-up as the home of clearing it. Nothing
+                            # here removes a checkout)
                             # AND, beside the workspaces, THE SERVICE BRANCHES AND HOW OLD THEY ARE (B.3,
                             # thread 099): every 'wip/<role>/<thread>-<YYYYMMDDTHHMMZ>' this repository holds —
                             # what the circuit committed for a run that ended without committing it. One

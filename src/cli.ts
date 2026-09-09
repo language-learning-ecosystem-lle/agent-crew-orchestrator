@@ -619,6 +619,7 @@ import {
   describeFailedTidyUpOnItsBranch,
   describeFinishDirt,
   describeServiceBranches,
+  describeStrandedPlace,
   describeStrandedWorkspace,
   describeWorkspaceIdentity,
   describeWorkspacePlan,
@@ -631,7 +632,10 @@ import {
   type WorkspaceCheckout,
   type WorkspaceDirt,
   type WorkspaceFacts,
+  type WorkspaceInventory,
   type WorkspacePlan,
+  workspaceInventoryOf,
+  workspaceKeyOf,
   workspacePath,
   workspaceRoleOf,
   workspaceVerdict,
@@ -7670,6 +7674,42 @@ const probeMailCheckout = (argv: readonly string[]): PreflightCheck => {
 };
 
 /**
+ * THE TREES A SURFACE REPORTS ON — read from the DISK, once, for the three places that
+ * answer "where do the roles work" (`preflight`, `doctor`, `status`). It exists as one
+ * function because they were three copies of "walk the roles and rebuild the path", and
+ * the day a role holds two pairs (`workspaceKeyOf`, thread 177) every copy names a
+ * directory that is not there while saying nothing about the ones that are.
+ *
+ * A FAILED READ IS `undefined` AND NEVER AN EMPTY INVENTORY (discipline 4): "there are
+ * no trees" and "the directory could not be read" are different sentences, and the caller
+ * that cannot tell them apart is the silent-door defect again, one level up.
+ */
+const workspacesOnDisk = (input: {
+  readonly repo: string;
+  readonly worktrees: string;
+  readonly roles: readonly string[];
+  readonly pairsPerRole: number;
+}): WorkspaceInventory | undefined => {
+  const dir = join(input.repo, input.worktrees);
+  let entries: readonly string[];
+  try {
+    entries = readdirSync(dir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+  } catch (error) {
+    // A DIRECTORY THAT IS NOT THERE IS NOT A FAILED READ — it is a box on which no role
+    // has been set up yet, which is the state `init` leaves and the state every one of
+    // these surfaces already has words for ("the workspace is missing"). Only a read that
+    // FAILED for another reason (permissions, a file where the directory should be) is the
+    // silence this `undefined` exists to name.
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") entries = [];
+    else return undefined;
+  }
+  return workspaceInventoryOf({ ...input, entries });
+};
+
+/**
  * PREFLIGHT — the checks made BEFORE the lease is taken (S8). curator's rule after
  * the third case of one class: whatever a human is obliged to remember before a
  * run, the machine either does itself or loudly refuses. The probes live here, the
@@ -7757,17 +7797,56 @@ const runPreflight = (
           ...(behind === undefined ? {} : { behind }),
         }),
       );
-      for (const role of roles) {
-        const path = workspacePath({ repo, worktrees, role: role.id });
-        workdirChecks.push(
-          workspaceVerdict({
-            role: role.id,
-            path,
-            facts: workspaceFacts(path, { dirt: true }),
+      // THE TREES THAT ARE THERE, then the roles that have none — and in that order
+      // because it is the order of the question: at a ceiling of one the two lists are
+      // exactly today's one verdict per role, above one the first list is where the
+      // sessions actually live and the second is still every role nobody has raised yet.
+      const pairsPerRole = pairCeilings(loaded.config).pairsPerRole;
+      const seen = workspacesOnDisk({
+        repo,
+        worktrees,
+        roles: roles.map((role) => role.id),
+        pairsPerRole,
+      });
+      if (seen === undefined) {
+        workdirChecks.push({
+          name: "working tree",
+          status: "fail",
+          detail: `could not read '${join(repo, worktrees)}' — where every role works is declared and unreadable, so no workspace below could be judged at all`,
+        });
+      } else {
+        for (const place of seen.places) {
+          const verdict = workspaceVerdict({
+            role: place.role,
+            path: place.path,
+            facts: workspaceFacts(place.path, { dirt: true }),
             base: base.commit,
             baseRef: base.ref,
-          }),
-        );
+          });
+          // A stranded tree is not a fault and must not colour the verdict; what it
+          // needs is a sentence saying nobody will be seated in it and where clearing
+          // it is decided (thread 174).
+          workdirChecks.push(
+            place.current
+              ? verdict
+              : {
+                  ...verdict,
+                  detail: `${verdict.detail} — ${describeStrandedPlace({ place, pairsPerRole })}`,
+                },
+          );
+        }
+        for (const role of seen.rolesWithoutAPlace) {
+          const path = workspacePath({ repo, worktrees, role });
+          workdirChecks.push(
+            workspaceVerdict({
+              role,
+              path,
+              facts: workspaceFacts(path, { dirt: true }),
+              base: base.commit,
+              baseRef: base.ref,
+            }),
+          );
+        }
       }
     }
   } catch (error) {
@@ -8731,6 +8810,28 @@ const doctor = (argv: readonly string[]): void => {
   // the consequence and it is silent on a fresh box (no commits of its own yet); this
   // one is the cause, and it is the one that can still be fixed for free.
   const identityWorkdir = loaded.config.orchestrator?.workdir?.worktrees;
+  // THE TREES THAT EXIST, asked of the disk (thread 177). This is the one of the three
+  // enumerators that is a door rather than a display: `probeSigningPlaces` `continue`s
+  // past a path that is not there, so above a ceiling of one — where the session sits in
+  // `<role>@<thread>` — it would have probed NOTHING and stayed green about it.
+  const identityPlaces =
+    identityWorkdir === undefined
+      ? undefined
+      : workspacesOnDisk({
+          repo,
+          worktrees: identityWorkdir,
+          roles: loaded.registry.active().map((role) => role.id),
+          pairsPerRole: pairCeilings(loaded.config).pairsPerRole,
+        });
+  if (identityWorkdir !== undefined && identityPlaces === undefined) {
+    // Named, because the alternative is the defect above with a different cause: no
+    // workspace row at all, and a green box identity that asked of nothing.
+    checks.push({
+      name: "git: commit identity (this box)",
+      status: "fail",
+      detail: `could not read '${join(repo, identityWorkdir)}' — the workspaces are declared and unlistable, so no role's tree was asked what it signs with`,
+    });
+  }
   checks.push(
     boxIdentityCheck({
       places: probeSigningPlaces({
@@ -8738,13 +8839,10 @@ const doctor = (argv: readonly string[]): void => {
         ...(loaded.config.orchestrator === undefined
           ? {}
           : { mailCheckout: join(repo, loaded.config.orchestrator.mailCheckout) }),
-        workspaces:
-          identityWorkdir === undefined
-            ? []
-            : loaded.registry.active().map((role) => ({
-                role: role.id,
-                path: workspacePath({ repo, worktrees: identityWorkdir, role: role.id }),
-              })),
+        workspaces: (identityPlaces?.places ?? []).map((place) => ({
+          role: place.thread === undefined ? place.role : `${place.role}×${place.thread}`,
+          path: place.path,
+        })),
       }),
       roles: loaded.registry.ids(),
       ...(identityDictionary === undefined ? {} : { dictionary: identityDictionary }),
@@ -9677,17 +9775,49 @@ const orchestratorStatus = async (rawArgv: readonly string[]): Promise<void> => 
   } else {
     const base = baseCommitOf(repo, workdirSection.branch);
     out(`workspaces (base ${base.ref} ${base.commit.slice(0, 8)}):`);
-    for (const role of roles) {
-      const path = workspacePath({ repo, worktrees: workdirSection.worktrees, role: role.id });
-      const facts = workspaceFacts(path, { dirt: true });
-      const verdict = workspaceVerdict({
-        role: role.id,
-        path,
-        facts,
-        base: base.commit,
-        baseRef: base.ref,
-      });
-      out(`  ${role.id}: ${verdict.detail}`);
+    // THE TREES ON THE DISK, not the paths the role list predicts (thread 177): above a
+    // ceiling of one the session is seated in `<role>@<thread>`, and a block that walked
+    // the roles printed one path per role that nothing would ever stand in.
+    const pairsPerRole = pairCeilings(configFrom(argv, undefined).config).pairsPerRole;
+    const seen = workspacesOnDisk({
+      repo,
+      worktrees: workdirSection.worktrees,
+      roles: roles.map((role) => role.id),
+      pairsPerRole,
+    });
+    if (seen === undefined) {
+      out(
+        `  NOT READ — '${join(repo, workdirSection.worktrees)}' could not be listed; where the roles work is declared and unreadable`,
+      );
+    } else {
+      const say = (label: string, path: string, role: string) =>
+        out(
+          `  ${label}: ${
+            workspaceVerdict({
+              role,
+              path,
+              facts: workspaceFacts(path, { dirt: true }),
+              base: base.commit,
+              baseRef: base.ref,
+            }).detail
+          }`,
+        );
+      for (const place of seen.places) {
+        say(
+          place.thread === undefined ? place.role : `${place.role}×${place.thread}`,
+          place.path,
+          place.role,
+        );
+        if (!place.current) out(`    ${describeStrandedPlace({ place, pairsPerRole })}`);
+      }
+      for (const role of seen.rolesWithoutAPlace) {
+        say(role, workspacePath({ repo, worktrees: workdirSection.worktrees, role }), role);
+      }
+      // A name under the workspaces that is no role's place is NAMED and judged by
+      // nothing: the mail checkout is one of these, and so is a probe tree made by hand.
+      for (const name of seen.unowned) {
+        out(`  ${name}: not any role's workspace — nothing here is claimed about it`);
+      }
     }
   }
 
@@ -11735,7 +11865,13 @@ const settleRun = (input: {
   readonly write: boolean;
 }): RunSetup => {
   const { argv, role, thread, repo, mailRoot, events } = input;
-  const workdirSection = configFrom(argv, undefined).config.orchestrator?.workdir;
+  // ONE READ OF THE CONFIG SERVES BOTH THE PLACE AND ITS KEY (thread 177): the directory
+  // the workspaces hang under and the ceiling that decides whether this one is keyed by
+  // the pair come out of the same parse. Two reads would be two chances to disagree about
+  // the same file, and the disagreement would be a session put in a tree nothing else
+  // knows the name of.
+  const runConfig = configFrom(argv, undefined).config;
+  const workdirSection = runConfig.orchestrator?.workdir;
   const base = workdirSection === undefined ? undefined : baseCommitOf(repo, workdirSection.branch);
   // One read of the thread serves both halves of R18: the mark that goes ONTO this
   // run's launch event, and the list the decision about the PREVIOUS run is taken from.
@@ -11769,7 +11905,18 @@ const settleRun = (input: {
     };
   }
 
-  const path = workspacePath({ repo, worktrees: workdirSection.worktrees, role: role.id });
+  // WHERE THIS RUN WORKS, AND WHAT THE PLACE IS KEYED BY (thread 177). The choice between
+  // the two forms is not made here — `workspaceKeyOf` makes it, and the surfaces that say
+  // where the trees ARE ask the same function, or they say a path that no longer exists.
+  const path = workspacePath({
+    repo,
+    worktrees: workdirSection.worktrees,
+    ...workspaceKeyOf({
+      role: role.id,
+      thread,
+      pairsPerRole: pairCeilings(runConfig).pairsPerRole,
+    }),
+  });
   // WHICH BUILD THAT TREE RUNS (thread 085) — BEFORE the lock is taken and before the tree
   // is touched, because this refusal is about the tree's CONTENTS and not about its head:
   // nothing here needs the worktree to have been moved to the base, and a refusal after

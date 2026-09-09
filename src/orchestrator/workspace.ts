@@ -74,6 +74,7 @@
  * This module is the pure core: facts in, a plan and a verdict out. The git calls
  * live in the CLI, where the IO is.
  */
+import { DEFAULT_PAIRS_PER_ROLE } from "../config/config.js";
 import { type GitIdentity, roleIdentity } from "../roles/identity.js";
 import type { PreflightCheck } from "./preflight.js";
 
@@ -327,6 +328,42 @@ export const workspacePath = (input: {
   }`.replace(/\/+/g, "/");
 
 /**
+ * WHICH OF THE TWO FORMS THIS RUN'S WORKSPACE IS KEYED BY — the one place that choice is
+ * made, so that the surface which PUTS a session in a tree and the surfaces which say
+ * WHERE THE TREES ARE cannot answer it differently. Read apart, they diverge the day the
+ * ceiling is raised: the scheduler would open `<role>@<thread>` while `preflight`,
+ * `doctor` and `status` went on printing `<role>` — a path that no longer exists on the
+ * disk — and every one of them would be green while saying it.
+ *
+ * THE CEILING IS THE WHOLE CONDITION, and it is `parallelism.pairsPerRole` of the config
+ * (`pairCeilings`, v27) rather than "does this run know its thread": every run knows it
+ * (R18). At the default of 1 a role holds one pair at a time, so its tree can only ever be
+ * about that pair — the thread in the name would buy nothing and would rename every tree
+ * standing on the box today. Above 1 the role's trees are several, and a place keyed by
+ * the role alone is two sessions in one checkout: the exact thing a workspace exists to
+ * prevent, and the thing the refusal `'curator is running on 047-devops-role'` already
+ * names while the place it locks names only the role.
+ *
+ * BIT-FOR-BIT AT THE DEFAULT is therefore the requirement and not a happy consequence: a
+ * contour that has declared no parallelism must not move a single directory because this
+ * code landed.
+ */
+export const workspaceKeyOf = (input: {
+  readonly role: string;
+  /** The thread of the pair being raised. Always known here — a run is raised ON a thread. */
+  readonly thread: string;
+  /**
+   * `parallelism.pairsPerRole` of the config, read by the caller with `pairCeilings` — the
+   * same reader the tick judges the ceiling with, so the layout and the scheduler cannot
+   * be looking at two different numbers.
+   */
+  readonly pairsPerRole: number;
+}): WorkspacePair =>
+  input.pairsPerRole > DEFAULT_PAIRS_PER_ROLE
+    ? { role: input.role, thread: input.thread }
+    : { role: input.role };
+
+/**
  * WHAT A CHECKOUT IS, IN THE THREE CLASSES THE CALLERS ACTUALLY DIFFER ON (thread 178).
  * `workspaceRoleOf` answers one bit — "is this a role's tree" — and its `undefined` was
  * read by both callers as one thing while it was two: a tree that has nothing to do with
@@ -459,6 +496,121 @@ export const workspacePairOf = (input: WorkspaceCheckoutQuestion): WorkspacePair
   if (pair === undefined) return undefined;
   return workspacePath({ repo: input.repo, worktrees, ...pair }) === here ? pair : undefined;
 };
+
+/** One workspace that is ON THE DISK, read back into the pair it is the place of. */
+export type WorkspacePlace = {
+  readonly role: string;
+  /** The thread of the pair; `undefined` for a place keyed by the role alone. */
+  readonly thread?: string | undefined;
+  /** The path itself, so the reader is never asked to rebuild it from the two halves. */
+  readonly path: string;
+  /**
+   * The place is keyed the way THIS ceiling keys places. `false` — it is a leftover of
+   * another ceiling: no run will be seated in it again, and it is what
+   * `describeStrandedPlace` is for. It is not a fault and nothing is deleted for it.
+   */
+  readonly current: boolean;
+};
+
+/** What lies under `<repo>/<worktrees>/`, as facts and without a verdict on any of it. */
+export type WorkspaceInventory = {
+  /** Every directory there that reads back as some role's place, in the order given. */
+  readonly places: readonly WorkspacePlace[];
+  /** Roles of the config with NO tree on the disk at all — named, not silently absent. */
+  readonly rolesWithoutAPlace: readonly string[];
+  /** Names there that are no role's place (the mail checkout, a probe made by hand). */
+  readonly unowned: readonly string[];
+};
+
+/**
+ * WHAT WORKSPACES THIS BOX ACTUALLY HAS — and the reason it exists is that the three
+ * surfaces which answer "where do the trees live" (`preflight`, `doctor`, `status`) each
+ * walked the ROLES of the config and printed `workspacePath({role})`, a path they never
+ * looked for on the disk. At a ceiling of one that guessed right; above one the run is
+ * seated in `<role>@<thread>` (`workspaceKeyOf`) and all three go on naming `<role>` — a
+ * directory that is not there — while saying nothing about the trees that are. One of
+ * them is not a display but a door: `probeSigningPlaces` `continue`s past a path that
+ * does not exist, so "whose address does this role's tree sign with" would check NOTHING
+ * and stay green.
+ *
+ * IT READS THE DISK RATHER THAN THE ROLE LIST, and that is the whole change of altitude:
+ * a place is a directory that IS THERE and reads back as a pair, so the answer cannot be
+ * wrong about a tree the way a rebuilt path can. The entries are handed in by the caller
+ * (this module holds no `fs`), and every one of them is classified by `workspacePairOf` —
+ * the same parse the layout is built by, never a second reading of the same name.
+ *
+ * A ROLE WITH NO TREE IS STILL NAMED. Dropping it would turn "this role has not been set
+ * up yet" into silence, which is the defect above with the sign flipped; it rides in its
+ * own list because it is a different sentence from "here is its tree".
+ *
+ * BIT-FOR-BIT AT THE DEFAULT (the requirement of thread 177, §3.3): with the ceiling at 1
+ * and the trees standing as they stand today, `places` is one entry per role, keyed by the
+ * role, with the path these surfaces already print — so nothing in the field moves because
+ * this landed.
+ */
+export const workspaceInventoryOf = (input: {
+  readonly repo: string;
+  readonly worktrees: string;
+  /** The role ids of the config — a directory named after a non-role is nobody's place. */
+  readonly roles: readonly string[];
+  /** The directory names directly under `<repo>/<worktrees>/`, read by the caller. */
+  readonly entries: readonly string[];
+  /** `parallelism.pairsPerRole` (`pairCeilings`, v27) — what keys a place TODAY. */
+  readonly pairsPerRole: number;
+}): WorkspaceInventory => {
+  const places: WorkspacePlace[] = [];
+  const unowned: string[] = [];
+  for (const name of input.entries) {
+    const path = workspacePath({ repo: input.repo, worktrees: input.worktrees, role: name });
+    const pair = workspacePairOf({
+      checkout: path,
+      repo: input.repo,
+      worktrees: input.worktrees,
+      roles: input.roles,
+    });
+    if (pair === undefined) {
+      unowned.push(name);
+      continue;
+    }
+    places.push({
+      ...pair,
+      path,
+      // The two forms are current under two different ceilings, and each is stranded
+      // under the other's: above 1 a role-keyed tree is nobody's next workspace, at 1 a
+      // pair-keyed one is the leftover of a ceiling that has since been lowered.
+      current:
+        input.pairsPerRole > DEFAULT_PAIRS_PER_ROLE
+          ? pair.thread !== undefined
+          : pair.thread === undefined,
+    });
+  }
+  return {
+    places,
+    rolesWithoutAPlace: input.roles.filter((role) => !places.some((place) => place.role === role)),
+    unowned,
+  };
+};
+
+/**
+ * WHAT IS SAID ABOUT A TREE THE CEILING HAS LEFT BEHIND — and it is said BY NAME with the
+ * path in it, because the alternative was measured and it is silence: the day the ceiling
+ * of a role goes above one, `.worktrees/dev-core` stops being anybody's workspace, and
+ * every surface that walked the role list went on printing it as though a session were
+ * about to land there.
+ *
+ * IT NAMES THREE THINGS AND PERFORMS NONE. What the tree is (a place keyed by the other
+ * form), that nothing is going to happen to it here, and WHERE the question of clearing it
+ * lives — thread `174-workspace-tidy-up`. Deleting a checkout is irreversible and belongs
+ * to a human (role card: "any irreversible action → john"); a line that says so is the
+ * whole of what this package owes the reader.
+ */
+export const describeStrandedPlace = (input: {
+  readonly place: WorkspacePlace;
+  readonly pairsPerRole: number;
+}): string =>
+  input.place.thread === undefined
+    ? `${input.place.path} is keyed by the role alone while 'parallelism.pairsPerRole' is ${input.pairsPerRole} — no run will be seated in it again, and nothing here removes it; clearing abandoned trees is thread 174-workspace-tidy-up`
+    : `${input.place.path} is keyed by a PAIR while 'parallelism.pairsPerRole' is ${input.pairsPerRole} — the leftover of a higher ceiling, and nothing here removes it; clearing abandoned trees is thread 174-workspace-tidy-up`;
 
 /**
  * THE REFUSAL THAT CAN BE ACTED ON WITHOUT GOING TO THE BOX (thread 099) — the second

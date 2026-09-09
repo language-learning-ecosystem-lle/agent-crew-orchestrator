@@ -62,14 +62,21 @@ const META = "---\ntitle: T\nparticipants: dev-core, curator\nstatus: open\n---\
 const WAITING =
   "---\nfrom: curator\ndate: 2026-07-25T10:00:00Z\nexpects: answer\nwaiting-on: dev-core\n---\n\nThe body.\n";
 
-const contour = (): { repo: string; mail: string } => {
+/**
+ * THE SAME CONTOUR WITH A CEILING ABOVE ONE (thread 177). Both halves are written because
+ * the config refuses half a declaration: a per-role ceiling raised alone multiplies by the
+ * number of roles, which is not a number anybody meant to declare.
+ */
+const PARALLEL_CONFIG = { ...CONFIG, parallelism: { pairsPerRole: 2, pairsPerInstance: 3 } };
+
+const contour = (config: unknown = CONFIG): { repo: string; mail: string } => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-ws-"));
   const origin = join(base, "origin.git");
   execFileSync("git", ["init", "--bare", "-q", "-b", "main", origin]);
 
   const repo = join(base, "work");
   execFileSync("git", ["clone", "-q", origin, repo]);
-  writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(CONFIG, null, 2)}\n`);
+  writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(config, null, 2)}\n`);
   writeFileSync(join(repo, "CARD.md"), "the role card\n");
   writeFileSync(join(repo, ".gitignore"), ".worktrees/\n.orchestrator/\nmailco/\nnode_modules/\n");
   git(repo, "add", ".");
@@ -143,6 +150,10 @@ const run = (repo: string, extra: readonly string[] = []): { code: number; out: 
 };
 
 const workspace = (repo: string): string => join(repo, ".worktrees", "dev-core");
+/** Where the SAME role works when the ceiling makes the place the pair's (thread 177). */
+const pairWorkspace = (repo: string): string => join(repo, ".worktrees", "dev-core@012-x");
+const realpath = (path: string): string =>
+  execFileSync("realpath", [path], { encoding: "utf8" }).trim();
 const journalPath = (repo: string): string => join(repo, ".orchestrator", "journal.jsonl");
 const journal = (repo: string): ReturnType<typeof parseJournal> =>
   parseJournal(readFileSync(journalPath(repo), "utf8"));
@@ -170,6 +181,23 @@ describe("the role gets a workspace of its own (R17)", () => {
     expect(git(workspace(repo), "rev-parse", "--abbrev-ref", "HEAD").trim()).toBe("HEAD");
     // And the operator's checkout is left exactly where it was — the pain R17 removes.
     expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD").trim()).toBe("main");
+  });
+
+  it("ceiling above one → the tree is the PAIR's, and the role-keyed one is not made (177)", () => {
+    // The other form of the layout, end to end: not "the path string is right" — the
+    // worktree that exists on the disk afterwards, and the cwd the session was actually
+    // given. `pairsPerRole: 2` is already declared in the field, so this is today.
+    const { repo } = contour(PARALLEL_CONFIG);
+    stub(repo);
+
+    const result = run(repo);
+
+    expect(result.out).toContain("dev-core@012-x");
+    expect(existsSync(pairWorkspace(repo))).toBe(true);
+    // AND THE ROLE-KEYED TREE IS NOT CREATED ALONGSIDE IT. Two trees for one run would be
+    // the defect this whole change is against, and it would look like success.
+    expect(existsSync(workspace(repo))).toBe(false);
+    expect(readFileSync(join(repo, "cwd.txt"), "utf8").trim()).toBe(realpath(pairWorkspace(repo)));
   });
 
   it("left on the previous package's branch, clean → moved back to the base", () => {
