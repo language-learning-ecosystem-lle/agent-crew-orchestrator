@@ -41,7 +41,7 @@ import {
   writeSync,
 } from "node:fs";
 import { createRequire } from "node:module";
-import { homedir, hostname, tmpdir } from "node:os";
+import { homedir, hostname, tmpdir, userInfo } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10254,9 +10254,15 @@ const accountReachRefusalFor = (input: {
     as: input.as,
     ...(input.account === undefined ? {} : { account: input.account }),
     reach:
-      input.as.mode === "sudo" && input.account !== undefined
-        ? accountReachFor({ user: input.as.user, configDir: input.account.configDir })
-        : undefined,
+      input.account === undefined
+        ? undefined
+        : accountReachFor({
+            // WHOSE BITS (thread `179`): the switch target when the card names one, and
+            // otherwise the user this supervisor already is. `SpawnAs` carries no name in
+            // its `self` shape — the box does, and it is the same box either way.
+            user: input.as.mode === "sudo" ? input.as.user : userInfo().username,
+            configDir: input.account.configDir,
+          }),
   });
 
 type RunParams = {
