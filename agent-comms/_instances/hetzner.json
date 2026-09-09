@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T19:36:56.187Z",
+  "writtenAt": "2026-09-09T19:37:27.775Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "dev-core",
+      "thread": "185-review-delivery-check-flake",
+      "state": "running",
+      "deadline": "2026-09-09T20:37:24Z"
+    }
+  ]
 }
