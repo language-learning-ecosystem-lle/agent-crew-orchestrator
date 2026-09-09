@@ -136,3 +136,4 @@
 - [Текст squash — усмотрение curator](squash-text-is-the-curators-call.md) — тело PR не правят, кладут `--subject`/`--body-file` на кнопке
 - [Дерево пары поднимается без `node_modules`](role-worktree-has-no-node-modules.md) — CLI почты гнать из главного чекаута: симлинк грязнит дерево (R17)
 - [Письмо с развилкой поднимает на ЛЮБОМ исходе](outcome-branch-letter-raises-on-any-branch.md) — «зелёный → кнопка твоя» зовёт и на `needs-fixes`: первым мерить владельца хода
+- [Тишину ленты датирует шапка `--for`](silence-in-a-feed-is-dated-by-the-unread-header.md) — «last message … of <ISO>» сильнее счёта писем
