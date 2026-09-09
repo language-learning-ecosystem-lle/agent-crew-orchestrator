@@ -41,7 +41,7 @@ import {
   writeSync,
 } from "node:fs";
 import { createRequire } from "node:module";
-import { homedir, hostname, tmpdir } from "node:os";
+import { homedir, hostname, tmpdir, userInfo } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10221,8 +10221,16 @@ const pathFactsOf = (path: string): PathFacts => pathFactsFrom(path, statSync);
  * bits and the identity are both readable from here, and the permission rule is the
  * kernel's; judging them in a pure function is what makes this testable at all.
  *
- * RUN ONLY WHEN THE IDENTITY ACTUALLY SWITCHES — no role that runs on this circuit today
- * except one, exactly like the switch probe beside it.
+ * RUN FOR EVERY NAMED ACCOUNT, WITH OR WITHOUT A SWITCH (thread `179`). It used to be asked
+ * only when the card named a `systemUser`, and that was the defect: the account directory
+ * names the MACHINE config and may live in any home on the box, so the bits that decide
+ * whether the session reaches its credentials have nothing to do with whether the identity
+ * changes. Whose bits are judged is the caller's answer ({@link accountReachRefusalFor}):
+ * the switch target when there is one, otherwise the user this supervisor already is.
+ *
+ * NOT LIKE THE SWITCH PROBE BESIDE IT, and the difference is the point: {@link probeSwitch}
+ * and {@link spawnIdentityFor} stay conditional on the switch because they ask about the
+ * switch itself; this one asks about a directory, and a directory is there either way.
  */
 const accountReachFor = (input: {
   readonly user: string;
@@ -10260,9 +10268,15 @@ const accountReachRefusalFor = (input: {
     as: input.as,
     ...(input.account === undefined ? {} : { account: input.account }),
     reach:
-      input.as.mode === "sudo" && input.account !== undefined
-        ? accountReachFor({ user: input.as.user, configDir: input.account.configDir })
-        : undefined,
+      input.account === undefined
+        ? undefined
+        : accountReachFor({
+            // WHOSE BITS (thread `179`): the switch target when the card names one, and
+            // otherwise the user this supervisor already is. `SpawnAs` carries no name in
+            // its `self` shape — the box does, and it is the same box either way.
+            user: input.as.mode === "sudo" ? input.as.user : userInfo().username,
+            configDir: input.account.configDir,
+          }),
   });
 
 type RunParams = {

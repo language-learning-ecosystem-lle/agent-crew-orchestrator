@@ -99,22 +99,71 @@ describe("permits", () => {
 });
 
 describe("accountReachRefusal", () => {
-  it("says nothing when the session is not switching identity — every role running today", () => {
-    // The bits of the directory are irrelevant here BY CONSTRUCTION: the session runs as
-    // this process's own user and reads what this process reads. A door that fired on this
-    // branch would stop the whole circuit to protect the one role that switches.
+  // WHAT THIS BLOCK REPLACED, said out loud because the assertion it replaced was the
+  // defect (thread `179`). It read "says nothing when the session is not switching identity
+  // — every role running today", and its comment argued that the directory's bits are
+  // irrelevant BY CONSTRUCTION because "the session runs as this process's own user and
+  // reads what this process reads". The second clause does not follow: an account directory
+  // is named by the MACHINE config and may sit in any home on the box. Measured 2026-09-09
+  // on this circuit — role `pilot-codex`, `active`, no `systemUser`, pointed at
+  // `/home/lle/.codex` at `0775 lle:lle`, which the user it is raised as cannot write.
+  it("REFUSES an unreachable directory with NO identity switch — the gap of thread 179", () => {
+    const said = accountReachRefusal({
+      role: { id: "pilot-codex" } as unknown as Role,
+      as: { mode: "self" },
+      account: { id: "codex-main", configDir: "/home/lle/.codex" },
+      reach: {
+        user: "aco-hetzner",
+        identity: { uid: 1002, gids: [1003, 1005] },
+        ancestors: [dir({ path: "/home" }), dir({ path: "/home/lle", mode: 0o751, uid: 1000 })],
+        // 0775 lle:lle — this user is in the `other` class: r and x, no w. The vendor keeps
+        // credentials, config and the session store in there, so read alone is not enough.
+        dir: dir({ path: "/home/lle/.codex", mode: 0o775, uid: 1000, gid: 1000 }),
+      },
+    });
+    expect(said).toContain("pilot-codex");
+    expect(said).toContain("codex-main");
+    expect(said).toContain("/home/lle/.codex");
+    // The user is named even though `SpawnAs` carries no name in its `self` shape ...
+    expect(said).toContain("aco-hetzner");
+    // ... and it is NOT reported as a switch, because there is none.
+    expect(said).not.toContain("system user");
+    expect(said).toContain("mode 0775");
+    // The repair of the switched case would send an operator to log in "UNDER that user";
+    // here the directory is simply in the wrong home, and `systemUser` is one of the fixes.
+    expect(said).toContain("systemUser");
+  });
+
+  it("passes an unswitched role whose account directory its own user owns", () => {
     expect(
       accountReachRefusal({
         role: { id: "dev-core" } as unknown as Role,
         as: { mode: "self" },
-        account: ACCOUNT,
-        reach: undefined,
+        account: { id: "lle-main", configDir: "/home/aco-hetzner/.claude" },
+        reach: {
+          user: "aco-hetzner",
+          identity: { uid: 1002, gids: [1003] },
+          ancestors: [
+            dir({ path: "/home" }),
+            dir({ path: "/home/aco-hetzner", mode: 0o751, uid: 1002, gid: 1003 }),
+          ],
+          dir: dir({ path: "/home/aco-hetzner/.claude", mode: 0o700, uid: 1002, gid: 1003 }),
+        },
       }),
     ).toBeUndefined();
   });
 
   it("says nothing when no account is named — the tool takes the target user's own home", () => {
     expect(accountReachRefusal({ role: ROLE, as: SUDO, reach: undefined })).toBeUndefined();
+    // ... and the same is true without a switch: nobody named a path, so there is none to
+    // judge, and the tool's own default home belongs to the user that would run.
+    expect(
+      accountReachRefusal({
+        role: { id: "dev-core" } as unknown as Role,
+        as: { mode: "self" },
+        reach: undefined,
+      }),
+    ).toBeUndefined();
   });
 
   it("passes a directory the target user owns", () => {
@@ -233,6 +282,27 @@ describe("accountReachRefusal", () => {
         },
       }),
     ).toBeUndefined();
+  });
+
+  it("REFUSES on the same blindness when nobody switches users — the asymmetry of thread 179", () => {
+    // Same facts as the test above, one difference: no switch. Then the process that could
+    // not `stat` IS the process the session runs as, so "the supervisor may not look" and
+    // "the session cannot read the credentials" are the SAME sentence, not two. Silence
+    // here would be this door failing open on the one shape it can answer with certainty.
+    const said = accountReachRefusal({
+      role: { id: "dev-core" } as unknown as Role,
+      as: { mode: "self" },
+      account: { id: "devops-main", configDir: "/home/aco-devops/.claude" },
+      reach: {
+        user: "aco-hetzner",
+        identity: { uid: 1002, gids: [1003] },
+        ancestors: [dir({ path: "/home" })],
+        dir: blind("/home/aco-devops/.claude"),
+      },
+    });
+    expect(said).toContain("devops-main");
+    expect(said).toContain("/home/aco-devops/.claude");
+    expect(said).toContain("EACCES");
   });
 
   it("still names the ANCESTOR when the leaf is blind — blindness excuses nothing above it", () => {
