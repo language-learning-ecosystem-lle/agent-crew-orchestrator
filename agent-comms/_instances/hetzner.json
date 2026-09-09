@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T20:10:07.617Z",
+  "writtenAt": "2026-09-09T20:10:42.497Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "155-park-has-no-checkable-ground",
-      "state": "draining",
-      "deadline": "2026-09-09T20:41:41Z"
-    },
     {
       "role": "dev-core",
       "thread": "186-collapsing-probe-class-enumerated",
