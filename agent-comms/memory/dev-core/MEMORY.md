@@ -126,3 +126,4 @@
 - [`doctor` печатает «Not logged in» и на нечитаемом каталоге](doctor-token-probe-reports-eacces-as-not-logged-in.md) — мерить права, а не логинить.
 - [Цену починки «в одну строку» мерить прогоном на БУДУЩЕМ входе](price-a-one-line-fix-by-running-it-on-the-future-input.md) — ключ-половина пары теряет наряды.
 - [Свой парк убивает ЧУЖОЙ входящий вердикт](own-park-can-kill-an-incoming-verdict.md) — круг краснеет доставкой, нужен новый.
+- [Цикл импорта ЗНАЧЕНИЙ тайпчеку невидим](value-import-cycle-is-invisible-to-tsc.md) — валит прогон в чужом файле; чинится ПЕРЕЕЗДОМ функции.
