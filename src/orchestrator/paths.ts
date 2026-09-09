@@ -59,6 +59,13 @@ export type OrchestratorPaths = {
    */
   readonly mergeReadyOutage: string;
   /**
+   * THE RUN OF TICKS THAT RAISED NOBODY (`stall.ts`, thread 180): written by the daemon
+   * each tick, on the same terms as the outage above and beside it. Two standstills of an
+   * hour on 2026-09-09 lived only in `daemon.log`; this is the object that makes them
+   * readable by anything other than an eye on a tail.
+   */
+  readonly stall: string;
+  /**
    * WHAT CODE THE LIVE DAEMON LOADED (023.2, `code-age.ts`): written once at its start,
    * read by the operator frame. It lies here rather than being asked of the process
    * because only the daemon knows which checkout node resolved its modules from — a
@@ -155,6 +162,7 @@ const HOLDS = "holds";
 const SESSIONS = "sessions";
 const NOTIFY_STATE = "notify.state";
 const MERGE_READY_OUTAGE = "merge-ready-outage.json";
+const STALL = "stall.json";
 const DAEMON_CODE = "daemon-code.json";
 const DAEMON_SELF_RESTART = "self-restart.json";
 const DAEMON_DRIFT = "daemon-drift.json";
@@ -188,6 +196,7 @@ export const orchestratorPaths = (input: {
     sessions: join(state, SESSIONS),
     notifyState: join(state, NOTIFY_STATE),
     mergeReadyOutage: join(state, MERGE_READY_OUTAGE),
+    stall: join(state, STALL),
     daemonCode: join(state, DAEMON_CODE),
     daemonSelfRestart: join(state, DAEMON_SELF_RESTART),
     daemonDrift: join(state, DAEMON_DRIFT),
