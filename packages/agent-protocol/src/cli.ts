@@ -41,7 +41,7 @@ import {
   writeSync,
 } from "node:fs";
 import { createRequire } from "node:module";
-import { homedir, hostname, tmpdir } from "node:os";
+import { homedir, hostname, tmpdir, userInfo } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -9118,6 +9118,12 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
       raisable: scope.roles,
       live: leases.filter((view) => isLeaseAlive(view.state)),
       held: heldRoles(heldViews),
+      // AND THE CEILING THE QUEUE ROWS JUDGE "FULL" BY (thread 177), read through the config's
+      // own `pairCeilings` — the very function the daemon's tick reads it with, so the frame
+      // and the planner cannot come to two numbers. Before it, a row said `ROLE BUSY` the
+      // moment anything of the role was live, which under a declared ceiling above one is a
+      // refusal of a launch the very next tick makes.
+      pairsPerRole: pairCeilings(configFrom(argv, undefined).config).pairsPerRole,
     },
     // R27, from the SAME scan the queue above is built from — the map the tick plans by.
     // WITH THE SAME CEILING THE TICK APPLIES (thread 062, layer 2): a `run:` park past it is
@@ -10221,8 +10227,16 @@ const pathFactsOf = (path: string): PathFacts => pathFactsFrom(path, statSync);
  * bits and the identity are both readable from here, and the permission rule is the
  * kernel's; judging them in a pure function is what makes this testable at all.
  *
- * RUN ONLY WHEN THE IDENTITY ACTUALLY SWITCHES — no role that runs on this circuit today
- * except one, exactly like the switch probe beside it.
+ * RUN FOR EVERY NAMED ACCOUNT, WITH OR WITHOUT A SWITCH (thread `179`). It used to be asked
+ * only when the card named a `systemUser`, and that was the defect: the account directory
+ * names the MACHINE config and may live in any home on the box, so the bits that decide
+ * whether the session reaches its credentials have nothing to do with whether the identity
+ * changes. Whose bits are judged is the caller's answer ({@link accountReachRefusalFor}):
+ * the switch target when there is one, otherwise the user this supervisor already is.
+ *
+ * NOT LIKE THE SWITCH PROBE BESIDE IT, and the difference is the point: {@link probeSwitch}
+ * and {@link spawnIdentityFor} stay conditional on the switch because they ask about the
+ * switch itself; this one asks about a directory, and a directory is there either way.
  */
 const accountReachFor = (input: {
   readonly user: string;
@@ -10260,9 +10274,15 @@ const accountReachRefusalFor = (input: {
     as: input.as,
     ...(input.account === undefined ? {} : { account: input.account }),
     reach:
-      input.as.mode === "sudo" && input.account !== undefined
-        ? accountReachFor({ user: input.as.user, configDir: input.account.configDir })
-        : undefined,
+      input.account === undefined
+        ? undefined
+        : accountReachFor({
+            // WHOSE BITS (thread `179`): the switch target when the card names one, and
+            // otherwise the user this supervisor already is. `SpawnAs` carries no name in
+            // its `self` shape — the box does, and it is the same box either way.
+            user: input.as.mode === "sudo" ? input.as.user : userInfo().username,
+            configDir: input.account.configDir,
+          }),
   });
 
 type RunParams = {
@@ -12632,7 +12652,7 @@ const digestPublisherFor = (input: {
   };
 };
 
-const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
+const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> => {
   // S6: not a single path in the operational command — everything comes from the
   // config; the flags remain an override for checks on a copy of the mail.
   const paths = pathsFrom(argv);
@@ -13686,6 +13706,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       new Map(),
       new Map(),
       outOfAttempts,
+      // THE SAME NUMBER THE TICK BELOW COUNTS TO (thread 177), read through the same
+      // `pairCeilings`. This stream passes no busy map — the daemon says a full ceiling in
+      // its own skip line, which is where `describeSkip` says it with the occupants — so
+      // the ceiling changes nothing here today; it is passed because the alternative is a
+      // caller that has the number in hand and hands the renderer a different one.
+      pairCeilings(daemonConfig).pairsPerRole,
     ))
       err(`agent-protocol: ${line}`);
     // R23-1: A THREAD WAITING ON A RESIDENT ROLE, said beside the queue it is not in.
@@ -14072,6 +14098,45 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     publishState();
   }
 };
+
+/**
+ * WHAT MAKES A PROCESS A DAEMON, IN ONE PLACE (thread 180).
+ *
+ * The survival of a version verdict used to be a property of ONE DISPATCH BRANCH —
+ * `orchestrator daemon` set the switch and caught the error, and the loop itself knew
+ * nothing about either. That is protection by the memory of whoever edits the dispatch,
+ * and on 2026-09-09 ~13:15Z the memory was not enough: the box of this circuit runs by
+ * `orchestrator up --foreground` (the form every unit's `ExecStart` uses), that door
+ * calls the same loop WITHOUT the switch, and a config bumped to protocol 27 under a
+ * build supporting 26 took it out by the argument door — `process.exit(2)` — with the
+ * verdict printed bare, without the `daemon — ` prefix the repair path always carries.
+ * Twenty minutes of a silent circuit and a five-step repair by a hand, under a green
+ * suite: the suite only ever asked the branch that had the switch.
+ *
+ * So the switch and the trap are named ONCE, here, and every door that starts the loop
+ * runs inside them — including the work a door does BEFORE the loop. That last clause is
+ * measured and not decorative: `up` reads the config itself (`pathsFrom`, to know where
+ * the pid file and the log live) before it ever calls the loop, so a wrapper around the
+ * loop alone leaves the `--foreground` door failing exactly as it failed in the field.
+ * The `argv` handed over is the one the repair reads `--ref` out of, which is why `up`
+ * passes its RESOLVED args (`withOperatorRef`) and not the operator's typing.
+ */
+const asDaemon = async (argv: readonly string[], run: () => Promise<void>): Promise<void> => {
+  // THE ONE COMMAND THAT SURVIVES A VERSION VERDICT (thread 040) — see
+  // `repairOnVersionVerdict` and the doc block of `self-restart.ts` for the outage that
+  // made it a decision instead of an exit code.
+  throwVersionVerdicts();
+  try {
+    await run();
+  } catch (error) {
+    if (!(error instanceof ProtocolVersionError)) throw error;
+    repairOnVersionVerdict(argv, error);
+  }
+};
+
+/** The daemon as a command: the loop, inside the protection every door of it shares. */
+const orchestratorDaemon = async (argv: readonly string[]): Promise<void> =>
+  asDaemon(argv, () => orchestratorDaemonLoop(argv));
 
 /** The journal shown to john (S4): the history of events in order, readably. */
 const orchestratorLog = (argv: readonly string[]): void => {
@@ -14589,8 +14654,37 @@ const runningDaemon = (pidFile: string): number | undefined => {
  * putting it there. Hence: named, with who and why, and `--clear-force` to say it out
  * loud.
  */
+/**
+ * THE DOOR EVERY UNIT USES (thread 019, systemd) AND THEREFORE THE ONE THAT HAD TO BE
+ * ASKED (thread 180). `--foreground` means "this process IS the daemon" — so `up` enters
+ * `asDaemon` here, at the top, and not around the loop call two hundred lines below. The
+ * difference is not stylistic: the FIRST config read of this command is `pathsFrom`, the
+ * first line of `orchestratorUpFrom`, thirty lines before anything called a daemon
+ * exists, and it is the read that met the verdict in the field. Protection that starts
+ * after it is protection the box does not have.
+ *
+ * AND THE BACKGROUNDED FORM ENTERS IT TOO — `up` is ONE command with one meaning, and
+ * the reason it was once excluded is measured to be false (curator, thread 180). The
+ * excluding block said: "it starts a CHILD `orchestrator daemon`, that child is protected
+ * by its own door, and a parent that pulled the tree under itself would be repairing a
+ * process that is about to exit anyway". In the ONE case this whole protection exists
+ * for, THERE IS NO CHILD: that same `pathsFrom` stands two hundred lines BEFORE the
+ * spawn, so a config bumped past this build takes the PARENT out by the argument door —
+ * `process.exit(2)`, the verdict printed bare, without the `daemon — ` prefix the repair
+ * path always carries — and the child whose own door would have protected it is never
+ * born. Nothing after the spawn reads the config, so the reverse shape (a repair pulled
+ * out from under a child that IS already running) has no reader to fire it.
+ *
+ * So both forms end a verdict the same way: the tree is pulled to the ref and the process
+ * hands back with `SELF_RESTART_EXIT_CODE`, for the supervisor — or, on this form, for
+ * the hand that typed `up` — to raise it again under a build that can read the config.
+ */
 const orchestratorUp = async (argv: readonly string[]): Promise<void> => {
   const args = withOperatorRef(argv);
+  return asDaemon(args, () => orchestratorUpFrom(args));
+};
+
+const orchestratorUpFrom = async (args: readonly string[]): Promise<void> => {
   const paths = pathsFrom(args);
   const pidFile = flag(args, "--pid-file") ?? paths.daemonPid;
   const log = flag(args, "--daemon-log") ?? paths.daemonLog;
@@ -16358,16 +16452,11 @@ const main = async (argv: readonly string[]): Promise<void> => {
   } else if (command === "orchestrator" && subcommand === "run") {
     await orchestratorRun(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "daemon") {
-    // THE ONE COMMAND THAT SURVIVES A VERSION VERDICT (thread 040) — see
-    // `repairOnVersionVerdict` and the doc block of `self-restart.ts` for the outage that
-    // made it a decision instead of an exit code.
-    throwVersionVerdicts();
-    try {
-      await orchestratorDaemon(argv.slice(2));
-    } catch (error) {
-      if (!(error instanceof ProtocolVersionError)) throw error;
-      repairOnVersionVerdict(argv.slice(2), error);
-    }
+    // THE SURVIVAL OF A VERSION VERDICT IS NO LONGER A PROPERTY OF THIS BRANCH (thread
+    // 180): it moved into `asDaemon`, where every door of the loop shares it. The dispatch
+    // that carried it protected the one door the suite asked about and not the one the
+    // circuit runs on.
+    await orchestratorDaemon(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "log") {
     orchestratorLog(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "stop") {

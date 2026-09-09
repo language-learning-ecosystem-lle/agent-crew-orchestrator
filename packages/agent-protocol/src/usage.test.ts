@@ -923,6 +923,13 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
    * (`--state`, `--env-file`) are flags of `orchestrator daemon` as well. The line was
    * silent about them, and the line IS the door: `orchestrator daemon --env-file <p>`
    * was refused for a flag the process behind the door then goes and reads.
+   *
+   * The dialling lives in the LOOP, and since thread 180 the loop has a name of its own
+   * (`orchestratorDaemonLoop`): `orchestratorDaemon` became the thin command around it,
+   * so that both doors of the loop — `orchestrator daemon` and `orchestrator up
+   * --foreground` — share one switch. The anchor below follows the dialling, not the
+   * command name; it is guarded by `toBeGreaterThan(-1)`, which is how the rename
+   * reported itself instead of quietly asserting nothing.
    */
   it("spells the two courier flags the daemon really reads (042)", () => {
     // The premise, asserted and not assumed: if the daemon ever stops dialling the
@@ -930,7 +937,7 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     // promising flags nothing reads.
     const source = readFileSync(new URL("./cli.ts", import.meta.url), "utf8");
     const opens = source.indexOf(
-      "const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {",
+      "const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> => {",
     );
     expect(opens).toBeGreaterThan(-1);
     const body = source.slice(opens, opens + source.slice(opens).indexOf("\n};"));

@@ -158,6 +158,57 @@ describe("the account of a run reaches the session it raises (thread 055)", () =
     expect(readFileSync(seen, "utf8")).toBe("/home/j/.claude-second");
   }, 60_000);
 
+  /**
+   * THE SEAM OF THREAD `179`, and it is a seam and not a unit: the door
+   * (`accountReachRefusal`) has always known how to judge these bits, and until this
+   * change `cli.ts` only ASKED it about roles declaring `systemUser` — so the whole
+   * judgement was unreachable for every role of this circuit. A unit test cannot see that,
+   * which is the entire reason this file exists (see the block at the top).
+   *
+   * The directory is real and unwritable rather than imagined: `0o500` leaves the owner
+   * `r-x` and no `w`, and the vendor keeps this account's credentials, config and session
+   * store inside it. The witness is the assertion — the stub records the environment it
+   * was handed, so an empty file is proof the child was never started.
+   */
+  it("an unwritable account directory refuses the run BEFORE the spawn, with no systemUser", () => {
+    const { repo } = contour("second");
+    const { exec, seen } = witness(repo);
+    const dir = join(repo, "account-no-write");
+    mkdirSync(dir, { recursive: true });
+    machineConfig(repo, { accounts: { second: { configDir: dir } } });
+    chmodSync(dir, 0o500);
+
+    const said = run(repo, exec);
+
+    expect(said.code).not.toBe(0);
+    // The refusal names all four facts an operator repairs from …
+    expect(said.out).toContain("dev-core");
+    expect(said.out).toContain("second");
+    expect(said.out).toContain(dir);
+    expect(said.out).toContain("mode 0500");
+    // … and it names the layer the operator would OTHERWISE be sent to as the wrong one.
+    expect(said.out).toContain("Not logged in");
+    // The load-bearing half: nothing was spawned. The stub never ran, so its file is not
+    // there at all — the difference from `""`, which would mean it ran with no variable.
+    expect(existsSync(seen)).toBe(false);
+    chmodSync(dir, 0o700);
+  }, 60_000);
+
+  it("the same directory made writable → the run proceeds and the child gets it", () => {
+    // The control, and it is what keeps the test above from passing on a door that refuses
+    // every account: one bit of one directory is the whole difference between the two.
+    const { repo } = contour("second");
+    const { exec, seen } = witness(repo);
+    const dir = join(repo, "account-writable");
+    mkdirSync(dir, { recursive: true });
+    machineConfig(repo, { accounts: { second: { configDir: dir } } });
+    chmodSync(dir, 0o700);
+
+    run(repo, exec);
+
+    expect(readFileSync(seen, "utf8")).toBe(dir);
+  }, 60_000);
+
   it("the role names none → the variable is not set at all, not set to a default", () => {
     // The difference matters to one real operator: whoever exported CLAUDE_CONFIG_DIR
     // before starting the daemon. Writing a default over it would be the package

@@ -5004,11 +5004,13 @@ a human can predict the queue without reading the code.
   false used to look exactly like a row where it is true. Four marks now ride in
   `describeOrder`, each beside the others rather than instead of them, because one pair can be
   held by several things at once and each of them ends differently: `⏸ PARKED …` (R27, and the
-  park that is a MODE is said apart from the park that asks a person), `⛔ ROLE BUSY — <role> is
-  live on <other thread>; one session per role …`, `⏸ HELD BY A CLOSED WINDOW — quota-paused
-  until <ISO> …`, and — when the live session stands on THIS row's own thread —
-  `↩ THE TURN CAME BACK TO A LIVE PAIR — <role> is live on <thread>, and that is the thread of
-  this very row …`. The last two of those are the same fact told apart: measured on one fixture,
+  park that is a MODE is said apart from the park that asks a person), `⛔ ROLE BUSY — <n> of <ceiling>
+  pair(s) allowed to <role> are live ('parallelism.pairsPerRole' of the config), held by
+  <pairs> …` (thread 177: the mark is issued when the role's places are FULL, and a role with a
+  place still free gets no mark at all), `⛔ ROLE HELD — <role> is held by a manual session of
+  <who> …` (S5: the whole role is out, places or no places), `⏸ HELD BY A CLOSED WINDOW —
+  quota-paused until <ISO> …`, and — when a live session of the role stands on THIS row's own
+  thread — `↩ THE TURN CAME BACK TO A LIVE PAIR — <role> is live on this very row's thread …`. The last two of those are the same fact told apart: measured on one fixture,
   the two frames differed by the thread id INSIDE one sentence and by nothing else, so a pair
   whose role is spent elsewhere and a pair whose own session was handed the turn back read as
   one state. They are not one: the first waits for capacity, the second is the busiest pair of
@@ -5821,6 +5823,33 @@ exactly two endings and neither of them loops:
   dated, or the pull itself failed — leave with `2`, ONCE, printing the command a hand must
   type. The argument door is chosen deliberately here: a supervisor told `2` stops instead of
   raising four more processes into the same wall, so `StartLimitBurst` stays intact.
+
+**AND "THE DAEMON" IS THE LOOP, NOT ONE DISPATCH BRANCH** (thread 180, measured on this
+repository 2026-09-09 ~13:15Z — the same class, a year of design later). The switch and the
+trap lived in the `orchestrator daemon` branch of the dispatch, so the door the suite asked
+about was protected and the door the box RUNS ON was not: `orchestrator up --foreground` is
+the form every unit's `ExecStart` uses, it calls the same loop past the switch, and a config
+declaring protocol 27 under a build supporting 26 took the process out by the argument door
+— the verdict printed bare, without the `daemon — ` prefix the repair path always carries,
+twenty minutes of a silent circuit and a five-step repair by hand, under a green suite. Both
+are now callers of `asDaemon`, which is where the switch and the trap live. **Moving them
+into the loop was NOT enough, and that is measured rather than argued:** `up` reads the
+config with its own hand (`pathsFrom`, to know where the pid file and the log are) thirty
+lines before anything called a daemon exists, and that is the read which met the verdict in
+the field — a wrapper around the loop alone left `--foreground` exiting 2 exactly as before.
+So `up` enters `asDaemon` at its TOP, before that read, **whichever way it is typed**. The
+backgrounded form was excluded at first on the ground that "it spawns a CHILD `orchestrator
+daemon` which carries its own protection", and that ground is false in the one case this
+protection exists for: the same `pathsFrom` stands two hundred lines BEFORE the spawn, so a
+bumped config takes the PARENT out by the argument door and the child that would have been
+protected is never born. Nothing after the spawn reads the config, so the reverse shape — a
+repair pulled out from under a child that is already running — has no reader to fire it.
+`up` is one command with one meaning: every form of it meets a verdict by repairing the tree
+and handing back with `SELF_RESTART_EXIT_CODE`, for a supervisor or for the hand that typed
+it to raise again under a build that can read the config. The test parameter is
+`DAEMON_DOORS` (`self-restart.process.test.ts`): all three doors answer both endings, the
+repair (`75`, and the tree actually moved) and the unrepairable stand (`2`, `A hand is
+needed`).
 
 Live sessions are deliberately NOT a condition of this path, unlike `selfRestartVerdict`'s
 zero-lease rule: a box whose every config read is refusing holds no session that can do any
