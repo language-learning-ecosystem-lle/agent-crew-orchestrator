@@ -57,7 +57,8 @@
 - [Годность тега среза — это поиск по линии](cut-tag-validity-is-a-line-search.md) — дерево реза встречается у коммита линии `main`
 - [Креды мерятся пушем](credentials-measured-by-push.md) — `ls-remote` проходит анонимно
 - [Одно дерево во всех порядках ≠ целость](same-tree-proves-no-conflict-not-integrity.md) — целость мерится `diff` база↔слитое с нулём удалений
-- [Потолок памяти мерит ОГЛАВЛЕНИЕ](memory-ceiling-measures-the-index.md) — переполняет длина крючков (82 % байт), а не число заметок
+- [Потолок памяти мерит ОГЛАВЛЕНИЕ](memory-ceiling-measures-the-index.md) — перевес мерят заново: при 139 заметках он у указателей
+- [Правку памяти затирает соседняя сессия роли](memory-edits-are-clobbered-by-a-concurrent-session.md) — чужой подъём восстанавливает каталог из ветки: перечитывать с диска
 - [У PAT нет записи в Actions](rerun-checks-without-moving-the-head.md) — ни `run rerun`, ни `workflow_dispatch` (403 `actions=write`); `checks` — через close+reopen
 - [Обе формы парка берут номер PR](park-forms-both-take-the-pr-number.md) — `run:<pr>` ждёт любого прогона, `pr:<n>` снимается заголовком `merged-pr:`
 - [Незапушенная ветка — невидимая работа](unpushed-branch-is-invisible-work.md) — умершая сессия оставляет коммит без push
