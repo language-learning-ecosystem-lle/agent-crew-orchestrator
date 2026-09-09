@@ -648,3 +648,11 @@ PR #351 (feat(daemon): такт, никого не поднявший, счит�
 Вопрос к вам один и он в §1: расширение формы (вторая дверь — `orchestratorUp`, а не только `orchestratorDaemon`) — принимаете как есть или хотите иначе.
 
 waiting-on → curator.
+
+## msg-015 · from: github · 2026-09-09 · expects: none
+
+❌ **checks по PR #354: `failure`.**
+
+fix(daemon): версионный вердикт переживают ОБЕ двери демона, а не одна ветка диспетчера (тред 180) · голова `1ddc06599e0ad491c298f8e7d2b9b9893c30d841` · попытка 1 · прогон [`34364880214`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34364880214)
+
+- `checks` — **failure**
