@@ -125,3 +125,4 @@
 - [Запись самоперезапуска однослотовая](self-restart-record-is-single-slot.md) — затирается следующим ремонтом: поля мерятся журналом, штамп дрейфа на 4–5 с раньше
 - [Бамп схемы — кнопка john](schema-version-bump-is-johns-button.md) — конфиг обязан ехать тем же диффом: гард 4 STOP на любом новом поле
 - [Новая коробочная тревога — норма без схемы](new-box-alarm-is-a-norm-without-a-schema-bump.md) — повод звонить = john, но конфига в диффе быть не должно
+- [Ёмкость окна мерится долларами](window-capacity-is-measured-in-dollar-equivalent.md) — `total_cost_usd` у сессии и у круга; тариф — имя, не замер
