@@ -131,5 +131,5 @@
 - [Письмо самоперезапуска называет ОТПЕЧАТОК](self-restart-letter-names-the-footprint.md) — «смену исполняемого» с #352 мерит читатель одной командой
 - [Приоритет ставится письмом В СВОЙ тред](priority-is-set-in-the-threads-own-feed.md) — ярус 1 очереди; чужой тред отсюда не поднять, можно понизить СЕБЯ
 - [Безгитовая копия дерева краснит 4 теста](gitless-tree-copy-reddens-four-tests.md) — не дефект; исключается копией чистого `origin/main`
-- [Молчание сторожа мерится доставленным дайджестом](watcher-silence-needs-a-delivered-digest.md) — окно ищут по `telegram: delivered`: строка сторожа рождается ТОЛЬКО там (16/16)
+- [Молчание сторожа мерится доставленным дайджестом](watcher-silence-needs-a-delivered-digest.md) — окно ищут по `telegram: delivered`: 16/16 мерит гейт ПЕЧАТИ, а не обход
 - [Журнал ящика отражает твой же вывод](daemon-log-echoes-your-own-output.md) — греп якорить `^`, иначе `tail -1` врёт
