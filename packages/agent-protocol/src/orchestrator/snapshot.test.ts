@@ -366,7 +366,7 @@ describe("renderParallelism — the live count and the room left", () => {
     const text = renderParallelism(
       p({ live: [running("dev-core", "023-daemon-parallelism"), running("curator", "026-merge")] }),
     );
-    expect(text).toContain("parallelism: 2 of 3 role(s) live");
+    expect(text).toContain("parallelism: 2 of 3 place(s) live");
   });
 
   it("lists the live pairs with their state, not just a number", () => {
@@ -389,12 +389,12 @@ describe("renderParallelism — the live count and the room left", () => {
         live: [running("dev-core", "023-daemon-parallelism")],
       }),
     );
-    expect(text).toContain("free: none — every role this box raises is busy");
+    expect(text).toContain("free: none — every role this box raises is out of places of its own");
   });
 
   it("nobody live is a SPOKEN state — that is what a stalled circuit looks like", () => {
     const text = renderParallelism(p());
-    expect(text).toContain("parallelism: nobody is live — 3 role(s) this box raises, all free");
+    expect(text).toContain("parallelism: nobody is live — 3 place(s), all free");
   });
 
   it("a role held by a human is capacity that is not the circuit's, and is said apart", () => {
@@ -413,15 +413,50 @@ describe("renderParallelism — the live count and the room left", () => {
     const text = renderParallelism(p({ held: ["curator"] }));
     expect(text).not.toContain("all free");
     expect(text).toContain(
-      "parallelism: nobody is live — 3 role(s) this box raises, 2 free, 1 held",
+      "parallelism: nobody is live — 3 place(s), 2 free, 1 role(s) held by a human",
     );
     expect(text).toContain("free: dev-core, dev-acme");
     expect(text).toContain("held by a human: curator");
   });
 
+  // THE COMBINATION THE HEAD AND THE LIST USED TO DISAGREE ON (reviewer, PR #362): a hold
+  // AND a declared box ceiling AND nothing live. The head counted with a formula of its
+  // own — `places - live - held × pairsPerRole` — and printed `1 free` directly above a
+  // `free:` line naming TWO roles. One state, two answers, in one frame.
+  it("with a box ceiling, the number in the head is the room the list below can take", () => {
+    const text = renderParallelism(p({ held: ["curator"], pairsPerRole: 2, pairsPerInstance: 3 }));
+    expect(text).toContain(
+      "parallelism: nobody is live — 3 place(s), 3 free, 1 role(s) held by a human",
+    );
+    expect(text).toContain("free: dev-core, dev-acme");
+  });
+
+  // THE OTHER SIDE OF THE SAME MINIMUM, AND IT IS ASSERTED WHERE THE NUMBER IS PRINTED
+  // (reviewer, PR #362, second round). The test that used to stand here named this
+  // property and could not have measured it: its scenario was in the `live.length > 0`
+  // branch, where the head prints no `N free` at all — `freePlaces` reaches the frame in
+  // exactly one branch, `nobody is live` with a hold, so a case that means to bind the
+  // number has to be built there. Here one role is named free and could take two places
+  // while the box has five left, so the ROLES bound the room; a number taken from the box
+  // alone would promise capacity no raisable role may use.
+  it("the room is bounded by whom the list names too, not only by the box", () => {
+    const text = renderParallelism(
+      p({
+        raisable: ["dev-core", "curator", "dev-acme"],
+        held: ["curator", "dev-acme"],
+        pairsPerRole: 2,
+        pairsPerInstance: 5,
+      }),
+    );
+    expect(text).toContain(
+      "parallelism: nobody is live — 5 place(s), 2 free, 2 role(s) held by a human",
+    );
+    expect(text).toContain("free: dev-core");
+  });
+
   it("nobody live and every role held is saturation by the human, and says so", () => {
     const text = renderParallelism(p({ raisable: ["dev-core"], held: ["dev-core"] }));
-    expect(text).toContain("0 free, 1 held");
+    expect(text).toContain("0 free, 1 role(s) held by a human");
     expect(text).toContain("free: none — every role this box raises is held by a human");
   });
 
@@ -433,7 +468,74 @@ describe("renderParallelism — the live count and the room left", () => {
         held: ["curator"],
       }),
     );
-    expect(text).toContain("free: none — every role this box raises is busy or held by a human");
+    expect(text).toContain(
+      "free: none — every role this box raises is out of places of its own or held by a human",
+    );
+  });
+
+  /**
+   * THE HEAD COUNTS PLACES (thread 177, curator's acceptance of 2026-09-09). Measured on
+   * the merged tree of #359: two live pairs of ONE role and one live pair of that role
+   * printed a byte-identical head and a byte-identical `free:` line, while the box was in
+   * two different states — no place left for the role in the first, one place in the
+   * second. The mutation these three cases exist against is the old expression itself,
+   * `new Set(live.map((view) => view.role)).size`.
+   */
+  it("counts PLACES, not roles: two live pairs of ONE role are 2 of the box, not 1", () => {
+    const text = renderParallelism(
+      p({
+        live: [running("dev-core", "016-a"), running("dev-core", "177-c")],
+        pairsPerRole: 2,
+        pairsPerInstance: 3,
+      }),
+    );
+    expect(text).toContain("parallelism: 2 of 3 place(s) live");
+    // And the role whose places are ALL spent is not offered as room.
+    expect(text).toContain("free: curator, dev-acme");
+  });
+
+  it("a role with a place LEFT is free — one live pair of two allowed is not saturation", () => {
+    const text = renderParallelism(
+      p({ live: [running("dev-core", "016-a")], pairsPerRole: 2, pairsPerInstance: 3 }),
+    );
+    expect(text).toContain("parallelism: 1 of 3 place(s) live");
+    // The whole difference from the case above, and the one the old subtraction could not
+    // say: `dev-core` is named, because the box can still raise it.
+    expect(text).toContain("free: dev-core, curator, dev-acme");
+  });
+
+  it("the ceiling of the BOX is named by its own word, and apart from the count of roles", () => {
+    const text = renderParallelism(
+      p({ live: [running("dev-core", "016-a")], pairsPerRole: 2, pairsPerInstance: 3 }),
+    );
+    // Two threes in one line, and neither is readable as the other: the places carry the
+    // key of the config that declares them, the roles carry the word `role(s)`.
+    expect(text).toContain(
+      "parallelism: 1 of 3 place(s) live — 'parallelism.pairsPerInstance', spread over 3 role(s) this box raises at up to 2 pair(s) each",
+    );
+  });
+
+  it("a full BOX says so — a role of it may be idle, and that is a different sentence", () => {
+    const text = renderParallelism(
+      p({
+        live: [running("dev-core", "016-a"), running("dev-core", "177-c")],
+        pairsPerRole: 2,
+        pairsPerInstance: 2,
+      }),
+    );
+    expect(text).toContain(
+      "free: none — the ceiling of this BOX is full, 2 of 2 place(s) live ('parallelism.pairsPerInstance'); a role of it may still be idle",
+    );
+    // `curator` has both of its own places — the reason it is not free is the box, and the
+    // line above must not blame the role for it.
+    expect(text).not.toContain("free: curator");
+  });
+
+  it("no declared 'parallelism' prints the number it always printed, under the right word", () => {
+    const text = renderParallelism(p({ live: [running("dev-core", "016-a")] }));
+    expect(text).toContain(
+      "parallelism: 1 of 3 place(s) live — one place per role, 3 role(s) this box raises — the project declares no 'parallelism'",
+    );
   });
 });
 

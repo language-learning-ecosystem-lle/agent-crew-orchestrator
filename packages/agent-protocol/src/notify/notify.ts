@@ -511,7 +511,7 @@ export type ParkedThread = {
    */
   readonly holder?: RoleId | undefined;
   /**
-   * THE LAST CARRYING LETTER THIS BOX HAS ALREADY SAID "asked again" ABOUT (thread 155) —
+   * THE LAST CARRYING LETTER THIS BOX HAS ALREADY SAID "written about again" ABOUT (155) —
    * state, not composition, and the one value in a `parked` row that is not read out of the
    * feed. It exists because since 2026-09-08 the park belongs to the THREAD and {@link since}
    * is pinned to the DECLARATION: the stamp does not move under a repeat any more, so it can
@@ -523,7 +523,7 @@ export type ParkedThread = {
    *
    * OPTIONAL AND TOLERATED WHEN ABSENT, exactly like {@link NotifyState.asked} and
    * {@link NotifyState.reminded} before it: a state file written before this field existed
-   * says "this box has never said `asked again` about this park", which is the truth about
+   * says "this box has never spoken about a repeat on this park", which is the truth about
    * it, and the first tick after the upgrade prints at most one honest repeat line.
    */
   readonly restated?: string | undefined;
@@ -1184,9 +1184,18 @@ const parkedKey = (park: Pick<ParkedThread, "person" | "thread">): string =>
  * ({@link BOX_ALARM_KINDS}): the KEYS of the template map are part of the frozen config
  * shape, and a new slot for this would cost a protocol version and a migration in every box
  * in the field. What the project words is the question; what the package words is the one
- * fact the project cannot know — that this is the same question said again.
+ * fact the project cannot know — that this is the same park written about again.
+ *
+ * AND THE WORDS SAY WHAT THEY MEASURE, NOT WHAT ONE WOULD LIKE THEM TO (john, 2026-09-09,
+ * thread 155, variant (а)). They used to read "asked again", and the class does not measure
+ * that: it counts LETTERS carrying the park over its declaration, and a repeated question is
+ * indistinguishable from an honest report beside it BY CONSTRUCTION — see the class itself
+ * ({@link planNotifications}, "WHAT THE PRECISION OF THE CLASS IS") for why R58 makes it so.
+ * The bracket stays: it is true, and it is what stops the reader taking the line for a
+ * fresh call. Making the line mean a real second question would need a word the writer
+ * prints — that variant (б) was priced and REJECTED by john in the same word.
  */
-const restatedPrefix = "still standing, asked again (not a new question): ";
+const restatedPrefix = "still standing, written about again (not a new question): ";
 
 /**
  * How a park that was LIFTED is said — the package's own words for the same reason
@@ -1246,7 +1255,7 @@ export const renderNotifyState = (state: NotifyState): string => {
     // what tells a park re-declared under the same key from one standing untouched, and that
     // difference is the whole of the downgrade "call → line". The line keeps its four columns.
     // A FIFTH COLUMN SINCE THREAD 155, AND ONLY WHEN THERE IS ONE: the stamp of the last
-    // carrying letter already said "asked again" about ({@link ParkedThread.restated}). A row
+    // carrying letter already spoken about ({@link ParkedThread.restated}). A row
     // of four is the pre-155 form and reads as "nothing said yet", which is what it is.
     ...state.parked.map(
       (park) =>
@@ -1702,8 +1711,10 @@ export const planNotifications = (input: {
   // parked thread, so an honest report beside the question is indistinguishable from a repeated
   // question (live: all four carrying letters on john in 155 were curator's reports). That is
   // exactly the precision the class had BEFORE 155 and not a hair more — the stamp used to ride
-  // on those same letters. Making "asked again" mean a real second question needs a word or a
-  // field the writer prints, which is a norm and john's to make.
+  // on those same letters. Making the line mean a real second question needs a word or a field
+  // the writer prints — john was asked and ANSWERED (2026-09-09, thread 155): that variant is
+  // rejected at the price of an obligation on every writer, and the LINE was brought to the
+  // measurement instead ({@link restatedPrefix}: "written about again").
   const standingSince = new Map(parked.map((park) => [parkedKey(park), park.since]));
   const carried = new Map<string, string>();
   for (const park of input.declaredParks ?? []) {

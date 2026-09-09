@@ -928,7 +928,10 @@ apart along lines the package already had:
   is the pair, and the stamp is kept in the state for one purpose — telling a park
   re-declared under that key from one standing untouched. Such a park is **restated**: it
   produces a line (the project's `parked` sentence, prefixed by the package's own "still
-  standing, asked again (not a new question)"), and that line rides in whatever digest is
+  standing, written about again (not a new question)" — the prefix says what the class
+  MEASURES, carrying letters over the declaration, because door 058 requires `parked-on:` of
+  every writer into a parked thread and an honest report is therefore indistinguishable from
+  a second asking), and that line rides in whatever digest is
   already going out for a fresh event. It never triggers a delivery: `notify --write` sends
   on the fresh counts, not on the message being non-empty. And a tick that sends nothing
   keeps the stamp it had ANNOUNCED, so the line stays owed rather than being consumed by a
@@ -2364,7 +2367,7 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # standing 21 h 23 m over a ready PR after its question had been answered,
                             # and a park asking john to unfreeze a pair HIS OWN HAND had unfrozen that
                             # morning, which then locked both pairs of the thread over five commits
-                            # already on `origin`. TWO FORMS, one per case: `frozen:<role>×<thread>`
+                            # already on `origin`. THREE FORMS, one per case: `frozen:<role>×<thread>`
                             # ("stands while that pair is frozen", ASCII `*` for the `×`), answered out
                             # of the journal of leases the tick already reads; and
                             # `no-delivers-since:<thread>` ("stands while no letter in that thread
@@ -2378,7 +2381,21 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # door in three cases and no fourth: a value this version cannot ask, a
                             # ground on a message that parks nothing, and a `no-delivers-since:` naming
                             # a thread this mail does not have — a misspelled slug is a ground that can
-                            # NEVER fall away, which is the quietest bad outcome the field has
+                            # NEVER fall away, which is the quietest bad outcome the field has. THE
+                            # THIRD FORM is `until-pr-merged:<n>` ("stands while PR #n is not merged"),
+                            # measured at 40 d 13 h in a live circuit: a park asking john for a merge
+                            # that he ANSWERED BY MERGING two days later, which neither older form can
+                            # see — the pair is not frozen, and the `delivers` letter the second waits
+                            # for is never written, because the answer was a button. It is answered by
+                            # the `merged-pr:` letters of this same mail, the very set every `pr:` park
+                            # is judged against; it carries NO window, unlike the second form, because
+                            # a PR already merged when the park is declared makes that park false as it
+                            # is written; and a PR CLOSED WITHOUT A MERGE it does not see at all — this
+                            # mail announces a merge and announces no close, and reading the second out
+                            # of a source the box does not have would be a check that never runs. The
+                            # door does not check the number: its mistake is not quiet — one note on
+                            # the next tick either way — and asking would mean a call to the forge in
+                            # order to write a letter
                             # --park-mover <participant>: WHO MAKES THAT MERGE HAPPEN (thread 061, by the
                             # word of john 2026-08-30) — DEMANDED on `--parked-on pr:<n>`, refused with
                             # anything else. A merge park waits for A HAND on a button, and a parked
@@ -5462,12 +5479,27 @@ circuit (the gate, the stop and force flags, whether the daemon's pid is alive),
 reason for its order, the neighbours' digests with their age, and how old the mail on disk is.
 
 **Two of those are D-4's** (thread 023), and both answer a question the frame used to leave to the
-reader. The **parallelism line** — `2 of 5 role(s) live`, the pairs behind it, and the roles left
-free by name — because the degree of parallelism was never a parameter: it is the number of roles
-this box raises (a role has one workspace, R17, and a second session in it is refused at the door),
-so the capacity is a fact about the config and the only live question is how much of it is spent.
-Until then the frame printed every pair the journal knew, released ones included, and left the
-counting to a human at 2am. And the **`parked` mark on a queue line** (R27): a queue line promises
+reader. The **parallelism line** — `2 of 3 place(s) live`, the pairs behind it, and the roles left
+free by name — because the only live question in front of a running circuit is how much of the box
+is spent, and until D-4 the frame printed every pair the journal knew, released ones included, and
+left the counting to a human at 2am.
+
+**The head counts PLACES, and it counts them because a role can now hold two** (thread 177). While
+a role had one workspace (R17) the capacity WAS the number of roles, and `role(s) live` was the
+same number under a different word; with `parallelism.pairsPerRole` above one it stopped being:
+two live pairs of one role and one live pair of that role printed a byte-identical line, and they
+are two different states of the box — no place left for that role in the first, one place in the
+second. So the head is `<live pairs> of <places> place(s) live` and the places come from
+`parallelism.pairsPerInstance` (`pairCeilings`, the same read the tick counts to — the frame does
+not open the config a second time); with no declared `parallelism` the line says `one place per
+role` and prints the number it always printed. The two numbers of the line are named apart on
+purpose — `3 place(s)` is the box ceiling, `3 role(s) this box raises` is R13's scope, and in the
+field config of this repository they are both 3. **`free:` names ROLES with a place left** — one
+live pair out of two allowed is not saturation — and when the BOX ceiling is what is full it says
+so in those words, because then a role of it may be idle and the reader must not go looking for a
+busy one. A hold stays a fact about a role (S5): a human takes `curator`, not one of its seats.
+
+And the **`parked` mark on a queue line** (R27): a queue line promises
 a launch, a thread frozen behind a person will not get one until that person answers, and that
 state used to be visible only as a skip line on the daemon's stream — which the person reading
 `status` is by definition not watching. The mark rides in `describeOrder`, so the stream carries it

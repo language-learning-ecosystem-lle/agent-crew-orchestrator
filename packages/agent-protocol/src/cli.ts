@@ -558,6 +558,7 @@ import {
   failureClassOf,
 } from "./orchestrator/thaw.js";
 import {
+  collisionRings,
   collisionSaidKey,
   describeNumberCollisionLetter,
   describeQuietNumberCollisions,
@@ -3658,6 +3659,13 @@ const parkMoverFrom = (
  * already resolved. The `frozen:` form is deliberately NOT checked this way: its thread is half
  * of a PAIR and a pair is legitimately named before its thread has any mail of its own.
  *
+ * `until-pr-merged:<n>` IS NOT CHECKED HERE EITHER, and for the opposite reason to the one above:
+ * its mistake is not quiet. A number nothing answers to costs one note on the next tick — the
+ * mail either says that PR is merged or it does not — while the check that would catch it is a
+ * call to a forge this command does not make and must not learn to make in order to write a
+ * letter. A number ALREADY merged when the park is declared is likewise named by the note, which
+ * is the case this form was measured on (thread 155).
+ *
  * No permission gates it, for the reason none gates a park.
  */
 const parkGroundFrom = (
@@ -5161,12 +5169,14 @@ const watchThreadNumbers = (input: {
     input.threads.map((thread) => ({ id: thread.id, open: thread.meta.status === "open" })),
   );
   const plan = planNumberCollisionWatch({ found, said: input.said });
-  // THE SILENCE, SAID OUT LOUD. A tick that found pairs and rang about none of them is
-  // indistinguishable in a log from a tick whose search found nothing — and the whole field
-  // acceptance of this watchman is that the six known pairs are FOUND and rejected by the
-  // criterion, not missed by the search.
+  // THE SILENCE, SAID OUT LOUD — AND WHICH OF THE TWO SILENCES IT IS. A tick that found
+  // pairs and rang about none of them is indistinguishable in a log from a tick whose search
+  // found nothing, and the whole field acceptance of this watchman is that the known pairs
+  // are FOUND and rejected by the criterion, not missed by the search. But "rejected by the
+  // criterion" and "held by the lock" are two different facts about the feed, and the line
+  // named only the first — so it is handed both and says which (thread 159).
   if (found.length > 0 && plan.letters.length === 0)
-    input.say(describeQuietNumberCollisions(found));
+    input.say(describeQuietNumberCollisions({ found, ringing: found.filter(collisionRings) }));
   const kept = new Set(plan.said);
   for (const letter of plan.letters) {
     let dir: string | undefined;
@@ -6198,6 +6208,16 @@ const runNotify = async (input: {
       // The watchman's own marks, carried through unchanged (see `watchMergeability`).
       mergeable: mergeableSaid,
       freezeLetters: freezeLettersSaid,
+      // THE NUMBER WATCHMAN'S MARKS, AND THE ONE PLACE THEY WERE MISSING (thread 159,
+      // measured on the field 2026-09-09): every writer of this file rebuilds the whole
+      // state, so a class the branch forgets to name is a class this branch DELETES. This
+      // is the branch a delivered digest takes, and without this line the lock of the number
+      // watchman lived exactly as long as the next Telegram message — pair `180` was
+      // announced SEVENTEEN times in four hours, alternating tick by tick: a tick rang and
+      // wrote the mark, the next tick delivered the digest and wiped it, the one after rang
+      // again. The three sibling writers carried it; this one did not, and no fixture could
+      // tell, because a contour without a transport never reaches this line at all.
+      numberCollisions: collisionsSaid,
       mergeableOutage: renderGhOutage(mergeableOutage).trim(),
       mergeableRang: plan.mergeability?.since,
     }),
@@ -9102,6 +9122,12 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     join(dirname(journal), "sessions"),
   );
   const heldViews = foldHolds(loadHolds(holds), now);
+  // BOTH CEILINGS FROM ONE READ (thread 177). The frame prints two numbers about the
+  // project's `parallelism` — the places of the box and the pairs allowed to one role —
+  // and the tick counts to both through this same `pairCeilings`. Two calls here would be
+  // two readings of one config in one frame, which is the defect this argument was added
+  // to close, only quieter.
+  const ceilings = pairCeilings(configFrom(argv, undefined).config);
 
   return {
     now,
@@ -9123,7 +9149,12 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
       // and the planner cannot come to two numbers. Before it, a row said `ROLE BUSY` the
       // moment anything of the role was live, which under a declared ceiling above one is a
       // refusal of a launch the very next tick makes.
-      pairsPerRole: pairCeilings(configFrom(argv, undefined).config).pairsPerRole,
+      pairsPerRole: ceilings.pairsPerRole,
+      // AND THE PLACES OF THE BOX (thread 177) — the number the head of the parallelism
+      // block counts against, and the one `describeSkip` says `box-busy` by. `undefined`
+      // when the project declares no `parallelism` at all, which the renderer speaks as
+      // "one place per role" rather than as "no ceiling".
+      pairsPerInstance: ceilings.pairsPerInstance,
     },
     // R27, from the SAME scan the queue above is built from — the map the tick plans by.
     // WITH THE SAME CEILING THE TICK APPLIES (thread 062, layer 2): a `run:` park past it is
@@ -13246,9 +13277,17 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
       );
       return;
     }
-    if (run.kind === "sent") {
-      for (const line of run.lines) out(`agent-protocol: daemon — courier: ${line}`);
-    }
+    // THE WATCHMEN'S LINES BELONG TO EVERY TICK, NOT ONLY TO THE ONES THAT HAD SOMETHING TO
+    // SAY TO A HUMAN (thread 184, measured on the field 2026-09-09). These lines are not the
+    // digest — they are what the run said about ITS OWN work, and `quiet` used to drop all of
+    // them and print the summary alone. That is exactly backwards: a `quiet` tick is the tick
+    // whose watchmen are HOLDING their locks, so the one fact the journal existed to carry —
+    // "the pair was found, the letter is held, and here is why" — was unreachable precisely
+    // when it was true. Measured: every courier line in `.orchestrator/daemon.log` for hours
+    // read `nothing to announce` and not one of them named the number watchman, while the
+    // watchman was walking eight pairs on every tick. A silent watchman and a broken watchman
+    // are the same thing to a reader, and the journal is the only place this one reports.
+    for (const line of run.lines) out(`agent-protocol: daemon — courier: ${line}`);
     out(`agent-protocol: daemon — courier: ${run.summary}`);
   };
 
@@ -13678,14 +13717,20 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
     // A thread this box does not have is `undefined` — not a note: the door refuses that name at
     // the moment it can still be retyped, and a reader of an append-only feed repairs nothing.
     const byId = new Map(threads.map((thread) => [thread.id, thread]));
+    // THE THIRD FORM ASKS THE SAME SET THE PARKS THEMSELVES ARE JUDGED AGAINST (thread 155):
+    // `until-pr-merged:<n>` is answered by the `merged-pr:` letters of this very mail, computed
+    // ONCE here and handed to both readers — a park standing behind a merge and a park grounded on
+    // one may not disagree about which pull requests have landed.
+    const merged = mergedPrs(threads);
     const gone: readonly GroundedPark[] = groundsGone(
       threads.map((thread) => ({
         thread: thread.id,
-        parking: parkingOf(thread, mergedPrs(threads)),
+        parking: parkingOf(thread, merged),
       })),
       {
         frozen: new Set(outOfAttempts.keys()),
         key: frozenPairKey,
+        merged,
         deliveredSince: (thread, since) => {
           const named = byId.get(thread);
           if (named === undefined) return undefined;
