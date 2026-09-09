@@ -139,3 +139,5 @@
 - [Письмо с развилкой поднимает на ЛЮБОМ исходе](outcome-branch-letter-raises-on-any-branch.md) — «зелёный → кнопка твоя» зовёт и на `needs-fixes`: первым мерить владельца хода
 - [Тишину ленты датирует шапка `--for`](silence-in-a-feed-is-dated-by-the-unread-header.md) — «last message … of <ISO>» сильнее счёта писем
 - [Окружение сессии травит сюиту](session-env-poisons-the-suite.md) — 191 красный и на чистом `main`: три `GIT_CONFIG_*` снимать ВМЕСТЕ
+- [Парковки считаются по ШАПКАМ](parks-are-enumerated-by-headers.md) — греп по телу врёт в плюс на цитатах: 831 против 826
+- [`cut -c` делает текст «бинарным»](byte-cut-text-goes-binary-and-grep-goes-silent.md) — греп по кириллице молча даёт ноль: `LC_ALL=C.UTF-8` + `grep -a`
