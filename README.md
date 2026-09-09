@@ -335,8 +335,9 @@ not the bound. A box ceiling BELOW the role ceiling is refused by name for the m
 reason: no role could ever reach its own number, so one of the two is wrong.
 
 **Absence is today, bit for bit.** Without the key a role runs one pair at a time — the
-planner's own rule, whose refusal still says `one session per role` — and the box carries no
-ceiling of this kind at all: the global run budget cuts each tick exactly as it did. Note
+planner's own rule, now read out of `pairCeilings` instead of written as an `if` — and the
+box carries no ceiling of this kind at all: the global run budget cuts each tick exactly as
+it did. Note
 that the absent box half is NOT the number 1; a default of 1 there would stand down every
 second ROLE, which nothing does today.
 
@@ -4136,12 +4137,24 @@ construction:
   **Freshness is NOT re-checked inside a healthy tick** — the guarantee stands where
   S8 put it, at the start; only a probe that FAILED is re-run.
 
-One tick = **a plan: at most one launch per free role** (D-1, thread
-`023-daemon-parallelism`). The natural ceiling is the WORKSPACE — one per role (R17) —
-so the degree of parallelism of a box is the number of its free roles, and `planTick`
-decides in one pass, against one reading of the journal, which pair each of them gets.
-A role already in the plan on an older thread comes back as the skip `role-busy`: not
-lost, first in line for that role next tick. **The global budget is read ONCE per tick
+One tick = **a plan: at most `parallelism.pairsPerRole` launches per role, and at most
+`parallelism.pairsPerInstance` on the box** (D-1, thread `023-daemon-parallelism`; the
+ceilings are thread `177-workspace-per-pair`). The ceiling used to be the WORKSPACE — one
+per role (R17) — and it is a declared number since the workspace became the pair's
+(`<role>@<thread>`): a place that holds one session no longer says how many a role may
+have. `planTick` decides in one pass, against one reading of the journal, which pairs each
+role gets. **Silence in the config is one pair per role and no box ceiling, which is the
+old rule pair for pair** — a box that declares nothing plans exactly what it planned
+before the key existed.
+
+A role that has as many live pairs as it is allowed comes back as the skip `role-busy`;
+one that the BOX has no place left for comes back as `box-busy`. The two are told apart
+because the role of a `box-busy` may be running nothing at all — naming it busy would send
+an operator to look at an idle role. **Both refusals name the number and the pairs holding
+it, with the time each was raised** (`the ceiling of dev-core is full — 2 of 2 pair(s)
+allowed to one role are live …, held by dev-core×016 since 2026-09-09T12:04:00Z`): a
+ceiling that says only "full" cannot be told from a place a dead session is sitting in.
+Neither pair is lost — each is first in line for its role next tick. **The global budget is read ONCE per tick
 and cuts the TAIL of the plan** — it counts launches, so a plan of N spends N of it —
 with ONE `launch-refused` recorded against the head of what was cut, and one line
 naming every pair in it. A record per cut pair would say the same sentence about one

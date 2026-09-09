@@ -327,7 +327,14 @@ describe("planTick — one launch per FREE ROLE, not one per box (D-1, thread 02
     const decision = planTick({ ...base, candidates, enabled: true, stopped: false });
     expect(raised(decision)).toEqual(["dev-core×016", "curator×019"]);
     expect(decision.skipped).toEqual([
-      { role: "dev-core", thread: "023", reason: "role-busy", attempt: 0 },
+      {
+        role: "dev-core",
+        thread: "023",
+        reason: "role-busy",
+        attempt: 0,
+        ceiling: 1,
+        occupants: [{ role: "dev-core", thread: "016" }],
+      },
     ]);
   });
 
@@ -373,13 +380,20 @@ describe("planTick — a role this process is ALREADY running (D-2, thread 023)"
     const decision = planTick({
       ...base,
       candidates,
-      running: ["dev-core"],
+      running: [{ role: "dev-core", thread: "016" }],
       enabled: true,
       stopped: false,
     });
     expect(raised(decision)).toEqual(["curator×019"]);
     expect(decision.skipped).toEqual([
-      { role: "dev-core", thread: "023", reason: "role-busy", attempt: 0 },
+      {
+        role: "dev-core",
+        thread: "023",
+        reason: "role-busy",
+        attempt: 0,
+        ceiling: 1,
+        occupants: [{ role: "dev-core", thread: "016" }],
+      },
     ]);
   });
 
@@ -394,7 +408,7 @@ describe("planTick — a role this process is ALREADY running (D-2, thread 023)"
     const decision = planTick({
       ...base,
       candidates,
-      running: ["dev-core"],
+      running: [{ role: "dev-core", thread: "016" }],
       enabled: true,
       stopped: false,
     });
@@ -410,7 +424,13 @@ describe("planTick — a role this process is ALREADY running (D-2, thread 023)"
     ];
     expect(
       raised(
-        planTick({ ...base, candidates, running: ["dev-core"], enabled: true, stopped: false }),
+        planTick({
+          ...base,
+          candidates,
+          running: [{ role: "dev-core", thread: "016" }],
+          enabled: true,
+          stopped: false,
+        }),
       ),
     ).toEqual(["curator×019", "dev-acme×021"]);
   });
@@ -573,15 +593,29 @@ describe("describeSkip — the line an operator reads", () => {
     );
   });
 
-  it("role-busy says the pair is not lost — it is first in line next tick", () => {
-    const line = describeSkip({ ...skip, reason: "role-busy" }, { value: 3, source: "default" });
-    expect(line).toContain("already has a session");
-    // BOTH SOURCES OF BUSY-NESS ARE NAMED (D-2): an operator reading this line has to be
-    // able to tell "the plan of this tick took the role" from "a supervisor raised half
-    // an hour ago is still holding it" — the first resolves itself in seconds, the second
-    // lasts as long as a session.
-    expect(line).toContain("still running from an earlier one");
+  it("role-busy names the CEILING and who holds it — not a workspace (thread 177)", () => {
+    // The line used to say "one session per role (its workspace is one)". Since the place
+    // is keyed by the pair, that sentence would send an operator to look at a workspace
+    // while what is full is a number of the config.
+    const line = describeSkip(
+      {
+        ...skip,
+        reason: "role-busy",
+        ceiling: 2,
+        occupants: [
+          { role: "dev-core", thread: "016", since: "2026-09-09T12:04:00Z" },
+          { role: "dev-core", thread: "035" },
+        ],
+      },
+      { value: 3, source: "default" },
+    );
+    expect(line).toContain("the ceiling of dev-core is full — 2 of 2 pair(s)");
+    expect(line).toContain("parallelism.pairsPerRole");
+    expect(line).toContain("dev-core×016 since 2026-09-09T12:04:00Z");
+    expect(line).toContain("dev-core×035");
     expect(line).toContain("next tick");
+    // The workspace is no longer the mechanism, so it is no longer the sentence.
+    expect(line).not.toContain("its workspace is one");
   });
 
   it("a parked pair asks for an ANSWER, and does not read as a working session", () => {
@@ -1424,5 +1458,184 @@ describe("planTick — the fall-back chain of a role (036, step 3)", () => {
     // And the words are the describers' own — the log line and the digest line about one
     // fact are the same sentence, or they are two sentences that will drift.
     expect(chain?.text).toContain("the fall-back 'pilot' of dev-core is NOT spent");
+  });
+});
+
+describe("planTick — the ceilings of parallelism (thread 177, v27 `parallelism`)", () => {
+  // The rule this replaces was "one session per role", and it was written as an `if` that
+  // pointed at a PLACE: the role had one workspace, so a second session in it was refused
+  // by the lock anyway. Since the workspace is keyed role × thread the place no longer
+  // says how many, so a number does — and the number is the project's, not the planner's.
+  const three: Candidate[] = [
+    { role: "dev-core", thread: "016" },
+    { role: "dev-core", thread: "023" },
+    { role: "dev-core", thread: "035" },
+  ];
+
+  it("TWO pairs of one role are raised at a ceiling of 2 — the whole point of the thread", () => {
+    const decision = planTick({
+      ...base,
+      candidates: three,
+      ceilings: { pairsPerRole: 2, pairsPerInstance: undefined },
+      enabled: true,
+      stopped: false,
+    });
+    expect(raised(decision)).toEqual(["dev-core×016", "dev-core×023"]);
+  });
+
+  it("the THIRD is refused by name, and the refusal says the ceiling, not the workspace", () => {
+    const decision = planTick({
+      ...base,
+      candidates: three,
+      ceilings: { pairsPerRole: 2, pairsPerInstance: undefined },
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.skipped).toEqual([
+      {
+        role: "dev-core",
+        thread: "035",
+        reason: "role-busy",
+        attempt: 0,
+        ceiling: 2,
+        occupants: [
+          { role: "dev-core", thread: "016" },
+          { role: "dev-core", thread: "023" },
+        ],
+      },
+    ]);
+  });
+
+  it("a pair raised on an EARLIER tick counts against the same ceiling", () => {
+    // A place taken by a live supervisor and a place taken by the head of this plan are
+    // the same place. The registry is told in pairs for exactly this: handed the role id
+    // alone, two live sessions of one role would have counted as one.
+    const decision = planTick({
+      ...base,
+      candidates: three,
+      running: [{ role: "dev-core", thread: "090", since: "2026-07-24T13:40:00Z" }],
+      ceilings: { pairsPerRole: 2, pairsPerInstance: undefined },
+      enabled: true,
+      stopped: false,
+    });
+    expect(raised(decision)).toEqual(["dev-core×016"]);
+    expect(decision.skipped.map((s) => `${s.role}×${s.thread}:${s.reason}`)).toEqual([
+      "dev-core×023:role-busy",
+      "dev-core×035:role-busy",
+    ]);
+    // AND THE REFUSAL CARRIES THE CLOCK OF THE PLACE IT NAMES — the difference between a
+    // box that is working and a dead session sitting in a place nobody will free.
+    expect(decision.skipped[0]?.occupants).toEqual([
+      { role: "dev-core", thread: "090", since: "2026-07-24T13:40:00Z" },
+      { role: "dev-core", thread: "016" },
+    ]);
+  });
+
+  it("AT A CEILING OF 1 THE PLAN IS TODAY'S, PAIR FOR PAIR — the test of NON-activation", () => {
+    // This is the property the code rides into `main` on: until john names a number in
+    // `agent-protocol.json` the field must not move by one launch. Declared ceiling of 1
+    // and no ceiling declared at all are asserted to produce THE SAME decision, so a
+    // default that drifted apart from the explicit 1 would be caught here.
+    const candidates: Candidate[] = [...three, { role: "curator", thread: "019" }];
+    const declared = planTick({
+      ...base,
+      candidates,
+      ceilings: { pairsPerRole: 1, pairsPerInstance: undefined },
+      enabled: true,
+      stopped: false,
+    });
+    const silent = planTick({ ...base, candidates, enabled: true, stopped: false });
+    expect(raised(declared)).toEqual(["dev-core×016", "curator×019"]);
+    expect(raised(silent)).toEqual(raised(declared));
+    expect(silent.skipped).toEqual(declared.skipped);
+    expect(silent.skipped.map((s) => s.reason)).toEqual(["role-busy", "role-busy"]);
+  });
+
+  it("the box ceiling cuts the SUM over roles — and names the box, not the role", () => {
+    // The role in a `box-busy` may be running nothing at all: what is full is the box. A
+    // line saying "dev-acme is busy" about an idle dev-acme would be a wrong name for a
+    // true refusal, which is why this is its own reason and not a second `role-busy`.
+    const candidates: Candidate[] = [
+      { role: "dev-core", thread: "016" },
+      { role: "curator", thread: "019" },
+      { role: "dev-acme", thread: "021" },
+    ];
+    const decision = planTick({
+      ...base,
+      candidates,
+      ceilings: { pairsPerRole: 2, pairsPerInstance: 2 },
+      enabled: true,
+      stopped: false,
+    });
+    expect(raised(decision)).toEqual(["dev-core×016", "curator×019"]);
+    expect(decision.skipped).toEqual([
+      {
+        role: "dev-acme",
+        thread: "021",
+        reason: "box-busy",
+        attempt: 0,
+        ceiling: 2,
+        occupants: [
+          { role: "dev-core", thread: "016" },
+          { role: "curator", thread: "019" },
+        ],
+      },
+    ]);
+  });
+
+  it("NO box ceiling declared is not a ceiling of zero — it is no ceiling at all", () => {
+    // `undefined` here is today's behaviour verbatim: the only thing above the roles is
+    // the global run budget. A default of 1 would have stood down every second ROLE.
+    const candidates: Candidate[] = [
+      { role: "dev-core", thread: "016" },
+      { role: "curator", thread: "019" },
+      { role: "dev-acme", thread: "021" },
+    ];
+    const decision = planTick({
+      ...base,
+      candidates,
+      ceilings: { pairsPerRole: 1, pairsPerInstance: undefined },
+      enabled: true,
+      stopped: false,
+    });
+    expect(raised(decision)).toEqual(["dev-core×016", "curator×019", "dev-acme×021"]);
+    expect(decision.skipped).toEqual([]);
+  });
+
+  it("the box ceiling counts the pairs of an earlier tick too", () => {
+    const decision = planTick({
+      ...base,
+      candidates: [{ role: "dev-acme", thread: "021" }],
+      running: [
+        { role: "dev-core", thread: "016", since: "2026-07-24T13:40:00Z" },
+        { role: "curator", thread: "019", since: "2026-07-24T13:50:00Z" },
+      ],
+      ceilings: { pairsPerRole: 2, pairsPerInstance: 2 },
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.kind).toBe("idle");
+    expect(decision.skipped.map((s) => s.reason)).toEqual(["box-busy"]);
+  });
+
+  it("box-busy says the box, the number and who holds it", () => {
+    const line = describeSkip(
+      {
+        role: "dev-acme",
+        thread: "021",
+        reason: "box-busy",
+        attempt: 0,
+        ceiling: 4,
+        occupants: [
+          { role: "dev-core", thread: "016", since: "2026-09-09T12:04:00Z" },
+          { role: "curator", thread: "019" },
+        ],
+      },
+      { value: 3, source: "default" },
+    );
+    expect(line).toContain("the ceiling of this BOX is full — 2 of 4 pair(s)");
+    expect(line).toContain("parallelism.pairsPerInstance");
+    expect(line).toContain("dev-core×016 since 2026-09-09T12:04:00Z");
+    expect(line).toContain("dev-acme itself may be idle");
   });
 });

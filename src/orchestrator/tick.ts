@@ -39,6 +39,7 @@
  * the entrance.
  */
 
+import { DEFAULT_PAIRS_PER_ROLE, type PairCeilings } from "../config/config.js";
 import type { AccountAlarm } from "../notify/notify.js";
 import type { DeliveryMarks } from "../thread/index-doc.js";
 import { parkedOnKind } from "../thread/thread.js";
@@ -123,12 +124,27 @@ export type Candidate = {
  * human and will die on its wait ceiling if the line reads "running right now" and the
  * operator does what that line implies — namely, nothing.
  *
- * `role-busy` is the plural planner's own (D-1): the role ALREADY has a session — either
- * one planned earlier in this same tick, or one a supervisor of this daemon is still
- * running (D-2). It calls for nothing — the pair comes back on the next tick — but it is
+ * `role-busy` is the plural planner's own (D-1): the role has AS MANY SESSIONS AS IT IS
+ * ALLOWED — planned earlier in this same tick, or still running under a supervisor of this
+ * daemon (D-2). It calls for nothing — the pair comes back on the next tick — but it is
  * not silence either: under a scalar `waiting-on` (024) one role is routinely awaited by
  * several threads, so this is the ordinary shape of a queue, and before D-1 those pairs
  * vanished from the stream with no line at all.
+ *
+ * WHAT IT NAMES CHANGED WITH THREAD 177, AND THE OLD LINE WOULD NOW BE A LIE. Until the
+ * ceiling was a number it said "one session per role (its workspace is one)" — a sentence
+ * about a place. The place is keyed by the pair since 177 and the ceiling is
+ * `parallelism.pairsPerRole` of the config, so the refusal names THE NUMBER and the pairs
+ * holding it, with the time each was raised. A refusal that keeps quoting the old
+ * mechanism sends the reader to repair a workspace when what is full is a count — this
+ * repository has paid three post-mortems for lines that lied about their mechanism.
+ *
+ * `box-busy` is the second ceiling and stands apart for the same reason `quota` stands
+ * apart from `exhausted`: it is a fact of the BOX, not of the role. Its cause is the sum
+ * over every role (`parallelism.pairsPerInstance`), so the role in it may be entirely
+ * idle, and telling an operator "dev-core is busy" while dev-core runs nothing at all
+ * would be a wrong name for a true refusal. Absent from the config the box ceiling does
+ * not exist, and this reason is then never produced — that is today's behaviour verbatim.
  *
  * `parked` is the same silence as `waiting`, with the session gone (R27): the turn is on the
  * role, but the role's question is with a PERSON, said in the feed (`parked-on`). It calls for
@@ -161,9 +177,28 @@ export type SkipReason =
   | "waiting"
   | "exhausted"
   | "role-busy"
+  | "box-busy"
   | "parked"
   | "quota"
   | "auth";
+
+/**
+ * A PAIR THAT IS ALREADY LIVE, as the planner is told about it (`running`) and as it
+ * says it back in a refusal (`occupants` of a `TickSkip`).
+ *
+ * It is a PAIR and no longer a bare role id (thread 177): counting to a ceiling of N
+ * cannot be done over a set of roles — two sessions of one role would collapse into one
+ * entry and the third would be raised into a box that is already full. `since` rides
+ * along because the refusal owes an operator the answer to "since when": a ceiling that
+ * says only "full" is indistinguishable from a ceiling stuck behind a session that died
+ * without closing its lease.
+ */
+export type RunningPair = {
+  readonly role: string;
+  readonly thread: string;
+  /** When that session was raised, ISO-8601. Absent means the caller did not say. */
+  readonly since?: string;
+};
 
 export type TickSkip = {
   readonly role: string;
@@ -188,6 +223,22 @@ export type TickSkip = {
    * cannot. Absent is a KEY, not a gap — see `BOX_ACCOUNT`.
    */
   readonly account?: string;
+  /**
+   * THE NUMBER THAT WAS FULL — only meaningful for `role-busy` (`pairsPerRole`) and
+   * `box-busy` (`pairsPerInstance`). Carried on the skip rather than re-read by the line
+   * that prints it, because the two ceilings are different fields of one config and a
+   * printer that had to pick between them by the reason would be the same choice made
+   * twice.
+   */
+  readonly ceiling?: number;
+  /**
+   * WHO IS HOLDING THE PLACES, in the order the planner counted them — the live pairs of
+   * THIS role for `role-busy`, the live pairs of the whole box for `box-busy`. This is the
+   * half of the refusal an operator acts on: "the ceiling is 2" says what the rule is,
+   * `curator×143 since 12:04Z` says whether the rule is working or a dead session is
+   * sitting in a place nobody will free.
+   */
+  readonly occupants?: readonly RunningPair[];
 };
 
 /**
@@ -298,8 +349,23 @@ export const planTick = (input: {
    * but refused with a burnt launch and a scary line instead of an ordinary queue skip.
    * The registry of live supervisors is the authority on this process; the journal
    * remains the authority on every other one.
+   *
+   * PAIRS, NOT ROLES, SINCE THREAD 177: with a ceiling of N the planner has to COUNT the
+   * live sessions of a role, and a set of role ids cannot be counted — two sessions of one
+   * role are one member of it. Handed roles, a ceiling of 2 would have raised a third.
    */
-  readonly running?: readonly string[];
+  readonly running?: readonly RunningPair[];
+  /**
+   * THE TWO CEILINGS OF THE CONFIG (`pairCeilings`, v27) — how many pairs of one role and
+   * how many pairs of the whole box may be live at once.
+   *
+   * Absent is the default of the reader, `pairsPerRole: 1` with no box ceiling, which is
+   * the rule this planner has always enforced written as a number: one session per role,
+   * and nothing above it but the global run budget. So a caller that says nothing gets
+   * today's plan pair for pair — that is what makes the code landable before john has
+   * named a number.
+   */
+  readonly ceilings?: PairCeilings;
   /**
    * Threads FROZEN BEHIND A PERSON right now (R27) — thread id → whom it waits for, from
    * `parkedOnOf` over the same mail the candidates come from.
@@ -375,10 +441,19 @@ export const planTick = (input: {
     saidFor.add(role);
     accountAlarms.push(...alarms);
   };
-  // Seeded with the roles this process is ALREADY running (D-2): "one session per role"
-  // is one rule, and a role busy since an earlier tick is busy in exactly the same sense
-  // as one taken by the head of this plan.
-  const planned = new Set<string>(input.running ?? []);
+  // THE CEILINGS THIS TICK COUNTS TO. Read once, before the loop, exactly like the shelves
+  // above: a plan whose rule could change between two candidates of one pass would be a
+  // queue nobody can explain afterwards.
+  const ceilings: PairCeilings = input.ceilings ?? {
+    pairsPerRole: DEFAULT_PAIRS_PER_ROLE,
+    pairsPerInstance: undefined,
+  };
+  // Seeded with the pairs this process is ALREADY running (D-2): a place taken since an
+  // earlier tick is taken in exactly the same sense as one taken by the head of this plan,
+  // so both are counted in one structure and neither can be forgotten by the other.
+  const occupied: RunningPair[] = [...(input.running ?? [])];
+  const occupantsOf = (role: string): readonly RunningPair[] =>
+    occupied.filter((pair) => pair.role === role);
   for (const candidate of input.candidates) {
     const view = viewOf(candidate);
     const attempt = view?.attempt ?? 0;
@@ -483,16 +558,40 @@ export const planTick = (input: {
       skipped.push({ ...chosen, reason: "auth", attempt });
       continue;
     }
-    // ONE PAIR PER ROLE, and the ceiling is not a policy choice: the role has one
-    // workspace (R17), and a second session in it is refused by the lock anyway. So the
-    // planner refuses it HERE, by name, instead of raising a pair that would die on the
-    // door. The pair is not lost — it is the next tick's head for that role.
-    if (planned.has(candidate.role)) {
-      skipped.push({ ...chosen, reason: "role-busy", attempt });
+    // THE BOX CEILING COMES FIRST, and before the role's for the same reason the closed
+    // window comes before both: a pair the BOX cannot raise is better named by the box
+    // than by its place in one role's queue — the role in question may be running nothing
+    // at all. Absent from the config it is not a ceiling of 0 but no ceiling: the box goes
+    // on being cut by the global run budget alone, which is today's behaviour.
+    if (ceilings.pairsPerInstance !== undefined && occupied.length >= ceilings.pairsPerInstance) {
+      skipped.push({
+        ...chosen,
+        reason: "box-busy",
+        attempt,
+        ceiling: ceilings.pairsPerInstance,
+        occupants: [...occupied],
+      });
+      continue;
+    }
+    // THE PAIRS OF ONE ROLE, COUNTED TO THE CEILING OF THE CONFIG (thread 177). It used to
+    // be the number one and it used to be a fact about a PLACE — the role had one workspace
+    // (R17) and a second session in it was refused by the lock anyway. Since the place is
+    // keyed by the pair the place no longer says how many, so the number does, and it is
+    // declared: `parallelism.pairsPerRole`, 1 when the project has said nothing. The pair is
+    // not lost either way — it is the next tick's head for that role.
+    const mine = occupantsOf(candidate.role);
+    if (mine.length >= ceilings.pairsPerRole) {
+      skipped.push({
+        ...chosen,
+        reason: "role-busy",
+        attempt,
+        ceiling: ceilings.pairsPerRole,
+        occupants: mine,
+      });
       continue;
     }
     eligible.push(chosen);
-    planned.add(candidate.role);
+    occupied.push({ role: candidate.role, thread: candidate.thread });
   }
   // Present when there is something to say and absent when there is not — the same shape
   // `cut` uses, and for the same reason: an empty array on every quiet tick is a field
@@ -677,9 +776,28 @@ export const describeSkip = (
     case "auth":
       return `candidate ${pair} skipped: this box cannot authenticate to the vendor with the credentials of ${describeAccount(skip.account ?? BOX_ACCOUNT)} — a refusal stands down the pairs spending THAT account and no neighbour's (B.3), and while only ONE role has been refused it stands down that role alone and not the account (thread 084); unlike the window it does NOT end by the clock (a human runs '${kind.loginHint("<its dir>")}' here), and the shelf only decides how often one pair is raised to knock (see 'orchestrator status')`;
     case "role-busy":
-      return `candidate ${pair} skipped: ${skip.role} already has a session (raised on an older thread of this tick, or still running from an earlier one) — one session per role (its workspace is one); this pair is first in line for ${skip.role} next tick`;
+      return `candidate ${pair} skipped: the ceiling of ${skip.role} is full — ${skip.occupants?.length ?? 1} of ${skip.ceiling ?? 1} pair(s) allowed to one role are live ('parallelism.pairsPerRole' of the config${skip.ceiling === undefined || skip.ceiling === 1 ? ", the default of 1 — the project has declared no parallelism" : ""}), held by ${describeOccupants(skip.occupants)}; this pair is first in line for ${skip.role} next tick`;
+    case "box-busy":
+      return `candidate ${pair} skipped: the ceiling of this BOX is full — ${skip.occupants?.length ?? 0} of ${skip.ceiling ?? 0} pair(s) allowed on one box are live ('parallelism.pairsPerInstance' of the config), held by ${describeOccupants(skip.occupants)}; ${skip.role} itself may be idle — what is full is the box, and this pair is raised as soon as any of those places is freed`;
   }
 };
+
+/**
+ * WHO HOLDS THE PLACES, in one clause — the half of a full ceiling an operator can act on.
+ *
+ * `since` is printed when the caller said it and quietly left out when it did not: a
+ * planner told nothing about the clock must not invent a word like "recently", and a
+ * missing time is not worth a sentence of its own next to the pairs it belongs to.
+ */
+const describeOccupants = (occupants: readonly RunningPair[] | undefined): string =>
+  occupants === undefined || occupants.length === 0
+    ? "sessions this planner was not told the names of"
+    : occupants
+        .map(
+          (held) =>
+            `${held.role}×${held.thread}${held.since === undefined ? "" : ` since ${held.since}`}`,
+        )
+        .join(", ");
 
 /**
  * The plan of this tick in one line — what is being raised, and what the global budget
