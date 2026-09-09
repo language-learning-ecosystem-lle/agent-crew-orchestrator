@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: b648ea5b-5eae-459e-bf4f-d52cec035a83
-  modified: 2026-09-04T11:22:19.534Z
+  modified: 2026-09-09T16:11:17.271Z
 ---
 
 Сессия пишет в `$CLAUDE_CONFIG_DIR/projects/<слаг-дерева>/*.jsonl`, а `CLAUDE_CONFIG_DIR` демон
@@ -33,3 +33,16 @@ TZ=UTC find /home/lle/.claude/projects /home/lle/.claude-lle-second/projects \
 Побочно тем же следом видно, что `doctor` делает по одному headless-вызову в КАЖДУЮ объявленную
 машинным конфигом учётку ([[machine-config-is-instance-file]]) — измеренный потребитель окна помимо
 ролей.
+
+**СВОЮ учётку сессия читает БЕЗ `find` — прямо из среды** (замер 2026-09-09T16:09Z, тред 179, приёмка
+переезда `curator` на вторую учётку): `echo $CLAUDE_CONFIG_DIR` в собственном прогоне отвечает
+`/home/aco-hetzner/.claude`, и каталог транскриптов этой же сессии лежит ВНУТРИ него — то есть
+переменная и есть тот каталог, а не его сосед. Дальше `oauthAccount` из `<CLAUDE_CONFIG_DIR>/.claude.json`
+называет почту и тариф ([[config-dir-names-its-account-and-tier]]). Три чтения, ноль вызовов модели:
+это и есть вся живая приёмка правки `launch.account`, и снимается она ПЕРВЫМ действием такта
+([[session-property-acceptance-is-free-in-any-run]]).
+
+**Ловушка приёмки — ЧАСЫ, а не конфиг:** каталог сессия получает НА ПОДЪЁМЕ, поэтому прогон,
+начавшийся до мержа правки `account`, читает старую учётку и приёмкой не является. Сверять надо старт
+своего окна (`$AGENT_PROTOCOL_LEASE_DEADLINE` минус окно роли) против времени мержа — тот же замер:
+#356 сел в `main` 16:03:10Z, подъём начался ≈16:00:54Z, и сессия честно шла на `lle-main`.
