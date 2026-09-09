@@ -128,3 +128,4 @@
 - [Свой парк убивает ЧУЖОЙ входящий вердикт](own-park-can-kill-an-incoming-verdict.md) — круг краснеет доставкой, нужен новый.
 - [Цикл импорта ЗНАЧЕНИЙ тайпчеку невидим](value-import-cycle-is-invisible-to-tsc.md) — валит прогон в чужом файле; чинится ПЕРЕЕЗДОМ функции.
 - [Убитый прогон сюиты оставляет файл в дереве](killed-suite-leaves-a-file-in-the-tree.md) — `git add -A` унесёт его в коммит.
+- [Конфликт со вторым PR мерится диапазонами `@@`](second-pr-conflict-is-priced-by-hunk-ranges.md) — не именами файлов.
