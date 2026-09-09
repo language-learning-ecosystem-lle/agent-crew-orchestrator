@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T17:35:09.395Z",
+  "writtenAt": "2026-09-09T17:35:52.898Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "176-daemon-self-restart",
-      "state": "draining",
-      "deadline": "2026-09-09T18:08:36Z"
-    },
     {
       "role": "dev-core",
       "thread": "177-workspace-per-pair",
