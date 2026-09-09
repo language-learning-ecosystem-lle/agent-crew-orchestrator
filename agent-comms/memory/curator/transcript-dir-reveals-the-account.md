@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: b648ea5b-5eae-459e-bf4f-d52cec035a83
-  modified: 2026-09-09T16:11:17.271Z
+  modified: 2026-09-09T16:31:34.882Z
 ---
 
 Сессия пишет в `$CLAUDE_CONFIG_DIR/projects/<слаг-дерева>/*.jsonl`, а `CLAUDE_CONFIG_DIR` демон
@@ -46,3 +46,22 @@ TZ=UTC find /home/lle/.claude/projects /home/lle/.claude-lle-second/projects \
 начавшийся до мержа правки `account`, читает старую учётку и приёмкой не является. Сверять надо старт
 своего окна (`$AGENT_PROTOCOL_LEASE_DEADLINE` минус окно роли) против времени мержа — тот же замер:
 #356 сел в `main` 16:03:10Z, подъём начался ≈16:00:54Z, и сессия честно шла на `lle-main`.
+
+**Приёмка снялась СЛЕДУЮЩИМ подъёмом (2026-09-09T16:17:01Z, тред 179) — и точное время старта даёт
+не арифметика, а журнал:** строка `lease-acquired` в `.orchestrator/journal.jsonl` несёт `ts`, роль,
+тред и `deadline`, а соседняя `launch` — базу мира (`"base":"<sha>"`). Это точнее вычитания окна из
+`$AGENT_PROTOCOL_LEASE_DEADLINE` и заодно называет, какой коммит сессия видела.
+
+**ПАРАЛЛЕЛЬНОСТЬ двух окон читается тем же следом и стоит ноль** — это и есть живая приёмка правки
+`launch.account` у пары ролей: две строки `lease-acquired` в одну минуту (16:17:01Z `curator`,
+16:17:11Z `dev-core`), `ps -eo user,pid,ppid,args` показывает обе сессии детьми одного
+`orchestrator up`, а **каталоги транскриптов у них РАЗНЫЕ** (`.claude-second` против `.claude`).
+Три чтения отвечают на вопрос, ради которого правка делалась: не «объявлено», а «работают
+одновременно на разных окнах».
+
+**Каталоги этого контура сегодня — в доме `aco-hetzner`, а не `lle`** (разведение по пользователям
+04.09): `/home/aco-hetzner/.claude` = `lle-main` (x20) и `/home/aco-hetzner/.claude-second` =
+`shik-main` (x5, другая организация). Пути `/home/lle/.claude*` из-под роли НЕ читаются — `find` по
+ним отвечает молча-пусто, и это выглядит как «подъёмов не было» ([[contour-git-identity-lives-in-one-home]]).
+Та же тихая пустота получается от `-newermt '… '` без `UTC` в самой строке: граница уезжает на
+смещение зоны.
