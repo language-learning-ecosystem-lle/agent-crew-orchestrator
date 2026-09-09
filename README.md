@@ -5469,12 +5469,27 @@ circuit (the gate, the stop and force flags, whether the daemon's pid is alive),
 reason for its order, the neighbours' digests with their age, and how old the mail on disk is.
 
 **Two of those are D-4's** (thread 023), and both answer a question the frame used to leave to the
-reader. The **parallelism line** — `2 of 5 role(s) live`, the pairs behind it, and the roles left
-free by name — because the degree of parallelism was never a parameter: it is the number of roles
-this box raises (a role has one workspace, R17, and a second session in it is refused at the door),
-so the capacity is a fact about the config and the only live question is how much of it is spent.
-Until then the frame printed every pair the journal knew, released ones included, and left the
-counting to a human at 2am. And the **`parked` mark on a queue line** (R27): a queue line promises
+reader. The **parallelism line** — `2 of 3 place(s) live`, the pairs behind it, and the roles left
+free by name — because the only live question in front of a running circuit is how much of the box
+is spent, and until D-4 the frame printed every pair the journal knew, released ones included, and
+left the counting to a human at 2am.
+
+**The head counts PLACES, and it counts them because a role can now hold two** (thread 177). While
+a role had one workspace (R17) the capacity WAS the number of roles, and `role(s) live` was the
+same number under a different word; with `parallelism.pairsPerRole` above one it stopped being:
+two live pairs of one role and one live pair of that role printed a byte-identical line, and they
+are two different states of the box — no place left for that role in the first, one place in the
+second. So the head is `<live pairs> of <places> place(s) live` and the places come from
+`parallelism.pairsPerInstance` (`pairCeilings`, the same read the tick counts to — the frame does
+not open the config a second time); with no declared `parallelism` the line says `one place per
+role` and prints the number it always printed. The two numbers of the line are named apart on
+purpose — `3 place(s)` is the box ceiling, `3 role(s) this box raises` is R13's scope, and in the
+field config of this repository they are both 3. **`free:` names ROLES with a place left** — one
+live pair out of two allowed is not saturation — and when the BOX ceiling is what is full it says
+so in those words, because then a role of it may be idle and the reader must not go looking for a
+busy one. A hold stays a fact about a role (S5): a human takes `curator`, not one of its seats.
+
+And the **`parked` mark on a queue line** (R27): a queue line promises
 a launch, a thread frozen behind a person will not get one until that person answers, and that
 state used to be visible only as a skip line on the daemon's stream — which the person reading
 `status` is by definition not watching. The mark rides in `describeOrder`, so the stream carries it

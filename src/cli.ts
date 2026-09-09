@@ -9122,6 +9122,12 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     join(dirname(journal), "sessions"),
   );
   const heldViews = foldHolds(loadHolds(holds), now);
+  // BOTH CEILINGS FROM ONE READ (thread 177). The frame prints two numbers about the
+  // project's `parallelism` — the places of the box and the pairs allowed to one role —
+  // and the tick counts to both through this same `pairCeilings`. Two calls here would be
+  // two readings of one config in one frame, which is the defect this argument was added
+  // to close, only quieter.
+  const ceilings = pairCeilings(configFrom(argv, undefined).config);
 
   return {
     now,
@@ -9143,7 +9149,12 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
       // and the planner cannot come to two numbers. Before it, a row said `ROLE BUSY` the
       // moment anything of the role was live, which under a declared ceiling above one is a
       // refusal of a launch the very next tick makes.
-      pairsPerRole: pairCeilings(configFrom(argv, undefined).config).pairsPerRole,
+      pairsPerRole: ceilings.pairsPerRole,
+      // AND THE PLACES OF THE BOX (thread 177) — the number the head of the parallelism
+      // block counts against, and the one `describeSkip` says `box-busy` by. `undefined`
+      // when the project declares no `parallelism` at all, which the renderer speaks as
+      // "one place per role" rather than as "no ceiling".
+      pairsPerInstance: ceilings.pairsPerInstance,
     },
     // R27, from the SAME scan the queue above is built from — the map the tick plans by.
     // WITH THE SAME CEILING THE TICK APPLIES (thread 062, layer 2): a `run:` park past it is

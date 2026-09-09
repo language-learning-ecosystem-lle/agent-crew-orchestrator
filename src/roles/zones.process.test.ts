@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
+import { WORKSPACE_PAIR_SEPARATOR } from "../orchestrator/workspace.js";
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { configHomeInside, sandbox } from "../testing/process-sandbox.js";
 
@@ -458,6 +459,53 @@ describe("zones check --role-from-workspace — the class of the tree it stands 
     expect(said.code).toBe(1);
     expect(said.out).toContain("'dev-core' may not write these paths");
     expect(said.out).toContain(`${FOREIGN}/main.py`);
+  });
+
+  it("(в) in a PAIR'S workspace it is refused the same way — the acceptance of thread 177", () => {
+    // THE MEASUREMENT THIS ONE ANSWERS DIRECTLY (thread 177, msg-002 of 2026-09-08, base
+    // `1bac6218`): the same command, the same FORBIDDEN path, a tree whose name carried a
+    // thread — exit 0, "the guard does not apply". Moving the key of the workspace to the
+    // pair without this is the one door that enforces zones, disarmed and green.
+    //
+    // It is a PROCESS test on purpose and the statement of work says why: the diff of
+    // `zones check` itself is zero lines, so "no hunks at the consumer" proves nothing
+    // here. What is being measured is the whole path from the directory the hook stands
+    // in, through the config loader and `repoOf` of the parent tree, to the exit code.
+    const repo = boxWithWorkspaces();
+    const pair = worktree(
+      repo,
+      `.worktrees/dev-core${WORKSPACE_PAIR_SEPARATOR}177-workspace-per-pair`,
+    );
+    stageForbidden(pair);
+
+    const said = inTree(repo, pair);
+
+    // Byte for byte the verdict of case (в) above, on a tree of the other form.
+    expect(said.code).toBe(1);
+    expect(said.out).toContain("'dev-core' may not write these paths");
+    expect(said.out).toContain(`${FOREIGN}/main.py`);
+    // ...and not either of the two ways this used to end: the silent pass of the field
+    // probe, and the refusal that would follow it once `unowned` became loud (#345) —
+    // that one would be a door refusing EVERY pair's tree, which is the same outage
+    // wearing the opposite sign.
+    expect(said.out).not.toContain("the guard does not apply");
+    expect(said.out).not.toContain("is not the workspace of any role");
+  });
+
+  it("(б) `<role>@` with no thread is NOT a pair — the name lies and the door says so", () => {
+    // The boundary of the form, at the process level: the parse refuses an empty thread
+    // (`workspacePairOf`), so a tree called `dev-core@` is not dev-core's workspace and
+    // must not be judged as if it were. Without this the separator alone would be enough
+    // to claim a role's zones — a tree anybody can create by hand.
+    const repo = boxWithWorkspaces();
+    const lying = worktree(repo, `.worktrees/dev-core${WORKSPACE_PAIR_SEPARATOR}`);
+    stageForbidden(lying);
+
+    const said = inTree(repo, lying);
+
+    expect(said.code).toBe(2);
+    expect(said.out).toContain("is not the workspace of any role");
+    expect(said.out).not.toContain("the guard does not apply");
   });
 
   it("(б) in a tree under the workspaces that is NOBODY'S the door REFUSES, and names it", () => {
