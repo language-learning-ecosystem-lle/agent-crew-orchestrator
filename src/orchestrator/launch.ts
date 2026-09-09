@@ -1727,10 +1727,18 @@ export const buildLaunchPrompt = (input: {
    * — absent is silence, and silence is what a role card repairs.
    */
   readonly mail?: MailForm;
+  /**
+   * WHAT IS WRONG WITH THE TREE THIS RUN STANDS IN, when something is (thread 161) —
+   * measured by the caller, printed here verbatim, and ABSENT on a healthy tree. It is
+   * placed immediately after the mail commands because it is a fact ABOUT those commands:
+   * what it names is the reason the very first of them exits before doing anything.
+   */
+  readonly workspaceNote?: string;
 }): string => {
   const cards = input.instructions.map((doc) => `# ${doc.path}\n\n${doc.text}`).join("\n\n---\n\n");
   const mail = input.mail ?? {};
   const undeclared = mail.command === undefined ? [mailFormUndeclared, ""] : [];
+  const workspaceNote = input.workspaceNote === undefined ? [] : ["", input.workspaceNote];
   return [
     `You are the \`${input.role}\` role of the agent-crew-orchestrator protocol. Your role card is below.`,
     "",
@@ -1761,6 +1769,7 @@ export const buildLaunchPrompt = (input: {
           "",
           "Read the thread, carry out the statement of work, and PRINT YOUR ANSWER TO THE STREAM as the last thing you do. That printed text IS the delivery — a coordinator carries it into the thread by hand — and printing it is what ends your run.",
         ]),
+    ...workspaceNote,
     "",
     runEndsNorm(mail, input),
     "",
@@ -1812,11 +1821,20 @@ export const buildResumePrompt = (input: {
   readonly windDownSeconds: number;
   /** The same two facts as the fresh prompt (thread `038`) — a resume states them again. */
   readonly mail?: MailForm;
+  /**
+   * AND THE SAME FACT ABOUT THE TREE (thread 161), for a reason a resume does not usually
+   * have: the sentence below promises the working directory is exactly as it was left, and
+   * a session that was interrupted BEFORE it installed anything was left in a tree that
+   * cannot run a command. That is precisely the state a resume inherits, so the note is
+   * measured again for the new run and repeated when it is still true.
+   */
+  readonly workspaceNote?: string;
 }): string => {
   const mail = input.mail ?? {};
   return [
     `Your previous session on thread \`${input.thread}\` was interrupted from the outside (${input.reason}) — this is that same session, resumed.`,
     "",
+    ...(input.workspaceNote === undefined ? [] : [input.workspaceNote, ""]),
     "Your working directory is exactly as you left it, your base branch has not moved, and nobody has written in your place. THE THREAD MAY HAVE MOVED: read its tail before you carry on — a reply may have arrived while you were down, and acting on it is the work. Then carry on from where you stopped — do not start the work again, and do not take on the rest of your mail.",
     "",
     // The norm is repeated in full rather than assumed to be in context (R20): the

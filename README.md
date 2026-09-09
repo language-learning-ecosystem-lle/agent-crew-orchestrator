@@ -4695,7 +4695,9 @@ daemon's modules are resolved from it once, at start, so it must stay on
   its own parent's lock.
 - **What the package does NOT do in a new workspace: install anything.** A fresh
   worktree has no `node_modules`, and toolchain management has never been handed to
-  the package (S8). The project runs its own install there, once.
+  the package (S8). The project runs its own install there — and since the trees are
+  keyed by the PAIR, "once" is no longer once a role: see the note below, which is how
+  the session finds out.
 - **But it does SAY which build that tree runs, before the spawn** (thread
   `085-stale-workspace-package`). The install above is a human's step, and on 2026-09-02
   it missed one directory out of four: a role's workspace stood on `agent-protocol`
@@ -4725,6 +4727,35 @@ daemon's modules are resolved from it once, at start, so it must stay on
   - **It does not repair.** Running an install into a role's tree from the daemon's
     process would be a write into somebody's workspace on a guess; the ritual step is
     what fixes, this door only names.
+- **And it says when the tree has NO dependencies at all — in the session's own prompt**
+  (thread `161-daemon-self-restart`). The door above compares two copies of
+  `agent-protocol`; in the contour where the package IS the repository there is no such
+  copy in either tree, so it is silent by construction — and what is missing there is not
+  a copy of the package but the package's own dependencies, which in a pnpm layout live
+  at `packages/<name>/node_modules`. On 2026-09-09, minutes after the trees started being
+  keyed by the pair, two roles in two brand-new worktrees had their FIRST command — the
+  documented mail line out of their own prompt — answered by `ERR_MODULE_NOT_FOUND:
+  Cannot find package 'zod'`. One guessed the repair and paid a turn for the guess; the
+  class that does not guess dies without delivering anything.
+  - **What is compared is two disks, not a layout:** the relative directories in which
+    the HOME CHECKOUT has an install (walked two levels deep, skipping dot-directories,
+    `node_modules` itself and anything carrying a `.git` of its own — the role worktrees
+    hang inside the repository in this contour), against the same directories in the
+    role's tree. Missing ones are named absolutely, at most four of them and then a
+    count, followed by the one repair line: `pnpm --dir <tree> install --frozen-lockfile`
+    — deliberately the same form the version refusal prints, so a contour has one string
+    to grep for and not two.
+  - **It is a NOTE, never a refusal**, and it goes into the prompt (fresh and resumed
+    alike) as well as into the launch line a human reads. Empty is the NORMAL state of a
+    tree made a moment ago; a door that refused it would refuse its own circuit. It is
+    measured last in `settleRun` — after the worktree has been created, because an empty
+    tree is exactly the state being measured — and only on a real launch, since a dry run
+    creates nothing to measure.
+  - **Where it stays silent:** a healthy tree gets no sentence at all, and a home checkout
+    with no install anywhere is a contour this check has nothing true to say about.
+  - **It does not install anything either**, for the same reason and by the same decision
+    (john, thread 085 §4). The hand that repairs is here the raised session's own, which
+    is why the text is addressed to it.
 
 ### S12 — continuing a session instead of starting one (R18)
 

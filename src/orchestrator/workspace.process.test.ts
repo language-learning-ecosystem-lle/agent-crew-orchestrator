@@ -985,3 +985,93 @@ describe("the workspace runs the build the circuit runs (thread 085)", () => {
     expect(existsSync(join(repo, "cwd.txt"))).toBe(true);
   });
 });
+
+/**
+ * CAN THE TREE RUN A COMMAND AT ALL (thread `161-daemon-self-restart`) — through the real
+ * frame, because the whole fault is outside the process: a directory that a worktree does
+ * not have, and a prompt handed to a child.
+ *
+ * WHY IT CANNOT BE A UNIT. `workspace-dependencies.test.ts` holds the decision on two
+ * lists; what is unproven there is the JOINT — that the disk is walked in the two trees
+ * this run actually uses, that the walk happens AFTER the worktree was created (an empty
+ * tree is the state being measured, and a check made a moment earlier would measure a
+ * directory that does not exist yet), and that the text reaches the SESSION rather than
+ * only the log. The field case was exactly a session reading its own prompt and finding
+ * nothing in it about the tree it was standing in.
+ */
+describe("a freshly made workspace says it is not installed (thread 161)", () => {
+  /** An install as a package manager leaves it — the directory is all this check reads. */
+  const installed = (root: string, ...relative: string[]): void => {
+    for (const rel of relative) mkdirSync(join(root, rel, "node_modules"), { recursive: true });
+  };
+
+  /** The home checkout of a pnpm monorepo: a root install and a package-level one. */
+  const monorepo = (repo: string): void => {
+    installed(repo, ".", join("packages", "agent-protocol"));
+  };
+
+  it("the field case: the worktree is created for this run → the session's PROMPT names the fact", () => {
+    const { repo } = contour();
+    stub(repo);
+    monorepo(repo);
+
+    const result = run(repo);
+
+    expect(result.code).toBe(0);
+    // The launch line a human reads…
+    expect(result.out).toContain("dependencies — ");
+    // …and the same text where it actually decides anything: in the prompt of the session,
+    // which is the reader that meets `ERR_MODULE_NOT_FOUND` on its first command.
+    const prompt = argvOf(repo).join("\n");
+    expect(prompt).toContain("THE DEPENDENCIES OF YOUR WORKING TREE ARE NOT INSTALLED");
+    expect(prompt).toContain(join(workspace(repo), "node_modules"));
+    expect(prompt).toContain(join(workspace(repo), "packages", "agent-protocol", "node_modules"));
+    expect(prompt).toContain(`pnpm --dir ${workspace(repo)} install --frozen-lockfile`);
+    // AND THE LAUNCH IS NOT REFUSED: an empty tree is the normal state of a workspace made
+    // a moment ago, so this is a note on the way in and never a door.
+    expect(existsSync(join(repo, "cwd.txt"))).toBe(true);
+  });
+
+  it("the tree of the PAIR is measured, not the role-keyed one (177 × 161)", () => {
+    // The layout the field case actually ran in: `#366` made the trees per pair, so the
+    // path in the note has to be the one the session is standing in — a repair line
+    // pointing at another directory is a repair line that installs into nobody's tree.
+    const { repo } = contour(PARALLEL_CONFIG);
+    stub(repo);
+    monorepo(repo);
+
+    run(repo);
+
+    const prompt = argvOf(repo).join("\n");
+    expect(prompt).toContain(`pnpm --dir ${pairWorkspace(repo)} install --frozen-lockfile`);
+    expect(prompt).not.toContain(`pnpm --dir ${workspace(repo)} install`);
+  });
+
+  it("an installed tree → NOT ONE WORD, in the line or in the prompt", () => {
+    const { repo } = contour();
+    stub(repo);
+    monorepo(repo);
+    git(repo, "worktree", "add", "-q", "--detach", workspace(repo));
+    installed(workspace(repo), ".", join("packages", "agent-protocol"));
+
+    const result = run(repo);
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("dependencies — ");
+    expect(argvOf(repo).join("\n")).not.toContain("ARE NOT INSTALLED");
+  });
+
+  it("a home checkout that installs nowhere → silence, and the launch is untouched", () => {
+    // The contour with no install at all (every other test in this file): there is nothing
+    // measured to compare against, and a note invented here would ride in every prompt of
+    // every role of such a contour.
+    const { repo } = contour();
+    stub(repo);
+
+    const result = run(repo);
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("dependencies — ");
+    expect(argvOf(repo).join("\n")).not.toContain("ARE NOT INSTALLED");
+  });
+});
