@@ -398,8 +398,12 @@ describe("a thread frozen behind a person — the third class of event (thread 0
     // Two calls about aco-028 and two about acme-102 in one day, one question each.
     //
     // AND THE SHAPE OF THE REPEAT IS THE POST-155 ONE (thread 155): the park belongs to the
-    // THREAD, so a repeat does NOT move `since` — the standing park is unchanged and what says
-    // "asked again" is a later LETTER carrying the same park, which is what the feed holds.
+    // THREAD, so a repeat does NOT move `since` — the standing park is unchanged and what puts
+    // it in the class is a later LETTER carrying the same park, which is what the feed holds.
+    //
+    // THE SENTENCE IS HELD HERE WORD FOR WORD, and it says "written about again" rather than
+    // "asked again" (john, 2026-09-09, variant (а)): the class counts carrying LETTERS, and
+    // R58 makes an honest report beside the question indistinguishable from a second asking.
     const first = withPark([PARKED], EMPTY, { declaredParks: [PARKED] });
     const later = withPark(
       [PARKED],
@@ -413,7 +417,7 @@ describe("a thread frozen behind a person — the third class of event (thread 0
     // is the DECLARATION's, because that is the park that stands.
     expect(later.restatedParked).toHaveLength(1);
     expect(later.lines.map((line) => line.text)).toEqual([
-      `still standing, asked again (not a new question): ❓ 023-x ждёт твоего решения: ${PARKED.question}`,
+      `still standing, written about again (not a new question): ❓ 023-x ждёт твоего решения: ${PARKED.question}`,
     ]);
   });
 
@@ -444,7 +448,7 @@ describe("a thread frozen behind a person — the third class of event (thread 0
   it("a state file written before the column reads as `nothing said yet`, not as noise", () => {
     // THE UPGRADE (thread 155, point (vi) of the statement): a `parked` row of four columns is
     // every state file written before this field existed. It must read as "this box has never
-    // said `asked again` about this park" — the truth about it — and cost at most one honest
+    // spoken about a repeat on this park" — the truth about it — and cost at most one honest
     // repeat line on the first tick, never a call and never a silenced reminder.
     const legacy = parseNotifyState("parked\tjohn\t023-x\t2026-07-31T11:08:20Z\n");
 
@@ -516,7 +520,7 @@ describe("a thread frozen behind a person — the third class of event (thread 0
     // THE GAP THAT THE PAIR KEY USED TO COST, CLOSED (thread 155, point (ii)): if the person
     // answers and a NEW question is parked before the courier has ticked once, the composition
     // was never empty — so `freshStandingParked`, which asked "is this pair announced", read the
-    // new question as a repeat and printed "asked again (not a new question)" about it. A new
+    // new question as a repeat and printed the "(not a new question)" line about it. A new
     // question to a human with no buzz at all.
     //
     // What is asked now is the LEDGER, by pair AND stamp (thread 129): the new declaration is

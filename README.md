@@ -918,7 +918,10 @@ apart along lines the package already had:
   is the pair, and the stamp is kept in the state for one purpose — telling a park
   re-declared under that key from one standing untouched. Such a park is **restated**: it
   produces a line (the project's `parked` sentence, prefixed by the package's own "still
-  standing, asked again (not a new question)"), and that line rides in whatever digest is
+  standing, written about again (not a new question)" — the prefix says what the class
+  MEASURES, carrying letters over the declaration, because door 058 requires `parked-on:` of
+  every writer into a parked thread and an honest report is therefore indistinguishable from
+  a second asking), and that line rides in whatever digest is
   already going out for a fresh event. It never triggers a delivery: `notify --write` sends
   on the fresh counts, not on the message being non-empty. And a tick that sends nothing
   keeps the stamp it had ANNOUNCED, so the line stays owed rather than being consumed by a

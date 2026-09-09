@@ -615,11 +615,11 @@ describe("notify as a command", () => {
     const text = JSON.parse(readFileSync(contest.delivered, "utf8")).text as string;
     expect(text).toContain("⏳ твой ход: 016-x");
     // AND THE REPEAT RIDES IN IT AS A REPEAT — under the package's own sentence saying it is
-    // the same question, never as a call. That is Д-2's downgrade, and since 2026-09-08 it is
-    // read out of the LETTERS rather than out of the state file's stamp (thread 155): the test
-    // below is where that source is the subject.
+    // the same park written about again, never as a call. That is Д-2's downgrade, and since
+    // 2026-09-08 it is read out of the LETTERS rather than out of the state file's stamp
+    // (thread 155): the test below is where that source is the subject.
     expect(text).toContain(
-      "still standing, asked again (not a new question): your decision: 023-x",
+      "still standing, written about again (not a new question): your decision: 023-x",
     );
     // THE COUNT LINE SAYS IT IN FULL WORDS rather than by the absence of a substring: since the
     // repeat has its own counter beside the three tenses of the call, `of those new, 1` is a
@@ -695,7 +695,7 @@ describe("notify as a command", () => {
     expect(text).toContain("⏳ твой ход: 016-x");
     // THE CLASS SPEAKS AGAIN. Both of its outlets: the prefix in the letter and the courier's
     // own count line on stdout — and it is still a LINE and not a call (`0 of those new`).
-    expect(text).toContain("still standing, asked again (not a new question): ");
+    expect(text).toContain("still standing, written about again (not a new question): ");
     expect(after.out).toContain("023-x (restated on john)");
     expect(after.out).toContain("1 parked, 1 of them asking, 0 of those new");
 
@@ -709,7 +709,7 @@ describe("notify as a command", () => {
     const again = JSON.parse(readFileSync(contest.delivered, "utf8")).text as string;
 
     expect(again).toContain("⏳ твой ход: 017-x");
-    expect(again).not.toContain("still standing, asked again (not a new question): ");
+    expect(again).not.toContain("still standing, written about again (not a new question): ");
     expect(third.out).not.toContain("restated");
   });
 
