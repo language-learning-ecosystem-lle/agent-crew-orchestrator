@@ -172,7 +172,7 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | run:359 · 2026-09-09 | 2026-09-09 | PR кадра оператора открыт — #359, голова 12d2483cc0d4592b2dfbca548e37c0a9503df948, checks идёт (про… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: pilot-codex объявлена active на учётке, которую ящик НЕ ЧИТАЕТ, — назови фо… |
-| 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | verdict: approve |
+| 180-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-09 | #353 approve, дверь держит РОВНО гард 4 (кнопка john). Ноту гарда 2 о базе погасил замером склейки,… |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge на #353 — гард 4 (.github/workflows/ в диффе), остальные гарды… |
 | 181-thread-number-collision | github, curator | normal | open | curator | — | 2026-09-09 | Под номером 180 в ленте стои́т 2 треда — и один из них живой. |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
