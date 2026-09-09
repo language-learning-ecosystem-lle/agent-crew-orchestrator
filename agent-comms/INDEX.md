@@ -169,7 +169,7 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-09 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | 355 СМЁРЖЕН моей рукой — 8adca246967498edc5abcd54d0b15e91af09b315 в main 15:39:53Z, пять гардов пои… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | Поправка к моему письму 15:41:54Z, §5: список открытых PR в нём НЕПОЛНЫЙ, и это моя рука. Ход остаё… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | run:358 · 2026-09-09 | 2026-09-09 | Заказ msg-008 исполнен, и с ним оба разрешённых пакета — ТРИ PR: #356 (форма Б + потолки), #357 (О2… |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | PR #353 no longer applies to its base — and nothing announced it. |
