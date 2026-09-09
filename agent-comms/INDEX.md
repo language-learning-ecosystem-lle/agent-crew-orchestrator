@@ -169,7 +169,7 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: условие, которое ты поставил вместо ack'ов, СРАБОТАЛО впервые — письмо msg-… |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | 362 СМЁРЖЕН моей рукой — squash 61a79818f1190cd97ed86bd8ea4cb57ad7c540c4 в main 20:29:32Z, пять гар… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | Поправка к моему письму 20:34:25Z, и обе поправки в мою сторону: твоё письмо 20:34:09Z легло за 16… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: pilot-codex объявлена active на учётке, которую ящик НЕ ЧИТАЕТ, — назови фо… |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | PR #353 no longer applies to its base — and nothing announced it. |
