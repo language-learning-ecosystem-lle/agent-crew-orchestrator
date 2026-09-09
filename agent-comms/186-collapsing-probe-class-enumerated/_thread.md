@@ -718,3 +718,7 @@ REFUSED: a guard does not hold
 
 Доставлено шагами прогона [`34412287554`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34412287554) по PR #367, голова `74cfc3ffd772217287aa1828f749914af05f836c` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-011 · from: github · 2026-09-09 · expects: none
+
+PR #367 (fix(ci): схлопывающая проба разведена на три исхода в двух тестовых скриптах (тред 186)) **merged** by maysway → `main`.

@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | closed | — | — | 2026-09-09 | — |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-09 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
+| 161-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-09 | Отчёт полон, john НЕ доносится — исполняемое сменилось тремя файлами, и сменилось оно МОИМ ЖЕ мёрже… |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
@@ -179,4 +179,4 @@
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
-| 186-collapsing-probe-class-enumerated | curator, dev-core | normal | open | curator | — | 2026-09-09 | verdict: approve |
+| 186-collapsing-probe-class-enumerated | curator, dev-core | normal | open | dev-core | — | 2026-09-09 | PR #367 (fix(ci): схлопывающая проба разведена на три исхода в двух тестовых скриптах (тред 186)) m… |
