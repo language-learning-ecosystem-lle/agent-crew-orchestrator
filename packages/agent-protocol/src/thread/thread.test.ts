@@ -1491,21 +1491,52 @@ describe("renderIndex — the register shows the parks (thread 051)", () => {
     expect(row(feed("023-x", [say({ parkedOn: "john" })]))).toContain("| ❓ john · 2026-08-19 |");
   });
 
-  it("a park on a person asking NOTHING is a mode: the freeze is shown, the mark is not", () => {
+  it("a park on a person asking NOTHING is a mode: it wears its OWN mark, not an absence", () => {
     // `expects: none` says in the author's own words that nobody is being called — the thread
     // is frozen all the same, and a ❓ over it teaches the reader to ignore the mark (016, 052).
     const line = row(feed("016-x", [say({ parkedOn: "john", expects: "none" }, "режимная пауза")]));
 
-    expect(line).toContain("| john · 2026-08-19 |");
+    expect(line).toContain("| 🔇 john · 2026-08-19 |");
     expect(line).not.toContain("❓");
   });
 
-  it("an EVENT park shows the event, never a person", () => {
-    expect(row(feed("042-x", [say({ parkedOn: "pr:133" })]))).toContain("| pr:133 · 2026-08-19 |");
-    expect(row(feed("019-x", [say({ parkedOn: "run:163" })]))).toContain(
-      "| run:163 · 2026-08-19 |",
+  it("the two person parks differ by ONE FIELD and by a MARK EACH — neither cell is an absence", () => {
+    // The defect of 155, in the two rows that carry it: the feeds are identical but for the
+    // `expects` of the declaring message, and until the mode had a glyph of its own the
+    // difference between them was something the reader had to NOTICE MISSING. Asserted
+    // VERBATIM on both cells rather than by substring: `toContain("🔇 john")` would still
+    // pass if the asking cell lost its own mark, which is the same defect mirrored.
+    const mode = row(feed("016-x", [say({ parkedOn: "john", expects: "none" }, "режим")]));
+    const question = row(feed("023-x", [say({ parkedOn: "john" }, "режим")]));
+
+    expect(mode).toBe(
+      "| 016-x | curator, john | normal | open | curator | 🔇 john · 2026-08-19 | 2026-08-19 | режим |",
     );
-    expect(row(feed("019-x", [say({ parkedOn: "run:163" })]))).not.toContain("❓");
+    expect(question).toBe(
+      "| 023-x | curator, john | normal | open | curator | ❓ john · 2026-08-19 | 2026-08-19 | режим |",
+    );
+  });
+
+  it("an EVENT park shows the event, never a person — and wears NEITHER mark", () => {
+    // The cells that must not move: an event park calls nobody by construction, so "asks
+    // nobody" is true of every one of them and a mark there would say nothing (155 changes
+    // the person parks and only them).
+    expect(row(feed("042-x", [say({ parkedOn: "pr:133" })]))).toBe(
+      "| 042-x | curator, john | normal | open | curator | pr:133 · 2026-08-19 | 2026-08-19 | Чинить ли гард 2? |",
+    );
+    expect(row(feed("019-x", [say({ parkedOn: "run:163" })]))).toBe(
+      "| 019-x | curator, john | normal | open | curator | run:163 · 2026-08-19 | 2026-08-19 | Чинить ли гард 2? |",
+    );
+    expect(row(feed("019-x", [say({ parkedOn: "run:163" })]))).not.toContain("🔇");
+  });
+
+  it("a thread with NO park keeps an empty cell — an unparked thread is not a mode", () => {
+    const line = row(feed("012-x", [say({})]));
+
+    expect(line).toBe(
+      "| 012-x | curator, john | normal | open | curator | — | 2026-08-19 | Чинить ли гард 2? |",
+    );
+    expect(line).not.toContain("🔇");
   });
 
   it("a CLOSED thread awaits nobody and asks nothing — the acceptance outranks the park", () => {
