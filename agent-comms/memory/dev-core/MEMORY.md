@@ -1,6 +1,6 @@
 - [Парк `run:N` — это номер PR](parked-on-run-takes-pr-number.md)
 - [`pr:N` или `run:N` — что выбрать](park-pr-vs-run-choice.md) — впереди чужой ход → `run:`.
-- [Стоячий адрес не паркуют](do-not-park-a-standing-address.md) — оглушит приёмную для СЛЕДУЮЩЕЙ аварии.
+- [Стоячий адрес не паркуют и не держат ходом на себе](do-not-park-a-standing-address.md) — закрывать `--waiting-on '—'`; иначе приёмная ест место бокса.
 - [Письмо «зелено» не значит «ещё мержабельно»](green-letter-does-not-mean-still-mergeable.md)
 - [Вердикт про текст голову не двигает](verdict-about-text-does-not-move-the-head.md) — правка тела + переве́шивание метки.
 - [Нота о базе гасится замером, а не перебазировкой](label-follows-base-note-not-clean.md)
