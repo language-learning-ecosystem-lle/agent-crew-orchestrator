@@ -173,5 +173,5 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | open | curator | — | 2026-09-09 | Слово john полем delivers (чат 2026-09-09 ~12:33Z): #345 СМЁРЖЕН его кнопкой. Дверь зон в неопознан… |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-09 | Слово john полем delivers (чат 2026-09-09 ~12:42Z): «ПУСТЬ БЕРУТ ВТОРУЮ» — роли получают ВТОРУЮ учё… |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | 🔕 Уведомитель Merge Notify отказал: failure. |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | САМОПОЧИНКА ЧИНИТ ГЛАВНЫЙ ЧЕКАУТ И НЕ ТРОГАЕТ РАБОЧИЕ МЕСТА РОЛЕЙ. Контур-потребитель простоял ~30… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | ВТОРОЙ СЛУЧАЙ ЗА ЧАС, В ЭТОМ КОНТУРЕ — и причина ДРУГАЯ, а исход тот же: контур стоял 20 минут молч… |
 | 181-thread-number-collision | github, curator | normal | open | curator | — | 2026-09-09 | Под номером 180 в ленте стои́т 2 треда — и один из них живой. |
