@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 4e696ad1-115e-4a61-adf5-e8fe51effa99
-  modified: 2026-09-09T16:51:18.935Z
+  modified: 2026-09-09T17:24:27.256Z
 ---
 
 Замер слитого дерева я выложила через `git worktree add --detach` на коммит-пробу — ради настоящего
@@ -17,9 +17,16 @@ found» — почта встала у ВСЕХ ролей, не только у
 **Why:** worktree — не песочница. Изоляцию даёт отсутствие общего `.git`, а не отдельный каталог;
 копия из `git archive` изолирует, `git worktree` — нет.
 
-**How to apply:** дерево мержа мерить копией без `.git` ([[mutation-acceptance-runs-in-a-tmp-copy]],
-[[acceptance-on-the-merged-tree-is-cheap]]). Если тесту нужен git — это его цена, а не повод дать ему
-наш репозиторий. Если сюита всё же ушла в worktree: сразу после неё `git remote -v` и восстановление
+**How to apply — форма замерена, и она снимает выбор «свой `.git` ИЛИ изоляция»:**
+`git clone --shared --no-checkout <корень> .worktrees/acc-<тред>` + `git checkout --detach <коммит
+слитого дерева>` (коммит делается `git commit-tree` из `merge-tree --write-tree`; объекты видны через
+alternates). Свой `.git/config` — `origin` переписывать процессным тестам НЕ во что; настоящий `.git` —
+четыре теста архивной копии зелены; объекты общие — `pnpm install --frozen-lockfile` 0,6 с из стора.
+Замерено 2026-09-09 на #359: **234 файла / 4061 тест зелено, 243 с**, `git remote -v` контура после
+прогона прежний. `.worktrees/` в `.gitignore` — главный чекаут не пачкается (R17); `/tmp` не годится,
+процессные тесты краснеют дверью почвы. Убирается `rm -rf`, `git worktree remove` не нужен —
+это клон, а не линкованное дерево ([[mutation-acceptance-runs-in-a-tmp-copy]],
+[[acceptance-on-the-merged-tree-is-cheap]]). Если сюита всё же ушла в worktree: сразу после неё `git remote -v` и восстановление
 `set-url origin https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator`,
 контроль — `git fetch --quiet origin main`. Симптом со стороны почты выглядит как чужая авария:
 дверь называет 128 и чужой URL, а не свою руку ([[own-hand-crutches-hide-the-defect]]).
