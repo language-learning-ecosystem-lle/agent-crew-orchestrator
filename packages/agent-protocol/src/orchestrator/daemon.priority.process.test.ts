@@ -83,12 +83,14 @@ const handoff = (options: {
   readonly parkedOn?: string;
   /** The fact the park is taken against (thread 155) — absent from almost every park. */
   readonly parkGround?: string;
+  /** The merge THIS MAIL announces — the one address the third ground form asks (thread 155). */
+  readonly mergedPr?: number;
 }): string =>
   `---\nfrom: ${options.from}\ndate: ${options.date}\nexpects: answer\nwaiting-on: dev-core\n${
     options.priority === undefined ? "" : `priority: ${options.priority}\n`
   }${options.parkedOn === undefined ? "" : `parked-on: ${options.parkedOn}\n`}${
     options.parkGround === undefined ? "" : `park-ground: ${options.parkGround}\n`
-  }---\n\nThe body.\n`;
+  }${options.mergedPr === undefined ? "" : `merged-pr: ${options.mergedPr}\n`}---\n\nThe body.\n`;
 
 /**
  * THE WORD OF THE PERSON arriving on a parked thread — the one lift of that park since
@@ -527,6 +529,62 @@ describe("the tick asks the mail for the delivery a park is waiting for (thread 
     const tick = daemon(repo);
 
     expect(tick.out).not.toContain("THE GROUND OF THE PARK HAS FALLEN AWAY");
+  });
+});
+
+/**
+ * THE THIRD FORM — `until-pr-merged:<n>` (thread 155, statement of work of curator 2026-09-09,
+ * word of john the same day). The case it repairs was priced at 40 days 13 hours: a park asking
+ * john for guard 3 over PR #74, which he answered TWO DAYS LATER BY MERGING IT. The two older
+ * forms are blind to it by construction — the pair is not frozen, and the `delivers` letter that
+ * `no-delivers-since:` waits for is never written, because the question was answered by a button.
+ *
+ * Only the seam can show the half that matters: that the tick asks the SAME `merged-pr:` letters
+ * of the same mail every `pr:` park is judged against, and not some second opinion about which
+ * pull requests have landed. A unit sees the set it is handed; it cannot see who handed it.
+ */
+describe("the tick asks the mail whether the PR a park waits on has landed (thread 155)", () => {
+  const parked = handoff({
+    from: "curator",
+    date: "2026-07-25T10:00:00Z",
+    parkedOn: "john",
+    parkGround: "until-pr-merged:74",
+  });
+
+  it("names the ground gone when the mail says that PR is merged", () => {
+    const repo = contour([
+      { id: "016-ground", message: parked },
+      {
+        id: "110-adoption",
+        message: handoff({ from: "curator", date: "2026-07-25T11:00:00Z", mergedPr: 74 }),
+      },
+    ]);
+    enable(repo);
+
+    const tick = daemon(repo);
+
+    expect(tick.out).toContain("thread 016-ground: THE GROUND OF THE PARK HAS FALLEN AWAY");
+    expect(tick.out).toContain("until-pr-merged:74");
+    expect(tick.out).toContain("PR #74 IS merged");
+    // AND IT IS NOT A LIFT, on this very tick: the park still freezes its own thread. The whole
+    // difference between this feature and a door the machine opens is in this assert.
+    expect(tick.out).toContain("candidate dev-core×016-ground skipped: the turn is parked");
+  });
+
+  it("is silent while nothing in the mail says so, and deaf to the merge of another PR", () => {
+    const repo = contour([
+      { id: "016-ground", message: parked },
+      {
+        id: "110-adoption",
+        message: handoff({ from: "curator", date: "2026-07-25T11:00:00Z", mergedPr: 73 }),
+      },
+    ]);
+    enable(repo);
+
+    const tick = daemon(repo);
+
+    expect(tick.out).not.toContain("THE GROUND OF THE PARK HAS FALLEN AWAY");
+    expect(tick.out).toContain("candidate dev-core×016-ground skipped: the turn is parked");
   });
 });
 

@@ -14,6 +14,9 @@ const key = (role: string, thread: string): string => JSON.stringify([role, thre
 /** The second form's question, in the shape the tick answers it: nobody has delivered anything. */
 const noDeliveries = (): boolean => false;
 
+/** The third form's question, in the shape the tick answers it: this mail has landed nothing. */
+const nothingMerged: ReadonlySet<number> = new Set();
+
 const park = (over: Partial<Parking> = {}): Parking => ({
   kind: "person",
   person: "john",
@@ -47,16 +50,106 @@ describe("the value of a named ground", () => {
     expect(parseParkGround("no-delivers:110-adoption")).toBeUndefined();
   });
 
+  it("reads the third form — the pull request whose merge ends the ground", () => {
+    expect(parseParkGround("until-pr-merged:74")).toEqual({
+      kind: "until-pr-merged",
+      pr: 74,
+      raw: "until-pr-merged:74",
+    });
+    // A number and nothing else: `#74`, an empty tail, a zero and a padded number are not values
+    // this form means, and a reader that guessed at them would key its notes by two spellings of
+    // one PR. The door names them while the writer can still retype.
+    expect(parseParkGround("until-pr-merged:")).toBeUndefined();
+    expect(parseParkGround("until-pr-merged:#74")).toBeUndefined();
+    expect(parseParkGround("until-pr-merged:0")).toBeUndefined();
+    expect(parseParkGround("until-pr-merged:074")).toBeUndefined();
+  });
+
   it("refuses a ground it cannot ask BY NAME, and says what a park without one does", () => {
     const verdict = judgeParkGround("john decides");
     expect(verdict.ok).toBe(false);
     if (verdict.ok) return;
-    // Discipline 4: the value is quoted back, BOTH known forms are named, and the legality of
+    // Discipline 4: the value is quoted back, ALL THREE known forms are named, and the legality of
     // parking with no ground at all is stated — a refusal nobody can act on is a defect.
     expect(verdict.reason).toContain("--park-ground 'john decides'");
     expect(verdict.reason).toContain("frozen:<role>×<thread>");
     expect(verdict.reason).toContain("no-delivers-since:<thread>");
+    expect(verdict.reason).toContain("until-pr-merged:<n>");
     expect(verdict.reason).toContain("needs no ground at all");
+  });
+});
+
+describe("the third form: a park answered by a button and not by a word", () => {
+  const parked = park({ ground: "until-pr-merged:74" });
+  const standing = [{ thread: "016-x", parking: parked }];
+
+  it("is named once that pull request is merged — the answer john gave with his hand", () => {
+    const gone = groundsGone(standing, {
+      frozen: new Set(),
+      key,
+      deliveredSince: noDeliveries,
+      merged: new Set([74]),
+    });
+    expect(gone.map((entry) => entry.ground.raw)).toEqual(["until-pr-merged:74"]);
+    const line = describeGroundGone(gone[0] as (typeof gone)[number]);
+    expect(line).toContain("PR #74 IS merged");
+    expect(line).toContain("The park still stands");
+    expect(line).toContain("lift it by hand");
+  });
+
+  it("is silent while it is not merged, and deaf to the merge of a different PR", () => {
+    expect(
+      groundsGone(standing, {
+        frozen: new Set(),
+        key,
+        deliveredSince: noDeliveries,
+        merged: nothingMerged,
+      }),
+    ).toEqual([]);
+    // The case this form was priced on had a park on #74 in a circuit merging PRs every day: a
+    // form that answered "some PR landed" would fire on every one of them and mean nothing.
+    expect(
+      groundsGone(standing, {
+        frozen: new Set(),
+        key,
+        deliveredSince: noDeliveries,
+        merged: new Set([73, 75]),
+      }),
+    ).toEqual([]);
+  });
+
+  it("speaks when the PR was ALREADY merged at the moment the park was declared", () => {
+    // No window, unlike the second form, and on purpose: a merge that had already happened makes
+    // the park false as it is written. That is the case the door cannot catch — the writer parks
+    // in the same breath — and it is the one case this feature exists for (thread 155, case 3).
+    const gone = groundsGone(
+      [
+        {
+          thread: "016-x",
+          parking: park({ ground: "until-pr-merged:74", since: "2026-09-09T00:00:00Z" }),
+        },
+      ],
+      { frozen: new Set(), key, deliveredSince: noDeliveries, merged: new Set([74]) },
+    );
+    expect(gone).toHaveLength(1);
+  });
+
+  it("does not answer the other forms' questions with its own input", () => {
+    const all = [
+      { thread: "016-x", parking: parked },
+      { thread: "063-slug", parking: park({ ground: "frozen:dev-core×063-slug" }) },
+      { thread: "155-x", parking: park({ ground: "no-delivers-since:110-adoption" }) },
+    ];
+    const gone = groundsGone(all, {
+      // Everything merged, nothing frozen, nothing delivered: only the third form may speak here,
+      // and a `frozen:`/`no-delivers-since:` park reading the merge set would be a false sentence
+      // about a park nobody touched.
+      frozen: new Set([key("dev-core", "063-slug")]),
+      key,
+      deliveredSince: noDeliveries,
+      merged: new Set([74, 63, 110, 155]),
+    });
+    expect(gone.map((entry) => entry.thread)).toEqual(["016-x"]);
   });
 });
 
@@ -69,6 +162,7 @@ describe("the second form: a park that outlived the answer it was waiting for", 
       frozen: new Set(),
       key,
       deliveredSince: (thread, since) => thread === "110-adoption" && since === parked.since,
+      merged: nothingMerged,
     });
     expect(gone.map((entry) => entry.ground.raw)).toEqual(["no-delivers-since:110-adoption"]);
     const line = describeGroundGone(gone[0] as (typeof gone)[number]);
@@ -79,16 +173,26 @@ describe("the second form: a park that outlived the answer it was waiting for", 
   });
 
   it("is silent when that thread carries no delivery at all", () => {
-    expect(groundsGone(standing, { frozen: new Set(), key, deliveredSince: noDeliveries })).toEqual(
-      [],
-    );
+    expect(
+      groundsGone(standing, {
+        frozen: new Set(),
+        key,
+        deliveredSince: noDeliveries,
+        merged: nothingMerged,
+      }),
+    ).toEqual([]);
   });
 
   it("is silent about a thread this box does not have — that is the door's refusal, not a note", () => {
     // A misspelled slug can never fall away, which is why the DOOR refuses it while the writer is
     // standing there. Here, in an append-only feed nothing can repair, it is read as no ground.
     expect(
-      groundsGone(standing, { frozen: new Set(), key, deliveredSince: () => undefined }),
+      groundsGone(standing, {
+        frozen: new Set(),
+        key,
+        deliveredSince: () => undefined,
+        merged: nothingMerged,
+      }),
     ).toEqual([]);
   });
 
@@ -103,6 +207,7 @@ describe("the second form: a park that outlived the answer it was waiting for", 
       frozen: new Set([key("dev-core", "063-slug")]),
       key,
       deliveredSince: () => true,
+      merged: nothingMerged,
     });
     expect(gone.map((entry) => entry.thread)).toEqual(["155-x"]);
   });
@@ -116,13 +221,19 @@ describe("a park whose ground has fallen away", () => {
 
   it("is named when the pair it waits on is not frozen, and is silent while it is", () => {
     const frozen = new Set([key("dev-acme", "110-other")]);
-    const gone = groundsGone(standing, { frozen, key, deliveredSince: noDeliveries });
+    const gone = groundsGone(standing, {
+      frozen,
+      key,
+      deliveredSince: noDeliveries,
+      merged: nothingMerged,
+    });
     expect(gone.map((entry) => entry.thread)).toEqual(["063-slug"]);
     expect(
       groundsGone(standing, {
         frozen: new Set([key("dev-core", "063-slug"), key("dev-acme", "110-other")]),
         key,
         deliveredSince: noDeliveries,
+        merged: nothingMerged,
       }),
     ).toEqual([]);
   });
@@ -133,6 +244,7 @@ describe("a park whose ground has fallen away", () => {
         frozen: new Set(),
         key,
         deliveredSince: noDeliveries,
+        merged: nothingMerged,
       }),
     ).toEqual([]);
   });
@@ -141,13 +253,23 @@ describe("a park whose ground has fallen away", () => {
     // The door refuses these, so one in the feed is older than this code or hand-written; the
     // honest reading of it is "no ground was named", never "the ground is gone".
     const older = [{ thread: "155-x", parking: park({ ground: "until john answers" }) }];
-    expect(groundsGone(older, { frozen: new Set(), key, deliveredSince: noDeliveries })).toEqual(
-      [],
-    );
+    expect(
+      groundsGone(older, {
+        frozen: new Set(),
+        key,
+        deliveredSince: noDeliveries,
+        merged: nothingMerged,
+      }),
+    ).toEqual([]);
   });
 
   it("is NOT a lift: the sentence says the park stands and that a hand ends it", () => {
-    const [gone] = groundsGone(standing, { frozen: new Set(), key, deliveredSince: noDeliveries });
+    const [gone] = groundsGone(standing, {
+      frozen: new Set(),
+      key,
+      deliveredSince: noDeliveries,
+      merged: nothingMerged,
+    });
     if (gone === undefined) throw new Error("expected a gone ground");
     const line = describeGroundGone(gone);
     expect(line).toContain("thread 063-slug");
@@ -160,7 +282,7 @@ describe("a park whose ground has fallen away", () => {
 describe("once per transition, not once per tick", () => {
   const gone = groundsGone(
     [{ thread: "063-slug", parking: park({ ground: "frozen:a×063-slug" }) }],
-    { frozen: new Set(), key, deliveredSince: noDeliveries },
+    { frozen: new Set(), key, deliveredSince: noDeliveries, merged: nothingMerged },
   );
 
   it("says a gone ground once and holds its tongue on every tick after it", () => {
@@ -187,7 +309,7 @@ describe("once per transition, not once per tick", () => {
           parking: park({ ground: "frozen:a×063-slug", since: "2026-09-07T12:00:00Z" }),
         },
       ],
-      { frozen: new Set(), key, deliveredSince: noDeliveries },
+      { frozen: new Set(), key, deliveredSince: noDeliveries, merged: nothingMerged },
     );
     const said = foldGroundNotes(new Set(), gone).seen;
     expect(foldGroundNotes(said, later).say).toHaveLength(1);

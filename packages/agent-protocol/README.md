@@ -2357,7 +2357,7 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # standing 21 h 23 m over a ready PR after its question had been answered,
                             # and a park asking john to unfreeze a pair HIS OWN HAND had unfrozen that
                             # morning, which then locked both pairs of the thread over five commits
-                            # already on `origin`. TWO FORMS, one per case: `frozen:<role>×<thread>`
+                            # already on `origin`. THREE FORMS, one per case: `frozen:<role>×<thread>`
                             # ("stands while that pair is frozen", ASCII `*` for the `×`), answered out
                             # of the journal of leases the tick already reads; and
                             # `no-delivers-since:<thread>` ("stands while no letter in that thread
@@ -2371,7 +2371,21 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # door in three cases and no fourth: a value this version cannot ask, a
                             # ground on a message that parks nothing, and a `no-delivers-since:` naming
                             # a thread this mail does not have — a misspelled slug is a ground that can
-                            # NEVER fall away, which is the quietest bad outcome the field has
+                            # NEVER fall away, which is the quietest bad outcome the field has. THE
+                            # THIRD FORM is `until-pr-merged:<n>` ("stands while PR #n is not merged"),
+                            # measured at 40 d 13 h in a live circuit: a park asking john for a merge
+                            # that he ANSWERED BY MERGING two days later, which neither older form can
+                            # see — the pair is not frozen, and the `delivers` letter the second waits
+                            # for is never written, because the answer was a button. It is answered by
+                            # the `merged-pr:` letters of this same mail, the very set every `pr:` park
+                            # is judged against; it carries NO window, unlike the second form, because
+                            # a PR already merged when the park is declared makes that park false as it
+                            # is written; and a PR CLOSED WITHOUT A MERGE it does not see at all — this
+                            # mail announces a merge and announces no close, and reading the second out
+                            # of a source the box does not have would be a check that never runs. The
+                            # door does not check the number: its mistake is not quiet — one note on
+                            # the next tick either way — and asking would mean a call to the forge in
+                            # order to write a letter
                             # --park-mover <participant>: WHO MAKES THAT MERGE HAPPEN (thread 061, by the
                             # word of john 2026-08-30) — DEMANDED on `--parked-on pr:<n>`, refused with
                             # anything else. A merge park waits for A HAND on a button, and a parked
