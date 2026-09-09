@@ -155,7 +155,12 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # ZONES WITH AN ENFORCER (thread 020): the changed paths against the
                               # role's 'zones.forbidden' — the pre-commit hook of a role workspace
                               # (--staged --role-from-workspace) and the CI step of a PR (--base)
-                              # a checkout that is not a role workspace passes with a note, not a refusal
+                              # --role-from-workspace judges the tree in THREE classes (thread 178): a
+                              # role's workspace — the zones of that role; a tree INSIDE the declared
+                              # workspaces that is nobody's (the mail checkout, a worktree made by hand)
+                              # — REFUSED, exit 2, naming the tree and asking for --role: zones are
+                              # enforced by role and this door has none; a tree OUTSIDE them (your own
+                              # checkout, CI) — passed with a note. The middle class used to pass silently
                               # 'zones.writes' NARROWS NOTHING and is not read by this command at all:
                               # a path outside 'writes' and outside 'forbidden' is GREEN, and the green
                               # line says so. 'writes' states where the role's work lives, for humans —
@@ -857,7 +862,11 @@ The strict forms below keep every flag they had.
                               # circuit itself (R17). Type it in the home checkout
                               # ANY OTHER linked worktree (the mail checkout, your own) is
                               # passed with a NOTE: R17 does not govern it, and a refusal there
-                              # would name a reason that is not true
+                              # would name a reason that is not true — and this is where the two
+                              # readers of the same sign part (thread 178): 'zones check' REFUSES
+                              # a nobody's tree under the workspaces, because zones without a
+                              # role cannot be enforced at all, while here there is nothing to
+                              # enforce and nothing to lose
                               # ON A BOX HOSTING SEVERAL INSTANCES the unit is NAMED AFTER
                               # ONE (055): 'agent-protocol@<instance>.service', and its
                               # ExecStart carries '--instance <name>' — one name on the whole

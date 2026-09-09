@@ -1668,6 +1668,19 @@ agent-protocol zones check  --ref <ref> [--repo <p>] (--role <id> | --role-from-
                             # command — they ask the same question and differ only in where the paths come
                             # from (the index in a pre-commit hook, the PR range in CI)
                             # --role-from-workspace: whose commit this is, read from the workspace name (R17)
+                            # it judges the tree in THREE classes, and only one of them passes silently
+                            # (thread 178): a ROLE'S workspace — the zones of that role, refusal by name
+                            # on a forbidden path; a tree under the declared workspaces that is NOBODY'S
+                            # (the mail checkout, a worktree added by hand) — REFUSED with exit 2 naming
+                            # the tree and the repair '--role <id>': whose tree it is is unknown, zones
+                            # are enforced BY ROLE, and a door with no role to enforce that answers exit 0
+                            # is the guard switching itself off (measured 2026-09-08, thread 177: the same
+                            # forbidden path refused in '.worktrees/dev-core' and passed in
+                            # '.worktrees/dev-core-177-probe'); a tree OUTSIDE them (your own checkout, a
+                            # CI checkout) — passed with a note, as before: the layout claims nothing there
+                            # 'orchestrator systemd install' reads the same classification and passes the
+                            # middle class with a note — R17 does not govern a tree nobody owns, so its
+                            # refusal would name a false reason. Same reading, different consequence
                             # --ref names the config the verdict is passed with, and door 3 must point it at
                             # the BASE of the PR: a change that widens its own zone must not be judged by it
                             # door 3 itself is the step 'Зоны роли не нарушены' of the job `checks`

@@ -598,6 +598,7 @@ import {
 } from "./orchestrator/watchdog.js";
 import {
   checkWorkspaceSignature,
+  classifyWorkspaceCheckout,
   createWorkspaceLocks,
   describeFailedTidyUp,
   describeFailedTidyUpOnItsBranch,
@@ -612,6 +613,7 @@ import {
   mainCheckoutVerdict,
   planWorkspace,
   planWorkspaceIdentity,
+  type WorkspaceCheckout,
   type WorkspaceDirt,
   type WorkspaceFacts,
   type WorkspacePlan,
@@ -9762,7 +9764,11 @@ const orchestratorSystemdInstall = (argv: readonly string[]): void => {
   // (`orchestrator.workdir.worktrees`), through the same `workspaceRoleOf` that
   // `zones check --role-from-workspace` uses — the statement of thread 019 §4 asks for
   // that mechanism by name, and a second answer to the same question would be a second
-  // truth. Any other linked worktree passes with a note, exactly as the zones guard does.
+  // truth. Any other linked worktree passes with a note HERE, and since thread 178 the
+  // zones guard refuses that same class: the READING is shared, the consequence is not,
+  // because R17 does not govern a tree nobody owns while zones cannot be enforced without
+  // a role. Nothing about this call site changed — it asks for the name, and the trees
+  // that have none pass exactly as before.
   // The judgement happens BEFORE the plan, and it is the same judgement and the same
   // print with and without `--write`: a dry run that disagrees with the real one is not
   // a dry run.
@@ -15018,10 +15024,21 @@ const guardArguments = (key: string, argv: readonly string[]): void => {
  * configure the role per checkout would put the answer in a place that drifts. R17
  * already made "whose tree is this" answerable by reading the path — one role, one
  * worktree named after it under `orchestrator.workdir.worktrees` — so the hook reads
- * it there. A checkout that is NOT a role workspace (the operator's own, a CI
- * checkout, the mail worktree) is passed with a note and never a refusal: the guard
- * belongs to the raised sessions, and a human committing in their own tree is not
- * what it is for.
+ * it there. A checkout OUTSIDE the declared workspaces (the operator's own, a CI
+ * checkout) is passed with a note and never a refusal: the guard belongs to the raised
+ * sessions, and a human committing in their own tree is not what it is for.
+ *
+ * BUT A TREE INSIDE THE WORKSPACES WHOSE OWNER IS UNKNOWN IS REFUSED (thread 178, the
+ * finding of thread 177 measured on 2026-09-08). `.worktrees/comms` and a probe worktree
+ * made by hand both live under the declared workspaces and name no role — and the note
+ * meant this door, the only thing that enforces zones at commit time, answered exit 0 on
+ * the very path the role standing there is forbidden to write. "Whose tree this is is
+ * unknown" is not "the guard does not apply": zones are enforced BY ROLE, so a door with
+ * no role to enforce has to say so and stop, with the repair (`--role <id>`) in the
+ * refusal. The neighbouring caller of the same classification, `systemd install`, keeps
+ * passing that class — its refusal there would name a reason that is not true — and this
+ * is exactly why the two callers read `classifyWorkspaceCheckout` and decide separately
+ * instead of the shared function changing its answer for both.
  */
 /**
  * THE SURFACE OF A CAPABILITY CALL (thread `047-devops-role`, curator's statement of work of
@@ -15144,20 +15161,45 @@ const zonesCheck = (argv: readonly string[]): void => {
       return;
     }
     const here = repo.replace(/\/+$/, "");
-    // The SAME `workspaceRoleOf` that `systemd install` asks (systemd.ts, decision 7):
-    // one function, so that two guards can never answer "whose tree is this" differently
-    // while standing in the same directory.
-    const candidate = workspaceRoleOf({
-      checkout: here,
-      repo: repoOf(`${here}/..`, gitEnvOutsideHook()),
-      worktrees,
-      roles: loaded.config.roles.map((role) => role.id),
-    });
-    if (candidate === undefined) {
-      out(`agent-protocol: zones — '${here}' is not a role workspace, the guard does not apply`);
+    // The SAME classification `systemd install` asks (systemd.ts, decision 7): one
+    // function, so that two guards can never READ "whose tree is this" differently while
+    // standing in the same directory. What each does with the answer is its own — see the
+    // doc block above for why this door refuses the class that one passes.
+    // The tree the workspaces would hang under, asked TOLERANTLY. Standing in the HOME
+    // checkout the parent is an ordinary directory, and `repoOf` turned git's true
+    // sentence about the wrong question into this door's refusal: measured in the live
+    // contour on 2026-09-08, `--role-from-workspace` in the operator's own checkout exited
+    // 2 with "'/home/…/..' is not inside a git repository" — a guard blaming the caller's
+    // filesystem for a question the caller never asked. No repository above means nothing
+    // above declares workspaces, which is exactly the `outside` class and its note.
+    const above = checkoutOf(`${here}/..`, gitEnvOutsideHook());
+    const seen: WorkspaceCheckout =
+      above === undefined
+        ? { kind: "outside" }
+        : classifyWorkspaceCheckout({
+            checkout: here,
+            repo: above,
+            worktrees,
+            roles: loaded.config.roles.map((role) => role.id),
+          });
+    if (seen.kind === "unowned") {
+      // NAMED, NOT SILENT (role card, discipline 4): the tree, the cause and the repair.
+      // The tree, because the caller of a hook does not know which checkout it fired in;
+      // the cause, because "not a role workspace" reads as "nothing to check here"; the
+      // repair, because the only way past this door is to say whose zones are enforced.
+      fail(
+        `--role-from-workspace: '${here}' lies under the declared workspaces ('${worktrees}') but is not the workspace of any role — whose tree it is is UNKNOWN, and zones are enforced by role, so this door has nothing to enforce and will not pass the change silently. Name the role explicitly: --role <id> (declared: ${loaded.config.roles.map((role) => role.id).join(", ")})`,
+        2,
+      );
       return;
     }
-    roleId = candidate;
+    if (seen.kind === "outside") {
+      out(
+        `agent-protocol: zones — '${here}' is outside the declared workspaces ('${worktrees}'), the guard does not apply`,
+      );
+      return;
+    }
+    roleId = seen.role;
   }
   if (roleId === undefined) {
     fail("--role <id> (or --role-from-workspace) — the zones being enforced are a role's", 2);
