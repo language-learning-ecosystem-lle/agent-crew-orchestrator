@@ -179,4 +179,4 @@
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
-| 186-collapsing-probe-class-enumerated | curator, dev-core | normal | open | dev-core | — | 2026-09-09 | PR #367 (fix(ci): схлопывающая проба разведена на три исхода в двух тестовых скриптах (тред 186)) m… |
+| 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
