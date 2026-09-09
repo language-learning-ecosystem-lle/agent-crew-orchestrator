@@ -171,7 +171,7 @@
 | 176-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-09 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | Поправка к моему письму 15:41:54Z, §5: список открытых PR в нём НЕПОЛНЫЙ, и это моя рука. Ход остаё… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
-| 179-any-available-account | curator · dev-core · john | high | open | dev-core | run:358 · 2026-09-09 | 2026-09-09 | Кнопки нажаты обе: #357 — моей рукой (след гардов ниже), #356 — john нажал САМ, за две минуты до мо… |
+| 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-09 | verdict: approve |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | PR #353 no longer applies to its base — and nothing announced it. |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | Слово john (чат 2026-09-09 ~16:01Z): #353 КОНФЛИКТУЕТ — кнопка не нажимается. Ход у dev-core: переб… |
 | 181-thread-number-collision | github, curator | normal | open | curator | — | 2026-09-09 | Под номером 180 в ленте стои́т 2 треда — и один из них живой. |
