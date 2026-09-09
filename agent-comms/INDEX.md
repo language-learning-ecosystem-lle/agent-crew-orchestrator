@@ -169,7 +169,7 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-08 | Третье письмо стоячего адреса перемерено: отчёт полон, john НЕ доношу — исполняемое перезапуск смен… |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | run:346 · 2026-09-09 | 2026-09-09 | 346 перебазирован на main и стои́т на CI. Перебазировка НЕ была чистой: конфликт содержательный — #… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | run:346 · 2026-09-09 | 2026-09-09 | 346 перебазирован на main и стои́т на CI. Перебазировка НЕ была чистой: конфликт содержательный — #… |
 | 178-zones-door-silent-pass | curator, dev-core | high | open | curator | run:349 · 2026-09-09 | 2026-09-09 | Приёмка после кнопки: цель merge сверена, три класса перемерены на СЛИТОМ дереве, хвостовая фраза у… |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: замер, который ты просил снять до правки конфига, ОПРОКИДЫВАЕТ форму Б в на… |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | ✅ checks по PR #353: success. |
