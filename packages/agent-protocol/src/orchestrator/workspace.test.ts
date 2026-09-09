@@ -15,6 +15,7 @@ import {
   describeFailedTidyUpOnItsBranch,
   describeFinishDirt,
   describeServiceBranches,
+  describeStrandedPlace,
   describeStrandedWorkspace,
   describeWorkspaceDirt,
   describeWorkspaceIdentity,
@@ -28,6 +29,8 @@ import {
   readServiceBranchName,
   serviceBranchAge,
   serviceBranchName,
+  workspaceInventoryOf,
+  workspaceKeyOf,
   workspacePairOf,
   workspacePath,
   workspaceRoleOf,
@@ -77,6 +80,42 @@ describe("where a role works", () => {
         thread: undefined,
       }),
     ).toBe(workspacePath({ repo: "/repo", worktrees: ".worktrees", role: "dev-core" }));
+  });
+});
+
+describe("which form of the layout a run's workspace is keyed by (thread 177)", () => {
+  const THREAD = "177-workspace-per-pair";
+  const at = (pairsPerRole: number) =>
+    workspacePath({
+      repo: "/repo",
+      worktrees: ".worktrees",
+      ...workspaceKeyOf({ role: ROLE, thread: THREAD, pairsPerRole }),
+    });
+
+  it("at the default ceiling the key is the ROLE ALONE — the tree the box stands on today", () => {
+    // The bit-for-bit half, and the one that has to be a test rather than a comment: a
+    // contour that declared no parallelism must not have a directory move under it
+    // because this code landed.
+    expect(at(1)).toBe(WORKSPACE);
+  });
+
+  it("above the default ceiling the key is the PAIR — the role's two trees are two places", () => {
+    expect(at(2)).toBe(`/repo/.worktrees/${ROLE}@${THREAD}`);
+  });
+
+  it("the thread is not what decides it — the same known thread gives both forms", () => {
+    // Every run is raised ON a thread (R18), so "does this run have one" would be a
+    // condition that is always true. The ceiling is the whole condition, and this pins
+    // that the one input which differs between the two answers is the number.
+    expect(at(1)).not.toBe(at(2));
+  });
+
+  it("what this builds is what the inverse reads back — the pair, not an unowned tree", () => {
+    // The guard half of thread 178: a tree whose name carries a thread must answer
+    // `role`, or `zones check --role-from-workspace` turns itself off, green, in it.
+    expect(
+      workspacePairOf({ checkout: at(2), repo: "/repo", worktrees: ".worktrees", roles: ROLES }),
+    ).toEqual({ role: ROLE, thread: THREAD });
   });
 });
 
@@ -219,6 +258,94 @@ describe("which pair a workspace belongs to — built, then read back", () => {
         roles: ROLES,
       }),
     ).toBeUndefined();
+  });
+});
+
+/**
+ * WHAT THE BOX ACTUALLY HAS, AS OPPOSED TO WHAT THE ROLE LIST PREDICTS (thread 177 §3.2).
+ * The defect being closed is one of prediction: three surfaces printed
+ * `workspacePath({role})` for every role of the config without ever looking for it, so
+ * above a ceiling of one they name a directory that is not there and stay silent about
+ * the trees that are. Every case below is this box's own layout — `.worktrees/curator`,
+ * `.worktrees/dev-core`, `.worktrees/comms` (not a role at all) and a pair's tree.
+ */
+describe("the workspaces this box has on the disk (thread 177)", () => {
+  const ROLES = ["dev-core", "curator", "reviewer-pr"];
+  const take = (entries: readonly string[], pairsPerRole: number) =>
+    workspaceInventoryOf({
+      repo: "/repo",
+      worktrees: ".worktrees",
+      roles: ROLES,
+      entries,
+      pairsPerRole,
+    });
+
+  it("at the default ceiling the answer is today's answer, path for path", () => {
+    // The requirement that makes this landable: a contour which declared no parallelism
+    // must see exactly the paths its three surfaces already print.
+    const seen = take(["curator", "dev-core", "reviewer-pr"], 1);
+    expect(seen.places.map((place) => place.path)).toEqual([
+      "/repo/.worktrees/curator",
+      "/repo/.worktrees/dev-core",
+      "/repo/.worktrees/reviewer-pr",
+    ]);
+    expect(seen.places.every((place) => place.thread === undefined && place.current)).toBe(true);
+    expect(seen.rolesWithoutAPlace).toEqual([]);
+  });
+
+  it("a role's two pairs are two places, and both are named", () => {
+    const seen = take(["dev-core@177-workspace-per-pair", "dev-core@178-zones-door"], 2);
+    expect(seen.places).toEqual([
+      {
+        role: "dev-core",
+        thread: "177-workspace-per-pair",
+        path: "/repo/.worktrees/dev-core@177-workspace-per-pair",
+        current: true,
+      },
+      {
+        role: "dev-core",
+        thread: "178-zones-door",
+        path: "/repo/.worktrees/dev-core@178-zones-door",
+        current: true,
+      },
+    ]);
+  });
+
+  it("a role with no tree on the disk is NAMED, not silently absent", () => {
+    const seen = take(["dev-core"], 1);
+    expect(seen.rolesWithoutAPlace).toEqual(["curator", "reviewer-pr"]);
+  });
+
+  it("the mail checkout is under the workspaces and is nobody's place", () => {
+    // `.worktrees/comms` is a real tree on this box and is not a role. It rides in its
+    // own list: dropping it would be the same silence, and calling it a role's place
+    // would hand a guard a role to enforce that nobody declared.
+    const seen = take(["comms", "dev-core"], 1);
+    expect(seen.unowned).toEqual(["comms"]);
+    expect(seen.places.map((place) => place.role)).toEqual(["dev-core"]);
+  });
+
+  it("a tree left behind by the ceiling is a place, and it is not the current form", () => {
+    const seen = take(["dev-core", "dev-core@177-workspace-per-pair"], 2);
+    expect(seen.places.map((place) => place.current)).toEqual([false, true]);
+    // ...and at a ceiling of one it is the pair's tree that is the leftover, so the flag
+    // is about the ceiling and not about which of the two forms is "old".
+    expect(
+      take(["dev-core", "dev-core@177-workspace-per-pair"], 1).places.map((p) => p.current),
+    ).toEqual([true, false]);
+  });
+
+  it("what is said about a stranded tree names the path, the cause and thread 174", () => {
+    const stranded = take(["dev-core"], 2).places[0];
+    expect(stranded).toBeDefined();
+    const said = describeStrandedPlace({
+      place: stranded as NonNullable<typeof stranded>,
+      pairsPerRole: 2,
+    });
+    expect(said).toContain("/repo/.worktrees/dev-core");
+    expect(said).toContain("'parallelism.pairsPerRole' is 2");
+    expect(said).toContain("nothing here removes it");
+    expect(said).toContain("174-workspace-tidy-up");
   });
 });
 
