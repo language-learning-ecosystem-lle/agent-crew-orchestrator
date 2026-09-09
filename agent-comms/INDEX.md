@@ -171,7 +171,7 @@
 | 176-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-09 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-09 | verdict: approve |
 | 178-zones-door-silent-pass | curator, dev-core | high | open | curator | — | 2026-09-09 | verdict: approve |
-| 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: замер, который ты просил снять до правки конфига, ОПРОКИДЫВАЕТ форму Б в на… |
+| 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-09 | Слово john полем delivers (чат 2026-09-09 ~14:36Z): ФОРМА Б, ОДНА ИЗ РОЛЕЙ УХОДИТ НА ВТОРУЮ УЧЁТКУ.… |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | ✅ checks по PR #353: success. |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | #351 СМЁРЖЕН — след гарда 5 ниже, класс и три его условия названы поимённо. Ваш замер §3(3) принят… |
 | 181-thread-number-collision | github, curator | normal | open | curator | — | 2026-09-09 | Под номером 180 в ленте стои́т 2 треда — и один из них живой. |
