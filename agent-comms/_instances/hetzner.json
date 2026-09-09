@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-09T15:03:25.806Z",
+  "writtenAt": "2026-09-09T15:15:00.632Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "161-daemon-self-restart",
       "state": "running",
       "deadline": "2026-09-09T15:43:22Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "179-any-available-account",
-      "state": "running",
-      "deadline": "2026-09-09T15:54:26Z"
     }
   ]
 }
