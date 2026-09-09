@@ -134,3 +134,5 @@
 - [Молчание сторожа мерится доставленным дайджестом](watcher-silence-needs-a-delivered-digest.md) — окно ищут по `telegram: delivered`: 16/16 мерит гейт ПЕЧАТИ, а не обход
 - [Журнал ящика отражает твой же вывод](daemon-log-echoes-your-own-output.md) — греп якорить `^`, иначе `tail -1` врёт
 - [Текст squash — усмотрение curator](squash-text-is-the-curators-call.md) — тело PR не правят, кладут `--subject`/`--body-file` на кнопке
+- [Дерево пары поднимается без `node_modules`](role-worktree-has-no-node-modules.md) — CLI почты гнать из главного чекаута: симлинк грязнит дерево (R17)
+- [Письмо с развилкой поднимает на ЛЮБОМ исходе](outcome-branch-letter-raises-on-any-branch.md) — «зелёный → кнопка твоя» зовёт и на `needs-fixes`: первым мерить владельца хода
