@@ -125,3 +125,4 @@
 - [Заголовок тела `pr open` — ПЕРВЫЕ две строки](pr-open-body-header-is-two-first-lines.md) — подпись внизу дверь не видит.
 - [`doctor` печатает «Not logged in» и на нечитаемом каталоге](doctor-token-probe-reports-eacces-as-not-logged-in.md) — мерить права, а не логинить.
 - [Цену починки «в одну строку» мерить прогоном на БУДУЩЕМ входе](price-a-one-line-fix-by-running-it-on-the-future-input.md) — ключ-половина пары теряет наряды.
+- [Свой парк убивает ЧУЖОЙ входящий вердикт](own-park-can-kill-an-incoming-verdict.md) — круг краснеет доставкой, нужен новый.
