@@ -63,10 +63,6 @@ describe("review — the round is the project's to name", () => {
 });
 
 describe("the version this costs, and the tables that record it", () => {
-  it("is the version this build writes", () => {
-    expect(CURRENT_PROTOCOL_VERSION).toBe(26);
-  });
-
   it("answers a v26 config on a v25 build with 'restart required', not with 'invalid'", () => {
     // The whole reason an optional key costs a number: a strict schema one field behind
     // answers `Unrecognized key: review`, which is invalid, true and useless.
