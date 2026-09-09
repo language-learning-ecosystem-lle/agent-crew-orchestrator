@@ -160,7 +160,23 @@ jobs:
           # `new-message`: роль сверяется с ДЕЙСТВУЮЩИМ конфигом дефолтной
           # ветки, а не с тем, что оказалось головой чекаута `.code`
           # (в claude-review.yml это уже стоило переданного хода — там же причина).
-          elif ! (cd .code && pnpm -F agent-protocol --silent cli role exists --repo . --ref origin/main --role "$ROLE" >/dev/null 2>&1); then
+          # `--no-fetch` — ЧТОБЫ КОД И КОНФИГ БЫЛИ ОДНИМ КОММИТОМ (тред 180, отказ
+          # 2026-09-09). Чекаут `.code` берёт `main` один раз, и `origin/main` в нём
+          # с этой секунды указывает ровно на тот коммит, чей пакет мы и запускаем.
+          # Загрузчик конфига по умолчанию ОБНОВЛЯЕТ названный ref сам
+          # (`loadProtocolConfig`, `fetch !== false`) — то есть читает `main` НА МОМЕНТ
+          # ЧТЕНИЯ, а не на момент чекаута. Замер: PR #345 сел в 12:33:20Z, чекаут
+          # `.code` встал на `020a27d5` (пакет пишет схему 26) в 12:33:32Z, PR #348
+          # с бампом схемы сел в 12:33:33Z, и в 12:33:43Z вызов ниже дофетчил
+          # `origin/main` = `2f17b9cd` (схема 27). Пакет отказал верно — «restart
+          # required: … declares 27, the package supports only 26» — и уведомление о
+          # merge #345 не доехало (прогон 34351698245). Тринадцати секунд между двумя
+          # merge'ами хватает: окно гонки — от чекаута до чтения.
+          # Довод «`origin/main`, а не `HEAD`» при этом ЦЕЛ: ref по-прежнему назван
+          # именем ветки, а не головой чекаута; `--no-fetch` лишь запрещает ему
+          # уехать посреди прогона. Предупреждение о возможной несвежести пакет
+          # печатает в stderr сам.
+          elif ! (cd .code && pnpm -F agent-protocol --silent cli role exists --repo . --ref origin/main --no-fetch --role "$ROLE" >/dev/null 2>&1); then
             echo "::warning::В PR #${PR_NUMBER} указана роль '${ROLE}', которой нет в конфиге протокола."
             ROLE_PROBLEM="в описании PR указана роль \`${ROLE}\`, которой нет в конфиге протокола"
             ROLE=""
@@ -242,8 +258,10 @@ jobs:
             # на PR треда 023),
             # а читатель ищет число сам. Условие «писать, если ждут» требовало
             # бы обхода всей почты на каждый merge и разошлось бы с ней молча.
+            # `--no-fetch` — тот же довод, что у `role exists` выше (тред 180): ref
+            # назван веткой, но не двигается посреди прогона.
             if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
-                  --root "${GITHUB_WORKSPACE}/agent-comms" --repo . --ref origin/main \
+                  --root "${GITHUB_WORKSPACE}/agent-comms" --repo . --ref origin/main --no-fetch \
                   --thread "$THREAD" --from github --expects none ${WAIT_ARGS} \
                   --worker gh-action --merged-pr "$PR_NUMBER" \
                   --body-file "$BODY_TMP" --write --no-push); then
