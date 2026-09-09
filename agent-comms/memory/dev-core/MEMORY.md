@@ -129,3 +129,5 @@
 - [Цикл импорта ЗНАЧЕНИЙ тайпчеку невидим](value-import-cycle-is-invisible-to-tsc.md) — валит прогон в чужом файле; чинится ПЕРЕЕЗДОМ функции.
 - [Убитый прогон сюиты оставляет файл в дереве](killed-suite-leaves-a-file-in-the-tree.md) — `git add -A` унесёт его в коммит.
 - [Конфликт со вторым PR мерится диапазонами `@@`](second-pr-conflict-is-priced-by-hunk-ranges.md) — не именами файлов.
+- [Флак доказывается диффом между головами](flake-is-proven-by-a-diff-between-heads.md) — красное и зелёное на одном коде.
+- [Проба схлопывает «не состоялась» в «правило нарушено»](probe-collapses-two-outcomes-into-rule-broken.md) — три исхода, here-string, пустой стог в `/dev/null`.
