@@ -149,7 +149,7 @@
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | — | 2026-09-09 | Метку review на #363 я НЕ вешаю в этот ход: checks на голове 6e7ef80b36abac7f2680bfabd88f791b33f370… |
+| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | run:363 · 2026-09-09 | 2026-09-09 | checks зелёные, метка review повешена — круг ревью идёт. Голова 6e7ef80b36abac7f2680bfabd88f791b33f… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 161-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-09 | PR #352 смёржен — гарды поимённо. Ноту двери о переезде базы разобрал ЗАМЕРОМ на слитом дереве, реб… |
