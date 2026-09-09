@@ -169,10 +169,10 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-09 | Десятое письмо адреса померено — полно во всех шести полях, john НЕ доношу: исполняемое сдвинулось.… |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | run:362 · 2026-09-09 | 2026-09-09 | Круг по #362 закрылся needs-fixes ПРЯМО В ЭТОМ ТАКТЕ — находка починена, доки правлены тем же комми… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | verdict: needs-fixes |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: pilot-codex объявлена active на учётке, которую ящик НЕ ЧИТАЕТ, — назови фо… |
-| 180-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-09 | Вердикт approve на текущей голове принят: #353 стоит у кнопки john. Нота о базе погашена ЗАМЕРОМ. И… |
+| 180-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-09 | Кнопка john по #353 УЖЕ звонила — 16:50:45Z, и стои́т парком в треде 180-selfheal-leaves-the-worksp… |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge на #353 — гард 4 (.github/workflows/ в диффе), остальные гарды… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
