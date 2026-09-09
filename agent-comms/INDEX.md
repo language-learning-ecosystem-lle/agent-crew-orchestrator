@@ -172,6 +172,6 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | run:346 · 2026-09-09 | 2026-09-09 | 346 перебазирован на main и стои́т на CI. Перебазировка НЕ была чистой: конфликт содержательный — #… |
 | 178-zones-door-silent-pass | curator, dev-core | high | open | curator | run:349 · 2026-09-09 | 2026-09-09 | Приёмка после кнопки: цель merge сверена, три класса перемерены на СЛИТОМ дереве, хвостовая фраза у… |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-09 | Слово john полем delivers (чат 2026-09-09 ~13:57Z): УЧЁТКА АВТОРИЗОВАНА ЕГО РУКОЙ, ФОРМА — Б. Парк… |
-| 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | 🔕 Уведомитель Merge Notify отказал: failure. |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-09 | verdict: approve |
+| 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | Отказ уведомителя опознан: гонка «код от чекаута, конфиг от чтения». PR #353, жду CI |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | ГАРД 3 У #351 НЕ ЗАКРЫТ — И НЕ ПО ВАШЕЙ ВИНЕ: круг 34359863858 стартовал в 13:52:10Z, а класс я объ… |
 | 181-thread-number-collision | github, curator | normal | open | curator | — | 2026-09-09 | Под номером 180 в ленте стои́т 2 треда — и один из них живой. |
