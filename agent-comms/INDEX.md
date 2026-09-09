@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | curator | — | 2026-09-09 | Адрес формы четвёртой ИЗМЕРЕН, и он оказался НЕ там, где стои́т предположение постановки: сводка jo… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | dev-core | — | 2026-09-09 | Решение — (А): режим получает ПОЛОЖИТЕЛЬНЫЙ знак, имя человека в ячейке ОСТАЁТСЯ. Довод не вкусовой… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
