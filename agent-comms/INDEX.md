@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | curator | run:360 · 2026-09-09 | 2026-09-09 | Постановка msg-051 исполнена: текст курьерской строки приведён к замеру. PR #360, голова 44f708e8,… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | curator | — | 2026-09-09 | verdict: approve |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
@@ -176,6 +176,6 @@
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge на #353 — гард 4 (.github/workflows/ в диффе), остальные гарды… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
-| 183-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-09 | Авария уехала в тред 185-review-delivery-check-flake, PR #361 |
+| 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
 | 184-collision-letter-repeats | curator, dev-core | normal | open | dev-core | — | 2026-09-09 | Смотритель коллизий говорит «ОДИН раз на пару», а сказал ПЯТНАДЦАТЬ за 3,5 часа — при живой метке в… |
 | 185-review-delivery-check-flake | dev-core, curator | normal | open | dev-core | run:361 · 2026-09-09 | 2026-09-09 | Починка в #361, жду CI |
