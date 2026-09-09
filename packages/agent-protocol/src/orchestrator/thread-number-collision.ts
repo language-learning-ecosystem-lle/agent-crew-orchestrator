@@ -283,8 +283,28 @@ export const describeUndeliveredNumberCollision = (input: {
       " and ",
     )} and the letter was NOT delivered: ${input.cause}; nothing is remembered, the next tick says it again`;
 
-/** What a tick that found pairs and rang about none of them says — the silence, out loud. */
-export const describeQuietNumberCollisions = (found: readonly NumberCollision[]): string =>
-  `number-collision — ${found.length} number(s) carried by more than one thread (${found
-    .map((collision) => collision.number)
-    .join(", ")}), every half closed: nothing to ring about`;
+/**
+ * WHAT A TICK THAT FOUND PAIRS AND RANG ABOUT NONE OF THEM SAYS — the silence, out loud,
+ * AND ITS CAUSE, because there are two of them and they are not the same fact.
+ *
+ * The line used to say `every half closed: nothing to ring about` for both, and that is a
+ * lie in exactly the case a reader comes to this log for: measured on the field 2026-09-09,
+ * the tick announced both halves of `180` CLOSED while both stood `open` in the feed and a
+ * letter about them had just gone out. A journal is the only thing the circuit reports about
+ * this watchman with, so a line that names the wrong cause sends whoever reads it looking for
+ * a defect in the reader of `_meta.md` — which is where this thread's own hypothesis went.
+ *
+ * So the cause is measured rather than assumed: the pairs that PASS the criterion are named
+ * separately, and silence over them is the LOCK, not the criterion.
+ */
+export const describeQuietNumberCollisions = (input: {
+  readonly found: readonly NumberCollision[];
+  readonly ringing: readonly NumberCollision[];
+}): string => {
+  const numbers = (collisions: readonly NumberCollision[]): string =>
+    collisions.map((collision) => collision.number).join(", ");
+  const head = `number-collision — ${input.found.length} number(s) carried by more than one thread (${numbers(input.found)})`;
+  return input.ringing.length === 0
+    ? `${head}, every half closed: nothing to ring about`
+    : `${head}, of which ${input.ringing.length} still open (${numbers(input.ringing)}): already told about in '${NUMBER_COLLISION_SLUG}', nothing new to ring about`;
+};

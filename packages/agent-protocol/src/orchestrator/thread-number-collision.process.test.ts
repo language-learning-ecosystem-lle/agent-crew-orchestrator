@@ -15,16 +15,21 @@
  * fills a receiver a human reads with one letter per tick — thread
  * `133-tidy-letter-repeats-every-tick` again, ticks being a minute apart.
  *
- * So the two cases here are the two curator listed, and both run the REAL path: a real
- * contour, a real mail checkout with an origin to push into, `notify --write` as a
- * command, and the letter read back out of the feed with `thread show` — not off the disk,
- * because "a file was written" and "a reader of the thread sees it" are two different
- * statements.
+ * So the cases here run the REAL path: a real contour, a real mail checkout with an origin
+ * to push into, `notify --write` as a command, and the letter read back out of the feed
+ * with `thread show` — not off the disk, because "a file was written" and "a reader of the
+ * thread sees it" are two different statements.
  *
  *  1. TWO TICKS over the same live pair deliver EXACTLY ONE letter, and it lands in the
  *     standing address with the turn on curator;
  *  2. the mark is LIFTED by the pair ceasing to satisfy the criterion — and the same pair
- *     coming back rings a second time.
+ *     coming back rings a second time;
+ *  3. A DELIVERED DIGEST DOES NOT TAKE THE MARK WITH IT — the field defect of 2026-09-09,
+ *     and the case the first two could not see. Both of them pass on the broken code:
+ *     without `notifications.transport` the contour never reaches the branch of `runNotify`
+ *     that a sent digest takes, and that branch was the one writer of four that rebuilt
+ *     `notify.state` without the watchman's marks. Seventeen identical letters about pair
+ *     `180` in four hours are what a fixture-green lock looks like from the field.
  *
  * The live pair is built by a FIXTURE and not taken from the feed: the only pair that was
  * ever live on `origin/comms` (`170`, measured in this thread) went quiet at 12:00:06Z on
@@ -104,12 +109,24 @@ const meta = (status: "open" | "closed"): string =>
 const MESSAGE =
   "---\nfrom: curator\nworker: human\ndate: 2026-07-25T20:00:00Z\nexpects: none\nwaiting-on: —\n---\n\nThe body.\n";
 
+/**
+ * A MESSAGE THAT LEAVES A TURN STANDING — the one thing that makes the courier's DIGEST go
+ * out at all. Without it every tick of this fixture is `quiet`, and `quiet` is not the
+ * branch the field runs: the box announces waits, and it is the announcement that used to
+ * take the watchman's marks down with it.
+ */
+const WAITING_MESSAGE =
+  "---\nfrom: dev-core\nworker: claude-code\ndate: 2026-07-25T20:00:00Z\nexpects: answer\nwaiting-on: curator\n---\n\nSomebody is waiting.\n";
+
 type Contour = {
   readonly repo: string;
   readonly mail: string;
   readonly state: string;
-  /** Writes (or rewrites) a thread into the mail checkout and pushes it into the feed. */
-  readonly feed: (threads: Readonly<Record<string, "open" | "closed">>) => void;
+  /**
+   * Writes (or rewrites) a thread into the mail checkout and pushes it into the feed.
+   * `waiting` is `open` plus a turn standing on curator — see {@link WAITING_MESSAGE}.
+   */
+  readonly feed: (threads: Readonly<Record<string, "open" | "closed" | "waiting">>) => void;
 };
 
 /**
@@ -117,14 +134,32 @@ type Contour = {
  * `tidy-letter.process.test.ts` builds, because the delivery under test is the same one:
  * a child `new-message --ensure-thread … --write` that commits and pushes.
  */
-const contour = (): Contour => {
+const contour = (options: { readonly transport?: boolean } = {}): Contour => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-collision-seam-"));
   const origin = join(base, "origin.git");
   execFileSync("git", ["init", "--bare", "-q", "-b", "main", origin]);
 
   const repo = join(base, "work");
   execFileSync("git", ["clone", "-q", origin, repo]);
-  writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(CONFIG, null, 2)}\n`);
+  // A TRANSPORT THAT DELIVERS, and it is the whole point of the third case below: a digest
+  // that goes out takes a branch of `runNotify` a contour without one never reaches. The
+  // stub is the one `notify.process.test.ts` uses — a module named by absolute path.
+  const transportPath = join(repo, "stub-transport.mjs");
+  if (options.transport === true)
+    writeFileSync(
+      transportPath,
+      [
+        "export const createTransport = () => ({",
+        "  send: async () => ({ state: 'sent', detail: 'stub: sent' }),",
+        "});",
+        "",
+      ].join("\n"),
+    );
+  const config =
+    options.transport === true
+      ? { ...CONFIG, notifications: { transport: { module: transportPath, options: {} } } }
+      : CONFIG;
+  writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(config, null, 2)}\n`);
   git(repo, "add", ".");
   git(repo, "commit", "-qm", "config");
   git(repo, "push", "-q", "origin", "main");
@@ -132,12 +167,21 @@ const contour = (): Contour => {
   const mail = join(repo, "mailco");
   execFileSync("git", ["clone", "-q", origin, mail]);
   git(mail, "checkout", "-q", "--orphan", "comms");
-  const feed = (threads: Readonly<Record<string, "open" | "closed">>): void => {
+  const feed = (threads: Readonly<Record<string, "open" | "closed" | "waiting">>): void => {
     for (const [id, status] of Object.entries(threads)) {
       const dir = join(mail, "agent-comms", id);
       mkdirSync(join(dir, "messages"), { recursive: true });
-      writeFileSync(join(dir, "_meta.md"), meta(status));
-      writeFileSync(join(dir, "messages", "2026-07-25T20-00-00Z-curator.md"), MESSAGE);
+      writeFileSync(join(dir, "_meta.md"), meta(status === "waiting" ? "open" : status));
+      writeFileSync(
+        join(
+          dir,
+          "messages",
+          status === "waiting"
+            ? "2026-07-25T20-00-00Z-dev-core.md"
+            : "2026-07-25T20-00-00Z-curator.md",
+        ),
+        status === "waiting" ? WAITING_MESSAGE : MESSAGE,
+      );
     }
     git(mail, "add", "agent-comms");
     git(mail, "commit", "-qm", "mail");
@@ -317,5 +361,57 @@ describe("the watchman of thread numbers, end to end", () => {
     expect(again.code).toBe(0);
     expect(lettersIn(contest)).toBe(2);
     expect(marksIn(contest)).toEqual(["number:159:159-a-namesake,159-a-thread-that-was-first"]);
+  });
+
+  /**
+   * THE FIELD DEFECT OF 2026-09-09, and it is a test of the TICK rather than of the lock:
+   * both cases above pass on the broken code, because a contour with no transport never
+   * reaches the writer that ate the mark.
+   *
+   * WHAT WAS MEASURED. Pair `180` (`180-notifier-down` and
+   * `180-selfheal-leaves-the-workspaces-behind`, both `open`) was announced SEVENTEEN times
+   * in four hours into the standing address `181-thread-number-collision`, with identical
+   * bodies and intervals from 58 seconds to 59 minutes. The mark stood in
+   * `.orchestrator/notify.state` the whole time — it was written every ringing tick and
+   * DELETED by every tick that delivered a digest, because `runNotify` rebuilds the whole
+   * state file on each write and that one branch of four did not name `numberCollisions`.
+   * The irregular intervals are the digests: the watchman rang exactly as often as the box
+   * had something to say to a human.
+   *
+   * So the entry the test has to take is the digest, not the letter — which is why the feed
+   * carries a turn standing on curator and the contour carries a transport that answers
+   * `sent`. This is the seam the statement of work asked for: the same path the tick goes.
+   */
+  it("a DELIVERED digest does not take the mark down with it — the pair rings once", () => {
+    const contest = contour({ transport: true });
+    contest.feed({
+      "159-a-thread-that-was-first": "closed",
+      "159-a-namesake": "open",
+      // The turn that makes the digest go out at all — without it every tick is `quiet`
+      // and the branch under test is unreachable.
+      "013-somebody-waits": "waiting",
+    });
+
+    const first = tick(contest);
+    expect(first.code).toBe(0);
+    expect(lettersIn(contest)).toBe(1);
+    // THE DIGEST WENT OUT — asserted, not assumed: a fixture where it silently did not
+    // would pass this test on the broken code exactly as the two above do.
+    expect(first.out).toContain("stub: sent");
+    expect(marksIn(contest)).toEqual(["number:159:159-a-namesake,159-a-thread-that-was-first"]);
+
+    // THE SECOND TICK — the same live pair, the state file the first one left behind. On
+    // the broken code the mark is gone by now and this is the second letter about `180`.
+    const second = tick(contest);
+    expect(second.code).toBe(0);
+    expect(lettersIn(contest)).toBe(1);
+    expect(marksIn(contest)).toEqual(["number:159:159-a-namesake,159-a-thread-that-was-first"]);
+    // AND THE JOURNAL DOES NOT CALL THE LIVE PAIR CLOSED. This is the second half of the
+    // field defect: the only line the circuit writes about this watchman said `every half
+    // closed` about a pair both halves of which stood open, and it is what sent the reading
+    // of this incident after the wrong reader of `_meta.md`.
+    expect(second.out).toContain("number-collision — 1 number(s)");
+    expect(second.out).toContain("1 still open (159)");
+    expect(second.out).not.toContain("every half closed");
   });
 });

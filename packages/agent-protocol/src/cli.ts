@@ -558,6 +558,7 @@ import {
   failureClassOf,
 } from "./orchestrator/thaw.js";
 import {
+  collisionRings,
   collisionSaidKey,
   describeNumberCollisionLetter,
   describeQuietNumberCollisions,
@@ -5161,12 +5162,14 @@ const watchThreadNumbers = (input: {
     input.threads.map((thread) => ({ id: thread.id, open: thread.meta.status === "open" })),
   );
   const plan = planNumberCollisionWatch({ found, said: input.said });
-  // THE SILENCE, SAID OUT LOUD. A tick that found pairs and rang about none of them is
-  // indistinguishable in a log from a tick whose search found nothing — and the whole field
-  // acceptance of this watchman is that the six known pairs are FOUND and rejected by the
-  // criterion, not missed by the search.
+  // THE SILENCE, SAID OUT LOUD — AND WHICH OF THE TWO SILENCES IT IS. A tick that found
+  // pairs and rang about none of them is indistinguishable in a log from a tick whose search
+  // found nothing, and the whole field acceptance of this watchman is that the known pairs
+  // are FOUND and rejected by the criterion, not missed by the search. But "rejected by the
+  // criterion" and "held by the lock" are two different facts about the feed, and the line
+  // named only the first — so it is handed both and says which (thread 159).
   if (found.length > 0 && plan.letters.length === 0)
-    input.say(describeQuietNumberCollisions(found));
+    input.say(describeQuietNumberCollisions({ found, ringing: found.filter(collisionRings) }));
   const kept = new Set(plan.said);
   for (const letter of plan.letters) {
     let dir: string | undefined;
@@ -6198,6 +6201,16 @@ const runNotify = async (input: {
       // The watchman's own marks, carried through unchanged (see `watchMergeability`).
       mergeable: mergeableSaid,
       freezeLetters: freezeLettersSaid,
+      // THE NUMBER WATCHMAN'S MARKS, AND THE ONE PLACE THEY WERE MISSING (thread 159,
+      // measured on the field 2026-09-09): every writer of this file rebuilds the whole
+      // state, so a class the branch forgets to name is a class this branch DELETES. This
+      // is the branch a delivered digest takes, and without this line the lock of the number
+      // watchman lived exactly as long as the next Telegram message — pair `180` was
+      // announced SEVENTEEN times in four hours, alternating tick by tick: a tick rang and
+      // wrote the mark, the next tick delivered the digest and wiped it, the one after rang
+      // again. The three sibling writers carried it; this one did not, and no fixture could
+      // tell, because a contour without a transport never reaches this line at all.
+      numberCollisions: collisionsSaid,
       mergeableOutage: renderGhOutage(mergeableOutage).trim(),
       mergeableRang: plan.mergeability?.since,
     }),
