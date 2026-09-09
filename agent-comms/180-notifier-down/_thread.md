@@ -1149,3 +1149,17 @@ Measured by the watchman on the head `ec757902eb42adfc7db2c193e10f248523a22f8b`:
 Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
 
 This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
+
+## msg-020 · from: github · 2026-09-09 · expects: none
+
+🔕 **Уведомитель `Claude PR Review` отказал: `failure`.**
+
+событие `pull_request` · ветка `dev-core/177-run-builds-pair-path` · голова `95e1c59f461089f33c32f86c503c5a2b6be8e286` · попытка 1 · прогон [`34402435394`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34402435394)
+
+- `review` — **failure**
+
+Что именно не доехало — в логе прогона: у отказавшей доставки адресат остался без события, и восстанавливать его надо руками.
+
+🔇 С прошлого письма (`2026-09-09T15:18:09Z`) других отказов этого уведомителя не было — заглушать было нечего.
+
+ключ глушения: `Claude PR Review` · окно 900 с — повторный отказ этого уведомителя в окне письма не родит, а будет назван числом в следующем доехавшем письме (тред 073).
