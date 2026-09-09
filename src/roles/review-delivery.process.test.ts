@@ -39,7 +39,15 @@ describe("review-delivery.sh", () => {
       // The script's own report is the diagnosis — printing the exception alone would say
       // "exit code 1", i.e. the refusal you cannot act on.
       failed = error;
-      output = String((error as { stdout?: string }).stdout ?? "");
+      // STDERR ТОЖЕ ЧИТАЕТСЯ, и это половина той же починки (тред 185). Сверки скрипта
+      // отвечают в stdout, а НЕ СОСТОЯВШАЯСЯ проба объясняется в stderr — и он до сих пор
+      // никуда не доезжал. Прогон 34377052327 покраснел одной сверкой на коде, побайтово
+      // равном коду зелёного прогона 34378904884, и сказать о нём больше нечего именно
+      // потому, что вторая половина вывода была выброшена здесь.
+      const stderr = String((error as { stderr?: string }).stderr ?? "").trim();
+      output = `${String((error as { stdout?: string }).stdout ?? "")}${
+        stderr === "" ? "" : `\n--- stderr скрипта ---\n${stderr}`
+      }`;
     }
     expect(`${output}${failed === undefined ? "" : "\n(скрипт вернул ненулевой код)"}`).toContain(
       "доставка вердикта: все проверки прошли",
