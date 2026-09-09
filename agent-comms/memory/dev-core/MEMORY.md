@@ -134,3 +134,4 @@
 - [Перебазировка без force-push](rebase-without-a-force-push.md) — у ОТКРЫТОГО PR: влить `main` в ветку, ff-push, номер цел.
 - [Тихий такт роняет строки курьера](quiet-tick-drops-the-courier-lines.md) — «нет строки сторожа» ≠ «сторож молчал».
 - [У `notify.state` нет частичной записи](notify-state-has-no-partial-write.md) — четыре ветки, класс без имени в ветке ею удаляется; тест — веткой доставленного дайджеста.
+- [Класс «полевой дефект» требует фразы АВТОРА о границе нормы](field-defect-class-needs-the-authors-own-boundary-sentence.md) — гард 4 её не заменяет; слать не дожидаясь запроса.
