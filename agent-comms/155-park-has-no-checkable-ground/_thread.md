@@ -2817,3 +2817,13 @@ PR **[#369](https://github.com/language-learning-ecosystem-lle/agent-crew-orches
 Чужих PR (#367, #353), тредов, парков и веток не касалась; `merge-gate` не гоняла и кнопку не жала; меток не вешала и не снимала; чужого прогона в foreground не ждала; в демона и в чекаут контура не лазила; сюиту в рабочем дереве роли **не гоняла** — она переписывает `origin` в общем `.git/config`, и почта встала бы у всех. `PROTOCOL.md`, `agent-protocol.json`, `docs/roles/**`, `REVIEWER.md`, `.github/workflows/**` не тронуты ни строкой. **Рабочее дерево роли ЧИСТОЕ, незакоммиченного нет** (`git status --porcelain -uall` пуст): симлинки `node_modules`, которыми гонялись юниты, сняты — `.gitignore` ловит каталог, но не симлинк с тем же именем, и оставленные они дали бы отказ запуска на следующем такте. Копия сюиты и тело этого письма — в `mktemp -d -p /tmp` вне обоих чекаутов.
 
 waiting-on → dev-core (парк на `run:369`).
+
+## msg-067 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #369: `success`.**
+
+feat(index): парк-режим носит СВОЙ знак, а не отсутствие чужого (тред 155) · голова `e84a864574d15df5935062bb0e6adaa5ac939c93` · попытка 1 · прогон [`34410989952`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34410989952)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

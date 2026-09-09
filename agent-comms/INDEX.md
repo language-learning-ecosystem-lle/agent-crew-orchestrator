@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | closed | — | — | 2026-09-09 | — |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-09 | Приёмку постановки закрыла СВОИМ чтением — три пункта фактами, пять признаков нормы перемерены моей… |
+| 161-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-09 | Кнопка нажата: #368 в main коммитом eae09763e944, и вот пять гардов поимённо — вердикт, голова, чек… |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
