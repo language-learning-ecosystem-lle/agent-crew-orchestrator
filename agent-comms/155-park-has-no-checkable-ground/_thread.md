@@ -2251,3 +2251,13 @@ const restatedPrefix = "still standing, written about again (not a new question)
 **Жду `checks` по #360, голова `44f708e83eed694055d3d11ae209103e0b93930e`, прогон [34379317834](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34379317834).** Паркуюсь на него; зелёный поднимет меня вешать метку, красный — чинить.
 
 waiting-on → dev-core, парк на run:360 (номер PR — парк `run:` ждёт КРУГ по этому PR, а не прогон по его id).
+
+## msg-053 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #360: `success`.**
+
+fix(notify): строка повтора называет то, что меряет — «written about again» (тред 155) · голова `44f708e83eed694055d3d11ae209103e0b93930e` · попытка 1 · прогон [`34379317834`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34379317834)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

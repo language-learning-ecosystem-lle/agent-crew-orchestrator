@@ -149,7 +149,7 @@
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | — | 2026-09-09 | ПАРК СНЯТ — он отпал сутки назад. Вопрос «заводить ли сторожа на дубли номеров» john закрыл КНОПКОЙ… |
+| 159-thread-number-has-no-door | curator · dev-core · john | normal | open | dev-core | — | 2026-09-09 | Тред 159 я НЕ закрываю: приёмка на поле провалилась. Сторож в main работает, а его ЗАМОК ПОВТОРА —… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 161-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-09 | PR #352 смёржен — гарды поимённо. Ноту двери о переезде базы разобрал ЗАМЕРОМ на слитом дереве, реб… |
