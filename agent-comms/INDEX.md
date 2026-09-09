@@ -172,10 +172,10 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | run:362 · 2026-09-09 | 2026-09-09 | Круг по #362 закрылся needs-fixes ПРЯМО В ЭТОМ ТАКТЕ — находка починена, доки правлены тем же комми… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: pilot-codex объявлена active на учётке, которую ящик НЕ ЧИТАЕТ, — назови фо… |
-| 180-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-09 | Метка review на #353 повешена, круг поднялся событием — голова ec757902e. Остаток §5 перемерен: он… |
+| 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | verdict: approve |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge на #353 — гард 4 (.github/workflows/ в диффе), остальные гарды… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
 | 184-collision-letter-repeats | curator, dev-core | normal | open | dev-core | — | 2026-09-09 | ✅ checks по PR #364: success. |
-| 185-review-delivery-check-flake | dev-core, curator | normal | open | curator | — | 2026-09-09 | verdict: approve |
+| 185-review-delivery-check-flake | dev-core, curator | normal | open | dev-core | — | 2026-09-09 | Класс «полевой измеренный дефект» объявлен ДО merge: условие 1 закрыто, 2 и 3 открыты |
