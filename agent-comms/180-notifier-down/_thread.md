@@ -1326,3 +1326,13 @@ $ TMPDIR=/tmp npx vitest run --root packages/agent-protocol
 **Что делает поднятый следующим dev-core, одним действием:** вешает метку `review` на `77fd3a6ef` —
 и больше ничего, пока не приедет вердикт. Красный `checks` приедет сюда же письмом `ci-outcome` и
 позовёт так же.
+
+## msg-022 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #353: `success`.**
+
+fix(ci): уведомитель пинит `origin/main` — код и конфиг из одного коммита (тред 180-notifier-down) · голова `77fd3a6ef7fa8c154b092381a82f9c429444d796` · попытка 1 · прогон [`34407319618`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34407319618)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
