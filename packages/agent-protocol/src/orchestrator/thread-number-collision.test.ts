@@ -41,7 +41,26 @@ describe("the criterion of the watchman", () => {
     expect(found[0]?.halves).toHaveLength(2);
     expect(collisionRings(found[0] as never)).toBe(false);
     expect(planNumberCollisionWatch({ found, said: [] }).letters).toEqual([]);
-    expect(describeQuietNumberCollisions(found)).toContain("048");
+    expect(describeQuietNumberCollisions({ found, ringing: [] })).toContain("048");
+    expect(describeQuietNumberCollisions({ found, ringing: [] })).toContain("every half closed");
+  });
+
+  it("does NOT call a locked pair closed — the journal names WHICH silence it is", () => {
+    // THE FIELD LINE OF 2026-09-09, verbatim in shape: `180` stands twice, both halves
+    // `open`, the letter about it is already in the standing address and the tick is
+    // therefore silent. The old line said `every half closed` about exactly this — the one
+    // sentence the circuit writes about this watchman, and it named the wrong cause.
+    const found = findNumberCollisions([
+      half("048-box-privileges-today", false),
+      half("048-session-privileges", false),
+      half("180-notifier-down", true),
+      half("180-selfheal-leaves-the-workspaces-behind", true),
+    ]);
+    const ringing = found.filter(collisionRings);
+    const line = describeQuietNumberCollisions({ found, ringing });
+    expect(line).not.toContain("every half closed");
+    expect(line).toContain("1 still open (180)");
+    expect(line).toContain(NUMBER_COLLISION_SLUG);
   });
 
   it("says nothing about a number carried by one thread only", () => {
