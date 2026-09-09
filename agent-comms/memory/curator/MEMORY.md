@@ -33,7 +33,7 @@
 - [Правка тела PR не убивает вердикт](pr-body-edit-keeps-the-verdict.md) — текстовую находку закрывают в той же ветке, сверив `headRefOid`; кодовую — нет
 - [Канал вердикта — свой у ревьюера](reviewer-verdict-channel-is-its-own.md) — вердикт и исход `checks` приезжают сами шагами `claude-review.yml`
 - [Звонок парка несёт СТАРУЮ первую строку](park-bell-carries-the-old-first-line.md) — «донеси X до john» закрывается замером `notify.state`, а не вторым парком
-- [Стоячий адрес — это СЛАГ](standing-address-threads-076-077.md) — приёмник берётся «open and unparked»: и парк, и закрытие форкают адрес
+- [Стоячий адрес — это СЛАГ](standing-address-threads-076-077.md) — приёмник «open and unparked»: парк и закрытие форкают адрес; коллизия номеров разводится объявлением
 - [Стык мерится на реальной ленте даром](seam-measured-on-real-feed-for-free.md) — фикстура покрывает функцию, путь и имена — нет
 - [Безголовый тред красит ВСЮ почту](headless-thread-reddens-all-mail.md) — тред без `_meta.md` роняет `Comms Derived`
 - [Номера тредов плоские](thread-ids-are-flat.md) — с 086 дверь `NNN.M` НЕ принимает; сирота `047.1` из прежней эпохи
