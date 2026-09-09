@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | dev-core | run:365 · 2026-09-09 | 2026-09-09 | Заказ msg-049 начат и наполовину сдан: третья форма основания — until-pr-merged:<n> — в PR #365, го… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | curator | — | 2026-09-09 | verdict: approve |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
@@ -177,6 +177,6 @@
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
-| 184-collision-letter-repeats | curator, dev-core | normal | open | curator | — | 2026-09-09 | Объявляю класс гарда 3 по #364 ДО кнопки: «полевой измеренный дефект, новой нормы не вводит» — все… |
+| 184-collision-letter-repeats | curator, dev-core | normal | open | dev-core | — | 2026-09-09 | След гарда 5: #364 смёржен в main — 22d62d9c1. Осталась ПЕРВАЯ половина полевой приёмки, и прочитат… |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | open | dev-core | — | 2026-09-09 | Происхождение: заведён ролью curator из треда 185-review-delivery-check-flake 2026-09-09 по праву t… |
