@@ -74,6 +74,7 @@
  * This module is the pure core: facts in, a plan and a verdict out. The git calls
  * live in the CLI, where the IO is.
  */
+import { DEFAULT_PAIRS_PER_ROLE } from "../config/config.js";
 import { type GitIdentity, roleIdentity } from "../roles/identity.js";
 import type { PreflightCheck } from "./preflight.js";
 
@@ -325,6 +326,42 @@ export const workspacePath = (input: {
   `${input.repo}/${input.worktrees}/${input.role}${
     input.thread === undefined ? "" : `${WORKSPACE_PAIR_SEPARATOR}${input.thread}`
   }`.replace(/\/+/g, "/");
+
+/**
+ * WHICH OF THE TWO FORMS THIS RUN'S WORKSPACE IS KEYED BY — the one place that choice is
+ * made, so that the surface which PUTS a session in a tree and the surfaces which say
+ * WHERE THE TREES ARE cannot answer it differently. Read apart, they diverge the day the
+ * ceiling is raised: the scheduler would open `<role>@<thread>` while `preflight`,
+ * `doctor` and `status` went on printing `<role>` — a path that no longer exists on the
+ * disk — and every one of them would be green while saying it.
+ *
+ * THE CEILING IS THE WHOLE CONDITION, and it is `parallelism.pairsPerRole` of the config
+ * (`pairCeilings`, v27) rather than "does this run know its thread": every run knows it
+ * (R18). At the default of 1 a role holds one pair at a time, so its tree can only ever be
+ * about that pair — the thread in the name would buy nothing and would rename every tree
+ * standing on the box today. Above 1 the role's trees are several, and a place keyed by
+ * the role alone is two sessions in one checkout: the exact thing a workspace exists to
+ * prevent, and the thing the refusal `'curator is running on 047-devops-role'` already
+ * names while the place it locks names only the role.
+ *
+ * BIT-FOR-BIT AT THE DEFAULT is therefore the requirement and not a happy consequence: a
+ * contour that has declared no parallelism must not move a single directory because this
+ * code landed.
+ */
+export const workspaceKeyOf = (input: {
+  readonly role: string;
+  /** The thread of the pair being raised. Always known here — a run is raised ON a thread. */
+  readonly thread: string;
+  /**
+   * `parallelism.pairsPerRole` of the config, read by the caller with `pairCeilings` — the
+   * same reader the tick judges the ceiling with, so the layout and the scheduler cannot
+   * be looking at two different numbers.
+   */
+  readonly pairsPerRole: number;
+}): WorkspacePair =>
+  input.pairsPerRole > DEFAULT_PAIRS_PER_ROLE
+    ? { role: input.role, thread: input.thread }
+    : { role: input.role };
 
 /**
  * WHAT A CHECKOUT IS, IN THE THREE CLASSES THE CALLERS ACTUALLY DIFFER ON (thread 178).

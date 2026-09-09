@@ -28,6 +28,7 @@ import {
   readServiceBranchName,
   serviceBranchAge,
   serviceBranchName,
+  workspaceKeyOf,
   workspacePairOf,
   workspacePath,
   workspaceRoleOf,
@@ -77,6 +78,42 @@ describe("where a role works", () => {
         thread: undefined,
       }),
     ).toBe(workspacePath({ repo: "/repo", worktrees: ".worktrees", role: "dev-core" }));
+  });
+});
+
+describe("which form of the layout a run's workspace is keyed by (thread 177)", () => {
+  const THREAD = "177-workspace-per-pair";
+  const at = (pairsPerRole: number) =>
+    workspacePath({
+      repo: "/repo",
+      worktrees: ".worktrees",
+      ...workspaceKeyOf({ role: ROLE, thread: THREAD, pairsPerRole }),
+    });
+
+  it("at the default ceiling the key is the ROLE ALONE — the tree the box stands on today", () => {
+    // The bit-for-bit half, and the one that has to be a test rather than a comment: a
+    // contour that declared no parallelism must not have a directory move under it
+    // because this code landed.
+    expect(at(1)).toBe(WORKSPACE);
+  });
+
+  it("above the default ceiling the key is the PAIR — the role's two trees are two places", () => {
+    expect(at(2)).toBe(`/repo/.worktrees/${ROLE}@${THREAD}`);
+  });
+
+  it("the thread is not what decides it — the same known thread gives both forms", () => {
+    // Every run is raised ON a thread (R18), so "does this run have one" would be a
+    // condition that is always true. The ceiling is the whole condition, and this pins
+    // that the one input which differs between the two answers is the number.
+    expect(at(1)).not.toBe(at(2));
+  });
+
+  it("what this builds is what the inverse reads back — the pair, not an unowned tree", () => {
+    // The guard half of thread 178: a tree whose name carries a thread must answer
+    // `role`, or `zones check --role-from-workspace` turns itself off, green, in it.
+    expect(
+      workspacePairOf({ checkout: at(2), repo: "/repo", worktrees: ".worktrees", roles: ROLES }),
+    ).toEqual({ role: ROLE, thread: THREAD });
   });
 });
 
