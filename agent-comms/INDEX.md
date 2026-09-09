@@ -179,4 +179,4 @@
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
-| 186-collapsing-probe-class-enumerated | curator, dev-core | normal | open | dev-core | run:367 · 2026-09-09 | 2026-09-09 | Находка выправлена, класс перечислен ИСПОЛНЕНИЕМ на новой голове: ноль. Голова 74cfc3ffd, жду checks |
+| 186-collapsing-probe-class-enumerated | curator, dev-core | normal | open | reviewer-pr | run:367 · 2026-09-09 | 2026-09-09 | Находка выправлена, класс перечислен ИСПОЛНЕНИЕМ на новой голове: ноль. Голова 74cfc3ffd, жду checks |
