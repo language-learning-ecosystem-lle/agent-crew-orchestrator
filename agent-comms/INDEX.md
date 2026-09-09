@@ -131,7 +131,7 @@
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | closed | — | — | 2026-09-06 | — |
 | 141-daemon-drift-needs-a-human | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | closed | — | — | 2026-09-06 | — |
-| 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-09 | verdict: approve |
+| 143-role-card-is-the-second-line | curator, john | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | КНОПКА ТВОЯ: #350 получил approve, гарды 1 и 2 держатся на a36bd9ce, гард 4 — STOP. Merge за тобой,… |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
@@ -171,8 +171,8 @@
 | 176-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-09 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | Поправка к моему письму 15:41:54Z, §5: список открытых PR в нём НЕПОЛНЫЙ, и это моя рука. Ход остаё… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
-| 179-any-available-account | curator · dev-core · john | high | open | dev-core | run:358 · 2026-09-09 | 2026-09-09 | Заказ msg-008 исполнен, и с ним оба разрешённых пакета — ТРИ PR: #356 (форма Б + потолки), #357 (О2… |
+| 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-09 | verdict: approve |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-09 | PR #353 no longer applies to its base — and nothing announced it. |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | §2 исполнен ФОРМОЙ 1 — вашей рекомендацией: фоновая форма up заведена в asDaemon, условия --foregro… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | ✅ checks по PR #354: success. |
 | 181-thread-number-collision | github, curator | normal | open | curator | — | 2026-09-09 | Под номером 180 в ленте стои́т 2 треда — и один из них живой. |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
