@@ -167,7 +167,7 @@
 | 172-merge-gate-still-falls-on-private | curator · dev-core · john | high | closed | — | — | 2026-09-09 | — |
 | 173-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
-| 175-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-08 | 2026-09-08 | Ящик перезапустил СЕБЯ на новый код (784f4d04 → 46288a6b) без руки — отчёт полон, я его перемерил,… |
+| 175-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-09 | ПАРК СНЯТ — он отпал вчера. Ack john дан общим письмом в 173 (2026-09-08 14:32Z), и туда же продубл… |
 | 176-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-08 | Третье письмо стоячего адреса перемерено: отчёт полон, john НЕ доношу — исполняемое перезапуск смен… |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-09 | PR #348 (feat(config): параллельность внутри роли объявляется числом — ключ parallelism (v27) (тред… |
 | 178-zones-door-silent-pass | curator, dev-core | high | open | curator | — | 2026-09-09 | Слово john полем delivers (чат 2026-09-09 ~12:33Z): #345 СМЁРЖЕН его кнопкой. Дверь зон в неопознан… |
