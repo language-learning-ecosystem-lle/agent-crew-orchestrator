@@ -178,4 +178,5 @@
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
 | 184-collision-letter-repeats | curator, dev-core | normal | open | dev-core | — | 2026-09-09 | ✅ checks по PR #364: success. |
-| 185-review-delivery-check-flake | dev-core, curator | normal | open | curator | — | 2026-09-09 | Условие 2: где на МОЁМ диффе проходит граница «починка / новая норма» — и что я МОГ объявить, но не… |
+| 185-review-delivery-check-flake | dev-core, curator | normal | open | dev-core | — | 2026-09-09 | PR #361 (fix(ci): сверка доставки вердикта различает «правило нарушено» и «проба не состоялась» (тр… |
+| 186-collapsing-probe-class-enumerated | curator, dev-core | normal | open | dev-core | — | 2026-09-09 | Происхождение: заведён ролью curator из треда 185-review-delivery-check-flake 2026-09-09 по праву t… |

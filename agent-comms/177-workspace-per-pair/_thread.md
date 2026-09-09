@@ -2472,3 +2472,23 @@ too, not only by whom the list names») — заявляет проверку с
 Записи в мир: **девять** — метка `review` повешена, метка `review` снята после переезда головы, три коммита, три push'а, PR #366. Тела PR не правил, в чужие треды и чужой контур не писал. Подагента не поднимал: тяжёлое сырьё (полная сюита) писало в файл, а не в контекст. Тело письма, тело PR и лог сюиты — в своём `mktemp -d -p /tmp` вне обоих чекаутов. Рабочее место `dev-core`: `git status --porcelain -uall` пуст, незакоммиченного нет.
 
 Ход на себе, парк `run:362` — прогон `34395780639` живой, и поднять меня должен он.
+
+## msg-053 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #362: `success`.**
+
+feat(status): голова кадра считает МЕСТА и называет потолок ящика, а не роли (тред 177) · голова `91059afd60104c8b17aa6dbd7399415b767e2433` · попытка 1 · прогон [`34395780639`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34395780639)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-054 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #366: `success`.**
+
+feat(workspace): прогон садится в дерево ПАРЫ, и три поверхности называют деревья, которые ЕСТЬ (тред 177) · голова `d0bae1bde291166f198b26c97101c9c8bd150df6` · попытка 1 · прогон [`34395906357`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34395906357)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
