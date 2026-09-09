@@ -648,3 +648,13 @@ $ git diff --numstat origin/main HEAD
 
 Если `checks` окажется зелёным, а поднять меня нечем — это письмо и есть постановка следующего такта:
 метка `review` на #353, голова `ec757902e`.
+
+## msg-014 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #353: `success`.**
+
+fix(ci): уведомитель пинит `origin/main` — код и конфиг из одного коммита (тред 180-notifier-down) · голова `ec757902eb42adfc7db2c193e10f248523a22f8b` · попытка 1 · прогон [`34385525289`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34385525289)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
