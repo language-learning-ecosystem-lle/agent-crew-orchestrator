@@ -129,3 +129,4 @@
 - [Сюита в worktree ломает контур](suite-in-a-worktree-breaks-the-contour.md) — общий `.git/config`: `origin` переписан, почта встала у всех
 - [Журнал курьера не оракул доставки](courier-journal-is-not-a-delivery-oracle.md) — «звонить не о чем» при 15 письмах: мерь приёмником
 - [Письмо самоперезапуска называет ОТПЕЧАТОК](self-restart-letter-names-the-footprint.md) — «смену исполняемого» с #352 мерит читатель одной командой
+- [Приоритет ставится письмом В СВОЙ тред](priority-is-set-in-the-threads-own-feed.md) — ярус 1 очереди; чужой тред отсюда не поднять, можно понизить СЕБЯ
