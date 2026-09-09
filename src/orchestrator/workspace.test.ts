@@ -28,6 +28,7 @@ import {
   readServiceBranchName,
   serviceBranchAge,
   serviceBranchName,
+  workspacePairOf,
   workspacePath,
   workspaceRoleOf,
   workspaceVerdict,
@@ -51,6 +52,31 @@ describe("where a role works", () => {
     expect(workspacePath({ repo: "/repo/", worktrees: ".worktrees/", role: "dev-core" })).toBe(
       "/repo/.worktrees/dev-core",
     );
+  });
+
+  it("a thread makes the place the PAIR's, and the name says which pair", () => {
+    expect(
+      workspacePath({
+        repo: "/repo",
+        worktrees: ".worktrees",
+        role: "dev-core",
+        thread: "177-workspace-per-pair",
+      }),
+    ).toBe("/repo/.worktrees/dev-core@177-workspace-per-pair");
+  });
+
+  it("no thread — the path is byte-identical to the one the box stands on today", () => {
+    // The test of NON-inclusion: the ceiling of concurrent pairs defaults to 1, at which
+    // the scheduler passes no thread, and nothing in the field may move because of code
+    // that landed. `undefined` is not "a missing argument", it is the other form.
+    expect(
+      workspacePath({
+        repo: "/repo",
+        worktrees: ".worktrees",
+        role: "dev-core",
+        thread: undefined,
+      }),
+    ).toBe(workspacePath({ repo: "/repo", worktrees: ".worktrees", role: "dev-core" }));
   });
 });
 
@@ -87,6 +113,111 @@ describe("whose workspace a checkout is", () => {
   it("no declared workspaces — no role can be inferred from any path", () => {
     expect(
       workspaceRoleOf({ checkout: "/repo/.worktrees/dev-core", repo: "/repo", roles: ROLES }),
+    ).toBeUndefined();
+  });
+
+  it("a PAIR's tree answers the role — this is the guard that must not go quiet", () => {
+    // Measured 2026-09-08 (thread 177, msg-002) on the base `1bac6218`: the same `zones
+    // check --role-from-workspace` on the same forbidden path refused in
+    // `.worktrees/dev-core` and PASSED (exit 0) in a tree whose name carried a thread.
+    // The name of the pair must resolve to the role, or moving the key of the workspace
+    // switches off the only door that enforces this role's one forbidden zone.
+    expect(ask("/repo/.worktrees/dev-core@177-workspace-per-pair")).toBe("dev-core");
+    expect(ask("/repo/.worktrees/dev-core@177-workspace-per-pair/")).toBe("dev-core");
+  });
+});
+
+/**
+ * THE ROUND TRIP — "built it → read it back" over every form the box actually holds, the
+ * acceptance of thread 177 §3.1: the layout is only worth having if the path a human
+ * reads names exactly one pair, and that is a property of the PARSE, not of the printer.
+ *
+ * Both halves of a pair name carry hyphens (`dev-core` + `177-workspace-per-pair`), so
+ * the parse cannot be "cut at the dash" and is not: it goes from the declared role list.
+ */
+describe("which pair a workspace belongs to — built, then read back", () => {
+  const ROLES = ["dev-core", "curator", "devops"];
+  const ask = (checkout: string, worktrees: string | undefined = ".worktrees") =>
+    workspacePairOf({
+      checkout,
+      repo: "/repo",
+      ...(worktrees === undefined ? {} : { worktrees }),
+      roles: ROLES,
+    });
+
+  const roundTrip = (pair: { readonly role: string; readonly thread?: string }) =>
+    ask(workspacePath({ repo: "/repo", worktrees: ".worktrees", ...pair }));
+
+  it("the role-only form reads back as the role with no thread", () => {
+    expect(roundTrip({ role: "dev-core" })).toEqual({ role: "dev-core" });
+  });
+
+  it("the pair form reads back as both halves, hyphens and all", () => {
+    expect(roundTrip({ role: "dev-core", thread: "177-workspace-per-pair" })).toEqual({
+      role: "dev-core",
+      thread: "177-workspace-per-pair",
+    });
+  });
+
+  it("a thread number of the form NNN.M survives the round trip too", () => {
+    // The mail's writing doors refuse this id BEFORE the write (`thread/id.ts`, thread
+    // 086: the walker takes `^\d{3}-` only), so no pair can carry one today. It is
+    // covered anyway because the reason it is refused lives in the mail, not here — the
+    // day the norm moves, the layout must not be the thing that breaks.
+    expect(roundTrip({ role: "dev-core", thread: "047.1-devops-enablement" })).toEqual({
+      role: "dev-core",
+      thread: "047.1-devops-enablement",
+    });
+  });
+
+  it("a role id that is the PREFIX of another role id is not the one that wins", () => {
+    // `dev` is a prefix of `dev-core`, and both are declared. Whichever of the two the
+    // parse reaches first, the tree it names is the tree the config wrote — the longest
+    // declared role that fits is taken, so `dev-core@…` is never read as `dev`.
+    const withBoth = (checkout: string) =>
+      workspacePairOf({
+        checkout,
+        repo: "/repo",
+        worktrees: ".worktrees",
+        roles: ["dev", ...ROLES],
+      });
+    expect(withBoth("/repo/.worktrees/dev-core@177-workspace-per-pair")).toEqual({
+      role: "dev-core",
+      thread: "177-workspace-per-pair",
+    });
+    expect(withBoth("/repo/.worktrees/dev@177-workspace-per-pair")).toEqual({
+      role: "dev",
+      thread: "177-workspace-per-pair",
+    });
+    expect(withBoth("/repo/.worktrees/devops@047-devops-role")).toEqual({
+      role: "devops",
+      thread: "047-devops-role",
+    });
+  });
+
+  it("a name that is no role's is nobody's workspace, with or without a thread", () => {
+    expect(ask("/repo/.worktrees/comms")).toBeUndefined();
+    expect(ask("/repo/.worktrees/comms@177-workspace-per-pair")).toBeUndefined();
+  });
+
+  it("a role's name with an EMPTY thread after it is not a pair", () => {
+    expect(ask("/repo/.worktrees/dev-core@")).toBeUndefined();
+  });
+
+  it("a pair name at the wrong depth is not a workspace", () => {
+    expect(ask("/repo/.worktrees/x/dev-core@177-workspace-per-pair")).toBeUndefined();
+    expect(ask("/tmp/dev-core@177-workspace-per-pair")).toBeUndefined();
+  });
+
+  it("no declared workspaces — no pair can be inferred from any path", () => {
+    // Asked without the key at all rather than through `ask`: a default parameter takes
+    // an explicit `undefined` too, and the test would then be measuring `.worktrees`.
+    expect(
+      workspacePairOf({
+        checkout: "/repo/.worktrees/dev-core@177-workspace-per-pair",
+        repo: "/repo",
+        roles: ROLES,
+      }),
     ).toBeUndefined();
   });
 });
@@ -130,6 +261,34 @@ describe("what class a checkout falls in", () => {
     expect(ask("/repo/.worktrees/dev-core/sub")).toEqual({ kind: "unowned" });
     // ...and a name that is a role of NO config.
     expect(ask("/repo/.worktrees/reviewer-pr")).toEqual({ kind: "unowned" });
+  });
+
+  it("(в) a workspace keyed by a PAIR is the same class as one keyed by a role", () => {
+    // The seam of this rebase: the three classes (thread 178) and the pair key (thread
+    // 177) meet here for the first time, and only one of the two forms was ever written
+    // into the classification. If a pair's tree fell to `unowned`, `zones check` would
+    // REFUSE (exit 2, "no role to enforce") in every tree the scheduler hands out once
+    // the ceiling of concurrent pairs is above one — the door meant to guard the zones
+    // would stop the circuit instead. Hence: one parse, `workspacePairOf`, for both forms.
+    expect(ask("/repo/.worktrees/dev-core@177-workspace-per-pair")).toEqual({
+      kind: "role",
+      role: "dev-core",
+    });
+    expect(ask("/repo/.worktrees/curator@178-zones-door/")).toEqual({
+      kind: "role",
+      role: "curator",
+    });
+  });
+
+  it("(б) what merely LOOKS like a pair is un-owned, not a role's tree", () => {
+    // An empty thread names no conversation...
+    expect(ask("/repo/.worktrees/dev-core@")).toEqual({ kind: "unowned" });
+    // ...a pair of a role of NO config is nobody's...
+    expect(ask("/repo/.worktrees/reviewer-pr@177-workspace-per-pair")).toEqual({ kind: "unowned" });
+    // ...and a pair at the wrong depth is not the path `workspacePath` builds.
+    expect(ask("/repo/.worktrees/nested/dev-core@177-workspace-per-pair")).toEqual({
+      kind: "unowned",
+    });
   });
 
   it("(а) outside the declared workspaces — the layout claims nothing about it", () => {

@@ -277,15 +277,54 @@ export const describeFinishDirt = (input: {
   `the run ended its own turn ('${input.reason}') and LEFT ITS WORKSPACE DIRTY — ${input.path} has uncommitted changes. A session that passes the turn on commits or discards its work; the next package of this role will refuse to start until somebody reads that tree`;
 
 /**
- * The path of a role's workspace. One role — one directory named after the role, and
- * the name is not configurable: the whole value of the layout is that "whose tree is
- * this" is answerable by reading the path.
+ * WHAT SEPARATES THE ROLE FROM THE THREAD IN A PAIR'S WORKSPACE NAME (thread 177).
+ *
+ * It is `@` and not `-` for a reason that is not taste: a role id and a thread id BOTH
+ * contain hyphens (`dev-core` + `177-workspace-per-pair`), so "cut at the dash" is not a
+ * parse of anything. `@` occurs in neither — role ids are kebab-case and a thread id is
+ * `^\d{3}-<slug>` (`thread/id.ts`, the one place that form is written down) — so the name
+ * a human reads names exactly one pair and nothing else can be mistaken for it.
+ *
+ * The parse below does NOT lean on that, though: it goes from the declared role list, so
+ * a role id that one day carried a separator would still be read correctly rather than
+ * silently split in the wrong place.
+ */
+export const WORKSPACE_PAIR_SEPARATOR = "@";
+
+/**
+ * The path of a workspace. One role — one directory named after the role, and the name is
+ * not configurable: the whole value of the layout is that "whose tree is this" is
+ * answerable by reading the path.
+ *
+ * WITH A THREAD, THE UNIT IS THE PAIR (thread 177, john's decision of 2026-09-02 in 074:
+ * "the workspace is keyed role × thread, not thread"). One role running two threads at
+ * once is the point; two sessions in ONE tree is exactly what a workspace exists to
+ * prevent, and the refusal that says so — `'curator is running on 047-devops-role'` —
+ * already names the pair while the place it locks names only the role. This argument is
+ * that gap closed: `<worktrees>/<role>@<thread>`.
+ *
+ * OMITTING THE THREAD IS NOT A DEFAULT, IT IS THE OTHER FORM, and it is byte-identical to
+ * what this function has always built. That is what lets the ceiling of concurrent pairs
+ * default to 1 and change nothing in the field: at a ceiling of one the scheduler passes
+ * no thread, the path is the old path, and the trees standing on the box today
+ * (`.worktrees/curator`, `.worktrees/dev-core`) go on being addressed as they are.
  */
 export const workspacePath = (input: {
   readonly repo: string;
   readonly worktrees: string;
   readonly role: string;
-}): string => `${input.repo}/${input.worktrees}/${input.role}`.replace(/\/+/g, "/");
+  /**
+   * The thread this workspace is for — omitted when the place is keyed by role alone.
+   * `| undefined` is deliberate under `exactOptionalPropertyTypes`: the caller that will
+   * pass this is the scheduler, which HAS a thread and decides whether the ceiling makes
+   * it part of the key, and forcing it to build two different objects to say so would be
+   * the type asking for a lie.
+   */
+  readonly thread?: string | undefined;
+}): string =>
+  `${input.repo}/${input.worktrees}/${input.role}${
+    input.thread === undefined ? "" : `${WORKSPACE_PAIR_SEPARATOR}${input.thread}`
+  }`.replace(/\/+/g, "/");
 
 /**
  * WHAT A CHECKOUT IS, IN THE THREE CLASSES THE CALLERS ACTUALLY DIFFER ON (thread 178).
@@ -298,7 +337,8 @@ export const workspacePath = (input: {
  * forbidden to write (measured 2026-09-08, thread 177: the same forbidden path refused in
  * `.worktrees/dev-core` and passed in `.worktrees/dev-core-177-probe`).
  *
- *  - `role` — the path is exactly the one `workspacePath` builds for a role OF THE CONFIG;
+ *  - `role` — the path is exactly the one `workspacePath` builds for a role OF THE CONFIG,
+ *    keyed by the role alone or by its pair (`<role>@<thread>`, thread 177);
  *  - `unowned` — the path lies under `<repo>/<worktrees>/` and is not any role's workspace
  *    (a name that is no role's, or a role's name at the wrong depth). Whose tree it is is
  *    NOT KNOWN — and that is a different sentence from "it is nobody's";
@@ -311,6 +351,14 @@ export const workspacePath = (input: {
  * refusal there would name a reason that is not true), `zones check` refuses it (zones are
  * enforced BY ROLE, and it has no role to enforce). What must never diverge is the
  * CLASSIFICATION, which is why it is one function and not two copies of four lines.
+ *
+ * A PAIR'S TREE ANSWERS `role`, AND THE GUARDS WANT EXACTLY THAT (thread 177). The
+ * measured defect this closes: the same command on the same FORBIDDEN path refused in
+ * `.worktrees/dev-core` (exit 1) and passed in a tree whose name carried a thread (exit
+ * 0, "the guard does not apply") — moving the key of the place without teaching the
+ * inverse would disarm the one door that enforces a role's zones, and disarm it green.
+ * That is why the classification asks `workspacePairOf` and never parses a path itself:
+ * the two forms of the layout are read in ONE place or they are read apart.
  */
 export type WorkspaceCheckout =
   | { readonly kind: "role"; readonly role: string }
@@ -331,24 +379,23 @@ export type WorkspaceCheckoutQuestion = {
 
 /**
  * The classification itself. As narrow as the layout it reads: the last path segment must
- * name a role OF THE CONFIG and the whole path must be the one `workspacePath` builds for
- * that role; everything else is told apart only by whether it lies under the declared
- * workspaces directory.
+ * name a role OF THE CONFIG — alone, or with the thread of its pair after it — and the
+ * whole path must be the one `workspacePath` builds for that pair; everything else is told
+ * apart only by whether it lies under the declared workspaces directory.
+ *
+ * The parse of the name is NOT here: it is `workspacePairOf`, one function below, and this
+ * one asks it. Both forms of a workspace name are therefore read by the same code as the
+ * one that builds them, and a tree keyed by a pair answers `role` — not `unowned`.
  */
 export const classifyWorkspaceCheckout = (input: WorkspaceCheckoutQuestion): WorkspaceCheckout => {
   // No workspaces declared — the layout claims nothing about any path, so no tree can be
   // inside it. `outside`, not `unowned`: there is nothing to be un-owned within.
   if (input.worktrees === undefined) return { kind: "outside" };
-  const here = input.checkout.replace(/\/+$/, "");
-  const candidate = here.slice(here.lastIndexOf("/") + 1);
-  if (
-    input.roles.includes(candidate) &&
-    workspacePath({ repo: input.repo, worktrees: input.worktrees, role: candidate }) === here
-  ) {
-    return { kind: "role", role: candidate };
-  }
+  const pair = workspacePairOf(input);
+  if (pair !== undefined) return { kind: "role", role: pair.role };
   // The trailing slash is what makes this a containment test and not a prefix test:
   // without it `<repo>/.worktrees-old/x` would count as living inside `<repo>/.worktrees`.
+  const here = input.checkout.replace(/\/+$/, "");
   const workspaces = `${input.repo}/${input.worktrees}/`.replace(/\/+/g, "/");
   return here.startsWith(workspaces) && here.length > workspaces.length
     ? { kind: "unowned" }
@@ -370,6 +417,47 @@ export const classifyWorkspaceCheckout = (input: WorkspaceCheckoutQuestion): Wor
 export const workspaceRoleOf = (input: WorkspaceCheckoutQuestion): string | undefined => {
   const seen = classifyWorkspaceCheckout(input);
   return seen.kind === "role" ? seen.role : undefined;
+};
+
+/** Whose workspace a checkout is, and — when the place is keyed by a pair — on what. */
+export type WorkspacePair = {
+  readonly role: string;
+  /** The thread of the pair; `undefined` for a workspace keyed by role alone. */
+  readonly thread?: string | undefined;
+};
+
+/**
+ * WHICH PAIR A CHECKOUT IS THE WORKSPACE OF — the full inverse of `workspacePath`, and
+ * the one `classifyWorkspaceCheckout` (and through it `workspaceRoleOf`) is expressed
+ * through, so that the two forms of the layout can never be read apart by two different
+ * pieces of code (thread 177).
+ *
+ * IT PARSES FROM THE ROLE LIST, NOT FROM THE SEPARATOR. Splitting the directory name at
+ * `@` would work today and would be a trap the day a role id carries one; asking the
+ * declared roles is the same question the layout itself was built from, and it is what
+ * makes the answer provable rather than probable. The longest matching role wins, so a
+ * config holding both `dev` and `dev@core` is read the way it is written.
+ *
+ * WHAT IS STILL REFUSED. `<role>@` with nothing after it is not a pair — an empty thread
+ * names no conversation, and a tree called that would be a role's workspace under a name
+ * that lies about being one. And the rebuilt path must equal the checkout exactly, which
+ * is what keeps a role's name at the wrong depth (`.worktrees/x/dev-core`) out.
+ */
+export const workspacePairOf = (input: WorkspaceCheckoutQuestion): WorkspacePair | undefined => {
+  const { worktrees } = input;
+  if (worktrees === undefined) return undefined;
+  const here = input.checkout.replace(/\/+$/, "");
+  const name = here.slice(here.lastIndexOf("/") + 1);
+  const pair = [...input.roles]
+    .sort((a, b) => b.length - a.length)
+    .flatMap((role): readonly WorkspacePair[] => {
+      if (name === role) return [{ role }];
+      const prefix = `${role}${WORKSPACE_PAIR_SEPARATOR}`;
+      const thread = name.startsWith(prefix) ? name.slice(prefix.length) : "";
+      return thread === "" ? [] : [{ role, thread }];
+    })[0];
+  if (pair === undefined) return undefined;
+  return workspacePath({ repo: input.repo, worktrees, ...pair }) === here ? pair : undefined;
 };
 
 /**
