@@ -269,13 +269,27 @@ const drainSentence = (event: SelfRestartEvent): string =>
  * invisible to a reader unless the letters that DO go say what they measured — otherwise
  * the receiver silently changes meaning and nobody can tell a narrowed feed from a broken
  * one. Two cases reach here; `untouched` is not one of them, because it never posts.
+ *
+ * THE LINE SAYS WHAT WAS MEASURED AND NOT MORE (the consumer circuit's finding, delivered by
+ * curator 2026-09-09 into thread 161). The criterion is the FOOTPRINT — paths whose edit
+ * COULD move the program that comes up — and it is conservative on purpose: a lockfile move
+ * may change what `node_modules` holds, and telling cheaply whether it actually did is beyond
+ * this measure. The old wording ("что сменилось в исполняемом") reported that conservative
+ * measure as an accomplished fact, and the field case is exactly the gap: one workspace link
+ * in the devDeps of a neighbour package moved the lockfile, `node_modules/agent-protocol`
+ * stood at the same `0.2.13` on both sides, and the letter said the box had begun executing
+ * something else. True by its criterion, false by its sentence — the same "текст против
+ * факта" this circuit takes off its roles, and so off its instruments.
+ *
+ * THE CRITERION IS NOT TOUCHED: narrowing it to "did the installed copy really change" would
+ * buy precision with silences, and a silence is the one failure this module may not have.
  */
 const executableLine = (change: ExecutableChange): string =>
   change.kind === "untouched"
-    ? "- **что сменилось в исполняемом:** ничего — и такое письмо не пишется вовсе (см. журнал: WITHHELD)"
+    ? "- **сдвинулся ли отпечаток установки:** нет — и такое письмо не пишется вовсе (см. журнал: WITHHELD)"
     : change.kind === "unmeasured"
-      ? `- **что сменилось в исполняемом:** НЕ ИЗМЕРЕНО — ${change.why}. Письмо ушло именно поэтому: неудавшийся замер не есть «ничего не изменилось»`
-      : `- **что сменилось в исполняемом:** ${change.paths.length} путь(ей) — ${describeExecutablePaths(change.paths)}`;
+      ? `- **сдвинулся ли отпечаток установки:** НЕ ИЗМЕРЕН — ${change.why}. Письмо ушло именно поэтому: неудавшийся замер не есть «ничего не сдвинулось»`
+      : `- **сдвинулся ли отпечаток установки:** да, ${change.paths.length} путь(ей) — ${describeExecutablePaths(change.paths)}. Это пути, правка которых МОГЛА сменить программу, которая поднимется; что установленная копия ДЕЙСТВИТЕЛЬНО другая, здесь не измерено — критерий консервативен намеренно`;
 
 /**
  * THE LETTER. The four facts john named are four lines of it, and each one is said even

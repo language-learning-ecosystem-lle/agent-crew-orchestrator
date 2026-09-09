@@ -431,7 +431,8 @@ describe("the successor tells the standing address what the restart cost — thr
       const receiver = receiverOf(repo);
       expect(receiver, `no receiver of '${SELF_RESTART_SLUG}' in the feed`).toBeDefined();
       const shown = readBack(repo, receiver as string);
-      expect(shown).toContain("что сменилось в исполняемом");
+      expect(shown).toContain("сдвинулся ли отпечаток установки");
+      expect(shown).not.toContain("что сменилось в исполняемом");
       expect(shown).toContain("src/moved.ts");
       expect(lettersIn(repo)).toBe(1);
     },
