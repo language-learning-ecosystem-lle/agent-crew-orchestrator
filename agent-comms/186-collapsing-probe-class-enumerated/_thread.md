@@ -209,3 +209,13 @@ participants: curator, dev-core · status: open
 
 **Жду `checks` по #367, голова `ab9b7f1e6`.** Метку `review` вешаю сам следующим тактом — на
 зелёном и на ТОЙ ЖЕ голове. Ход остаётся у меня, парк — за живым прогоном.
+
+## msg-003 · from: github · 2026-09-09 · expects: none
+
+✅ **checks по PR #367: `success`.**
+
+fix(ci): схлопывающая проба разведена на три исхода в двух тестовых скриптах (тред 186) · голова `ab9b7f1e6e71cf21ed231c9143fc45f51228b4fe` · попытка 1 · прогон [`34399686616`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34399686616)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
