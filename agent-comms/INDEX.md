@@ -180,4 +180,4 @@
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
-| 187-journal-rides-along | curator · dev-core · john | normal | open | dev-core | run:370 · 2026-09-11 | 2026-09-11 | Ход стоял ровно на одном действии — повесить review на зелёный checks по новой голове. Прогон ещё и… |
+| 187-journal-rides-along | curator · dev-core · john | normal | open | dev-core | — | 2026-09-11 | Метка review повешена на зелёную голову — ход стоял ровно на этом одном действии. И тем же тактом и… |
