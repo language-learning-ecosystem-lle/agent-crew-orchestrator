@@ -1609,6 +1609,27 @@ describe("guard 1 — a diff wholly inside the journals is not asked for a round
     expect(outcome?.detail).toContain("OUTSIDE");
   });
 
+  it("NAMES the flag even when NOTHING is inside the journals — `mixed` at zero intersection", () => {
+    // The case the reviewer of this PR measured (2026-09-11, criteria 9/11): `--journals` was
+    // declared, no changed path lies in them, and the refusal used to come out BARE — the same
+    // sentence `not-declared` produces. That is the door going silent on the one question its
+    // words exist to answer: was the flag read at all. The two refusals must differ in TEXT.
+    const declared = gateWith(unreviewed(["PROTOCOL.md", "README.md"]), ["docs/journal"]);
+    const outcome = declared.guards.find((entry) => entry.guard === 1);
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("OUTSIDE");
+    expect(outcome?.detail).toContain("PROTOCOL.md");
+    expect(outcome?.detail).toContain("README.md");
+    // 2 of the 2 — the count says "nothing of yours is a journal" without a special sentence.
+    expect(outcome?.detail).toContain("2 of the 2");
+    const silent = evaluateMergeGate({
+      pr: unreviewed(["PROTOCOL.md", "README.md"]),
+      powerDocs: ["PROTOCOL.md"],
+    }).guards.find((entry) => entry.guard === 1);
+    expect(silent?.state).toBe("fail");
+    expect(outcome?.detail).not.toBe(silent?.detail);
+  });
+
   it("is not reached at all when nobody declared the journals — the door stands as it was", () => {
     expect(
       evaluateMergeGate({

@@ -1411,7 +1411,16 @@ export const evaluateMergeGate = (input: {
       : // NAMED, NOT SILENT: a diff that is MOSTLY journal is the case where an author expects
         // the exception and gets the ordinary refusal. The paths that took it away are said
         // beside the refusal, because "what do I fix" is the whole point of guard 1's words.
-        journal.state === "mixed" && journal.inside.length > 0 && reviewVerdict.state !== "pass"
+        //
+        // AND IT IS SAID ON EVERY `mixed`, INCLUDING THE ONE WITH NO JOURNAL PATH AT ALL
+        // (verdict of the reviewer on this very PR, 2026-09-11, criteria 9/11). The reading
+        // used to be detailed only when `inside.length > 0`, on the guess that an author
+        // whose diff touches no journal never meant the exception. The guess cost the door
+        // its own rule: three documents state the naming as a property of `mixed` without
+        // that condition, and with `--journals` declared and nothing inside them the refusal
+        // came out BARE — indistinguishable from `not-declared`, so the one question the
+        // author has ("was my flag even read?") had no answer in the words of the refusal.
+        journal.state === "mixed" && reviewVerdict.state !== "pass"
         ? {
             ...reviewVerdict,
             detail: `${reviewVerdict.detail}. The journal exception does not apply: ${journal.outside.length} of the ${journal.inside.length + journal.outside.length} changed path(s) lie OUTSIDE the journals (${journal.outside.join(", ")}), and it holds only for a diff that is wholly a journal`,
