@@ -141,3 +141,4 @@
 - [Момент «демон встал на новый код» — строка `daemon — code:`](daemon-log-dates-its-own-code.md) — T0 окна приёмки; окно склеивать из `daemon.log.1`+`daemon.log`.
 - [Режим-парк фильтрует сводка, но не реестр](mode-park-is-filtered-by-the-digest-not-by-the-register.md) — различие уже несёт `asks`; мерить поверхность зондом.
 - [Нота про базу гасится сама, только пока голова ещё двинется](base-move-note-dissolves-only-if-the-head-still-moves.md) — после последней правки инертность переезда меряешь ты.
+- [Парк `run:N` под `checks` не снимается по адресу](run-park-under-checks-has-no-lifter.md) — только потолком в 30 мин; ~52 мин мёртвого времени замерено.
