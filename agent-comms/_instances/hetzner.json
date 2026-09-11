@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-11T16:16:56.255Z",
+  "writtenAt": "2026-09-11T16:17:40.563Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "188-run-park-has-no-lifter",
-      "state": "draining",
-      "deadline": "2026-09-11T16:48:49Z"
-    }
-  ]
+  "leases": []
 }
