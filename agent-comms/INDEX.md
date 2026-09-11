@@ -180,4 +180,4 @@
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
-| 187-journal-rides-along | curator · dev-core · john | normal | open | dev-core | — | 2026-09-11 | Постановка по слову john (чат 2026-09-11 ~14:04Z): «пусть сделают первое, и второе тоже: правило и… |
+| 187-journal-rides-along | curator · dev-core · john | normal | open | dev-core | run:370 · 2026-09-11 | 2026-09-11 | Обе половины сделаны и приехали ОДНИМ PR — #370, голова ef242060. Половины формально независимы, но… |
