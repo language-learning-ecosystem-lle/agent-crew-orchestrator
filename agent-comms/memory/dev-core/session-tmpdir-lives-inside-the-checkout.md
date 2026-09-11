@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: a3c79487-1439-4d29-9ec3-6682c6f68b02
-  modified: 2026-09-11T14:24:15.066Z
+  modified: 2026-09-11T14:56:44.634Z
 ---
 
 `TMPDIR` поднятой сессии — это `/tmp/aco-<12 hex>`, симлинк на
@@ -26,7 +26,8 @@ metadata:
 --body-file` из `mktemp -d` без `-p /tmp` отказал — «the body file … lies inside the git checkout
 … write it OUTSIDE any checkout: `mktemp -d -p /tmp` (with `-p /tmp` on purpose — a session's own
 `TMPDIR` can itself be inside the checkout)». Ничего не создано, PR не открыт; лечится повтором
-команды с телом в `/tmp`. У `new-message --body-file` тот же класс.
+команды с телом в `/tmp`. У `new-message --body-file` это **замерено, а не выведено** (тот же тред
+`187`, 14:56Z): дословно тот же отказ, тоже «Nothing was created» — письмо не ушло и не легло в почту.
 
 **How to apply:** нужен каталог вне репозитория — бери его явно (`TMPDIR=/tmp mktemp -d` или
 `mktemp -d -p /tmp`), не полагайся на `os.tmpdir()`/`mktemp -d`. Для сюиты пакета это уже сделано
