@@ -4,6 +4,7 @@ import {
   describePowerDocuments,
   describeVersionBumpFollowUp,
   evaluateMergeGate,
+  journalOnlyDiff,
   latestVerdictPerAuthor,
   type PullRequestFacts,
   powerDocumentList,
@@ -1571,5 +1572,97 @@ describe("the follow-up a schema bump leaves on the boxes", () => {
         configPath: "agent-protocol.json",
       }).length,
     ).toBe(2);
+  });
+});
+
+/**
+ * THE JOURNAL EXCEPTION OF GUARD 1 (john's word of 2026-09-11, thread
+ * `187-journal-rides-along`). Every case here asks the same pair of questions the norm asks:
+ * is the whole diff a journal, and what stays standing when it is. The negative control —
+ * one path outside the journals and the round is due again — is not an extra: without it the
+ * exception is indistinguishable from "journal PRs skip review", which is not what was said.
+ */
+describe("guard 1 — a diff wholly inside the journals is not asked for a round (187)", () => {
+  /** The same pull request the fixtures use, with NO verdict on it at all. */
+  const unreviewed = (changedPaths: readonly string[]): PullRequestFacts =>
+    pr({ reviews: [], reviewRuns: undefined, changedPaths });
+
+  const gateWith = (facts: PullRequestFacts, journals: readonly string[]) =>
+    evaluateMergeGate({ pr: facts, powerDocs: ["PROTOCOL.md"], journals });
+
+  it("passes guard 1 with no approve when every path is a journal", () => {
+    const verdict = gateWith(unreviewed(["docs/journal/dev-core.md"]), ["docs/journal"]);
+    const outcome = verdict.guards.find((entry) => entry.guard === 1);
+    expect(outcome?.state).toBe("pass");
+    expect(outcome?.title).toContain("not asked");
+    expect(outcome?.detail).toContain("docs/journal/dev-core.md");
+    // And the door opens: this is the whole point — no label, no round, no verdict.
+    expect(verdict.curatorMayMerge).toBe(true);
+  });
+
+  it("REFUSES the moment one path lies outside, and NAMES the path that took it away", () => {
+    const outcome = gateWith(unreviewed(["docs/journal/dev-core.md", "PROTOCOL.md"]), [
+      "docs/journal",
+    ]).guards.find((entry) => entry.guard === 1);
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("PROTOCOL.md");
+    expect(outcome?.detail).toContain("OUTSIDE");
+  });
+
+  it("is not reached at all when nobody declared the journals — the door stands as it was", () => {
+    expect(
+      evaluateMergeGate({
+        pr: unreviewed(["docs/journal/dev-core.md"]),
+        powerDocs: ["PROTOCOL.md"],
+      }).guards.find((entry) => entry.guard === 1)?.state,
+    ).toBe("fail");
+  });
+
+  it("does not open on an EMPTY diff — 'all paths are journals' is vacuous with no paths", () => {
+    expect(gateWith(unreviewed([]), ["docs/journal"]).curatorMayMerge).toBe(false);
+  });
+
+  it("lifts guard 1 ONLY — red checks on a journal diff still STOP", () => {
+    const verdict = gateWith(
+      pr({
+        reviews: [],
+        reviewRuns: undefined,
+        changedPaths: ["docs/journal/curator.md"],
+        checks: [{ name: "checks", status: "COMPLETED", conclusion: "FAILURE", state: undefined }],
+      }),
+      ["docs/journal"],
+    );
+    expect(verdict.guards.find((entry) => entry.guard === 1)?.state).toBe("pass");
+    expect(verdict.guards.find((entry) => entry.guard === 2)?.state).toBe("fail");
+    expect(verdict.curatorMayMerge).toBe(false);
+  });
+
+  it("lifts guard 1 ONLY — a document of power among the journals still goes to john", () => {
+    // The declaration is the caller's, and a caller who named a power document as a journal
+    // does not thereby buy himself out of guard 4: the two lists are judged separately.
+    const verdict = gateWith(unreviewed(["docs/journal/curator.md", "PROTOCOL.md"]), [
+      "docs/journal",
+      "PROTOCOL.md",
+    ]);
+    expect(verdict.guards.find((entry) => entry.guard === 1)?.state).toBe("pass");
+    expect(verdict.guards.find((entry) => entry.guard === 4)?.state).toBe("fail");
+    expect(verdict.curatorMayMerge).toBe(false);
+  });
+
+  it("matches a journal entry as a path PREFIX, at a separator only", () => {
+    expect(
+      journalOnlyDiff({ changedPaths: ["docs/journal-old.md"], journals: ["docs/journal"] }).state,
+    ).toBe("mixed");
+    expect(
+      journalOnlyDiff({ changedPaths: ["./docs/journal/dev-core.md"], journals: ["docs/journal/"] })
+        .state,
+    ).toBe("journal-only");
+  });
+
+  it("keeps 'nobody declared them' apart from 'this diff is not one'", () => {
+    expect(journalOnlyDiff({ changedPaths: ["a.md"], journals: [] }).state).toBe("not-declared");
+    expect(journalOnlyDiff({ changedPaths: [], journals: ["docs/journal"] }).state).toBe(
+      "empty-diff",
+    );
   });
 });

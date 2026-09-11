@@ -546,6 +546,65 @@ export const touchedPowerDocuments = (input: {
     .filter((path) => input.powerDocs.some((prefix) => underPrefix(path, prefix)));
 
 /**
+ * HOW A DIFF THAT LIES WHOLLY IN THE JOURNALS IS READ (john's word of 2026-09-11, thread
+ * `187-journal-rides-along`). Four answers, and the three that are not `journal-only` are
+ * kept apart on purpose: a door that collapsed "nobody declared the journals" into "this
+ * diff is not a journal diff" would be silently unable to say which of the two it means.
+ */
+export type JournalReading =
+  /** Nobody named the journals (`--journals`): the exception was not asked for at all. */
+  | { readonly state: "not-declared" }
+  /** The journals are declared and this diff changes nothing — not a journal diff. */
+  | { readonly state: "empty-diff" }
+  /** Some paths are in the journals, some are not — the exception does not apply, by name. */
+  | {
+      readonly state: "mixed";
+      readonly inside: readonly string[];
+      readonly outside: readonly string[];
+    }
+  /** Every changed path lies inside a declared journal — guard 1 is not asked. */
+  | { readonly state: "journal-only"; readonly paths: readonly string[] };
+
+/**
+ * IS THIS DIFF WHOLLY A JOURNAL? — the one fact the exception of thread 187 stands on.
+ *
+ * WHY THE DOOR ANSWERS IT AND NOT THE AUTHOR. The norm says "a diff all of whose paths lie
+ * in the journals of roles needs no round of review", and the load-bearing half of that
+ * sentence is WHO CHECKS IT: an author who judged it by eye would be one stray line in a
+ * neighbouring file away from merging a norm with no verdict on it. So the condition is a
+ * reading of `changedPaths`, taken at the door, and a single path outside the journals is
+ * enough to put the round back.
+ *
+ * AND THE JOURNALS ARE NAMED BY THE CALLER, never guessed here — `docs/journal/<role>.md` is
+ * the layout of THIS project, and the line this package does not cross is the same one the
+ * documents of power stand behind (see the header). With no `--journals` there is no
+ * exception at all, which is the fail-closed direction: an operator who forgets the flag
+ * gets the door exactly as it was.
+ *
+ * ENTRIES MATCH AS PATH PREFIXES, the one rule this file already uses for zones and for the
+ * documents of power — `docs/journal` covers `docs/journal/curator.md` and never
+ * `docs/journal-old.md`.
+ *
+ * AN EMPTY DIFF IS NOT A JOURNAL DIFF. "Every path is inside the journals" is vacuously true
+ * of no paths at all, and a merge door must not open on a vacuous truth: a payload that
+ * reported no files is a payload that was not read, not a pull request that changes nothing.
+ */
+export const journalOnlyDiff = (input: {
+  readonly changedPaths: readonly string[];
+  readonly journals: readonly string[];
+}): JournalReading => {
+  const journals = input.journals.map(normalise).filter((entry) => entry.length > 0);
+  if (journals.length === 0) return { state: "not-declared" };
+  const paths = input.changedPaths.map(normalise).filter((path) => path.length > 0);
+  if (paths.length === 0) return { state: "empty-diff" };
+  const inside = paths.filter((path) => journals.some((prefix) => underPrefix(path, prefix)));
+  const outside = paths.filter((path) => !journals.some((prefix) => underPrefix(path, prefix)));
+  return outside.length === 0
+    ? { state: "journal-only", paths: inside }
+    : { state: "mixed", inside, outside };
+};
+
+/**
  * The `thread: NNN-slug` line of a PR description (rule 14). The line the reviewer
  * checks the scope against, and the only machine-readable half of guard 3.
  */
@@ -1301,10 +1360,63 @@ export const evaluateMergeGate = (input: {
    * the door passes one, and D2 refuses on an unsettled reading by name.
    */
   readonly mergeability?: MergeabilityReading | undefined;
+  /**
+   * The journals of the roles, as PATH PREFIXES — the project knowledge the exception of
+   * thread 187 needs (`--journals`). Absent means no exception: guard 1 stands as it did.
+   */
+  readonly journals?: readonly string[] | undefined;
 }): MergeGateVerdict => {
   const { pr } = input;
   const head = pr.headSha;
-  const { verdict, checks } = verdictAndChecks(pr);
+  const { verdict: reviewVerdict, checks } = verdictAndChecks(pr);
+
+  /*
+   * GUARD 1 IS NOT ASKED OF A DIFF THAT IS WHOLLY A JOURNAL (john's word of 2026-09-11,
+   * thread `187-journal-rides-along`). A record in `docs/journal/<role>.md` says what HAPPENED
+   * and never what a role MAY do — the criterion of thread 143 — so a round of review on it
+   * buys nothing and costs a raise of the reviewer, a verdict, a letter, a green run, a label
+   * and a merge, for a paragraph of chronicle. The price was paid in the served project on
+   * 2026-09-11: two such pull requests appended to the end of ONE journal file and the second
+   * merge made the first conflict.
+   *
+   * AND "JUST DO NOT LABEL IT" DOES NOT WORK, which is why the exception has to live HERE:
+   * the label is the role's to hang, but guard 1 demands an approve on the current head, so
+   * an unlabelled journal PR is a PR this door refuses forever. Either the door knows the
+   * exception or the class cannot be merged at all.
+   *
+   * WHAT THE EXCEPTION DOES NOT REACH, and it is the load-bearing half. Only guard 1 is
+   * lifted. Guard 2 still wants green checks — a journal that breaks the build is not a
+   * journal anybody wants merged. Guard 4 stands untouched and FIRST in importance here: the
+   * moment one path outside the journals rides along, the reading is `mixed`, the exception
+   * does not apply, and the round is due again — which is the answer to the only way this
+   * could be abused, a norm smuggled into a chronicle PR. Guards 3 and 5 remain the
+   * obligations they always were: the human at the button still reads the diff.
+   *
+   * WHY THE SCHEDULER IS NOT TAUGHT THIS (`guardsOneAndTwoHold`): it ranks a queue with the
+   * facts of a pull request alone and knows no project paths. A journal PR is simply not
+   * ACCELERATED there — the door still opens it. Missing an acceleration is not a refusal.
+   */
+  const journal = journalOnlyDiff({
+    changedPaths: pr.changedPaths,
+    journals: input.journals ?? [],
+  });
+  const verdict: GateOutcome =
+    journal.state === "journal-only"
+      ? {
+          guard: 1,
+          title: "approve on the current head — not asked: this diff is wholly a journal",
+          state: "pass",
+          detail: `all ${journal.paths.length} changed path(s) lie inside the journals of the roles (${journal.paths.join(", ")}): a record of what happened carries no norm, so no round of review is due (john, 2026-09-11, thread 187). Guards 2-5 are untouched — one path outside the journals and this exception is gone`,
+        }
+      : // NAMED, NOT SILENT: a diff that is MOSTLY journal is the case where an author expects
+        // the exception and gets the ordinary refusal. The paths that took it away are said
+        // beside the refusal, because "what do I fix" is the whole point of guard 1's words.
+        journal.state === "mixed" && journal.inside.length > 0 && reviewVerdict.state !== "pass"
+        ? {
+            ...reviewVerdict,
+            detail: `${reviewVerdict.detail}. The journal exception does not apply: ${journal.outside.length} of the ${journal.inside.length + journal.outside.length} changed path(s) lie OUTSIDE the journals (${journal.outside.join(", ")}), and it holds only for a diff that is wholly a journal`,
+          }
+        : reviewVerdict;
 
   const thread = threadOfDescription(pr.body);
   // THE SECOND FIELD IS AS OBLIGATORY AS THE FIRST (john, 2026-09-02, thread

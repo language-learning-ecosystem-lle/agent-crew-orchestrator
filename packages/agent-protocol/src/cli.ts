@@ -16328,6 +16328,17 @@ const mergeGate = (argv: readonly string[]): void => {
       out(`merge-gate: --working-cards matches no role's instructions: ${stray.join(", ")}`);
     }
   }
+  // THE JOURNALS OF THE ROLES (thread 187): the paths guard 1 is not asked about. Printed
+  // whenever they are declared, for the reason the documents of power are — an exception
+  // judged by a list nobody can see is an exception nobody can check. Silent when the flag
+  // is absent, because then there is no exception and nothing to say about it.
+  const journals = list("--journals");
+  if (journals.length > 0) {
+    out(
+      `merge-gate: journals of the roles, guard 1 not asked of a diff wholly inside them (${journals.length}): ${journals.join(", ")}`,
+    );
+  }
+
   // WHERE THE BASE BRANCH IS NOW, the second read — `readBaseHead`, shared with the door
   // before the label (thread 097). The reasoning lives there.
   const baseHead = readBaseHead({ repo, env: platform.env, branch: parsed.data.baseRefName });
@@ -16404,6 +16415,7 @@ const mergeGate = (argv: readonly string[]): void => {
     powerDocs,
     d1,
     mergeability,
+    journals,
   });
 
   // THE PAIR NOBODY MEASURED (thread 136, john's word of 2026-09-06). Never a guard, never

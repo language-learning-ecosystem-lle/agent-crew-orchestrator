@@ -1495,3 +1495,65 @@ describe("merge-gate — a token refused the checks node (thread 160)", () => {
     expect(result.out).not.toContain("was not read through gh");
   });
 });
+
+/**
+ * THE JOURNAL EXCEPTION THROUGH THE REAL PROCESS (thread `187-journal-rides-along`). The unit
+ * tests judge the reading; this one judges the WIRING — that `--journals` reaches guard 1 at
+ * all, and that the exit code, which is the command's whole contract with whoever calls it,
+ * says 0 on a chronicle with no round and 1 on the very same diff with one foreign path in it.
+ * A payload with NO review on it is used throughout: the exception is only worth anything on a
+ * pull request nobody reviewed, which is the class it exists for.
+ */
+describe("merge-gate — a diff wholly inside the journals needs no round (187)", () => {
+  /** The mergeable payload with its verdict removed — nothing has answered about this head. */
+  const unreviewed = (files: readonly { path: string }[]): unknown =>
+    mergeable({ reviews: [], files });
+
+  it("exits 0 with no approve at all when every changed path is a journal", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, { json: unreviewed([{ path: "docs/journal/dev-core.md" }]) }),
+      [...REVIEWED, "--journals", "docs/journal"],
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("ok   guard 1");
+    expect(result.out).toContain("not asked");
+    expect(result.out).toContain("docs/journal/dev-core.md");
+    // The list the exception was judged by is printed, exactly as the documents of power are.
+    expect(result.out).toContain("journals of the roles");
+  });
+
+  it("exits 1 on the SAME diff with one path outside — and names that path", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, {
+        json: unreviewed([
+          { path: "docs/journal/dev-core.md" },
+          { path: "docs/protocol-reference.md" },
+        ]),
+      }),
+      [...REVIEWED, "--journals", "docs/journal"],
+    );
+
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("STOP guard 1");
+    expect(result.out).toContain("docs/protocol-reference.md");
+    expect(result.out).toContain("OUTSIDE");
+  });
+
+  it("without the flag the door stands as it was — the same journal diff is refused", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, { json: unreviewed([{ path: "docs/journal/dev-core.md" }]) }),
+      REVIEWED,
+    );
+
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("STOP guard 1");
+    expect(result.out).not.toContain("journals of the roles");
+  });
+});
