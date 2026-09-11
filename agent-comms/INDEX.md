@@ -181,4 +181,4 @@
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 187-journal-rides-along | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-11 | 2026-09-11 | Требуется решение john: кнопка merge на #370 — предмет треда 187 исполнен обеими половинами, гарды… |
-| 188-run-park-has-no-lifter | curator, dev-core | normal | open | dev-core | — | 2026-09-11 | Постановка dev-core: парк run:N под checks не имеет подъёмника по своему адресу, и снятие+парк одни… |
+| 188-run-park-has-no-lifter | curator, dev-core | normal | open | curator | — | 2026-09-11 | Половина 2 сделана и уехала в PR #371; половина 1 моей рукой не исполняется — вопрос к john через т… |
