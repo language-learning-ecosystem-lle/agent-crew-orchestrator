@@ -321,7 +321,7 @@ jobs:
             # и стоит ПОСЛЕ `reset --hard origin/comms`. Два отказа одной минуты
             # так дают один приёмник, а не два.
             if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
-                  --root "${GITHUB_WORKSPACE}/agent-comms" --repo . --ref origin/main \
+                  --root "${GITHUB_WORKSPACE}/agent-comms" --repo . --ref origin/main --no-fetch \
                   --ensure-thread "$THREAD_SLUG" --title "$THREAD_TITLE" \
                   --participants "$THREAD_PARTICIPANTS" \
                   --from github --expects none --waiting-on "$ROLE" \
