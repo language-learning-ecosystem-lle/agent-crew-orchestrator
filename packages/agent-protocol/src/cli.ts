@@ -12147,6 +12147,31 @@ const settleRun = (input: {
       facts: workspacePackageFacts({ repo, path }),
     });
     if (!build.ok) {
+      // WHAT A PLAN SAYS ABOUT THE LEVELLING, AND WHICH HALF OF IT IS SILENT (thread 180,
+      // curator's statement of 2026-09-12 §4). `mayLevel` is asked here even when nothing
+      // will be written, and that is deliberate: the three borders are read off the state
+      // the launch ALREADY measured, so a refusal whose reason is john's border rather than
+      // this run's mode is true of the REAL launch too — and whoever is deciding whether to
+      // repair that tree by hand is exactly the reader of `run` without `--write`.
+      //
+      // THE ASYMMETRY IS NAMED HERE RATHER THAN LEFT TO BE REDISCOVERED. On a tree the
+      // borders COVER, this plan says nothing at all about levelling: the only text the site
+      // owns is `planWorkspaceInstall`'s `why`, and that function is not told what `--write`
+      // is, so there is no sentence in which to say "the real launch would have levelled
+      // this and carried on". Measured 2026-09-12, and both halves are held by
+      // `workspace-levelling.process.test.ts`: out of the borders the plan prints
+      // `levelling — stands aside: …`, inside them it prints the stale build's refusal and
+      // not one word more. Saying the second half would change what the box prints about a
+      // tree INSIDE john's grant, which curator put back to john (§4.4) — it is not a
+      // tidy-up to be done in passing here.
+      //
+      // AND `input.write` IS FALSE IN TWO DIFFERENT SITUATIONS, which is a fact about this
+      // line and not about the dry run: the caller hands in `write && !detach`, so the
+      // parent of a background launch reaches this refusal too. Measured the same day:
+      // `run --write --detach` over a levellable stale tree exits 2 and never forks the
+      // child, so the grant does not reach a background launch at all. That is a defect of
+      // behaviour and not of speech; it is named in thread 180 and its home is not decided
+      // here.
       const levelling = mayLevel(true);
       if (!input.write || !levelling.install) {
         if (levelling.install === false && levelling.why !== undefined)

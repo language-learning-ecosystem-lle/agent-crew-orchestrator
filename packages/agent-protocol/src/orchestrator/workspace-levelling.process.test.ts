@@ -5,7 +5,8 @@
  * decision was taken. Whether a package manager was actually started, against which tree,
  * and whether the trees john put out of bounds were left alone, exists only outside this
  * process: the evidence here is the SHIM'S OWN RECORD of how it was called, and its
- * absence in the three cases where it must not be called at all.
+ * absence in every case where it must not be called at all — the two borders, the healthy
+ * tick, and the dry run, which is the only one of them told by what the PLAN says.
  *
  * WHY A SHIM AND NOT `pnpm`. A real install would make this file a network test with a
  * minute of runtime per case, and it would prove less: what is under test is the door's
@@ -164,7 +165,11 @@ const stub = (repo: string): string => {
   return path;
 };
 
-const run = (repo: string, shim: string): { code: number; out: string } => {
+const run = (
+  repo: string,
+  shim: string,
+  argv: readonly string[] = ["--write"],
+): { code: number; out: string } => {
   const result = spawnSync(
     TSX,
     [
@@ -186,7 +191,7 @@ const run = (repo: string, shim: string): { code: number; out: string } => {
       "20",
       "--poll",
       "1",
-      "--write",
+      ...argv,
     ],
     {
       cwd: repo,
@@ -253,6 +258,60 @@ describe("the box levels the workspace it issued (thread 180, john 2026-09-12)",
 
     expect(pnpmCalls(repo)).toEqual([]);
     expect(result.out).toContain("uncommitted");
+    expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
+  });
+
+  /**
+   * THE DRY RUN'S OWN TWO HALVES (thread 180, curator's statement of 2026-09-12 §4) — the
+   * case that until now was watched by an eye only, which is the class that is later
+   * repaired blind. The two cases below are the SAME tree in the same fault, told apart by
+   * one thing: whether john's borders cover it. What the plan says differs, and that
+   * difference is the subject — so both halves are asserted by SUBSTRING, and the refusal
+   * itself (code and reason) is asserted in both, because a line about levelling must never
+   * become a refusal of its own.
+   */
+  it("a DRY run over a tree OUT of the borders → the border is said by name, and nothing is run", () => {
+    const repo = contour();
+    const tree = staleWorkspace(repo);
+    git(tree, "checkout", "-q", "-b", "dev-core/180-x");
+
+    const result = run(repo, pnpmShim(repo, true), []);
+
+    // The reason is john's border and not this run's mode, so it is true of the real launch
+    // too: whoever is deciding whether to repair that tree by hand learns that the circuit
+    // will not, and why.
+    expect(result.out).toContain(
+      "levelling — stands aside: the workspace of 'dev-core' stands on 'dev-core/180-x'",
+    );
+    // A dry run writes nowhere by definition, and the refusal is the door's own, unchanged.
+    expect(pnpmCalls(repo)).toEqual([]);
+    expect(result.code).toBe(2);
+    expect(result.out).toContain(
+      "is not usable: the workspace of 'dev-core' runs 'agent-protocol'",
+    );
+    expect(result.out).toContain("DIFFERENT BUILD");
+    expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
+  });
+
+  it("a DRY run over a tree the borders COVER → the refusal is unchanged, and about levelling it says NOTHING", () => {
+    const repo = contour();
+    staleWorkspace(repo);
+
+    const result = run(repo, pnpmShim(repo, true), []);
+
+    // THE SECOND HALF, NAMED EXPLICITLY: not one word about the levelling — neither the
+    // border (none of the three fired) nor the repair the real launch would have run. The
+    // assertion is the guard that keeps a dry run from ever REACHING the install: the same
+    // line that is missing here is the one that would be printed a screen further down,
+    // where `runWorkspaceInstall` actually starts a package manager.
+    expect(result.out).not.toContain("levelling");
+    expect(pnpmCalls(repo)).toEqual([]);
+    // And the refusal is the stale build's own, unchanged by any of the above.
+    expect(result.code).toBe(2);
+    expect(result.out).toContain(
+      "is not usable: the workspace of 'dev-core' runs 'agent-protocol'",
+    );
+    expect(result.out).toContain("DIFFERENT BUILD");
     expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
   });
 
