@@ -775,8 +775,23 @@ const standingParkOf = (thread: Thread): number | undefined => {
  * (an OLDER park of the same name, already ended — the one standing began after it), a
  * declaration of a DIFFERENT park (older still, and not this one), or the beginning of the feed.
  * A letter that ends the park and declares it again in one breath is the start of the new one.
+ *
+ * AND {@link found} IS NOT EXEMPT FROM THAT SENTENCE, which it was until 2026-09-11 (thread 188).
+ * The walk below applies the rule to every carrier it steps over — `declared = at`, then `break` on
+ * its own `park-lifted` — and the one message it never asked was the one it had been called about:
+ * the loop starts at `found - 1`, so a letter that lifts the park and declares it again in its own
+ * header was read as a carrier of the OLD one. The park came back with the old `since`, the old
+ * question and the old ground, which is to say it came back ALREADY OVER ITS CEILING: measured in
+ * the feed of 187 on 2026-09-11 — `ageSeconds: 2824` against a ceiling of 1800, in the minute the
+ * park was written. The workaround was to spend two letters where the door of 058 asks for one.
+ *
+ * IT DOES NOT WIDEN THE LIFT AND DOES NOT TOUCH #339 (thread 155, §3.2): a letter merely REPEATING
+ * `parked-on: <the same value>` still carries the standing park forward untouched, ceiling and all.
+ * Only a letter that ENDS THE PARK BY NAME with its own hand re-declares one, and naming the lift
+ * is the deliberate act variant «А» was chosen for.
  */
 const declaredAt = (thread: Thread, found: number, value: string): number => {
+  if (thread.messages[found]?.fields.parkLifted === value) return found;
   let declared = found;
   for (let at = found - 1; at >= 0; at -= 1) {
     const message = thread.messages[at];

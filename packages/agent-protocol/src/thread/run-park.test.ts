@@ -211,6 +211,29 @@ describe("the age ceiling of a run: park (thread 062, layer 2)", () => {
     );
   });
 
+  // THE CEILING IS MEASURED FROM THE PARK THAT STANDS, and until 2026-09-11 a park re-declared
+  // in the same letter that ended the previous one inherited the previous one's `since` — so it
+  // was born stale. This is the damage of the defect of 188 in the one number that spends the
+  // box: measured in the feed of 187, `ageSeconds: 2824` against a ceiling of 1800, in the minute
+  // the park was written. The pair was raised at once into a round that had barely started.
+  it("ages a park RE-DECLARED in one letter from ITS OWN stamp, not the ended one's (188)", () => {
+    const redeclared = thread([
+      message({ parkedOn: "run:243", date: "2026-08-08T15:03:00Z", expects: "none" }),
+      message({
+        parkedOn: "run:243",
+        parkLifted: "run:243",
+        date: "2026-08-08T15:50:00Z",
+        expects: "none",
+      }),
+    ]);
+    const now = new Date("2026-08-08T15:52:00Z");
+
+    expect(staleRunParks([redeclared], { now })).toEqual([]);
+    expect(parkedThreads([redeclared], { now })).toEqual(
+      new Map([["062-park-without-a-run", "run:243"]]),
+    );
+  });
+
   // Only the machine event is aged. A human thinks for as long as they think, and a merge
   // button legitimately waits for days.
   it("ages neither a person park nor a pr: park", () => {
