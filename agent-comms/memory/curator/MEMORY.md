@@ -66,7 +66,7 @@
 - [Git-личность общая у контуров](git-identity-is-shared-across-contours.md) — `curator@agents.invalid` один в обоих домах: чужой чекаут ловится номером треда и окном
 - [Приёмка слитого дерева стоит минуты](acceptance-on-the-merged-tree-is-cheap.md) — прогон PR мерил базу СВОЕГО момента
 - [Приёмка на закрытии убивает свой канал](acceptance-on-close-kills-its-own-channel.md) — исход называют файлами и строками
-- [Круг краснеет на квитанции](round-reddens-on-the-receipt.md) — STOP гарда 1 при видимом `approve`: `502` после прошедшей записи лечится перевешиванием метки
+- [Круг краснеет на квитанции](round-reddens-on-the-receipt.md) — STOP гардов 1 и 2 при видимом `approve`: поводов два (`502`, свой мёртвый парк), лечит перевешивание метки
 - [Круг ревьюера судит за минуты](review-circle-verdict-lands-in-minutes.md) — метка → вердикт 4,5–12 мин: своей работы брать на верхнюю границу
 - [Норму от починки отличает дифф](norm-or-repair-is-read-in-the-diff.md) — переписана фраза, которой норма записана в доках, — гард 3 к john
 - [Точечное слово john не закрывает гард 3 дважды](pointwise-john-word-does-not-close-guard3-again.md) — граница лежит абзацем НИЖЕ слова
