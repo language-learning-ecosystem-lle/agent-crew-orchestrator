@@ -318,6 +318,79 @@ describe("the planner's own skip lines, through the fingerprint", () => {
     }
   });
 
+  /**
+   * THE CEILING, MEASURED RATHER THAN ASSUMED (thread 180, curator's msg of 2026-09-12 §2 and
+   * the probe that corrected it, run on `main` `95ba16984`). Two frozen pairs used to fold to
+   * ONE class when their attempt counts happened to agree and to TWO when they did not — the
+   * pair and the `thaw` command collapse by themselves (the command is a quoted string, so the
+   * role and the thread inside it go with it), and the count was the one thing left telling
+   * two candidates of ONE ceiling apart. The outcome of that is two tests below, and the
+   * second is the one the whole alarm hangs on.
+   */
+  const frozen = (role: string, thread: string, attempt: number): string =>
+    line({ role, thread, reason: "exhausted", attempt });
+
+  it("two pairs frozen by ONE ceiling fold to one reason — even on different attempt counts", () => {
+    expect(
+      stallReasons([frozen("curator", "172-merge-gate", 3), frozen("dev-core", "081-research", 7)]),
+    ).toHaveLength(1);
+  });
+
+  it("MORE frozen pairs than the cap of reasons, in a different order each tick → the run still grows", () => {
+    // The field shape of a frozen circuit: every pair is at the ceiling, and the order they
+    // arrive in is the order of the plan, which is not a constant between ticks. Before the
+    // count was quoted this made SIX classes, the cap kept a different five each time, and
+    // `ticks` reset to 1 for ever — the alarm of this thread could never ring on the very
+    // standstill it exists for.
+    const pairs: readonly [string, number][] = [
+      ["172-a", 3],
+      ["173-b", 4],
+      ["174-c", 5],
+      ["175-d", 6],
+      ["176-e", 7],
+      ["177-f", 8],
+    ];
+    const refusals = pairs.map(([thread, attempt], index) =>
+      frozen(`role-${index}`, thread, attempt),
+    );
+    expect(stallReasons(refusals)).toHaveLength(1);
+
+    const first = foldStall({
+      previous: undefined,
+      candidates: refusals.length,
+      moving: 0,
+      refusals,
+      launching: true,
+      now: at(1),
+    });
+    const second = foldStall({
+      previous: first,
+      candidates: refusals.length,
+      moving: 0,
+      refusals: [...refusals].reverse(),
+      launching: true,
+      now: at(2),
+    });
+    const third = foldStall({
+      previous: second,
+      candidates: refusals.length,
+      moving: 0,
+      refusals,
+      launching: true,
+      now: at(3),
+    });
+    expect(third).toMatchObject({ ticks: 3 });
+    expect(third !== undefined && stallAlarmDue(third)).toBe(true);
+  });
+
+  it("and the line still carries the count and the move that ends the freeze", () => {
+    // The collapse is of the FINGERPRINT, never of the letter: john's second requirement is
+    // that the alarm names the cause AND the repair, and both live in this one line.
+    const said = frozen("curator", "172-merge-gate", 7);
+    expect(said).toContain("7");
+    expect(said).toContain("orchestrator thaw --role curator --thread 172-merge-gate");
+  });
+
   it("and two GENUINELY different causes stay two: the collapse is of names, not of faults", () => {
     const reasons = stallReasons([
       line({ role: "curator", thread: "172-merge-gate", reason: "held", attempt: 0 }),

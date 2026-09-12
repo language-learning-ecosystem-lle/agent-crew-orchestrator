@@ -286,8 +286,8 @@ describe("the daemon says why it raised nobody (the defect of 2026-07-26)", () =
     const result = daemon(repo);
 
     expect(result.out).toContain("candidate 'dev-core×012-x' skipped: exhausted");
-    expect(result.out).toContain("3 failed attempts");
-    expect(result.out).toContain("ceiling 3 (default)");
+    expect(result.out).toContain("'3' failed attempts");
+    expect(result.out).toContain("ceiling '3' ('default')");
     // And "nothing was launched" is itself a line: the outcome of the tick, not a gap.
     expect(result.out).toContain("no candidate is launchable");
     expect(result.out).toContain("exiting (--once)");

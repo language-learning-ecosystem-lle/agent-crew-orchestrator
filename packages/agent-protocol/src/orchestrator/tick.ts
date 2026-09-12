@@ -756,7 +756,19 @@ export const describeSkip = (
       // a stuck circuit is actually read from — the one a person tails while wondering why
       // nothing moves — and until the thaw existed it could only send them to two more
       // surfaces. `status` says which freeze this is; this one says how to end it.
-      return `candidate ${pair} skipped: exhausted — ${skip.attempt} failed attempts since its last delivery, ceiling ${ceiling.value} (${ceiling.source}); see 'orchestrator status' and the journal, and 'orchestrator thaw --role ${skip.role} --thread ${skip.thread} --by <you> --write' lets it go`;
+      //
+      // AND THE COUNT IS QUOTED (thread 180, curator's measurement of 2026-09-12, corrected
+      // by the probe of the same day). The pair and the `thaw` command collapse already —
+      // the command is a quoted string, so the role and the thread inside it go with it —
+      // and what was left differing between two candidates of ONE ceiling was the ATTEMPT
+      // COUNT: measured on `main` `95ba16984`, two frozen pairs with the same count fold to
+      // one class and with different counts to two. Six such pairs then overflow the cap of
+      // five reasons, the retained five change with the order of the plan, and the run
+      // resets to 1 every tick — the alarm of this very thread never rings on the standstill
+      // it was written for. The quotes are the package's own mark for "this is what differs
+      // between two candidates of one fault", and they cost the reader nothing: the number
+      // is still in the line, and so is the command that repairs it.
+      return `candidate ${pair} skipped: exhausted — '${skip.attempt}' failed attempts since its last delivery, ceiling '${ceiling.value}' ('${ceiling.source}'); see 'orchestrator status' and the journal, and 'orchestrator thaw --role ${skip.role} --thread ${skip.thread} --by <you> --write' lets it go`;
     case "parked": {
       // The two parks read differently on purpose (thread 023): one is waiting for a person
       // to decide and lifts with their answer, the other is waiting for a merge and lifts on
