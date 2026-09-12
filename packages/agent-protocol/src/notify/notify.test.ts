@@ -2123,6 +2123,150 @@ describe("a box behind its own ref — the ninth class of event (thread 044)", (
   });
 });
 
+/**
+ * THE ELEVENTH CLASS — THE CIRCUIT IS STANDING AND EVERY OUTSIDE SIGN SAYS IT WORKS (thread
+ * `180-selfheal-leaves-the-workspaces-behind`, john's word of 2026-09-12, half (б)).
+ *
+ * The measured cases are three in four days, and no two of them share a cause: the box
+ * restarted itself onto new code and left the role worktrees on the old one (~30 minutes, and
+ * ~20 more on the other box the same hour); the config declared a protocol version the build
+ * did not know; the pin was behind and a role stood a WHOLE DAY. Every time the queue was
+ * full, no pair was parked, the unit was `active` — and all three were found by a human asking
+ * "is the circuit standing". The counter has known it since #354; this is the phone.
+ *
+ * WHAT IS TESTED HERE IS THE CALL, NOT THE COUNT. Whether a tick is a stall at all — the
+ * threshold, the moving circuit, the lull, the deliberate withholding — belongs to
+ * `orchestrator/stall.test.ts` and is decided before this function sees anything.
+ */
+describe("the circuit raising nobody — the eleventh class of event (thread 180-selfheal)", () => {
+  /** The first measured standstill, verbatim in shape: the door's refusal, repair and all. */
+  const WORKSPACE_REPAIR =
+    "the workspace of '…' runs 'agent-protocol' 0.2.13, the home checkout '…' runs 0.2.14 — bring it onto the running code: `pnpm --dir '…' install`";
+  const STALL = {
+    since: "2026-09-09T12:25:00Z",
+    ticks: 3,
+    threshold: 3,
+    candidates: 8,
+    reasons: WORKSPACE_REPAIR,
+  };
+
+  const planStall = (seen: NotifyState = EMPTY, stall = STALL) =>
+    planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      seen,
+      templates: TEMPLATES,
+      stall,
+    });
+
+  it("rings with the count, the threshold, the queue AND the repair the door named", () => {
+    const result = planStall();
+    expect(result.freshStall).toBe(true);
+    const line = result.lines.find((entry) => entry.kind === "stall");
+    expect(line).toBeDefined();
+    expect(line?.text).toContain("3 ticks in a row");
+    expect(line?.text).toContain("threshold 3");
+    expect(line?.text).toContain("8 candidate(s) waiting");
+    expect(line?.text).toContain("since 2026-09-09T12:25:00Z");
+    // THE REPAIR, BY SUBSTRING AND NOT BY "the text is not empty" (curator's §5): a call that
+    // names a standstill and no way out is the diagnosis-without-an-exit thread 140 paid for.
+    expect(line?.text).toContain("pnpm --dir '…' install");
+  });
+
+  it("stands ABOVE the mail: a turn read before it would mean something else", () => {
+    const result = planNotifications({
+      targets: TARGETS,
+      waiting: [{ thread: "042-x", role: "john" }],
+      seen: EMPTY,
+      templates: TEMPLATES,
+      stall: STALL,
+    });
+    const kinds = result.lines.map((entry) => entry.kind);
+    expect(kinds).toContain("turn");
+    expect(kinds.indexOf("stall")).toBeLessThan(kinds.indexOf("turn"));
+  });
+
+  it("rings ONCE per standstill: the same run is silent from the second tick on", () => {
+    const result = planStall({ ...EMPTY, stall: STALL.since });
+    expect(result.freshStall).toBe(false);
+    expect(result.lines.some((entry) => entry.kind === "stall")).toBe(false);
+    // …and the composition survives, so the state goes on saying what stands.
+    expect(result.stall?.since).toBe(STALL.since);
+  });
+
+  it("a standstill under a NEW cause rings again — the run is keyed by the cause", () => {
+    const result = planStall(
+      { ...EMPTY, stall: STALL.since },
+      {
+        ...STALL,
+        since: "2026-09-09T13:15:00Z",
+        reasons:
+          "restart required: the repository declares protocol version 27, the package supports only 26",
+      },
+    );
+    expect(result.freshStall).toBe(true);
+    expect(result.lines.find((entry) => entry.kind === "stall")?.text).toContain("version 27");
+  });
+
+  /**
+   * A TRANSITION, NOT A SUPPRESSION FOR EVER (curator's §5). The counter starts a new run
+   * whenever the cause changes, so the first cause coming back after the second is a run with
+   * a new `since` — and the reader is owed the news that the box has moved from one standstill
+   * to another rather than out of one.
+   */
+  it("the FIRST cause returning after a second one rings a third time", () => {
+    const result = planStall(
+      { ...EMPTY, stall: "2026-09-09T13:15:00Z" },
+      { ...STALL, since: "2026-09-09T13:40:00Z" },
+    );
+    expect(result.freshStall).toBe(true);
+  });
+
+  it("no standstill, no line and no key — silence is the whole of a healthy tick", () => {
+    const result = planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      seen: { ...EMPTY, stall: STALL.since },
+      templates: TEMPLATES,
+    });
+    expect(result.freshStall).toBe(false);
+    expect(result.stall).toBeUndefined();
+    expect(result.lines.some((entry) => entry.kind === "stall")).toBe(false);
+    // The key is dropped with the run, which is what makes the NEXT standstill ring.
+    expect(renderNotifyState({ ...EMPTY, stall: result.stall?.since })).not.toContain("stall\t");
+  });
+
+  it("is dropped when nobody human is configured — only a person at the box can end it", () => {
+    const result = planNotifications({
+      targets: [{ id: "curator", style: "nudge", nudge: "john" }],
+      waiting: [],
+      seen: EMPTY,
+      templates: TEMPLATES,
+      stall: STALL,
+    });
+    expect(result.freshStall).toBe(false);
+    expect(result.lines.some((entry) => entry.kind === "stall")).toBe(false);
+  });
+
+  it("is named in the operator's own line as well, by its length and its queue", () => {
+    expect(announcedOf(planStall()).join(", ")).toContain(
+      "nothing is being raised (3 ticks since 2026-09-09T12:25:00Z, 8 candidate(s) waiting)",
+    );
+  });
+
+  it("the state file carries the stamp, and `stall` is not read as `stalled`", () => {
+    const rendered = renderNotifyState({ ...EMPTY, stall: STALL.since });
+    expect(rendered).toContain(`stall\t${STALL.since}`);
+    expect(parseNotifyState(rendered).stall).toBe(STALL.since);
+    // The two classes share a prefix and nothing else: a stalled TURN must not be read as a
+    // standstill of the box, nor the other way about.
+    expect(
+      parseNotifyState("stalled\tcurator\t042-x\t2026-09-09T12:00:00Z\n").stall,
+    ).toBeUndefined();
+    expect(parseNotifyState("john\t044-x\n").stall).toBeUndefined();
+  });
+});
+
 // THE TENTH CLASS — WHAT THE TICK SAYS ABOUT ACCOUNTS (thread 036, the tail of §4). The three
 // sentences are the planner's own (`describeFailover`, `describeAccountPause`,
 // `describeRefusals`, landed in #105) and are handed over rendered; what is decided here is

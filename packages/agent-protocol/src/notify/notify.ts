@@ -148,6 +148,7 @@ export const BOX_ALARM_KINDS = [
   "code-drift",
   "account",
   "mergeability-outage",
+  "stall",
 ] as const;
 export type BoxAlarmKind = (typeof BOX_ALARM_KINDS)[number];
 
@@ -273,6 +274,24 @@ export const BOX_ALARM_TEMPLATES: Readonly<Record<BoxAlarmKind, string>> = {
   // So the slot is the whole line, handed over rendered, and this template says so out loud
   // rather than pretending the courier composed it.
   account: "{line}",
+  // THE ELEVENTH CLASS IS THE CIRCUIT ITSELF STANDING STILL (thread
+  // `180-selfheal-leaves-the-workspaces-behind`, john's word of 2026-09-12, (б)). Measured
+  // three times in four days: the box restarts itself onto new code and the role worktrees
+  // stay on the old one; the config declares a protocol version the build does not know; the
+  // pin is behind. Every time the queue was full, no pair was parked, the unit was `active`
+  // and the only trace was a line in `daemon.log` — and every time a HUMAN found it by asking
+  // "is the circuit standing". The counter beside the loop (`orchestrator/stall.ts`) has known
+  // it since #354; this is the phone it did not have.
+  //
+  // IT RINGS ON THE CLASS AND NAMES THE CAUSE. John's word is explicit that the alarm is keyed
+  // by the SHAPE — "somebody to raise and nobody raised, N ticks running" — because there were
+  // three causes already and the fourth must ring on the day it appears rather than on the day
+  // it is written down. What the reader is owed nonetheless is the cause and the repair, and
+  // both come out of the refusals VERBATIM: the doors of this package end their sentences on
+  // the command that fixes them, so the line carries the refusal whole rather than a summary
+  // of it. A diagnosis with no way out is what thread 140 already paid for.
+  stall:
+    "nothing has been raised for {ticks} ticks in a row (threshold {threshold}) since {since}, with {candidates} candidate(s) waiting: {reasons}. The queue is full and the box is up — this is a standstill, not an idle circuit, and it ends only when whatever those refusals name is repaired on the box",
 };
 
 /** The announcements the package writes INTO A THREAD; same mechanism, different reader. */
@@ -645,6 +664,34 @@ export type GhAlarm = {
 };
 
 /**
+ * THE RUN OF TICKS THAT RAISED NOBODY, as the courier is handed it (thread
+ * `180-selfheal-leaves-the-workspaces-behind`). It is the shape of {@link GhAlarm} and not
+ * that type, for the reason that one is not `AuthAlarm` either: what identifies this event is
+ * the SET OF REFUSALS the ticks stood on, and what the reader acts on is the refusal itself,
+ * not a vendor's sentence.
+ *
+ * MEASURED BY THE DAEMON AND READ OFF `stall.json` — this file carries it and never derives
+ * it. The counter has to survive the process (a fresh one every tick) and the one thing it
+ * must never do is ring for a box that is merely idle, which is decided there and not here.
+ */
+export type StallAlarm = {
+  /** When THIS run of unlifted ticks began — its identity, and what the state is keyed by. */
+  readonly since: string;
+  /** How many consecutive ticks lifted nobody. */
+  readonly ticks: number;
+  /** The threshold that was crossed, printed beside the count for the same reason `gh` prints it. */
+  readonly threshold: number;
+  /** How many candidates the last such tick had — "full queue, nothing raised" in one number. */
+  readonly candidates: number;
+  /**
+   * The refusals of that tick, normalised by the counter and joined by it: the CAUSE and, in
+   * the words of the door that refused, THE REPAIR. Handed over rendered rather than as a
+   * list, on the rule the account class states: two texts about one fact is how the two drift.
+   */
+  readonly reasons: string;
+};
+
+/**
  * ONE PAIR THE CIRCUIT HAS STOPPED RAISING (thread 013) — the sixth class of event, and
  * the one that was invisible on 2026-08-18: three pairs stood at the ceiling for five
  * hours while the courier's line said `nothing to announce`, and a HUMAN found them by
@@ -829,6 +876,13 @@ export type NotifyState = {
   readonly gh?: string | undefined;
   /** The {@link CodeDriftAlarm.since} of the drift already announced, if any. */
   readonly drift?: string | undefined;
+  /**
+   * The {@link StallAlarm.since} of the standstill already announced, if any — the stamp and
+   * nothing else, on the rule `drift` above follows: the count, the queue and the refusals are
+   * re-read from the counter's file every run, and what identifies the event is when the run
+   * began. A run that ends drops the key, so the NEXT standstill rings again.
+   */
+  readonly stall?: string | undefined;
   /**
    * The {@link freezeKey}s already announced, for every series that is STILL RUNNING
    * (thread 013). Unlike every other class here this one is not the current composition:
@@ -1111,6 +1165,8 @@ export type NotificationPlan = {
   readonly mergeability?: GhAlarm | undefined;
   /** The overdue drift in force now, if there is one — also part of the state. */
   readonly drift?: CodeDriftAlarm | undefined;
+  /** The standstill in force now, if its threshold is crossed — also part of the state. */
+  readonly stall?: StallAlarm | undefined;
   /**
    * The pairs standing at the attempt ceiling right now, ordered — the STANDING count of
    * the courier line and of the `status` frame, printed every tick whether it is news or
@@ -1130,6 +1186,15 @@ export type NotificationPlan = {
   readonly freshMergeability: boolean;
   /** True when this period of being behind has not been announced yet — one call per period. */
   readonly freshDrift: boolean;
+  /**
+   * True when THIS standstill has not been announced yet — one call per transition, which is
+   * john's first requirement verbatim. The key of the transition is the run itself, and the
+   * run is keyed by its CAUSE (`orchestrator/stall.ts`): a stall that goes on saying the same
+   * thing rings once however many ticks it lasts, a change of cause is a new event and rings
+   * again, and the return of an earlier cause after another one is a transition too — because
+   * the run it belongs to began at a new moment, and `since` is what is remembered.
+   */
+  readonly freshStall: boolean;
   /** Everything the tick said about accounts and this box can deliver — announced or not. */
   readonly accountAlarms: readonly AccountAlarm[];
   /** The ones that ring in this letter: every event, and the states not announced before. */
@@ -1279,6 +1344,10 @@ export const renderNotifyState = (state: NotifyState): string => {
     // reason are re-read from the box every time, and what identifies the event is when the
     // box first fell behind.
     ...(state.drift === undefined ? [] : [`drift\t${state.drift}`]),
+    // The standstill is one line and carries its stamp only, for the reason the drift above
+    // does: the count and the refusals move every tick, and the identity is the moment the run
+    // of unlifted ticks began.
+    ...(state.stall === undefined ? [] : [`stall\t${state.stall}`]),
     // A freeze line is the announcement itself, not the pair: `freeze <kind> <role>
     // <thread> <since>`. Sorted so that a diff of the file stays readable when several
     // pairs freeze in one storm — which is what a 529 storm does.
@@ -1336,6 +1405,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
   let auth: string | undefined;
   let gh: string | undefined;
   let drift: string | undefined;
+  let stall: string | undefined;
   let mergeableOutage: string | undefined;
   let mergeableRang: string | undefined;
   for (const line of raw.split("\n").map((entry) => entry.trim())) {
@@ -1409,6 +1479,13 @@ export const parseNotifyState = (raw: string): NotifyState => {
     }
     if (columns[0] === "drift") {
       if (columns[1] !== undefined) drift = columns[1];
+      continue;
+    }
+    // `stall` and `stalled` are two classes of this file and the match is EXACT, not a prefix:
+    // a standstill of the box and a turn nobody has moved are different events with different
+    // readers, and a row read by the wrong branch would announce one of them as the other.
+    if (columns[0] === "stall") {
+      if (columns[1] !== undefined) stall = columns[1];
       continue;
     }
     if (columns[0] === "account") {
@@ -1503,6 +1580,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
     auth,
     gh,
     drift,
+    stall,
     ...(freezes.length === 0 ? {} : { freezes }),
     ...(unaccepted.length === 0 ? {} : { unaccepted }),
     ...(reminded.length === 0 ? {} : { reminded }),
@@ -1595,6 +1673,16 @@ export const planNotifications = (input: {
    * is one merge behind for twenty minutes is a working circuit, not an event.
    */
   readonly drift?: CodeDriftAlarm | undefined;
+  /**
+   * THE CIRCUIT HAS RAISED NOBODY FOR A RUN OF TICKS PAST ITS THRESHOLD (thread
+   * `180-selfheal-leaves-the-workspaces-behind`, john's (б) of 2026-09-12). Read off the
+   * counter's own file by the caller, exactly as the drift above is read off the daemon's
+   * standoff: the threshold, the "what is not a stall" and the fingerprint are decided there,
+   * and this slot only picks whether it rings. Absent means either nothing is standing or the
+   * run is still short of the threshold — and inside the threshold it is deliberately silent,
+   * because one unlifted tick is bad luck and three in a row are a circuit that has stopped.
+   */
+  readonly stall?: StallAlarm | undefined;
   /**
    * Pairs whose attempt counter has reached the ceiling and has not been reset since
    * (thread 013) — the whole series set, INCLUDING the ones currently thawed or running,
@@ -1999,6 +2087,12 @@ export const planNotifications = (input: {
   // merged" is a fact only somebody with access to the machine can act on, and a chat
   // assistant told about it can do exactly nothing with it.
   const drift = human ? input.drift : undefined;
+  // AND THE STANDSTILL GOES WITH THEM, for the identical reason: what ends it is a repair ON
+  // THE BOX — a worktree brought onto the running code, a pin pulled, a build matched to the
+  // schema its config declares — and a chat assistant told "nothing is being raised" can do
+  // nothing whatever with the sentence. The counter keeps counting either way; what is dropped
+  // here is the phone call, not the state.
+  const stall = human ? input.stall : undefined;
   // THE EIGHTH CLASS IS THE BOX'S OWN AND IS DROPPED WITH THE OTHERS WHEN NOBODY HUMAN IS
   // CONFIGURED (thread 042): "go and look at the daemon" is an instruction only a person at
   // the machine can carry out. The composition survives the drop — the state still records
@@ -2033,6 +2127,14 @@ export const planNotifications = (input: {
   const freshMergeability =
     mergeability !== undefined && mergeability.since !== input.seen.mergeableRang;
   const freshDrift = drift !== undefined && drift.since !== input.seen.drift;
+  // ONE CALL PER TRANSITION AND NOT ONE PER TICK — john's first requirement, and the key of the
+  // transition is `since`, which the counter moves whenever the CAUSE changes. So the same fault
+  // standing for an hour rings once; a second fault arriving on top of it rings again, because
+  // that is a new run; and the first fault coming back after the second rings a third time, for
+  // the reason a park re-declared under the same person does — the run it belongs to began at a
+  // new moment, and the reader is owed the news that the box has moved from one standstill to
+  // another rather than out of one.
+  const freshStall = stall !== undefined && stall.since !== input.seen.stall;
 
   // THE WATCHDOG OVER THE EVENT PARKS (thread 061, form (C)). Three decisions, and each one is
   // the answer to a way this class could lie:
@@ -2175,6 +2277,25 @@ export const planNotifications = (input: {
         ref: drift.ref,
         size: drift.size,
         why: drift.why,
+      }),
+    });
+  // AND THE STANDSTILL STANDS ABOVE EVERY LINE THAT FOLLOWS, for the reason the drift above it
+  // does and more sharply: "your turn: 044" read on a box that is raising nobody is not merely
+  // incomplete, it is misleading — the turn cannot move until the standstill ends. It rings on
+  // the FRESH run only, like the drift and unlike a turn: a stall does not go away by itself,
+  // and a line repeated every thirty seconds for half an hour is the noise that costs the next
+  // real call its reader.
+  if (stall !== undefined && freshStall)
+    lines.push({
+      kind: "stall",
+      thread: "",
+      role: "",
+      text: renderTemplate(BOX_ALARM_TEMPLATES.stall, {
+        ticks: String(stall.ticks),
+        threshold: String(stall.threshold),
+        since: stall.since,
+        candidates: String(stall.candidates),
+        reasons: stall.reasons,
       }),
     });
   // AND THE ACCOUNTS STAND WITH THEM, above the mail and after the drift (thread 036): "the
@@ -2419,11 +2540,13 @@ export const planNotifications = (input: {
     auth,
     gh,
     drift,
+    stall,
     mergeability,
     freshAuth,
     freshGh,
     freshMergeability,
     freshDrift,
+    freshStall,
     accountAlarms,
     freshAccounts,
     accountKeys,
@@ -2708,6 +2831,14 @@ export const announcedOf = (plan: NotificationPlan): readonly string[] => [
     : []),
   ...(plan.freshDrift && plan.drift !== undefined
     ? [`the box is behind its own ref (${plan.drift.size})`]
+    : []),
+  // THE STANDSTILL IS NAMED IN THE OPERATOR'S LINE TOO, and by the two facts that make it
+  // findable: how long the circuit has been standing and how many candidates it stood on. The
+  // cause itself is a whole refusal and rides in the letter.
+  ...(plan.freshStall && plan.stall !== undefined
+    ? [
+        `nothing is being raised (${plan.stall.ticks} ticks since ${plan.stall.since}, ${plan.stall.candidates} candidate(s) waiting)`,
+      ]
     : []),
   // AN ACCOUNT IS NAMED BY ITS KIND AND ITS ROLE, and it stands where its line stands in the
   // letter — after the drift, above the freezes. The sentence itself is the caller's and can be

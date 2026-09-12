@@ -142,6 +142,7 @@ import {
   renderAnnouncement,
   renderNotification,
   renderNotifyState,
+  type StallAlarm,
   UNACCEPTED_AFTER_MINUTES,
   type UnacceptedTurn,
   unacceptedTurns,
@@ -538,6 +539,7 @@ import {
   foldStall,
   parseStall,
   renderStall,
+  STALL_TICKS,
   type Stall,
   stallAlarmDue,
 } from "./orchestrator/stall.js";
@@ -5524,6 +5526,14 @@ const runNotify = async (input: {
   let ghAlarm: GhAlarm | undefined;
   /** The box is behind its own ref past the band and has said why (thread 044). */
   let driftAlarm: CodeDriftAlarm | undefined;
+  /**
+   * THE CIRCUIT IS STANDING AND NOTHING HAS SAID SO (thread
+   * `180-selfheal-leaves-the-workspaces-behind`, john's (б) of 2026-09-12). Measured by the
+   * daemon into `stall.json` and READ here — the counter, the threshold and the whole of "what
+   * is not a stall" live in `orchestrator/stall.ts`, and this pass only turns a crossed
+   * threshold into a phone call. The courier composes; it never re-derives a verdict.
+   */
+  let stallAlarm: StallAlarm | undefined;
   // THE SIXTH QUESTION, and the one the courier had no category for at all (thread 013):
   // "which pairs has the circuit stopped raising". It is read from the same journal as the
   // shelf — the fold already carries the class of the freeze and the stamp of its series —
@@ -5748,6 +5758,35 @@ const runNotify = async (input: {
     } catch (error) {
       say(`code — the drift standoff could not be read: ${(error as Error).message}`);
     }
+    // THE ELEVENTH QUESTION, and the one every outside sign answered wrongly three times in
+    // four days (thread `180-selfheal-leaves-the-workspaces-behind`): "did this box have
+    // somebody to raise and raise nobody, over and over". The counter beside the tick writes
+    // the run; this reads it and rings once per run.
+    //
+    // IT IS SILENT WITHOUT A LIVE DAEMON, exactly as the drift above is, and for the same
+    // asymmetry: `stall.json` outlives the process that wrote it, so a box whose daemon is
+    // DOWN would otherwise ring about a standstill nobody is standing on — and "the daemon is
+    // down" is a different fact, which this line would be lying about.
+    try {
+      const standing = existsSync(paths.stall)
+        ? parseStall(readFileSync(paths.stall, "utf8"))
+        : undefined;
+      const live = runningDaemon(paths.daemonPid) !== undefined;
+      if (standing !== undefined && live && stallAlarmDue(standing))
+        stallAlarm = {
+          since: standing.since,
+          ticks: standing.ticks,
+          threshold: STALL_TICKS,
+          candidates: standing.candidates,
+          // THE REFUSALS VERBATIM, AND THAT IS WHERE THE REPAIR COMES FROM (john's second
+          // requirement): the doors of this package end their sentences on the command that
+          // fixes them, so the letter carries what they said rather than a summary of it. A
+          // diagnosis with no way out is what thread 140 already paid for.
+          reasons: standing.reasons.join(" | ") || "no reason was given",
+        };
+    } catch (error) {
+      say(`stall — the standstill counter could not be read: ${(error as Error).message}`);
+    }
   }
 
   const seen = existsSync(statePath)
@@ -5893,6 +5932,7 @@ const runNotify = async (input: {
     gh: ghAlarm,
     mergeability: mergeabilityAlarm,
     drift: driftAlarm,
+    stall: stallAlarm,
     ...(input.accounts === undefined ? {} : { accounts: input.accounts }),
     // THE CLOCK THE REMINDER PASS NEEDS (thread 043): the same `now` every other age in this
     // command is measured against, so a park cannot be three hours old for the stall pass and
@@ -6079,6 +6119,12 @@ const runNotify = async (input: {
       // period of being behind, and the letter is the whole point: the class exists because
       // the fact was already written in `daemon.log` every thirty seconds and reached nobody.
       !plan.freshDrift &&
+      // AND A STANDSTILL RAISES ITS OWN LETTER, on the rule of the drift above and for the
+      // reason this class exists at all: the box is quiet precisely BECAUSE nothing is being
+      // raised, so a line waiting to ride in somebody else's letter is owed to one that can
+      // never come — every other class of this digest is about the mail, and the mail is what
+      // has stopped moving.
+      !plan.freshStall &&
       // AND AN ACCOUNT LINE RAISES ITS OWN LETTER (thread 036, the tail of §4). It is the
       // half of the fall-over that pays with every chain empty: a role standing behind a
       // closed quota window is what john spent two days finding by hand, and a line that
@@ -6104,6 +6150,9 @@ const runNotify = async (input: {
         auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
         gh: plan.gh?.since,
         drift: plan.drift?.since,
+        // The standstill's stamp, on the rule `drift` beside it follows: a run that has ended
+        // leaves no key, so the NEXT standstill rings again.
+        stall: plan.stall?.since,
         freezes: plan.freezeKeys,
         unaccepted: plan.unaccepted,
         // The STATES only — a switch of subscriptions leaves no key (see `accountKeys`).
@@ -6156,6 +6205,7 @@ const runNotify = async (input: {
         auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
         gh: plan.gh?.since,
         drift: plan.drift?.since,
+        stall: plan.stall?.since,
         freezes: plan.freezeKeys,
         unaccepted: plan.unaccepted,
         // The STATES only — a switch of subscriptions leaves no key (see `accountKeys`).
@@ -6205,6 +6255,7 @@ const runNotify = async (input: {
       auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
       gh: plan.gh?.since,
       drift: plan.drift?.since,
+      stall: plan.stall?.since,
       freezes: plan.freezeKeys,
       unaccepted: plan.unaccepted,
       // The STATES only — a switch of subscriptions leaves no key (see `accountKeys`).

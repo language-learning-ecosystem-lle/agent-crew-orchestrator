@@ -1432,6 +1432,144 @@ describe("the drift of the box reaches the digest — the standoff read off disk
   });
 });
 
+/**
+ * THE SEAM OF THE ELEVENTH CLASS — `stall.json` IS A BRIDGE BETWEEN TWO PROCESSES (thread
+ * `180-selfheal-leaves-the-workspaces-behind`, john's (б) of 2026-09-12), and the units on
+ * either side of it cannot see the bridge: `stall.test.ts` folds and renders the run in
+ * memory, `notify.test.ts` hands `planNotifications` a `StallAlarm` already built. A wrong
+ * path, a swallowed exception, a `live` test that never holds, a field renamed on one side —
+ * every one of them leaves both unit sets green and the digest empty. AND AN EMPTY DIGEST IS
+ * EXACTLY WHAT THIS CLASS WAS WRITTEN AGAINST: three standstills in four days, each found by a
+ * human asking, with the whole trace in `daemon.log` and nobody reading it.
+ *
+ * So the seam gets its own cases: the counter's file on disk, the command as a PROCESS, the
+ * line out — and the second process reading the mark the first one left, because "once per
+ * transition" is a claim about two runs and cannot be made inside one.
+ */
+describe("the standstill of the box reaches the digest — the counter read off disk (thread 180-selfheal)", () => {
+  /** The state the DAEMON leaves behind: the run of unlifted ticks, and a live pid or not. */
+  const standing = (
+    contest: ReturnType<typeof contour>,
+    options: {
+      readonly since: string;
+      readonly daemon: boolean;
+      readonly ticks?: number;
+      readonly reasons?: readonly string[];
+    },
+  ): void => {
+    const state = join(contest.repo, ".orchestrator");
+    mkdirSync(state, { recursive: true });
+    writeFileSync(
+      join(state, "stall.json"),
+      `${JSON.stringify({
+        reasons: options.reasons ?? [REFUSAL],
+        since: options.since,
+        ticks: options.ticks ?? 4,
+        candidates: 8,
+        last: options.since,
+      })}\n`,
+    );
+    // A LIVE daemon is this very test process, on the rule the drift seam above states:
+    // `runningDaemon` asks the operating system, and our own pid is the one certainly alive.
+    if (options.daemon) writeFileSync(join(state, "daemon.pid"), `${process.pid}\n`);
+  };
+  /** The measured refusal of 2026-09-09, repair and all — the door's own sentence. */
+  const REFUSAL =
+    "the workspace of '…' runs 'agent-protocol' 0.2.13, the home checkout '…' runs 0.2.14 — run 'pnpm --dir '…' install'";
+  const SINCE = "2026-09-09T12:25:00Z";
+
+  it("a run past the threshold, with the daemon alive, is a line in the digest — cause and repair", () => {
+    const contest = contour({});
+    contest.thread("180-x", "john");
+    standing(contest, { since: SINCE, daemon: true });
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("nothing has been raised for 4 ticks in a row (threshold 3)");
+    expect(result.out).toContain("8 candidate(s) waiting");
+    // THE CAUSE AND THE REPAIR, VERBATIM AND BY SUBSTRING — the door's sentence ends on the
+    // command that fixes it, and a call that drops that tail is the diagnosis-without-an-exit
+    // thread 140 paid for. Asserted on the tail itself, not on "the text is not empty".
+    expect(result.out).toContain("runs 'agent-protocol' 0.2.13");
+    expect(result.out).toContain("run 'pnpm --dir '…' install'");
+    // And it stands ABOVE the mail: a turn read first would mean something it does not mean.
+    expect(result.out).toContain("⏳ твой ход: 180-x");
+    expect(result.out.indexOf("nothing has been raised")).toBeLessThan(
+      result.out.indexOf("⏳ твой ход: 180-x"),
+    );
+  });
+
+  it("ONCE PER TRANSITION, measured over two processes: the second run says nothing of it", () => {
+    const contest = contour({});
+    contest.thread("180-x", "john");
+    standing(contest, { since: SINCE, daemon: true });
+    contest.commit();
+
+    // WHAT IS READ HERE IS THE OPERATOR'S OWN LINE, not the letter: a delivered digest goes to
+    // the transport and never to stdout, so the sentence that proves a CALL was made on a
+    // writing run is the summary — which is also the line an operator tails on the box.
+    const first = run(contest, ["--write"]);
+    expect(first.out).toContain(
+      "nothing is being raised (4 ticks since 2026-09-09T12:25:00Z, 8 candidate(s) waiting)",
+    );
+
+    // The same standstill, one tick longer — the run is the same event, so the phone is silent.
+    standing(contest, { since: SINCE, daemon: true, ticks: 5 });
+    const again = run(contest, ["--write"]);
+    expect(again.out).not.toContain("nothing is being raised (");
+
+    // A NEW CAUSE IS A NEW EVENT and rings again: the counter starts a new run for it, and the
+    // stamp of that run is what this command remembered.
+    standing(contest, {
+      since: "2026-09-09T13:15:00Z",
+      daemon: true,
+      reasons: [
+        "restart required: the repository declares protocol version 27, the package supports only 26",
+      ],
+    });
+    const third = run(contest, ["--write"]);
+    expect(third.out).toContain("nothing is being raised (4 ticks since 2026-09-09T13:15:00Z");
+  });
+
+  it("the tick that has nothing standing says NOTHING about a standstill", () => {
+    const contest = contour({});
+    contest.thread("180-x", "john");
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("nothing has been raised");
+    // …and the mail is announced as it always was: the silence is about the box, not the feed.
+    expect(result.out).toContain("⏳ твой ход: 180-x");
+  });
+
+  /**
+   * A COUNTER FILE OUTLIVES THE PROCESS THAT WROTE IT, and a box whose daemon is DOWN is a
+   * different fact with a different repair — the same asymmetry the drift seam above guards.
+   */
+  it("says nothing about a standstill nobody is standing on: no live daemon, no call", () => {
+    const contest = contour({});
+    contest.thread("180-x", "john");
+    standing(contest, { since: SINCE, daemon: false });
+    contest.commit();
+
+    expect(run(contest).out).not.toContain("nothing has been raised");
+  });
+
+  /** A run SHORT of the threshold is bad luck, not an event — the counter decides, not this. */
+  it("is silent under the threshold: two unlifted ticks are not a standstill", () => {
+    const contest = contour({});
+    contest.thread("180-x", "john");
+    standing(contest, { since: SINCE, daemon: true, ticks: 2 });
+    contest.commit();
+
+    expect(run(contest).out).not.toContain("nothing has been raised");
+  });
+});
+
 describe("парк, снятый ходом раньше первого такта курьера (тред 129)", () => {
   // ЗАМЕР, НЕ ГИПОТЕЗА (2026-09-04, тред 125): письмо curator с `--expects ack --parked-on john`
   // от 17:01:36Z строки в `.orchestrator/notify.state` не породило; письмо тех же флагов от

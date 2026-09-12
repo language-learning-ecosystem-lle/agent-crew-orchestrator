@@ -285,7 +285,7 @@ describe("the daemon says why it raised nobody (the defect of 2026-07-26)", () =
 
     const result = daemon(repo);
 
-    expect(result.out).toContain("candidate dev-core×012-x skipped: exhausted");
+    expect(result.out).toContain("candidate 'dev-core×012-x' skipped: exhausted");
     expect(result.out).toContain("3 failed attempts");
     expect(result.out).toContain("ceiling 3 (default)");
     // And "nothing was launched" is itself a line: the outcome of the tick, not a gap.
@@ -332,7 +332,7 @@ describe("the daemon says why it raised nobody (the defect of 2026-07-26)", () =
 
     // Frozen for the daemon FIRST — otherwise the launch at the end could be attributed to
     // the fixture rather than to the thaw.
-    expect(daemon(repo).out).toContain("candidate dev-core×012-x skipped: exhausted");
+    expect(daemon(repo).out).toContain("candidate 'dev-core×012-x' skipped: exhausted");
 
     const lifted = thaw(repo, ["--write"]);
     expect(lifted.code).toBe(0);
@@ -566,7 +566,7 @@ describe("an external exhaustion thaws by itself and the tick picks the pair up 
 
     const result = daemon(repo);
 
-    expect(result.out).toContain("candidate dev-core×012-x skipped: exhausted");
+    expect(result.out).toContain("candidate 'dev-core×012-x' skipped: exhausted");
     expect(journalKinds(repo)).not.toContain("launch");
   });
 
@@ -579,7 +579,7 @@ describe("an external exhaustion thaws by itself and the tick picks the pair up 
 
     const result = daemon(repo);
 
-    expect(result.out).toContain("candidate dev-core×012-x skipped: exhausted");
+    expect(result.out).toContain("candidate 'dev-core×012-x' skipped: exhausted");
     expect(journalKinds(repo)).not.toContain("launch");
   });
 });
