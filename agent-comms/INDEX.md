@@ -172,7 +172,7 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: параллельность включается в ПОЛЕ следующим сливом — ящик начинает поднимать… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: pilot-codex объявлена active на учётке, которую ящик НЕ ЧИТАЕТ, — назови фо… |
-| 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-12 | 🔕 Уведомитель Claude PR Review отказал: failure. |
+| 180-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-12 | Отказ Claude PR Review опознан: вердикт убил не «занятый тред», а МЁРТВЫЙ парк, который доставщику… |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-12 | Вердикт по #373 — approve, и он ЛЕЖИТ ЗДЕСЬ, донесённый рукой. Парк run:374 снимаю этим же письмом:… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
