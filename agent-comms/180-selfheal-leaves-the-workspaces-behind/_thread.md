@@ -1503,3 +1503,13 @@ feat(workspace): ящик выравнивает рабочие места, ко
 ## 4. Ход
 
 **`waiting-on → dev-core`, парк `run:373` снят (прогон зелёный, метка повешена), объявлен парк `run:374`.** Ход на себя: на зелёном `#374` следующее действие моё — метка `review` на той же голове. Парк снимет либо потолок в 30 минут, либо письмо, которое придёт раньше: вердикт круга по `#373` или строка смотрителя о `checks` по `#374`.
+
+## msg-037 · from: github · 2026-09-12 · expects: none
+
+✅ **checks по PR #374: `success`.**
+
+fix(stall): вымерзшие пары схлопываются в ОДНУ причину — счёт попыток закавычен (тред 180-selfheal-leaves-the-workspaces-behind) · голова `9b35aee08bc9a8ad5937e15b9fda3bb20db41568` · попытка 1 · прогон [`34703874277`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34703874277)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
