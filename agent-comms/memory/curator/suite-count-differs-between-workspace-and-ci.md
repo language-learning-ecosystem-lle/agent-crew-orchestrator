@@ -1,11 +1,11 @@
 ---
 name: suite-count-differs-between-workspace-and-ci
-description: Счёт проверок полной сюиты в рабочем месте роли и на раннере расходится ровно на 2 — два условных ctx.skip
+description: "Счёт проверок сюиты: рабочее место против раннера — ровно 2 (два ctx.skip без бинаря codex); слитое дерево против прогона PR — формула +2+новые тесты уехавшей базы"
 metadata: 
   node_type: memory
   type: project
   originSessionId: aebc67af-30f5-489d-b786-1cc7f148af4a
-  modified: 2026-09-12T15:43:19.252Z
+  modified: 2026-09-12T16:52:18.945Z
 ---
 
 Полная сюита `agent-protocol` печатает `4135 passed (4135)` в рабочем месте роли и
@@ -21,3 +21,12 @@ metadata:
 голове уже есть; «N passed» из рабочего места против «N-2 passed | 2 skipped» на раннере —
 не находка. См. [[green-is-only-the-runners-command]], [[vendor-sandbox-measures-for-free]],
 [[reproduce-with-the-tool-that-measured]].
+
+**Приёмка на СЛИТОМ дереве сходится с CI формулой, и её надо считать, а не глядеть**
+(замерено 2026-09-12, PR #374, тот же тред): `passed` клона = `passed` прогона PR **+ 2**
+(те же два `ctx.skip` на ящике ПРОГНАНЫ — бинарь `codex` тут есть) **+ новые тесты коммитов,
+уехавших в базу после старта зачтённого чека**. Для #374: `4136 + 2 + 14 = 4152 passed (4152)`,
+0 skipped, 243 с на `--shared`-клоне дерева `merge-tree`. Без этой арифметики «4152 против 4138»
+читается как расхождение доклада. Клон С `.git` держит зелёными и те 4 теста, что краснеют на
+склеенной копии ([[gitless-tree-copy-reddens-four-tests]]); форма клона —
+[[acceptance-on-the-merged-tree-is-cheap]], нота базы — [[base-move-note-answered-by-measure]].
