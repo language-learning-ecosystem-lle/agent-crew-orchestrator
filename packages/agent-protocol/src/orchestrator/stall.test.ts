@@ -10,6 +10,7 @@ import {
   stallDue,
   stallReasons,
 } from "./stall.js";
+import { describeSkip } from "./tick.js";
 
 const at = (minute: number): Date =>
   new Date(`2026-09-09T12:${String(minute).padStart(2, "0")}:00Z`);
@@ -113,6 +114,97 @@ describe("the run of ticks that raised nobody", () => {
     expect(second).toMatchObject({ ticks: 1, since: "2026-09-09T12:03:00Z", candidates: 8 });
   });
 
+  /**
+   * FINDING 9.1 (curator, 2026-09-12, this thread): the fold used to compare the fingerprint
+   * POSITIONALLY, and the fingerprint is built in the order of the refusals — which is the
+   * order of the candidates in the plan of the tick, and that order moves with priority, with
+   * the age of a turn and with the composition of the queue. Same two causes, other order:
+   * the run reset to 1 on every tick, `STALL_TICKS` was never reached and the alarm was silent
+   * on precisely the standstill it counts.
+   */
+  it("keeps the run when the SAME two causes arrive in another order: the key is a set", () => {
+    const first = foldStall({
+      previous: undefined,
+      candidates: 2,
+      moving: 0,
+      refusals: [CURATOR_WORKSPACE, CONFIG_AHEAD],
+      launching: true,
+      now: at(1),
+    });
+    const second = foldStall({
+      previous: first,
+      candidates: 2,
+      moving: 0,
+      refusals: [CONFIG_AHEAD, DEV_CORE_WORKSPACE],
+      launching: true,
+      now: at(2),
+    });
+    expect(second).toMatchObject({ ticks: 2, since: "2026-09-09T12:01:00Z" });
+  });
+
+  it("reaches the threshold on a run whose order is shuffled every tick", () => {
+    const both = [CURATOR_WORKSPACE, CONFIG_AHEAD] as const;
+    let stall: Stall | undefined;
+    for (const minute of [1, 2, 3])
+      stall = foldStall({
+        previous: stall,
+        candidates: 2,
+        moving: 0,
+        refusals: minute % 2 === 0 ? [...both].reverse() : [...both],
+        launching: true,
+        now: at(minute),
+      });
+    expect(stall).toMatchObject({ ticks: 3 });
+    expect(stallAlarmDue(stall as Stall)).toBe(true);
+  });
+
+  it("a set that GREW is still a different fault, however the entries are ordered", () => {
+    const first = foldStall({
+      previous: undefined,
+      candidates: 2,
+      moving: 0,
+      refusals: [CURATOR_WORKSPACE],
+      launching: true,
+      now: at(1),
+    });
+    const second = foldStall({
+      previous: first,
+      candidates: 2,
+      moving: 0,
+      refusals: [CONFIG_AHEAD, CURATOR_WORKSPACE],
+      launching: true,
+      now: at(2),
+    });
+    expect(second).toMatchObject({ ticks: 1, since: "2026-09-09T12:02:00Z" });
+  });
+
+  /**
+   * A state file is written by this module but read from disk, so `previous` can carry a
+   * repeat nothing here produced. `[a, a]` and `[a, b]` have the same LENGTH and must not
+   * read as one fault — which is why the comparison sizes both sides as sets.
+   */
+  it("a repeated entry in the file on disk does not make two faults read as one", () => {
+    const previous: Stall = {
+      reasons: [
+        stallReasons([CURATOR_WORKSPACE])[0] as string,
+        stallReasons([CURATOR_WORKSPACE])[0] as string,
+      ],
+      since: "2026-09-09T12:00:00Z",
+      ticks: 2,
+      candidates: 2,
+      last: "2026-09-09T12:00:00Z",
+    };
+    const next = foldStall({
+      previous,
+      candidates: 2,
+      moving: 0,
+      refusals: [CURATOR_WORKSPACE, CONFIG_AHEAD],
+      launching: true,
+      now: at(3),
+    });
+    expect(next).toMatchObject({ ticks: 1, since: "2026-09-09T12:03:00Z" });
+  });
+
   it("records a tick that refused without saying why, rather than dropping it", () => {
     const stall = foldStall({
       previous: undefined,
@@ -170,5 +262,87 @@ describe("the line the operator reads", () => {
     expect(line).toContain("2 candidate(s) waiting");
     expect(line).toContain("the home checkout");
     expect(line).toContain("since 2026-09-09T12:01:00Z");
+  });
+});
+
+/**
+ * THE SEAM, NOT THE MAPPING (finding 9.2, curator 2026-09-12, this thread). The fingerprint
+ * is fed from TWO sources — the doors' refusals and the planner's own skip lines — and the
+ * second of them is composed by `describeSkip` of `tick.ts`. The normalisation of this module
+ * collapses the QUOTED parts of a refusal, because that is where this package puts what
+ * differs between two candidates of one fault; `describeSkip` did not quote the pair, so two
+ * roles refused by ONE cause arrived as TWO entries of the set, and at the cap of `REASONS`
+ * the set filled up with pair names instead of faults. A unit on either side proves nothing
+ * about that: the fold is right and the line is legible, and the seam is still broken. So the
+ * lines are composed here by the real function and normalised by the real one.
+ */
+describe("the planner's own skip lines, through the fingerprint", () => {
+  const ceiling = { value: 3, source: "default" } as const;
+  const line = (skip: Parameters<typeof describeSkip>[0]): string => describeSkip(skip, ceiling);
+
+  it("two roles HELD by one cause fold to ONE reason", () => {
+    const reasons = stallReasons([
+      line({ role: "curator", thread: "172-merge-gate", reason: "held", attempt: 0 }),
+      line({ role: "dev-core", thread: "081-research", reason: "held", attempt: 0 }),
+    ]);
+    expect(reasons).toHaveLength(1);
+  });
+
+  it("two pairs PARKED on one person fold to ONE reason", () => {
+    const reasons = stallReasons([
+      line({
+        role: "curator",
+        thread: "172-merge-gate",
+        reason: "parked",
+        attempt: 0,
+        parkedOn: "john",
+      }),
+      line({
+        role: "dev-core",
+        thread: "081-research",
+        reason: "parked",
+        attempt: 0,
+        parkedOn: "john",
+      }),
+    ]);
+    expect(reasons).toHaveLength(1);
+  });
+
+  it("two pairs running RIGHT NOW, and two WAITING, fold to one reason each", () => {
+    for (const reason of ["active", "waiting"] as const) {
+      const reasons = stallReasons([
+        line({ role: "curator", thread: "172-merge-gate", reason, attempt: 0 }),
+        line({ role: "dev-core", thread: "081-research", reason, attempt: 0 }),
+      ]);
+      expect(reasons).toHaveLength(1);
+    }
+  });
+
+  it("and two GENUINELY different causes stay two: the collapse is of names, not of faults", () => {
+    const reasons = stallReasons([
+      line({ role: "curator", thread: "172-merge-gate", reason: "held", attempt: 0 }),
+      line({ role: "dev-core", thread: "081-research", reason: "active", attempt: 0 }),
+    ]);
+    expect(reasons).toHaveLength(2);
+  });
+
+  it("a park on ANOTHER person is another fault — the person is the cause, and it is kept", () => {
+    const reasons = stallReasons([
+      line({
+        role: "curator",
+        thread: "172-merge-gate",
+        reason: "parked",
+        attempt: 0,
+        parkedOn: "john",
+      }),
+      line({
+        role: "dev-core",
+        thread: "081-research",
+        reason: "parked",
+        attempt: 0,
+        parkedOn: "maysway",
+      }),
+    ]);
+    expect(reasons).toHaveLength(2);
   });
 });

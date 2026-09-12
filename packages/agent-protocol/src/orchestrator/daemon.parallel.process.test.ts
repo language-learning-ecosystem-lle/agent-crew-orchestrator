@@ -312,8 +312,8 @@ describe("the daemon raises the WHOLE plan and does not wait for it (D-2)", () =
     // declined is the failure class this daemon has been fixing since 2026-07-26. The
     // reason here is `active` (the lease is on disk by then); the registry answers for the
     // window BEFORE that write, and what it buys is measured above: two starts, not three.
-    expect(out).toContain("candidate dev-core×012-x skipped: the pair is running right now");
-    expect(out).toContain("candidate curator×019-y skipped: the pair is running right now");
+    expect(out).toContain("candidate 'dev-core×012-x' skipped: the pair is running right now");
+    expect(out).toContain("candidate 'curator×019-y' skipped: the pair is running right now");
     // Above the hang-sized ceiling of the wait inside, not around the four seconds it
     // replaced (thread 084).
   }, 180_000);
