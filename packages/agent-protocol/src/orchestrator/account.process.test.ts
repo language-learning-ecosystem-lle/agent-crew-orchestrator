@@ -449,7 +449,7 @@ describe("the account reaches the planner and the journal (thread 055, B.3)", ()
 
     const out = daemonOnce(repo, stub);
 
-    expect(out).toContain("candidate dev-core");
+    expect(out).toContain("candidate 'dev-core");
     expect(out).toContain("rate-limit window is closed");
     const launched = journalOf(repo).filter((event) => event.kind === "launch");
     expect(launched.map((event) => event.role)).toEqual(["curator"]);

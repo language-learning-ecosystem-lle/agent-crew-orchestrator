@@ -728,10 +728,25 @@ export const describeSkip = (
    */
   kind: AgentKind = CLAUDE_CODE,
 ): string => {
-  const pair = `${skip.role}×${skip.thread}`;
+  // THE PAIR IS QUOTED, AND THAT IS NOT TYPOGRAPHY (thread
+  // `180-selfheal-leaves-the-workspaces-behind`, curator's finding 9.2 of 2026-09-12). These
+  // lines are the `plannerSkips` of the daemon's tick, and they go into the fingerprint of
+  // `orchestrator/stall.ts` beside the door's refusals. That fingerprint folds two candidates
+  // refused by ONE cause into one reason by collapsing the QUOTED parts of a refusal — the
+  // convention the doors of this package already follow, because quotes are where it puts the
+  // things that differ between two candidates of one fault. Unquoted, the pair made every
+  // `held`/`active`/`waiting`/`parked` refusal its own class: two roles held by the same cause
+  // read as two faults, the set filled up with pair names, and the run broke on any change of
+  // the queue's composition. The quotes cost an operator nothing and they are what makes the
+  // collapse true.
+  const pair = `'${skip.role}×${skip.thread}'`;
   switch (skip.reason) {
     case "held":
-      return `candidate ${pair} skipped: held by a manual session of ${skip.role}`;
+      // The role is quoted here for the reason the pair above is: it is the SECOND place this
+      // one line names the thing that differs between two candidates of one fault, and a
+      // fingerprint that collapsed the first and kept the second would still read two holds as
+      // two faults.
+      return `candidate ${pair} skipped: held by a manual session of '${skip.role}'`;
     case "active":
       return `candidate ${pair} skipped: the pair is running right now`;
     case "waiting":
