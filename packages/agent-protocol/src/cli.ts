@@ -615,6 +615,7 @@ import {
 import {
   checkWorkspaceSignature,
   classifyWorkspaceCheckout,
+  classifyWorkspaceHead,
   createWorkspaceLocks,
   describeFailedTidyUp,
   describeFailedTidyUpOnItsBranch,
@@ -641,7 +642,17 @@ import {
   workspaceRoleOf,
   workspaceVerdict,
 } from "./orchestrator/workspace.js";
-import { checkWorkspaceDependencies, INSTALL_DIR } from "./orchestrator/workspace-dependencies.js";
+import {
+  checkWorkspaceDependencies,
+  INSTALL_DIR,
+  type WorkspaceDependenciesVerdict,
+} from "./orchestrator/workspace-dependencies.js";
+import {
+  describeWorkspaceInstall,
+  planWorkspaceInstall,
+  type WorkspaceInstallOutcome,
+  type WorkspaceInstallPlan,
+} from "./orchestrator/workspace-install.js";
 import {
   checkWorkspacePackage,
   manifestPin,
@@ -6982,6 +6993,51 @@ const workspacePackageFacts = (input: {
  * Dot-directories go for the same reason one level up, and `node_modules` itself is never
  * descended into: a package's own dependencies are not this tree's.
  */
+/**
+ * HOW LONG THE CIRCUIT WILL STAND IN SOMEBODY'S INSTALL (thread 180). `settleRun` is
+ * synchronous inside the tick, so this number is time the whole daemon does not plan
+ * anything in — which is why it is a ceiling and not a wait: a package manager that hangs
+ * on a lock file or a dead registry must give the tick back, and the launch then refuses by
+ * the door's own text, exactly as it did before this right existed. Four minutes is twice
+ * the slowest install measured in this contour with a warm store.
+ */
+const WORKSPACE_INSTALL_TIMEOUT_MS = 240_000;
+
+/** How much of a package manager's complaint is carried into the journal line. */
+const INSTALL_CAUSE_CHARS = 400;
+
+/**
+ * THE IO HALF OF THE LEVELLING (thread 180) — the one command the two doors have been
+ * printing for a human since thread 085, run by the circuit itself inside the borders
+ * `planWorkspaceInstall` has already checked. It decides NOTHING: it is given a tree it may
+ * write into and it says how the package manager answered.
+ */
+const runWorkspaceInstall = (input: {
+  /** The tree being levelled, absolute. */
+  readonly path: string;
+  /** The home checkout — the cwd the command is started from. */
+  readonly repo: string;
+}): WorkspaceInstallOutcome => {
+  const done = spawnSync("pnpm", ["--dir", input.path, "install", "--frozen-lockfile"], {
+    encoding: "utf8",
+    timeout: WORKSPACE_INSTALL_TIMEOUT_MS,
+    // The tree is named by `--dir`, so the cwd is deliberately the home checkout: a cwd
+    // inside a tree that may not have an install yet is how a package manager ends up
+    // resolving its own workspace root somewhere nobody meant.
+    cwd: input.repo,
+  });
+  if (done.error !== undefined)
+    return { ok: false, cause: `pnpm did not run — ${done.error.message}` };
+  if (done.status === 0) return { ok: true };
+  const said = `${done.stderr ?? ""}${done.stdout ?? ""}`.trim().replaceAll(/\s+/g, " ");
+  return {
+    ok: false,
+    cause: `pnpm exited ${done.status === null ? `on signal ${done.signal ?? "?"}` : done.status}${
+      said === "" ? "" : ` — ${said.slice(-INSTALL_CAUSE_CHARS)}`
+    }`,
+  };
+};
+
 const installRootsOf = (root: string): readonly string[] => {
   const found: string[] = [];
   const scan = (relative: string, depth: number): void => {
@@ -11978,6 +12034,40 @@ const settleRun = (input: {
   // by construction, and installing into it is the ritual's step, not this door's — a
   // check that refused every first launch of a new role would be a door against itself.
   const facts = workspaceFacts(path, { dirt: true });
+  // THE SAME BORDERS DECIDE BOTH FAULTS, AND THEY ARE READ HERE (thread 180, john's half
+  // (а)): the branch the head stands on, the dirt and the resume are all measured at this
+  // point, before anything has been done to the tree — so the question "may the circuit
+  // write into this tree at all" is answered from the state the launch actually read, not
+  // from the state its own plan left behind.
+  //
+  // WHOSE HEAD IT IS, ANSWERED BY THE FUNCTION THAT ALREADY OWNS THE QUESTION: `branch`
+  // off the disk is the literal `HEAD` on a detached tree, and a border that compared that
+  // string itself would have declined the very trees the grant is about. `classifyWorkspaceHead`
+  // is the same reader `planWorkspace` judges dirt with, so the two doors cannot disagree
+  // about whose tree this is.
+  const headOwner = classifyWorkspaceHead({
+    role: role.id,
+    ...(facts.branch === undefined ? {} : { branch: facts.branch }),
+    ...(base === undefined ? {} : { baseRef: base.ref }),
+    ...(facts.headAuthor === undefined ? {} : { headAuthor: facts.headAuthor }),
+    roles: input.ids,
+  });
+  const mayLevel = (needed: boolean): WorkspaceInstallPlan =>
+    planWorkspaceInstall({
+      role: role.id,
+      path,
+      needed,
+      ...(headOwner.kind === "detached" ? {} : { branch: headOwner.branch }),
+      dirty: facts.dirty === true,
+      resuming: continuation.mode === "resume",
+    });
+  // A STALE BUILD IS NO LONGER THE END OF THE LAUNCH WHEN THE CIRCUIT MAY REPAIR IT
+  // (thread 180). The refusal is kept whole for every tree the grant does not cover — a
+  // dirty one, one on the role's own branch, a resume, and a dry run, which writes
+  // nothing anywhere by definition. For the trees it does cover the refusal is DEFERRED to
+  // the levelling point below: the install is what repairs this fault, and refusing before
+  // running it is the standstill john measured three times in four days.
+  let staleBuild: string | undefined;
   if (facts.exists) {
     const build = checkWorkspacePackage({
       role: role.id,
@@ -11985,8 +12075,16 @@ const settleRun = (input: {
       repo,
       facts: workspacePackageFacts({ repo, path }),
     });
-    if (!build.ok) return { ok: false, reason: build.reason, lines };
-    if (build.note !== undefined) lines.push(`package — ${build.note}`);
+    if (!build.ok) {
+      const levelling = mayLevel(true);
+      if (!input.write || !levelling.install) {
+        if (levelling.install === false && levelling.why !== undefined)
+          lines.push(`levelling — stands aside: ${levelling.why}`);
+        return { ok: false, reason: build.reason, lines };
+      }
+      staleBuild = build.reason;
+    }
+    if (build.ok && build.note !== undefined) lines.push(`package — ${build.note}`);
   }
   // WHOSE DIRT IT IS, ANSWERED FROM WHAT WAS ALREADY READ (thread 023, requirement 5):
   // the release reason of the previous run is two lines above, on its way to the resume
@@ -12186,15 +12284,51 @@ const settleRun = (input: {
   // ONLY ON A REAL LAUNCH: without `--write` no tree was created, so the measurement would
   // be of a directory this run deliberately did not make, and the note would name a fault
   // that the actual run repairs on its way in.
-  const dependencies = input.write
-    ? checkWorkspaceDependencies({
+  const measureDependencies = (): WorkspaceDependenciesVerdict =>
+    input.write
+      ? checkWorkspaceDependencies({
+          role: role.id,
+          path,
+          repo,
+          home: installRootsOf(repo),
+          tree: installRootsOf(path),
+        })
+      : ({ installed: true } as const);
+  let dependencies = measureDependencies();
+  // THE LEVELLING ITSELF (thread 180, john's half (а)) — HERE, and the place is the fact
+  // that closes john's third border rather than a promise about it: this line stands after
+  // the workspace lock was taken (a tree another run holds was refused two screens above)
+  // and before the session of this pair exists, so what is written into is a tree nobody is
+  // working in. The trees the grant does not cover never reach it: `mayLevel` was answered
+  // from the state the launch READ, and a dirty one, one on the role's own branch and a
+  // resume have each already been declined by name.
+  //
+  // TWO FAULTS, ONE REPAIR. A missing install (thread 161) and a build behind the home
+  // checkout's (thread 085) are different measurements with different texts, and the one
+  // line that repairs both is the one the doors have been printing for a hand since 085.
+  const levelling = mayLevel(staleBuild !== undefined || !dependencies.installed);
+  if (levelling.install) {
+    lines.push(`levelling — ${levelling.note}`);
+    const outcome = runWorkspaceInstall({ path, repo });
+    lines.push(`levelling — ${describeWorkspaceInstall({ role: role.id, path, outcome })}`);
+    // AND THEN IT IS MEASURED AGAIN, never assumed: what is judged is what the disk says
+    // after the command, exactly as the identity readback of thread 052 judges what git
+    // says rather than what was written.
+    dependencies = measureDependencies();
+    if (staleBuild !== undefined) {
+      const build = checkWorkspacePackage({
         role: role.id,
         path,
         repo,
-        home: installRootsOf(repo),
-        tree: installRootsOf(path),
-      })
-    : ({ installed: true } as const);
+        facts: workspacePackageFacts({ repo, path }),
+      });
+      // STILL BEHIND — the refusal it would have had before this right existed, unchanged
+      // and in the door's own words, plus the fact that the circuit tried. A levelling that
+      // did not work must never be quieter than the standstill it was meant to end.
+      if (!build.ok) return { ok: false, reason: build.reason, lines };
+      if (build.note !== undefined) lines.push(`package — ${build.note}`);
+    }
+  }
   if (!dependencies.installed) lines.push(`dependencies — ${dependencies.note}`);
   return {
     ok: true,
