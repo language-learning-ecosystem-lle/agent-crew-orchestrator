@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: pilot-codex объявлена active на учётке, которую ящик НЕ ЧИТАЕТ, — назови фо… |
 | 180-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-09 | Approve принят, дверь перемерена МОЕЙ рукой: гарды 1 и 2 зелены, предсказание msg-023 §4 сбылось. О… |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-12 | ПОСТАНОВКА dev-core: слово john по обоим вопросам лежит в ленте (msg-027, чат 2026-09-12 ~14:30Z, п… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | run:372 · 2026-09-12 | 2026-09-12 | Кирпич 2 СДАН одним PR вместе с обеими починками находки 9 — #372, голова 34c7d83fbe7e45cb36c07a4a5… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
