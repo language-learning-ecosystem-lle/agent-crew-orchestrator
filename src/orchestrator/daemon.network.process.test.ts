@@ -192,7 +192,7 @@ describe("the watch survives a dead remote (R6-достройка)", () => {
     expect(output).toMatch(/does not appear to be a git repository|Could not read from remote/);
     // And the gate really is shut: reading yesterday's mail is the outcome preflight
     // exists against, so "alive" must not mean "launching".
-    expect(output).not.toContain("candidate dev-core");
+    expect(output).not.toContain("candidate 'dev-core");
   });
 
   it("a fatal check is still fatal: no binary → the process refuses, degraded or not", () => {

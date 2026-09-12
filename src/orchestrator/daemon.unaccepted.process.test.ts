@@ -237,7 +237,7 @@ describe("the live rehearsal of the untaken turn (thread 042, §6.4)", () => {
     // it is refusing to raise, the courier names the HOLDER and the expiry, because its reader
     // is the person deciding whether to go and look at the machine.
     expect(result.out).toContain(
-      "candidate dev-core×012-untaken skipped: held by a manual session",
+      "candidate 'dev-core×012-untaken' skipped: held by a manual session",
     );
     expect(result.out).toMatch(
       /dev-core×012-untaken \(\d+m, the role is held by a manual session of john until \d{4}-\d{2}-\d{2}T/,

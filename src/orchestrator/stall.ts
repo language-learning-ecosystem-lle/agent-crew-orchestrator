@@ -117,6 +117,29 @@ export const stallReasons = (refusals: readonly string[]): readonly string[] => 
 };
 
 /**
+ * TWO KEYS → ONE FAULT OR TWO, AND THE COMPARISON IS OF SETS (thread
+ * `180-selfheal-leaves-the-workspaces-behind`, curator's finding 9.1 of 2026-09-12).
+ *
+ * The header of this file says the fingerprint is a SET AND NOT A SENTENCE, and until this
+ * function existed the fold compared it POSITIONALLY — `reasons[i] === previous.reasons[i]`
+ * over a list `stallReasons` builds in INSERTION order, which is the order of the refusals,
+ * which is the order of the candidates in the plan of that tick. That order is not a
+ * constant between ticks: it moves with priority, with the age of a turn and with the
+ * composition of the queue. So two ticks refused by THE SAME two causes in the other order
+ * read as a different fault, the run resets to one, {@link STALL_TICKS} is never reached and
+ * the alarm is silent on exactly the standstill it is written for.
+ *
+ * AND IT IS A SET ON BOTH SIDES, not just on this tick's. This tick's list comes from
+ * `stallReasons` and is deduplicated by construction; the previous one comes from a FILE
+ * anybody can write, so a repeated entry there must not make `[a, a]` and `[a, b]` read as
+ * one fault — hence the sizes are compared as sets and not as lengths.
+ */
+const sameReasons = (previous: readonly string[], reasons: readonly string[]): boolean => {
+  const now = new Set(reasons);
+  return now.size === new Set(previous).size && previous.every((reason) => now.has(reason));
+};
+
+/**
  * ONE TICK'S ANSWER → THE RUN. Pure and total: it never throws and never reads anything.
  *
  * `moving` is the one input that can clear a run, and it is NOT "this tick raised somebody":
@@ -144,10 +167,7 @@ export const foldStall = (input: {
   const reasons = stallReasons(input.refusals);
   const stamp = `${input.now.toISOString().slice(0, 19)}Z`;
   const previous = input.previous;
-  const same =
-    previous !== undefined &&
-    previous.reasons.length === reasons.length &&
-    previous.reasons.every((reason, index) => reason === reasons[index]);
+  const same = previous !== undefined && sameReasons(previous.reasons, reasons);
   return same && previous !== undefined
     ? {
         reasons,

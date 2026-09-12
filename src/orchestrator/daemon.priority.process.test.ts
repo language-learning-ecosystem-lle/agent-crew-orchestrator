@@ -347,11 +347,11 @@ describe("a thread frozen behind a person costs the pair nothing (thread 020)", 
 
     expect(allLaunched(repo)).toEqual([]);
     for (const tick of [first, second]) {
-      expect(tick.out).toContain("candidate dev-core×030-consult skipped: the turn is parked");
+      expect(tick.out).toContain("candidate 'dev-core×030-consult' skipped: the turn is parked");
       expect(tick.out).toContain("a decision of john");
       // NOT the other silence: an exhausted pair reads as damage done and sends the operator
       // to the journal, a parked one asks a person for an answer.
-      expect(tick.out).not.toContain("candidate dev-core×030-consult skipped: exhausted");
+      expect(tick.out).not.toContain("candidate 'dev-core×030-consult' skipped: exhausted");
     }
 
     // THE ANSWER LANDS — and the pair is raised by the ordinary queue, which is only possible
@@ -417,7 +417,7 @@ describe("the tick names a park whose ground is gone, and lifts nothing (thread 
     // the whole difference between a note and a door. A line that named a ground and quietly
     // raised the pair would be the machine ending a park, and no such thing is being built.
     expect(allLaunched(repo)).toEqual([]);
-    expect(tick.out).toContain("candidate dev-core×155-ground skipped: the turn is parked");
+    expect(tick.out).toContain("candidate 'dev-core×155-ground' skipped: the turn is parked");
   });
 
   it("says NOTHING while that pair is frozen — the ground is alive and the park is honest", () => {
@@ -454,7 +454,7 @@ describe("the tick names a park whose ground is gone, and lifts nothing (thread 
     const tick = daemon(repo);
 
     expect(tick.out).not.toContain("THE GROUND OF THE PARK HAS FALLEN AWAY");
-    expect(tick.out).toContain("candidate dev-core×155-ground skipped: the turn is parked");
+    expect(tick.out).toContain("candidate 'dev-core×155-ground' skipped: the turn is parked");
   });
 });
 
@@ -495,7 +495,7 @@ describe("the tick asks the mail for the delivery a park is waiting for (thread 
     expect(tick.out).toContain("thread 110-adoption HAS a letter carrying 'delivers:' since then");
     // AND IT IS NOT A LIFT, on this very tick: the park still freezes its own thread, and the
     // difference between a note and a door is exactly this assert.
-    expect(tick.out).toContain("candidate dev-core×155-ground skipped: the turn is parked");
+    expect(tick.out).toContain("candidate 'dev-core×155-ground' skipped: the turn is parked");
   });
 
   it("is SILENT about a delivery that was already lying there when the park was declared", () => {
@@ -513,7 +513,7 @@ describe("the tick asks the mail for the delivery a park is waiting for (thread 
     const tick = daemon(repo);
 
     expect(tick.out).not.toContain("THE GROUND OF THE PARK HAS FALLEN AWAY");
-    expect(tick.out).toContain("candidate dev-core×155-ground skipped: the turn is parked");
+    expect(tick.out).toContain("candidate 'dev-core×155-ground' skipped: the turn is parked");
   });
 
   it("is silent while that thread carries no delivery at all — the park is honest", () => {
@@ -568,7 +568,7 @@ describe("the tick asks the mail whether the PR a park waits on has landed (thre
     expect(tick.out).toContain("PR #74 IS merged");
     // AND IT IS NOT A LIFT, on this very tick: the park still freezes its own thread. The whole
     // difference between this feature and a door the machine opens is in this assert.
-    expect(tick.out).toContain("candidate dev-core×016-ground skipped: the turn is parked");
+    expect(tick.out).toContain("candidate 'dev-core×016-ground' skipped: the turn is parked");
   });
 
   it("is silent while nothing in the mail says so, and deaf to the merge of another PR", () => {
@@ -584,7 +584,7 @@ describe("the tick asks the mail whether the PR a park waits on has landed (thre
     const tick = daemon(repo);
 
     expect(tick.out).not.toContain("THE GROUND OF THE PARK HAS FALLEN AWAY");
-    expect(tick.out).toContain("candidate dev-core×016-ground skipped: the turn is parked");
+    expect(tick.out).toContain("candidate 'dev-core×016-ground' skipped: the turn is parked");
   });
 });
 

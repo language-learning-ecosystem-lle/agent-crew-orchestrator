@@ -567,6 +567,23 @@ describe("describeSkip — the line an operator reads", () => {
     expect(line).toContain("orchestrator thaw --role dev-core --thread 016 --by <you> --write");
   });
 
+  /**
+   * FINDING 9.2 (curator, 2026-09-12, thread `180-selfheal-leaves-the-workspaces-behind`):
+   * these lines are the planner's half of the stall fingerprint, and that fingerprint folds
+   * two candidates of one fault by collapsing the QUOTED parts of a refusal. Unquoted, the
+   * pair made every hold, every park and every running pair its own class — the set filled
+   * with names instead of causes. The fold itself is tested at the seam, in `stall.test.ts`;
+   * what belongs here is that the line carries the quotes at all.
+   */
+  it("quotes the pair — and the role it names twice — so one fault reads as one", () => {
+    const ceiling = { value: 3, source: "default" } as const;
+    expect(describeSkip({ ...skip, reason: "held" }, ceiling)).toBe(
+      "candidate 'dev-core×016' skipped: held by a manual session of 'dev-core'",
+    );
+    for (const reason of ["active", "waiting", "parked", "exhausted"] as const)
+      expect(describeSkip({ ...skip, reason }, ceiling)).toContain("candidate 'dev-core×016'");
+  });
+
   it("the auth skip dictates the login of the role's OWN tool", () => {
     // Point 3 of step 3, thread 026: this line tells a human what to type, and until now
     // it typed `claude login` at everybody. The kind answers it; `claude-code` when the
