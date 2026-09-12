@@ -559,8 +559,12 @@ describe("describeSkip — the line an operator reads", () => {
     const line = describeSkip({ ...skip, reason: "exhausted" }, { value: 3, source: "default" });
     expect(line).toContain("dev-core×016");
     expect(line).toContain("exhausted");
-    expect(line).toContain("13 failed attempts");
-    expect(line).toContain("ceiling 3 (default)");
+    // QUOTED, AND THE QUOTES ARE THE POINT (thread 180): the count and the ceiling are
+    // what told two candidates of ONE ceiling apart in the stall fingerprint, and this
+    // package marks "differs between two candidates of one fault" with quotes. The reader
+    // still gets both numbers in the same place in the sentence.
+    expect(line).toContain("'13' failed attempts");
+    expect(line).toContain("ceiling '3' ('default')");
     // AND IT NAMES THE MOVE, with this pair already in the call (thread 150). This is the
     // line a person tails while wondering why nothing moves, and until the thaw existed it
     // could only point at two more surfaces that did not name a command either.
@@ -597,7 +601,7 @@ describe("describeSkip — the line an operator reads", () => {
 
   it("a flag is reported as a flag — an ignored flag was the whole defect", () => {
     expect(describeSkip({ ...skip, reason: "exhausted" }, { value: 20, source: "flag" })).toContain(
-      "ceiling 20 (flag)",
+      "ceiling '20' ('flag')",
     );
   });
 
