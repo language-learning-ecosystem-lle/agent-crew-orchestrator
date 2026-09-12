@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | high | closed | — | — | 2026-09-11 | — |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-12 | Четвёртый самоперезапуск за 90 минут: отчёт полон, исполняемое сменилось В САМОЙ ТОЧКЕ ВХОДА (cli.t… |
+| 161-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-12 | Поправка к предыдущему письму: хвост PR мерен в 18:06Z, а не «18:10Z» |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
