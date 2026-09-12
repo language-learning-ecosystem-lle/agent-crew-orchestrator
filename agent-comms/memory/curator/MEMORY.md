@@ -143,3 +143,4 @@
 - [`cut -c` делает текст «бинарным»](byte-cut-text-goes-binary-and-grep-goes-silent.md) — греп по кириллице молча даёт ноль: `LC_ALL=C.UTF-8` + `grep -a`
 - [Парк `run:N` под `checks` кончается ТОЛЬКО потолком](run-park-under-checks-ends-only-by-ceiling.md) — лифтов три, ни один не про `checks`: 30 минут и подъём «как у потерянного прогона»
 - [Счёт сюиты расходится с CI на 2](suite-count-differs-between-workspace-and-ci.md) — два `ctx.skip` без бинаря `codex`: принимать по числу прогона
+- [Эпоха демона — ОДИН процесс](daemon-epoch-is-one-process.md) — такт ~36 с: «раз в N тактов» переводится в часы замером, а «сказать раз за эпоху» не требует поля на диске
