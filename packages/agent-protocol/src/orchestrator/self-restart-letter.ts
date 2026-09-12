@@ -407,22 +407,157 @@ export const planSelfRestartLetter = (input: {
 export const selfRestartSignature = (event: SelfRestartEvent): string =>
   [event.to, event.at].join("\u0000");
 
-/** What the last letter about a self-restart carried, as the caller keeps it on disk. */
-export type SelfRestartMemo = {
-  readonly signature: string;
-  /** When that letter went, as it goes into the journal line of every suppressed tick. */
-  readonly at: string;
+/**
+ * HOW OFTEN A QUIET BRANCH SAYS ITSELF AGAIN, in ticks — the cadence of thread 180 (form (C),
+ * `N` named by curator 2026-09-12), and the answer to a flood that was measured, not felt.
+ *
+ * THE TWO QUIET BRANCHES of {@link planSelfRestartDelivery} print a line on every tick they
+ * are taken, and an epoch of a standing box is thousands of ticks about one event. Measured
+ * in the field, this circuit, one rotation: 6933 `SUPPRESSED` lines in `daemon.log.1`, 6718
+ * of them byte-identical, 3,5 % of the file; the flood is on the branch that HAS a memory,
+ * so a fix on either branch alone leaves the measured half standing.
+ *
+ * SILENCE IS STILL NOT ALLOWED, and that is what makes this a cadence rather than a lock:
+ * the first tick of every quiet run says the FULL text, so "the box suppressed a letter" is
+ * never indistinguishable from "no restart happened" — the sentence this module was built
+ * around. What the cadence removes is the 100th repetition of it, not the statement.
+ *
+ * `N` IS A CONSTANT OF THIS MODULE AND NOT A KEY OF THE CONFIG — a knob over the journal
+ * would be a norm, and norms are john's door, not a diff's. The number is a MEASURE of this
+ * box rather than a guess: 97 ticks of `no candidate is launchable` in 59,7 minutes of the
+ * live epoch `316991aa` (curator, 2026-09-12) — a tick of ≈36 seconds, so 100 ticks is the
+ * "once per hour of standing" this cadence was asked for. A box with another period reads
+ * the same line correctly anyway, because the repeat carries the COUNT of ticks and the
+ * stamp it is counting from, and the reader converts one into the other themselves.
+ */
+export const SELF_RESTART_QUIET_CADENCE = 100;
+
+/**
+ * THE QUIET RUN THIS PROCESS IS IN, and it lives in the MEMORY of the daemon, never on the
+ * disk. An epoch is one process (measured, thread 180: the daemon is a single long-lived
+ * pid, and `daemon — code: … up since …` is printed once per epoch over thousands of ticks),
+ * so the state a cadence needs is the state of that process — exactly as `windDownAnnounced`
+ * and `turnTakenAnnounced` are kept beside the tick loop, and for the same stated reason:
+ * "a line repeated every poll would be noise in the one log an operator reads after the fact".
+ *
+ * A NEW FIELD ON THE DISK IS NOT TAKEN, and that is a requirement rather than a taste
+ * (curator, 2026-09-12 §4): a third field of `self-restart-letters.json` would force every
+ * reader to tolerate a file written by older code, which is a second compatibility surface
+ * bought for nothing — the counter is an argument, the way the memo already is.
+ */
+export type SelfRestartQuietRun = {
+  /**
+   * WHAT is being repeated — the branch and the event, joined. A different event (a new `at`,
+   * so a new signature) is a different run and starts from the full text again: two restarts
+   * are two events, which is the rule {@link selfRestartSignature} already stands on.
+   */
+  readonly of: string;
+  /** How many ticks this run has lasted, this one included; `1` is the tick that spoke in full. */
+  readonly ticks: number;
 };
 
 /**
+ * THE KEY OF A QUIET RUN. The join is `\u0000` for `selfRestartSignature`'s reason — no field
+ * can contain the separator, so two runs cannot collapse into one key — and it is written as
+ * an ESCAPE, never as the byte, which `sources.test.ts` guards.
+ */
+const quietRunOf = (branch: "SUPPRESSED" | "WITHHELD", signature: string): string =>
+  [branch, signature].join("\u0000");
+
+/** The run after this tick: the same one advanced, or a fresh one when the subject changed. */
+const advanceQuietRun = (
+  of: string,
+  previous: SelfRestartQuietRun | undefined,
+): SelfRestartQuietRun =>
+  previous !== undefined && previous.of === of
+    ? { of, ticks: previous.ticks + 1 }
+    : { of, ticks: 1 };
+
+/**
+ * DOES A RUN OF THIS LENGTH SAY ITSELF ON THIS TICK — `1` always (the full text; the first
+ * tick of a quiet run is never silent), and then every {@link SELF_RESTART_QUIET_CADENCE}-th
+ * tick after it: 101, 201, … with `N = 100`.
+ */
+export const quietTickSpeaks = (ticks: number): boolean =>
+  ticks === 1 || (ticks - 1) % SELF_RESTART_QUIET_CADENCE === 0;
+
+/** What the last letter about a self-restart carried, as the caller keeps it on disk. */
+export type SelfRestartMemo = {
+  readonly signature: string;
+  /**
+   * When that letter went, as it goes into the journal line of every suppressed tick — and
+   * OPTIONAL, because the reading of this file (`readSelfRestartMemo`) guards the signature
+   * and nothing else. A memo truncated, hand-edited or written by a revision that did not
+   * carry the field is a real input, and the type says so: typed as required, the absence
+   * was printed as the word `undefined` into the one line the quiet branch repeats.
+   */
+  readonly at?: string;
+};
+
+/**
+ * WHEN THE LETTER WENT, or the NAMED absence of that stamp (thread 180, measured by probe:
+ * a memo parsed from `{"signature":"a1b2c3"}` printed `… posted … at undefined, turn for …`).
+ *
+ * The form is not invented here — it is {@link describeUndeliveredSelfRestartLetter}'s, one
+ * function down, and for the same reason: a stamp that is not recorded is said to be not
+ * recorded, because `undefined` in a journal reads as a broken line rather than as a fact
+ * about the box, and a reader cannot tell which of the two it is looking at.
+ */
+const postedAt = (memo: SelfRestartMemo): string =>
+  memo.at === undefined
+    ? "at a moment the memo of that letter does not record — it carries no stamp"
+    : `at ${memo.at}`;
+
+/**
  * THE TICK THAT SAYS NOTHING NEW, as one line of the daemon's journal — and a line it MUST
- * print. A silent suppression is indistinguishable from "no restart happened", and telling
- * those two apart in a log is the entire reason this package exists.
+ * print ON THE FIRST TICK OF THE RUN. A silent suppression is indistinguishable from "no
+ * restart happened", and telling those two apart in a log is the entire reason this package
+ * exists; that is why this full text is said once and never conditionally.
+ *
+ * WHAT IT IS NOT is a line for EVERY tick, and that was measured rather than argued (thread
+ * 180, curator's §3.6 and my §3 of 2026-09-12): in one rotation of `.orchestrator/daemon.log.1`
+ * this branch printed 6933 lines, 6718 of them byte-identical and all about ONE event —
+ * 3,5 % of the whole journal of the epoch spent on one sentence. The repetition is kept, at
+ * a cadence, by {@link describeSuppressedSelfRestartLetterStill}; what it costs and what it
+ * buys is written over {@link SELF_RESTART_QUIET_CADENCE}.
  */
 export const describeSuppressedSelfRestartLetter = (input: {
   readonly memo: SelfRestartMemo;
 }): string =>
-  `letter — SUPPRESSED, nothing new to say: this very self-restart was already posted to the standing address '${SELF_RESTART_SLUG}' at ${input.memo.at}, turn for '${SELF_RESTART_WAITING_ON}' — read it there`;
+  `letter — SUPPRESSED, nothing new to say: this very self-restart was already posted to the standing address '${SELF_RESTART_SLUG}' ${postedAt(input.memo)}, turn for '${SELF_RESTART_WAITING_ON}' — read it there. This line is said in full once and then every ${SELF_RESTART_QUIET_CADENCE} ticks, so the log of a standing box does not drown in it`;
+
+/**
+ * THE SAME SUPPRESSION, SAID AGAIN AFTER {@link SELF_RESTART_QUIET_CADENCE} TICKS — and it
+ * carries MORE than the line it replaces, not less (curator's condition 3, thread 180).
+ *
+ * The two facts it adds are the two a reader of a standing log actually needs: HOW LONG the
+ * box has been repeating itself, in ticks, and WHAT it is counting from — the stamp of the
+ * letter that went. A count of TICKS rather than of minutes is deliberate: the period of the
+ * poll is a property of the box, this module does not know it, and printing a duration it
+ * cannot measure would be the same "текст против факта" the letter itself is guarded against.
+ * With both numbers in the line the reader converts one into the other themselves.
+ */
+export const describeSuppressedSelfRestartLetterStill = (input: {
+  readonly memo: SelfRestartMemo;
+  readonly ticks: number;
+}): string =>
+  `letter — SUPPRESSED still, ${input.ticks - 1} tick(s) now since this was last said in full: the self-restart posted to the standing address '${SELF_RESTART_SLUG}' ${postedAt(input.memo)} is still the newest one, turn for '${SELF_RESTART_WAITING_ON}' — read it there. Every ${SELF_RESTART_QUIET_CADENCE}th tick says this; the ticks between it are the same fact, unchanged`;
+
+/**
+ * THE SAME WITHHOLDING, SAID AGAIN AT THE SAME CADENCE — and on this branch the count is the
+ * only measure a reader has of how long the box has run a program nobody was told about. The
+ * stamp counted from is the EVENT's (`at`, the identity of the restart) and not a letter's:
+ * on this branch no letter ever went, which is exactly the fact being repeated.
+ */
+export const describeWithheldSelfRestartLetterStill = (input: {
+  readonly event: SelfRestartEvent;
+  readonly ticks: number;
+}): string =>
+  `letter — WITHHELD still, ${input.ticks - 1} tick(s) now since this was last said in full: the restart ${
+    input.event.from === undefined
+      ? "from the code it came from"
+      : `from ${shortSha(input.event.from)}`
+  } to ${shortSha(input.event.to)}, stamped ${input.event.at}, still moves no path of this daemon's footprint, so no letter is spent and no turn of '${SELF_RESTART_WAITING_ON}' is. Every ${SELF_RESTART_QUIET_CADENCE}th tick says this; the full line, with both shas and the footprint it measured, was said on the first tick of this run`;
 
 /**
  * THE DELIVERY THAT DID NOT GO, as one line of the same journal. It is a SEPARATE fact from
@@ -465,11 +600,17 @@ export const describeWithheldSelfRestartLetter = (input: {
   }..${shortSha(input.event.to)} moves no path of the footprint (${input.footprint.means}), so the box is running the same program under a new sha. The restart itself STANDS and is not undone; what is not spent is the LETTER, and with it the turn of '${SELF_RESTART_WAITING_ON}' — a raised session is what a letter costs (john, 2026-09-07: деньги тратит письмо, а не перезапуск)`;
 
 /**
- * THE DECISION, as a pure function over the signature and what was remembered: post, or stay
- * quiet with a line that says why. Nothing here reads the disk — the caller owns both the
- * reading of the ledger and the writing of it, and writes ONLY after a delivery that
- * actually returned 0, because a letter that never arrived has told nobody and must be
- * tried again on the next tick.
+ * THE DECISION, as a pure function over the signature, what was remembered and how long this
+ * process has already been saying the same thing: post, or stay quiet — with a line that says
+ * why, or with no line at all when that line was said {@link SELF_RESTART_QUIET_CADENCE}
+ * ticks ago and has not changed since.
+ *
+ * Nothing here reads the disk — the caller owns both the reading of the ledger and the
+ * writing of it, and writes ONLY after a delivery that actually returned 0, because a letter
+ * that never arrived has told nobody and must be tried again on the next tick. THE QUIET RUN
+ * IS NOT ON THE DISK EITHER: it comes in as an argument and goes back out as one, so the
+ * caller that owns the tick loop owns it, and a restarted daemon starts every run from its
+ * full text (the safe direction — a new process says everything it knows).
  */
 export const planSelfRestartDelivery = (input: {
   readonly signature: string;
@@ -480,19 +621,53 @@ export const planSelfRestartDelivery = (input: {
   readonly footprint: ExecutableFootprint;
   /** Whether this restart moved the executable at all — the narrowing of thread 161. */
   readonly change: ExecutableChange;
-}): { readonly post: true } | { readonly post: false; readonly said: string } => {
+  /** What this process said last tick and how long it has been saying it; absent — nothing yet. */
+  readonly quiet?: SelfRestartQuietRun;
+}):
+  | { readonly post: true }
+  | {
+      readonly post: false;
+      /** The journal line, or ABSENT — this tick of the run says nothing, by the cadence. */
+      readonly said: string | undefined;
+      /** The run as it stands after this tick, for the caller to hand back on the next one. */
+      readonly quiet: SelfRestartQuietRun;
+    } => {
   // THE LOCK IS ASKED FIRST because it is about a letter that ALREADY went: a reader who
   // has the letter must be told "you have it", not "there was nothing to tell you".
-  if (input.memo !== undefined && input.memo.signature === input.signature)
-    return { post: false, said: describeSuppressedSelfRestartLetter({ memo: input.memo }) };
-  // AND THE NARROWING SECOND, and it does NOT write the ledger: a withheld letter told
-  // nobody, so nothing about it needs remembering, and the line above is printed on every
-  // tick of the epoch exactly as the suppression line is. That repetition is the price of
-  // the branch being checkable in a log.
-  if (input.change.kind === "untouched")
+  if (input.memo !== undefined && input.memo.signature === input.signature) {
+    const memo = input.memo;
+    const quiet = advanceQuietRun(quietRunOf("SUPPRESSED", input.signature), input.quiet);
     return {
       post: false,
-      said: describeWithheldSelfRestartLetter({ event: input.event, footprint: input.footprint }),
+      said: !quietTickSpeaks(quiet.ticks)
+        ? undefined
+        : quiet.ticks === 1
+          ? describeSuppressedSelfRestartLetter({ memo })
+          : describeSuppressedSelfRestartLetterStill({ memo, ticks: quiet.ticks }),
+      quiet,
     };
+  }
+  // AND THE NARROWING SECOND, and it does NOT write the ledger: a withheld letter told
+  // nobody, so nothing about it needs remembering. It is at the SAME cadence as the
+  // suppression above, and that sameness is the point: the flood was measured on the branch
+  // that has a memory, so a cadence on one branch alone would leave the measured half of it
+  // standing (thread 180, §3 of 2026-09-12). The full line — both shas and the footprint it
+  // measured — is still said on the first tick of every run, and that is what keeps this
+  // branch checkable in a log; what the cadence takes away is only its hundredth copy.
+  if (input.change.kind === "untouched") {
+    const quiet = advanceQuietRun(quietRunOf("WITHHELD", input.signature), input.quiet);
+    return {
+      post: false,
+      said: !quietTickSpeaks(quiet.ticks)
+        ? undefined
+        : quiet.ticks === 1
+          ? describeWithheldSelfRestartLetter({
+              event: input.event,
+              footprint: input.footprint,
+            })
+          : describeWithheldSelfRestartLetterStill({ event: input.event, ticks: quiet.ticks }),
+      quiet,
+    };
+  }
   return { post: true };
 };
