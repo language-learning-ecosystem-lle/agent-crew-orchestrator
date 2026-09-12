@@ -113,7 +113,7 @@
 - [Перенос парка вперёд НЕ заводит потолок заново](carrying-a-park-forward-does-not-restart-its-ceiling.md) — `since` у первого письма; перезаводится ДВУМЯ письмами (можно в одном ходе), снятие+парк одним — нет.
 - [Общие факты — не общий вызов](shared-facts-have-more-than-one-consumer.md) — у поля есть второй потребитель.
 - [`is-ancestor` против тега реза отказывает ВСЕГДА](is-ancestor-against-a-split-tag-always-fails.md) — мерить тождеством дерева.
-- [Два способа потерять прогон сюиты до первого теста](vitest-run-invocation-traps.md) — репортёр `basic` и cwd под `--root`.
+- [Два способа потерять прогон сюиты до первого теста](vitest-run-invocation-traps.md) — репортёр `basic` и cwd под `--root`; плюс `console.log` зонда, который не доезжает.
 - [Ноль хунков у потребителя не значит «цел»](zero-hunk-consumer-can-still-break.md)
 - [Заказанное мог исполнить ДРУГОЙ тред](order-may-be-executed-by-another-thread.md)
 - [Имя wip-ветки контура — тред ПРОГОНА, не предмета](wip-branch-name-is-the-run-thread-not-the-subject.md) — дом брать из диффа; черновик опознаётся грепом по снимку.
