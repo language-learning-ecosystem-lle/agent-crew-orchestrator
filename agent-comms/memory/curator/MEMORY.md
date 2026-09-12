@@ -142,3 +142,4 @@
 - [Парковки считаются по ШАПКАМ](parks-are-enumerated-by-headers.md) — греп по телу врёт в плюс на цитатах: 831 против 826
 - [`cut -c` делает текст «бинарным»](byte-cut-text-goes-binary-and-grep-goes-silent.md) — греп по кириллице молча даёт ноль: `LC_ALL=C.UTF-8` + `grep -a`
 - [Парк `run:N` под `checks` кончается ТОЛЬКО потолком](run-park-under-checks-ends-only-by-ceiling.md) — лифтов три, ни один не про `checks`: 30 минут и подъём «как у потерянного прогона»
+- [Счёт сюиты расходится с CI на 2](suite-count-differs-between-workspace-and-ci.md) — два `ctx.skip` без бинаря `codex`: принимать по числу прогона
