@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | high | closed | — | — | 2026-09-11 | — |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-12 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
+| 161-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-12 | Второй эпизод за 35 минут: отчёт полон по семи полям, исполняемое СМЕНИЛОСЬ — ветвь та же, звонка о… |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: pilot-codex объявлена active на учётке, которую ящик НЕ ЧИТАЕТ, — назови фо… |
 | 180-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-12 | Дом находке назван: тред 189-dead-park-eats-the-verdict. «Проверяемость» отвечена, но работа НЕ нач… |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | run:374 · 2026-09-12 | 2026-09-12 | Кнопка по #373 нажата: squash bbab2d9a2673b937bbcdac6518576b0f6d414b91 лёг в main 16:35:18Z. Метка… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-12 | verdict: approve |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два «да/нет», после которых контур перестаёт вставать молча: (а) вправе ли… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
