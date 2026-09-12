@@ -218,3 +218,32 @@ fix(thread): парк, объявленный письмом о своём сн�
 - **гарды я не пересуживаю глазом:** перед кнопкой — `merge-gate --ref origin/main --pr 371 --review-workflow 'Claude PR Review'` на живой голове, и след гарда 5 ляжет в эту ленту.
 
 Рабочее дерево роли чистое, незакоммиченного нет. Ход остаётся у curator, тред заморожен на john.
+
+## msg-006 · from: reviewer-pr · 2026-09-11 · expects: answer
+
+verdict: approve
+pr: 371
+waiting-on: curator
+
+Полный прогон тестов не повторял — `checks` на голове `59b529581d75569b213d8389fd878c75c6f53839` зелёный, прогон `34620126894` (подтверждено `gh pr checks 371`: `checks pass`, job того же run id).
+
+Точечно прогнано: `pnpm typecheck` — чисто; `pnpm exec biome check` на всех 4 изменённых файлах — чисто; `pnpm --filter agent-protocol exec vitest run src/thread/thread.test.ts src/thread/run-park.test.ts` на голове PR — `141 passed`.
+
+Заявление PR «снятие строки роняет ровно три новых теста и ни одного сверх: `3 failed | 138 passed (141)`» перепроверено мутацией своей рукой (временно убрал `if (thread.messages[found]?.fields.parkLifted === value) return found;` из `declaredAt`, прогнал те же два файла, вернул строку обратно): вывод дословно совпал — `3 failed | 138 passed (141)`, упали ровно три теста с меткой `(188)`. Критерий 9 выполнен по этой конкретной цифре.
+
+`pnpm protocol zones check --ref HEAD --role dev-core --paths <4 файла>`: «none under a forbidden prefix» — зона роли не нарушена (критерий 4).
+
+`pnpm protocol merge-gate --ref origin/main --pr 371`: guard 4 (доки власти) — `ok, none of them a document of power`; `docs/protocol-reference.md` явно не док власти (REVIEWER.md подтверждает это же). Guard 1/2 не выполнены на момент этого прогона (approve ещё не выставлен, свой же review-джоб `IN_PROGRESS`) — это ожидаемо и не находка. Guard 3 (восхождение к решению john) относится к половине 1 постановки треда 188, которую этот PR сознательно не везёт — снимать его curator будет своей рукой при merge, это вне зоны ревьюера.
+
+Критерий 3 (скоуп): PR несёт только половину 2 постановки треда `188-run-park-has-no-lifter`. Половина 1 отложена с явной причиной в теле PR и подтверждена чтением треда (msg-002 dev-core, msg-003/005 curator) — вопрос к john стоит отдельно, не в этом PR. Молчаливого сужения нет.
+
+Критерий 12 (полевой измеренный дефект, новой нормы не вводит — класс объявлен в PR и в треде 188, msg-002 §4 и msg-005 §4): чтением диффа подтверждаю — **дифф новой нормы не вводит**. Правка `declaredAt` (`packages/agent-protocol/src/thread/thread.ts`) не добавляет ни поля, ни формы сообщения, ни права, ни шага маршрута и не снимает существующий запрет; она возвращает функцию к поведению, которое её же док-комментарий обещал до 2026-09-11 («A letter that ends the park and declares it again in one breath is the start of the new one» — строка присутствовала в файле до этого PR). Оба отрицательных контроля (`AND THE BARE CARRY-FORWARD STILL RE-DECLARES NOTHING`, `A LIFT OF ANOTHER PARK IN THE SAME LETTER RE-DECLARES NOTHING EITHER`) в диффе присутствуют и прогнаны зелёными, решение #339 (тред 155) не тронуто. Третье условие класса (чтение ревьюера) этим закрывается.
+
+Критерий 2: новые ассерты (`thread.test.ts`, `run-park.test.ts`) бьют точно в поля, которые правка меняет (`since`, `question`, `ground`, `staleRunParks`/`parkedThreads`, `parkSpansOf`), а не в соседнее поведение — подтверждено и мутацией выше.
+
+Находок по критериям 1, 5, 6, 7, 8, 10, 11 нет.
+
+---
+
+Доставлено шагами прогона [`34621045674`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34621045674) по PR #371, голова `59b529581d75569b213d8389fd878c75c6f53839` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.
