@@ -541,6 +541,7 @@ import {
   renderStall,
   STALL_TICKS,
   type Stall,
+  type StallRefusal,
   stallAlarmDue,
 } from "./orchestrator/stall.js";
 import { stateWord } from "./orchestrator/state-word.js";
@@ -13774,8 +13775,14 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
    * `launch` is a closure built once and the refusals belong to the tick that called it;
    * cleared where the plan is spent, read immediately after. Nothing reads it later, and
    * nothing about a launch depends on it — the counter may only ever stay quiet.
+   *
+   * EACH ONE CARRIES THE ROLE IT REFUSED (§4.2 of the thread): the counter asks "is a
+   * session of THIS refusal's own role in flight", and a bare sentence cannot be asked that.
+   * The class is left absent on purpose — absent IS the class here, and it means "a door
+   * refused a launch the planner had already approved", which is what every measured
+   * standstill of this thread was.
    */
-  const doorRefusals: string[] = [];
+  const doorRefusals: StallRefusal[] = [];
 
   /**
    * Start one pair and return immediately. Everything that can throw is inside the
@@ -13823,7 +13830,7 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
     const identity = spawnIdentityFor({ role, exec: agent.exec.value });
     if (!identity.ok) {
       pairErr(candidate, identity.reason);
-      doorRefusals.push(identity.reason);
+      doorRefusals.push({ role: candidate.role, text: identity.reason });
       return;
     }
     // AND THE CREDENTIALS THAT IDENTITY WOULD READ (msg-089 point 2) — said out loud for
@@ -13838,7 +13845,7 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
     });
     if (unreachable !== undefined) {
       pairErr(candidate, unreachable);
-      doorRefusals.push(unreachable);
+      doorRefusals.push({ role: candidate.role, text: unreachable });
       return;
     }
     // The workspace and the continuation are settled PER LAUNCH: both are properties of
@@ -13864,7 +13871,10 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
       // journal of the runs. Staying silent is not allowed either, hence a line on
       // every tick.
       pairErr(candidate, `skipped — its workspace is not usable: ${setup.reason}`);
-      doorRefusals.push(`its workspace is not usable: ${setup.reason}`);
+      doorRefusals.push({
+        role: candidate.role,
+        text: `its workspace is not usable: ${setup.reason}`,
+      });
       return;
     }
     pairOut(candidate, `ceilings: ${describeCeilings(ceilings)}`);
@@ -14237,10 +14247,14 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
     // pair lasts until a human looks at it, and a record every tick would drown the
     // journal of the runs; but the daemon's stream must never be silent about work it
     // is declining to do.
-    const plannerSkips: string[] = [];
+    const plannerSkips: StallRefusal[] = [];
     for (const skip of decision.skipped) {
       const line = describeSkip(skip, gates.maxAttempts, kindForRole(argv, registry, skip.role));
-      plannerSkips.push(line);
+      // THE CLASS RIDES WITH THE LINE, not just the line (§4.2 of thread 180). The counter
+      // of standstills judges a refusal by its class as well as by its role, and a class
+      // recovered by matching the printed sentence would be a second spelling of `SkipReason`
+      // in the one place where a forgotten class goes quiet instead of loud.
+      plannerSkips.push({ role: skip.role, text: line, reason: skip.reason });
       err(`agent-protocol: ${line}`);
     }
     // THREAD 036, STEP 3 — WHOSE MONEY THIS TICK SPENT, said ABOVE the skips' own reasons
@@ -14502,13 +14516,14 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
     // lines in `daemon.log`, tick after tick, while the unit stayed `active` and the queue
     // stayed full. The fold is pure and the write is one small file: like the outage counter
     // above it, this cannot change what a tick does, and the worst it can do is stay quiet.
-    // `live.size` is what says the circuit moves — a busy role refusing the rest of the
-    // queue is the healthiest box there is, not a standstill.
+    // THE ROLES IN FLIGHT are what say the circuit moves, and they are ROLES and not a
+    // count (§4.2): a session of `curator` is evidence about `curator` and about no other
+    // role, and while it was a count one busy role covered every refusal on the box.
     try {
       stall = foldStall({
         previous: stall,
         candidates: candidates.length,
-        moving: live.size,
+        moving: runningRoles(),
         refusals: [...doorRefusals, ...plannerSkips],
         launching: !handedOverToRepair && decision.kind !== "disabled",
         now: new Date(),
