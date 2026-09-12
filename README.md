@@ -4049,8 +4049,8 @@ construction:
 
 - **Nothing drops out silently.** Every candidate the tick declines to raise is
   named in the stream with its reason (`candidate dev-core×016-protocol-roadmap
-  skipped: exhausted — 13 failed attempts since its last delivery, ceiling 3
-  (default)`), and "nothing to launch" is a LINE, not an absence of lines: an empty
+  skipped: exhausted — '13' failed attempts since its last delivery, ceiling '3'
+  ('default')`), and "nothing to launch" is a LINE, not an absence of lines: an empty
   mailbox and an exhausted pair say so in different words. This was the other half of
   the 2026-07-26 defect — `daemon --once` printed its banner and exited without a
   word, which from a terminal is indistinguishable from "no mail arrived". The skips
