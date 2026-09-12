@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  COUNTS_AS_STANDSTILL,
   describeStall,
   foldStall,
   parseStall,
   renderStall,
   STALL_TICKS,
   type Stall,
+  type StallRefusal,
   stallAlarmDue,
   stallDue,
   stallReasons,
 } from "./stall.js";
-import { describeSkip } from "./tick.js";
+import { describeSkip, type SkipReason } from "./tick.js";
 
 const at = (minute: number): Date =>
   new Date(`2026-09-09T12:${String(minute).padStart(2, "0")}:00Z`);
@@ -24,6 +26,18 @@ const DEV_CORE_WORKSPACE =
 const CONFIG_AHEAD =
   "restart required: the repository declares protocol version 27, the package supports only 26";
 
+/**
+ * A refusal AS THE DOORS OF THIS PACKAGE MAKE IT: a role, a sentence, and no planner class —
+ * which is itself the class, "a door refused a launch the planner had already approved".
+ */
+const door = (text: string, role: string): StallRefusal => ({ role, text });
+/** A refusal as the PLANNER makes it: the same, with the class it refused under. */
+const skip = (text: string, role: string, reason: SkipReason): StallRefusal => ({
+  role,
+  text,
+  reason,
+});
+
 const tick = (
   previous: Stall | undefined,
   minute: number,
@@ -32,8 +46,8 @@ const tick = (
   foldStall({
     previous,
     candidates: 2,
-    moving: 0,
-    refusals: [CURATOR_WORKSPACE, DEV_CORE_WORKSPACE],
+    moving: [],
+    refusals: [door(CURATOR_WORKSPACE, "curator"), door(DEV_CORE_WORKSPACE, "dev-core")],
     launching: true,
     now: at(minute),
     ...over,
@@ -64,9 +78,9 @@ describe("the run of ticks that raised nobody", () => {
     expect(older).not.toBe(newer);
   });
 
-  it("ends the run the moment anything is in flight, even if the tick also refused one", () => {
+  it("ends the run when every refused role is itself in flight", () => {
     const stall = tick(undefined, 1);
-    expect(tick(stall, 2, { moving: 1, candidates: 3 })).toBeUndefined();
+    expect(tick(stall, 2, { moving: ["curator", "dev-core"], candidates: 3 })).toBeUndefined();
   });
 
   it("does NOT count a queue refused because the roles are busy: that circuit is moving", () => {
@@ -74,12 +88,68 @@ describe("the run of ticks that raised nobody", () => {
       foldStall({
         previous: undefined,
         candidates: 14,
-        moving: 2,
-        refusals: ["dev-core/x — skipped: the role is running"],
+        moving: ["dev-core"],
+        refusals: [
+          skip("dev-core/x — skipped: the pair is running right now", "dev-core", "active"),
+        ],
         launching: true,
         now: at(1),
       }),
     ).toBeUndefined();
+  });
+
+  /**
+   * CURATOR'S SECOND CASE OF ACCEPTANCE (§4 of 2026-09-09, this thread), verbatim: "a box with
+   * two roles, one busy for an hour, the other refused by the same refusal every tick — is
+   * obliged to ring, and today it is silent". It was silent because one session in flight
+   * cleared the run of the WHOLE box; the cover is per role now, and a session of `curator` is
+   * no evidence at all about `dev-core`.
+   */
+  it("RINGS while one role works and the other is refused at the door every tick", () => {
+    let stall: Stall | undefined;
+    for (const minute of [1, 2, 3])
+      stall = foldStall({
+        previous: stall,
+        candidates: 4,
+        moving: ["curator"],
+        refusals: [door(DEV_CORE_WORKSPACE, "dev-core")],
+        launching: true,
+        now: at(minute),
+      });
+    expect(stall).toMatchObject({ ticks: 3, since: "2026-09-09T12:01:00Z" });
+    expect(stallAlarmDue(stall as Stall)).toBe(true);
+  });
+
+  it("but a SECOND pair of the role that is working is covered by it: the cover is a role", () => {
+    const stall = tick(undefined, 1);
+    expect(
+      foldStall({
+        previous: stall,
+        candidates: 4,
+        moving: ["curator"],
+        refusals: [door(CURATOR_WORKSPACE, "curator")],
+        launching: true,
+        now: at(2),
+      }),
+    ).toBeUndefined();
+  });
+
+  /**
+   * AND THE FINGERPRINT IS OF THE EVIDENCE ONLY. A parked pair entering the queue beside a
+   * standstill is not a change of fault; if it entered the key it would restart the run, and
+   * the alarm would go silent on exactly the box whose queue moves around a standstill.
+   */
+  it("keeps a declared wait out of the fingerprint instead of restarting the run with it", () => {
+    const first = tick(undefined, 1);
+    const second = tick(first, 2, {
+      candidates: 3,
+      refusals: [
+        door(CURATOR_WORKSPACE, "curator"),
+        door(DEV_CORE_WORKSPACE, "dev-core"),
+        skip("candidate pilot×191 skipped: the turn is parked", "pilot", "parked"),
+      ],
+    });
+    expect(second).toMatchObject({ ticks: 2, since: "2026-09-09T12:01:00Z" });
   });
 
   it("HOLDS the run through a tick with no candidates: a lull is no evidence either way", () => {
@@ -87,7 +157,7 @@ describe("the run of ticks that raised nobody", () => {
     const quiet = foldStall({
       previous: stall,
       candidates: 0,
-      moving: 0,
+      moving: [],
       refusals: [],
       launching: true,
       now: at(3),
@@ -106,8 +176,8 @@ describe("the run of ticks that raised nobody", () => {
     const second = foldStall({
       previous: first,
       candidates: 8,
-      moving: 0,
-      refusals: [CONFIG_AHEAD],
+      moving: [],
+      refusals: [door(CONFIG_AHEAD, "dev-core")],
       launching: true,
       now: at(3),
     });
@@ -126,16 +196,16 @@ describe("the run of ticks that raised nobody", () => {
     const first = foldStall({
       previous: undefined,
       candidates: 2,
-      moving: 0,
-      refusals: [CURATOR_WORKSPACE, CONFIG_AHEAD],
+      moving: [],
+      refusals: [door(CURATOR_WORKSPACE, "curator"), door(CONFIG_AHEAD, "dev-core")],
       launching: true,
       now: at(1),
     });
     const second = foldStall({
       previous: first,
       candidates: 2,
-      moving: 0,
-      refusals: [CONFIG_AHEAD, DEV_CORE_WORKSPACE],
+      moving: [],
+      refusals: [door(CONFIG_AHEAD, "dev-core"), door(DEV_CORE_WORKSPACE, "dev-core")],
       launching: true,
       now: at(2),
     });
@@ -143,13 +213,13 @@ describe("the run of ticks that raised nobody", () => {
   });
 
   it("reaches the threshold on a run whose order is shuffled every tick", () => {
-    const both = [CURATOR_WORKSPACE, CONFIG_AHEAD] as const;
+    const both = [door(CURATOR_WORKSPACE, "curator"), door(CONFIG_AHEAD, "dev-core")] as const;
     let stall: Stall | undefined;
     for (const minute of [1, 2, 3])
       stall = foldStall({
         previous: stall,
         candidates: 2,
-        moving: 0,
+        moving: [],
         refusals: minute % 2 === 0 ? [...both].reverse() : [...both],
         launching: true,
         now: at(minute),
@@ -162,16 +232,16 @@ describe("the run of ticks that raised nobody", () => {
     const first = foldStall({
       previous: undefined,
       candidates: 2,
-      moving: 0,
-      refusals: [CURATOR_WORKSPACE],
+      moving: [],
+      refusals: [door(CURATOR_WORKSPACE, "curator")],
       launching: true,
       now: at(1),
     });
     const second = foldStall({
       previous: first,
       candidates: 2,
-      moving: 0,
-      refusals: [CONFIG_AHEAD, CURATOR_WORKSPACE],
+      moving: [],
+      refusals: [door(CONFIG_AHEAD, "dev-core"), door(CURATOR_WORKSPACE, "curator")],
       launching: true,
       now: at(2),
     });
@@ -197,8 +267,8 @@ describe("the run of ticks that raised nobody", () => {
     const next = foldStall({
       previous,
       candidates: 2,
-      moving: 0,
-      refusals: [CURATOR_WORKSPACE, CONFIG_AHEAD],
+      moving: [],
+      refusals: [door(CURATOR_WORKSPACE, "curator"), door(CONFIG_AHEAD, "dev-core")],
       launching: true,
       now: at(3),
     });
@@ -209,7 +279,7 @@ describe("the run of ticks that raised nobody", () => {
     const stall = foldStall({
       previous: undefined,
       candidates: 4,
-      moving: 0,
+      moving: [],
       refusals: [],
       launching: true,
       now: at(1),
@@ -350,15 +420,22 @@ describe("the planner's own skip lines, through the fingerprint", () => {
       ["176-e", 7],
       ["177-f", 8],
     ];
-    const refusals = pairs.map(([thread, attempt], index) =>
-      frozen(`role-${index}`, thread, attempt),
+    const said = pairs.map(([thread, attempt], index) => frozen(`role-${index}`, thread, attempt));
+    expect(stallReasons(said)).toHaveLength(1);
+
+    // THE RUN IS GROWN ON DOORS AND NOT ON THESE LINES since the narrowing of §4.2: a frozen
+    // pair is a declared wait and never counts (the case below measures that). What is under
+    // test here is the CAP and the ORDER, and it is measured on six refusals of the class that
+    // does count — six roles refused at the workspace door, shuffled tick to tick.
+    const refusals = pairs.map(([, attempt], index) =>
+      door(CURATOR_WORKSPACE.replace("curator", `role-${index}-${attempt}`), `role-${index}`),
     );
-    expect(stallReasons(refusals)).toHaveLength(1);
+    expect(stallReasons(refusals.map((refusal) => refusal.text))).toHaveLength(1);
 
     const first = foldStall({
       previous: undefined,
       candidates: refusals.length,
-      moving: 0,
+      moving: [],
       refusals,
       launching: true,
       now: at(1),
@@ -366,7 +443,7 @@ describe("the planner's own skip lines, through the fingerprint", () => {
     const second = foldStall({
       previous: first,
       candidates: refusals.length,
-      moving: 0,
+      moving: [],
       refusals: [...refusals].reverse(),
       launching: true,
       now: at(2),
@@ -374,13 +451,59 @@ describe("the planner's own skip lines, through the fingerprint", () => {
     const third = foldStall({
       previous: second,
       candidates: refusals.length,
-      moving: 0,
+      moving: [],
       refusals,
       launching: true,
       now: at(3),
     });
     expect(third).toMatchObject({ ticks: 3 });
     expect(third !== undefined && stallAlarmDue(third)).toBe(true);
+  });
+
+  /**
+   * CURATOR'S FIRST DUTY OF ACCEPTANCE (§4 of 2026-09-09): a refusal that is legitimately long
+   * must not ring — not once and not for ever. Six pairs at the attempt ceiling, ten ticks,
+   * nothing in flight: the counter never starts a run at all, so there is nothing to ring and
+   * `stall.json` stays empty. `exhausted` is the class that has a bell and a standing count of
+   * its own (thread 013), and counting it here would ring twice about one fact.
+   */
+  it("a queue frozen at the attempt ceiling NEVER starts a run, however many ticks pass", () => {
+    let stall: Stall | undefined;
+    for (let minute = 1; minute <= 10; minute += 1)
+      stall = foldStall({
+        previous: stall,
+        candidates: 2,
+        moving: [],
+        refusals: [
+          skip(frozen("curator", "172-merge-gate", 3), "curator", "exhausted"),
+          skip(frozen("dev-core", "081-research", 7), "dev-core", "exhausted"),
+        ],
+        launching: true,
+        now: at(minute),
+      });
+    expect(stall).toBeUndefined();
+  });
+
+  /**
+   * AND EVERY OTHER CLASS THE PLANNER HAS, one by one and by its REAL line — the table of
+   * {@link COUNTS_AS_STANDSTILL} named them, and this is the case that holds the table to the
+   * planner's own union instead of to a copy of it. A class that ever needs to count is added
+   * there and falls out of this list; a class nobody has classified does not compile.
+   */
+  it("no class of the planner's own refusals starts a run on its own", () => {
+    for (const reason of Object.keys(COUNTS_AS_STANDSTILL) as readonly SkipReason[]) {
+      const said = line({ role: "curator", thread: "172-merge-gate", reason, attempt: 1 });
+      expect(
+        foldStall({
+          previous: undefined,
+          candidates: 2,
+          moving: [],
+          refusals: [skip(said, "curator", reason)],
+          launching: true,
+          now: at(1),
+        }),
+      ).toBeUndefined();
+    }
   });
 
   it("and the line still carries the count and the move that ends the freeze", () => {

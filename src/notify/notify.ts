@@ -291,7 +291,7 @@ export const BOX_ALARM_TEMPLATES: Readonly<Record<BoxAlarmKind, string>> = {
   // the command that fixes them, so the line carries the refusal whole rather than a summary
   // of it. A diagnosis with no way out is what thread 140 already paid for.
   stall:
-    "nothing has been raised for {ticks} ticks in a row (threshold {threshold}) since {since}, with {candidates} candidate(s) waiting: {reasons}. The queue is full and the box is up — this is a standstill, not an idle circuit, and it ends only when whatever those refusals name is repaired on the box",
+    "nothing has been raised for {ticks} ticks in a row (threshold {threshold}) since {since}, with {candidates} candidate(s) waiting: {reasons}. Every one of these refusals is of a role with nothing in flight — this is a standstill, not an idle circuit, and it ends only when whatever those refusals name is repaired on the box",
 };
 
 /** The announcements the package writes INTO A THREAD; same mechanism, different reader. */

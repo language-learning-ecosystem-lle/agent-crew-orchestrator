@@ -52,12 +52,100 @@
  *    is HELD as it stands — neither extended nor cleared. (The same third answer
  *    `foldGhOutage` needed, and for the same reason: a lull in the middle of a stall must
  *    not restart its count.)
- *  · A TICK OF A MOVING CIRCUIT. Whatever else it refused, something is in flight — a role
- *    at a ceiling while another works is the design, not a standstill. The run is CLEARED.
+ *  · A TICK WHOSE EVERY REFUSAL IS COVERED — by a session of THAT REFUSAL'S OWN ROLE being
+ *    in flight, or by the refusal being one of the declared waits named in
+ *    {@link COUNTS_AS_STANDSTILL}. The run is CLEARED: everything that could move, moves.
  *  · A TICK THAT WITHHELD ON PURPOSE — a repair handover, a drain, launches disabled, a
  *    quota pause. The daemon is doing the thing it decided to do and it says so itself;
  *    counting it would ring on every restart of the box.
+ *
+ * AND "COVERED" IS PER ROLE, NOT PER BOX (curator's §4 of 2026-09-09, the second case of her
+ * acceptance). Until this file had the roles it only had a COUNT of what was in flight, and
+ * any one session cleared the run: a box with two roles, one of them mid-session for an
+ * hour while every candidate of the other was refused at the door tick after tick, stayed
+ * silent for that whole hour — and on a box of two roles that is half the circuit standing
+ * still behind the other half. A session of `curator` is evidence about `curator` and about
+ * nothing else, so a refusal is now covered by a session OF ITS OWN ROLE. The healthy box
+ * this used to protect is protected by the same rule, only exactly: the refusals a busy role
+ * collects for its own further pairs (`active`, `role-busy`) are its own, and they are
+ * covered by the session it is running.
  */
+
+import type { SkipReason } from "./tick.js";
+
+/**
+ * ONE REFUSAL OF ONE TICK, with the two facts the fold judges it by beside the sentence.
+ *
+ * The class is the planner's own {@link SkipReason} and is imported as a TYPE from the
+ * planner rather than restated here: a second spelling of that union is a second thing to
+ * forget, and it is the forgetting this module is written against.
+ *
+ * `role` is what makes "covered" a per-role question rather than a per-box one; `reason` is
+ * the planner's class of the refusal when the PLANNER is who refused, and is ABSENT for a
+ * refusal of a DOOR — the workspace, the identity, the reachability of the home checkout.
+ * That absence is the load-bearing half of {@link COUNTS_AS_STANDSTILL}: every measured
+ * standstill of this thread was a door refusing launches the planner had already approved.
+ */
+export type StallRefusal = {
+  /** Whose candidate was refused. A session of THIS role in flight covers it, no other. */
+  readonly role: string;
+  /** The refusal verbatim, as the daemon printed it — normalised here, not by the caller. */
+  readonly text: string;
+  /** The planner's class of it; absent means a door refused, and a door is always evidence. */
+  readonly reason?: SkipReason;
+};
+
+/**
+ * WHICH CLASSES OF REFUSAL ARE EVIDENCE OF A STANDSTILL — every one of them named, and the
+ * answer for a class nobody has written yet is YES (curator's §4 of 2026-09-09, the first
+ * duty of her acceptance).
+ *
+ * The question this table answers is not "is the refusal right" — they all are — but "would
+ * a human, told this and nothing else, have to go and look". A class is exempt only when it
+ * fails all three of: nobody was asked for anything; it does not end by itself; it is not
+ * already announced by a class of its own. THE DEFAULT IS TO COUNT: a refusal with no entry
+ * here is a door refusal, which is what all three measured standstills were, and a NEW
+ * `SkipReason` added to `tick.ts` without an entry does not compile — the author of the
+ * fourth cause decides what it is, on the day they write it rather than on the day it stands
+ * still. That is john's word of 2026-09-12 ((б), "звонить на КЛАСС, а не на причину") in the
+ * one place where a class can be forgotten.
+ *
+ * The nine exemptions, each with the fact that exempts it:
+ *
+ *  · `active` — the pair IS running: this refusal is the circuit working;
+ *  · `role-busy` — the ceiling of that role is full, and the refusal names the live pairs
+ *    holding it: a session of the role is in flight, so the per-role cover above already
+ *    answers it and the class only makes that answer independent of the cover;
+ *  · `box-busy` — the ceiling of the BOX is full. Here the per-role cover is NOT enough and
+ *    the class is what saves it: the pairs holding the box may all belong to other roles, so
+ *    a refused role can be idle on a box that is working flat out;
+ *  · `parked` (R27) — a person or an event was asked, the wait is the protocol, and a park
+ *    that goes stale has classes of its own (`frozen`, `stale-event-park`);
+ *  · `waiting` (R19) — the session itself asked a question and is ALIVE while it waits;
+ *  · `exhausted` — the attempt ceiling. It needs a hand (`thaw`), which is why it would be
+ *    tempting to count it — but it is the one class already rung by name AND printed as a
+ *    standing count every tick (thread 013), so counting it here would ring twice for one
+ *    fact and, worse, would put a legitimately frozen pair in the fingerprint of every
+ *    unrelated standstill;
+ *  · `quota` — the rate-limit window ends BY THE CLOCK and asks nothing of anybody;
+ *  · `auth` — the credentials of that account are refused. It does need a human, and it is
+ *    the closest call in this table; it is exempt because the courier already rings on that
+ *    exact shelf (`auth`) with the login command in the letter, and a second bell about one
+ *    fact is what makes the first one unread;
+ *  · `held` — a hand put the hold there and the same hand takes it off; `status` prints it.
+ *    A box where a person is working by hand is not a box that stopped.
+ */
+export const COUNTS_AS_STANDSTILL: Record<SkipReason, boolean> = {
+  held: false,
+  active: false,
+  waiting: false,
+  exhausted: false,
+  "role-busy": false,
+  "box-busy": false,
+  parked: false,
+  quota: false,
+  auth: false,
+};
 
 /** The run of unlifted ticks in force now — a standstill as a state, not as a tally. */
 export type Stall = {
@@ -140,31 +228,51 @@ const sameReasons = (previous: readonly string[], reasons: readonly string[]): b
 };
 
 /**
+ * ONE REFUSAL → IS IT EVIDENCE THAT THE CIRCUIT HAS STOPPED. Two questions, in this order:
+ * does a session of ITS OWN ROLE cover it, and is its class one of the declared waits.
+ */
+const standstill = (refusal: StallRefusal, moving: ReadonlySet<string>): boolean =>
+  !moving.has(refusal.role) &&
+  (refusal.reason === undefined || COUNTS_AS_STANDSTILL[refusal.reason]);
+
+/**
  * ONE TICK'S ANSWER → THE RUN. Pure and total: it never throws and never reads anything.
  *
- * `moving` is the one input that can clear a run, and it is NOT "this tick raised somebody":
- * it is every pair the circuit has in flight — the raises of this tick plus the sessions
- * still running from earlier ones. A box with two roles, one of them mid-session, refuses
- * every other candidate of the queue with "the role is running" on every tick for the hour
- * that session lasts; counting those would ring on the healthiest circuit there is. What
- * makes a standstill is that NOTHING is moving and nothing was lifted.
+ * `moving` is what can clear a run, and it is NOT "this tick raised somebody": it is the
+ * ROLES the circuit has in flight — the raises of this tick plus the sessions still running
+ * from earlier ones. It used to be their COUNT, and the count made one busy role cover the
+ * whole box; see the header for what that cost. What makes a standstill is that a candidate
+ * was refused, nothing of ITS role is moving, and the refusal is not one of the waits
+ * {@link COUNTS_AS_STANDSTILL} names.
+ *
+ * AND THE FINGERPRINT IS BUILT FROM THE EVIDENCE ONLY, not from everything the tick said.
+ * A parked pair joining the queue is not a change of fault, and if it entered the key it
+ * would restart the run — the alarm would then go silent exactly on the box whose queue is
+ * moving around a standstill, which is every real one of them.
  */
 export const foldStall = (input: {
   readonly previous: Stall | undefined;
   /** How many candidates this tick had in front of it, before any door. */
   readonly candidates: number;
-  /** How many pairs the circuit has in flight: this tick's raises plus the sessions still live. */
-  readonly moving: number;
-  /** The refusals it printed, verbatim — normalised here, not by the caller. */
-  readonly refusals: readonly string[];
+  /** The roles the circuit has in flight: this tick's raises plus the sessions still live. */
+  readonly moving: readonly string[];
+  /** The refusals it printed, with their role and class — normalised here, not by the caller. */
+  readonly refusals: readonly StallRefusal[];
   /** Was this tick free to raise at all: false for a drain, a repair handover, a disabled box. */
   readonly launching: boolean;
   readonly now: Date;
 }): Stall | undefined => {
   if (!input.launching) return input.previous;
-  if (input.moving > 0) return undefined;
   if (input.candidates === 0) return input.previous;
-  const reasons = stallReasons(input.refusals);
+  const moving = new Set(input.moving);
+  const standing = input.refusals.filter((refusal) => standstill(refusal, moving));
+  // A TICK THAT RAISED NOBODY AND SAID NOTHING ABOUT ANY OF THEM is the loudest evidence
+  // there is and the only one with no role to attribute: there is no refusal to read one
+  // off and nothing in flight to cover it. It is kept — with an empty fingerprint, which
+  // `describeStall` says out loud — rather than dropped for want of a sentence.
+  const silent = input.refusals.length === 0 && moving.size === 0;
+  if (standing.length === 0 && !silent) return undefined;
+  const reasons = stallReasons(standing.map((refusal) => refusal.text));
   const stamp = `${input.now.toISOString().slice(0, 19)}Z`;
   const previous = input.previous;
   const same = previous !== undefined && sameReasons(previous.reasons, reasons);
@@ -194,7 +302,7 @@ export const stallAlarmDue = (stall: Stall): boolean => stallDue(stall, STALL_TI
  * the first half of the sentence, before any cause.
  */
 export const describeStall = (stall: Stall): string =>
-  `daemon — nothing has been raised for ${stall.ticks} tick(s) in a row (rings at ${STALL_TICKS}) since ${stall.since}, with ${stall.candidates} candidate(s) waiting: ${stall.reasons.join(" | ") || "no reason was given"}. The queue is full and the box is up — this is a standstill, not an idle circuit`;
+  `daemon — nothing has been raised for ${stall.ticks} tick(s) in a row (rings at ${STALL_TICKS}) since ${stall.since}, with ${stall.candidates} candidate(s) waiting: ${stall.reasons.join(" | ") || "no reason was given"}. Every one of these refusals is of a role with nothing in flight — this is a standstill, not an idle circuit`;
 
 /** The state as a file: one JSON object, overwritten — the journal is not a heartbeat log. */
 export const renderStall = (stall: Stall | undefined): string =>
