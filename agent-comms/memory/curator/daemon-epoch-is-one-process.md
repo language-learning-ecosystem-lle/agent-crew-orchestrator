@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: acc1233e-9443-4dd3-b7b3-e99a9eaa428a
-  modified: 2026-09-12T18:00:56.444Z
+  modified: 2026-09-12T20:03:30.355Z
 ---
 
 Эпоха ящика (`agent-protocol: daemon — code: <sha> … up since <ISO>`) — это ЖИЗНЬ ОДНОГО
@@ -22,6 +22,14 @@ launchable` за 59,7 минуты эпохи `316991aa`). Поэтому «ра
 `turnTakenAnnounced` (`cli.ts`, «said once per run … a line repeated every poll would be noise
 in the one log an operator reads after the fact»). Прежде чем принимать «цену третьего поля в
 json», мерь, не хватает ли памяти процесса.
+
+**Обратная сторона той же переменной: кадэнс умирает вместе с эпохой.** Счётчик тихого прогона
+самоперезапуска — локальная переменная такта (`cli.ts`, `let quietSelfRestart`), и «раз в 100
+тактов» говорит на тактах 1, 101, 201 — то есть ПОВТОР требует ≥101 такта В ОДНОМ процессе,
+≈60 минут. Замер 2026-09-12: первая эпоха этого кода прожила 95 тактов (56 мин, `19:02:54Z →
+19:58:53Z`) и умерла своим же перезапуском — форма `SUPPRESSED still` не напечаталась НИ РАЗУ
+(ноль в обоих файлах журнала). На ящике, куда кнопка merge приходит чаще часа, «раз в N тактов»
+на практике равно «раз за эпоху»: не жди повторов в журнале и не строй на них замер.
 
 Считать сами строки — [[field-state-is-read-from-the-daemon-log-file]], якорь `^` обязателен
 ([[daemon-log-echoes-your-own-output]]).
