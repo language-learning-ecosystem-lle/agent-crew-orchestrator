@@ -526,6 +526,7 @@ import {
   planSelfRestartDelivery,
   planSelfRestartLetter,
   type SelfRestartMemo,
+  type SelfRestartQuietRun,
   selfRestartSignature,
 } from "./orchestrator/self-restart-letter.js";
 import {
@@ -7580,7 +7581,13 @@ const postSelfRestartLetter = (input: {
   readonly memo: string;
   readonly repo?: string;
   readonly ref?: string;
-}): string => {
+  /**
+   * THE QUIET RUN THIS PROCESS IS IN, from the tick loop and back to it — the cadence of
+   * thread 180 lives in the memory of one process, because an epoch IS one process, and a
+   * field on the disk would buy a second compatibility surface for nothing.
+   */
+  readonly quiet?: SelfRestartQuietRun;
+}): { readonly said?: string; readonly quiet?: SelfRestartQuietRun } => {
   const signature = selfRestartSignature(input.event);
   const remembered = readSelfRestartMemo(input.memo);
   const packageDir = entryPackageDir();
@@ -7601,8 +7608,17 @@ const postSelfRestartLetter = (input: {
     event: input.event,
     footprint,
     change,
+    ...(input.quiet === undefined ? {} : { quiet: input.quiet }),
   });
-  if (!decided.post) return decided.said;
+  // A QUIET TICK MAY SAY NOTHING AT ALL, and the caller is the one that must not print it:
+  // the cadence says the full line on the first tick of every run and every hundredth after
+  // it, so the ticks between are `said: undefined` and the journal keeps its line for the
+  // work of the box (thread 180).
+  if (!decided.post)
+    return {
+      ...(decided.said === undefined ? {} : { said: decided.said }),
+      quiet: decided.quiet,
+    };
   const letter = planSelfRestartLetter({
     event: input.event,
     change,
@@ -7611,8 +7627,11 @@ const postSelfRestartLetter = (input: {
     ...(input.repo === undefined ? {} : { repo: input.repo }),
     ...(input.ref === undefined ? {} : { ref: input.ref }),
   });
-  const said = (cause: string): string =>
-    describeUndeliveredSelfRestartLetter({ event: input.event, cause });
+  // A LETTER THAT WENT (or failed to) ENDS THE QUIET RUN: the next tick is a new subject —
+  // the suppression of the letter just posted — and starts from its own full line.
+  const said = (cause: string): { readonly said: string } => ({
+    said: describeUndeliveredSelfRestartLetter({ event: input.event, cause }),
+  });
   // The body goes to a file OUTSIDE both checkouts, for the reason every writer in this
   // protocol does it: a stray file in either tree is a refused launch on the next tick.
   let dir: string | undefined;
@@ -7638,7 +7657,7 @@ const postSelfRestartLetter = (input: {
     // DELIVERED — and only now is it remembered. Everything above returns through `said()`,
     // so a restart nobody was told about leaves no lock behind.
     rememberSelfRestartMemo(input.memo, { signature, at: eventTimestamp(new Date()) });
-    return describeDeliveredSelfRestartLetter();
+    return { said: describeDeliveredSelfRestartLetter() };
   } catch (error) {
     return said((error as Error).message);
   } finally {
@@ -13275,6 +13294,14 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
   /** The last unreadable-ref complaint, so an unanswerable ref is said once, not per tick. */
   let codeNote: string | undefined;
   /**
+   * HOW LONG THIS PROCESS HAS BEEN SAYING THE SAME THING ABOUT A SELF-RESTART (thread 180) —
+   * the quiet run of `planSelfRestartDelivery`, kept HERE for the same reason
+   * `windDownAnnounced` is: an epoch is one process, and a line repeated on every poll is
+   * noise in the one log an operator reads after the fact. Nothing of it goes to the disk;
+   * a new daemon starts every run from its full text.
+   */
+  let quietSelfRestart: SelfRestartQuietRun | undefined;
+  /**
    * WHOSE SESSIONS THIS TICK IS WAITING OUT (thread 141), set by `selfRestart` on a `drain`
    * verdict and read once, below, by the line that names what the drain cost. It lives here
    * rather than being returned because the outcome is what the CALLER acts on and the roles
@@ -14341,23 +14368,25 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
             ? parseSelfRestartMemory(readFile(paths.daemonSelfRestart, "the self-restart memory"))
             : undefined,
         });
-        if (restarted !== undefined)
-          err(
-            `agent-protocol: daemon — ${postSelfRestartLetter({
-              event: restarted,
-              served: servedCheckout,
-              // The DIFF is asked of the checkout the code was dated against, not of the
-              // served one: they are the same tree on this circuit and two different trees
-              // on a box that serves a repository it does not run from.
-              codeCheckout: vintage.checkout,
-              mailRoot: rootOr(argv, () => paths.mailRoot),
-              memo: paths.selfRestartLetters,
-              ...(flag(argv, "--repo") === undefined
-                ? {}
-                : { repo: flag(argv, "--repo") as string }),
-              ...(flag(argv, "--ref") === undefined ? {} : { ref: flag(argv, "--ref") as string }),
-            })}`,
-          );
+        if (restarted !== undefined) {
+          const posted = postSelfRestartLetter({
+            event: restarted,
+            served: servedCheckout,
+            // The DIFF is asked of the checkout the code was dated against, not of the
+            // served one: they are the same tree on this circuit and two different trees
+            // on a box that serves a repository it does not run from.
+            codeCheckout: vintage.checkout,
+            mailRoot: rootOr(argv, () => paths.mailRoot),
+            memo: paths.selfRestartLetters,
+            ...(flag(argv, "--repo") === undefined ? {} : { repo: flag(argv, "--repo") as string }),
+            ...(flag(argv, "--ref") === undefined ? {} : { ref: flag(argv, "--ref") as string }),
+            ...(quietSelfRestart === undefined ? {} : { quiet: quietSelfRestart }),
+          });
+          quietSelfRestart = posted.quiet;
+          // AND A TICK OF THE CADENCE THAT SAYS NOTHING PRINTS NOTHING — not an empty line
+          // with a prefix, which is what a journal reader would have to grep past (180).
+          if (posted.said !== undefined) err(`agent-protocol: daemon — ${posted.said}`);
+        }
         // THE STANDOFF IS OVER, SO THE FILE GOES (thread 044). It states a STATE and not an
         // event, and a state file that outlives its subject is how a courier comes to ring
         // about a drift that was repaired an hour ago — the false reason of thread 042, in

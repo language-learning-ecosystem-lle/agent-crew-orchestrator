@@ -3,16 +3,20 @@ import { type SelfRestartEvent, type SelfRestartMemory, selfRestartEvent } from 
 import {
   describeDeliveredSelfRestartLetter,
   describeSuppressedSelfRestartLetter,
+  describeSuppressedSelfRestartLetterStill,
   describeUndeliveredSelfRestartLetter,
   describeWithheldSelfRestartLetter,
+  describeWithheldSelfRestartLetterStill,
   type ExecutableChange,
   executableChange,
   executableFootprint,
   planSelfRestartDelivery,
   planSelfRestartLetter,
+  SELF_RESTART_QUIET_CADENCE,
   SELF_RESTART_SLUG,
   SELF_RESTART_WAITING_ON,
   type SelfRestartMemo,
+  type SelfRestartQuietRun,
   selfRestartSignature,
 } from "./self-restart-letter.js";
 
@@ -396,6 +400,163 @@ describe("planSelfRestartDelivery — the narrowing, and what it must not swallo
     });
     expect(plan.post).toBe(false);
     if (plan.post === false) expect(plan.said).toContain("SUPPRESSED");
+  });
+});
+
+/**
+ * THE CADENCE OF A QUIET RUN (thread 180, form (C), `N` = 100 named by curator 2026-09-12).
+ *
+ * The flood was MEASURED before it was fixed: one rotation of `.orchestrator/daemon.log.1`
+ * carried 6933 `SUPPRESSED` lines, 6718 of them byte-identical and all about ONE restart —
+ * 3,5 % of the journal of the epoch. What these cases pin is the two halves of the answer:
+ * nothing is ever silenced (the first tick of every run says the FULL text) and nothing is
+ * repeated more often than every hundredth tick, on BOTH quiet branches.
+ */
+describe("planSelfRestartDelivery — the cadence of a quiet run", () => {
+  const memo: SelfRestartMemo = {
+    signature: selfRestartSignature(full),
+    at: "2026-09-06T17:00:05Z",
+  };
+
+  /** A run of ticks as the daemon does it: the run goes in as an argument and comes back. */
+  const runOf = (input: {
+    readonly ticks: number;
+    readonly memo?: SelfRestartMemo;
+    readonly change: ExecutableChange;
+    readonly event?: SelfRestartEvent;
+    readonly quiet?: SelfRestartQuietRun;
+  }): {
+    readonly said: readonly (string | undefined)[];
+    readonly quiet: SelfRestartQuietRun | undefined;
+  } => {
+    const event = input.event ?? full;
+    let quiet = input.quiet;
+    const said: (string | undefined)[] = [];
+    for (let tick = 0; tick < input.ticks; tick += 1) {
+      const plan = planSelfRestartDelivery({
+        signature: selfRestartSignature(event),
+        ...(input.memo === undefined ? {} : { memo: input.memo }),
+        event,
+        footprint: source,
+        change: input.change,
+        ...(quiet === undefined ? {} : { quiet }),
+      });
+      if (plan.post) throw new Error("this run is not a quiet one — the case is built wrong");
+      said.push(plan.said);
+      quiet = plan.quiet;
+    }
+    return { said, quiet };
+  };
+
+  /** Which ticks of a run spoke at all — the shape the whole cadence is asserted through. */
+  const spokeOn = (said: readonly (string | undefined)[]): readonly number[] =>
+    said.flatMap((line, at) => (line === undefined ? [] : [at]));
+
+  it("SUPPRESSED: the first tick says the FULL text and no tick of a run is ever silent first", () => {
+    const { said } = runOf({ ticks: 1, memo, change: changed });
+    expect(said[0]).toContain("SUPPRESSED, nothing new to say");
+    expect(said[0]).toContain(memo.at as string);
+    expect(said[0]).toContain(SELF_RESTART_SLUG);
+  });
+
+  it("SUPPRESSED: then it repeats every 100th tick and says NOTHING in between", () => {
+    const ticks = 2 * SELF_RESTART_QUIET_CADENCE + 50;
+    const { said } = runOf({ ticks, memo, change: changed });
+    // 250 ticks, 3 lines — this is the flood of 6933 and its answer, in one assertion.
+    expect(spokeOn(said)).toEqual([0, SELF_RESTART_QUIET_CADENCE, 2 * SELF_RESTART_QUIET_CADENCE]);
+    expect(said[SELF_RESTART_QUIET_CADENCE]).toContain("SUPPRESSED still");
+    // THE REPEAT CARRIES MORE THAN THE LINE IT REPLACES: how long the box has been saying
+    // it, in ticks, and the stamp it is counting from — the reader converts one into the
+    // other themselves, because the period of the poll is not a fact this module has.
+    expect(said[SELF_RESTART_QUIET_CADENCE]).toContain(`${SELF_RESTART_QUIET_CADENCE} tick(s)`);
+    expect(said[SELF_RESTART_QUIET_CADENCE]).toContain(memo.at as string);
+    expect(said[2 * SELF_RESTART_QUIET_CADENCE]).toContain(
+      `${2 * SELF_RESTART_QUIET_CADENCE} tick(s)`,
+    );
+  });
+
+  it("WITHHELD: the same cadence, because the measured flood is not on one branch alone", () => {
+    const ticks = 2 * SELF_RESTART_QUIET_CADENCE + 50;
+    const { said } = runOf({ ticks, change: { kind: "untouched" } });
+    expect(spokeOn(said)).toEqual([0, SELF_RESTART_QUIET_CADENCE, 2 * SELF_RESTART_QUIET_CADENCE]);
+    // The full line still carries both shas and the footprint — the branch stays checkable.
+    expect(said[0]).toContain("WITHHELD, the restart changed NOTHING");
+    expect(said[0]).toContain("fd1c14a67121");
+    expect(said[0]).toContain("packages/agent-protocol");
+    const again = said[SELF_RESTART_QUIET_CADENCE];
+    expect(again).toContain("WITHHELD still");
+    expect(again).toContain(`${SELF_RESTART_QUIET_CADENCE} tick(s)`);
+    // The stamp on THIS branch is the event's: no letter ever went, which is the fact said.
+    expect(again).toContain(full.at);
+  });
+
+  it("a NEW restart starts the cadence over — two restarts are two events", () => {
+    const ticks = SELF_RESTART_QUIET_CADENCE + 30;
+    const { quiet } = runOf({ ticks, memo, change: changed });
+    const second: SelfRestartEvent = { ...full, at: "2026-09-07T05:00:00Z" };
+    const { said } = runOf({
+      ticks: 1,
+      memo: { signature: selfRestartSignature(second), at: "2026-09-07T05:00:09Z" },
+      change: changed,
+      event: second,
+      ...(quiet === undefined ? {} : { quiet }),
+    });
+    // Without this the second restart would inherit the silence of the first, and the one
+    // event this package exists to announce would be announced to nobody.
+    expect(said[0]).toContain("SUPPRESSED, nothing new to say");
+    expect(said[0]).toContain("2026-09-07T05:00:09Z");
+  });
+
+  it("the two quiet branches do not share a run — one is not the continuation of the other", () => {
+    const { quiet } = runOf({ ticks: SELF_RESTART_QUIET_CADENCE + 10, memo, change: changed });
+    const { said } = runOf({
+      ticks: 1,
+      change: { kind: "untouched" },
+      ...(quiet === undefined ? {} : { quiet }),
+    });
+    expect(said[0]).toContain("WITHHELD, the restart changed NOTHING");
+    expect(said[0]).not.toContain("still");
+  });
+
+  it("no memory at all is still the full text — the fail-soft direction does not move", () => {
+    // Absent or unreadable, the memo reads as `undefined` (`readSelfRestartMemo`), and a
+    // restart that moved code POSTS rather than joining any cadence.
+    expect(
+      planSelfRestartDelivery({
+        signature: selfRestartSignature(full),
+        event: full,
+        footprint: source,
+        change: changed,
+      }).post,
+    ).toBe(true);
+    expect(runOf({ ticks: 1, change: { kind: "untouched" } }).said[0]).toContain(
+      "WITHHELD, the restart changed NOTHING",
+    );
+  });
+
+  /**
+   * THE MEMO WITHOUT A STAMP (thread 180, §5 of 2026-09-12, measured by probe rather than
+   * read): `readSelfRestartMemo` guards the signature and nothing else, so a truncated or
+   * hand-edited file printed `… posted … at undefined …` — into the one line a quiet branch
+   * repeats. The absence is NAMED now, in the form this module already had one door down.
+   */
+  it("a memo with no stamp NAMES the absence and never prints the word 'undefined'", () => {
+    const stampless: SelfRestartMemo = { signature: "a1b2c3" };
+    const first = describeSuppressedSelfRestartLetter({ memo: stampless });
+    const again = describeSuppressedSelfRestartLetterStill({ memo: stampless, ticks: 101 });
+    for (const line of [first, again]) {
+      expect(line).not.toContain("undefined");
+      expect(line).toContain("carries no stamp");
+      expect(line).toContain(SELF_RESTART_SLUG);
+    }
+    expect(again).toContain("100 tick(s)");
+  });
+
+  it("the withheld repeat stands on the event alone — it has no letter to point at", () => {
+    const again = describeWithheldSelfRestartLetterStill({ event: full, ticks: 201 });
+    expect(again).toContain("200 tick(s)");
+    expect(again).toContain("7db145ba901a");
+    expect(again).not.toContain("undefined");
   });
 });
 
