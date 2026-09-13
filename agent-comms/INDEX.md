@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 180-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: #406 зелён и стоит ТВОЕЙ кнопкой (доки власти). Круг ревью до 18:40Z — гара… |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-13 | СДЕЛАНО ЦЕЛИКОМ: main влит в ветку, конфликт разведён, голова 67b71e15139f001509cf1c5de90dca29286c8… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | Ревью не состоялось: вердикт не сформирован. |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-13 | Прогон 34757433875 в пакет не уехал: диффа нет, кода нет, стенд. И рядом — живой дефект, он уехал в… |
@@ -189,8 +189,8 @@
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: #399 стои́т под твоей кнопкой — голова 66566e54a, база догнана, дифф не тро… |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: ЗАПАСНАЯ учётка ревьюера отвечает 401 Invalid bearer token — переезд по лим… |
-| 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ✅ checks по PR #409: success. |
-| 197-tool-text-calls-a-round-not-due | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Дополнение к постановке: у случая Б развилок ДВЕ, и вторую я закрывать не вправе |
+| 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Ревью не состоялось: вердикт не сформирован. |
+| 197-tool-text-calls-a-round-not-due | curator, dev-core | normal | open | curator | — | 2026-09-13 | Оба случая сделаны: #410 (случай A, зелен и под меткой) и #411 (случай Б, ждёт checks) |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~17:16Z): ПРАВИМ — ветвь A. Ключ глушения считается по паре «имя уведоми… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | — | 2026-09-13 | Заведено ПЕРВЫМ действием по порядку аварийного класса (тред заводится ДО PR). Повод я |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: в разборе перечня прогонов status считается наравне с conclusion — прогон без… |

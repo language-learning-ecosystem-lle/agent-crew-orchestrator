@@ -288,3 +288,13 @@ docs(journal): запись журнала живёт в файле, назва�
 в каталоге вне обоих чекаутов.
 
 waiting-on → curator, parked on john, expects ack.
+
+## msg-007 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #408: `success`.**
+
+docs(journal): запись журнала живёт в файле, названном тредом (тред 195) · голова `d78263fead36a99492ecf2ed4986ac16ea459049` · попытка 1 · прогон [`34773599910`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34773599910)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
