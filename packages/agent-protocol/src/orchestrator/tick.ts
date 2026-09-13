@@ -506,12 +506,21 @@ export const planTick = (input: {
     // next closure of the same account carries a new `until` and is a new piece of news.
     accountAlarms.push(accountResumedAlarm(news));
   }
-  /** One line per (account, window), whoever of the roles reaches it first. */
+  /**
+   * ONE LINE PER (ACCOUNT, WINDOW), whoever of the roles reaches it first.
+   *
+   * ONE GATE AND NOT TWO, and the second one is absent on purpose rather than forgotten: a
+   * window that was announced and is STILL SHELVED is already in `standing` (the loop above put
+   * it there), and a window that was announced and is not shelved any more has just been said
+   * to have ended — no `chooseAccount` can hand it back as a failover in the same tick, because
+   * the choice is made from the very fold `shelvedNow` was made from. So "already in the ledger"
+   * and "already said this tick" are one question here, asked once.
+   */
   const sayNews = (news: AccountNews, alarm: AccountAlarm): void => {
     const key = accountNewsKey(news);
     if (standing.has(key)) return;
     standing.set(key, news);
-    if (!announced.has(key)) accountAlarms.push(alarm);
+    accountAlarms.push(alarm);
   };
   // THE CEILINGS THIS TICK COUNTS TO. Read once, before the loop, exactly like the shelves
   // above: a plan whose rule could change between two candidates of one pass would be a
