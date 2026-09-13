@@ -145,3 +145,4 @@
 - [Парк `run:N` под `checks` не снимается по адресу](run-park-under-checks-has-no-lifter.md) — только потолком в 30 мин; ~52 мин мёртвого времени замерено.
 - [Мёртвый парк `run:N` ОТКАЗЫВАЕТ входящему вердикту](dead-run-park-refuses-an-incoming-verdict.md) — доставщику нечем его ни назвать, ни обойти; текст брать из коммента PR.
 - [Письмо github о merge поднимает АВТОРА](merge-letter-raises-the-author.md) — такт приёмки влитого, не пустой подъём.
+- [`orchestrator status` читает конфиг ИЗ REF](orchestrator-status-reads-the-ref-not-the-tree.md) — два вызова с разными `--ref` = даровой оракул на правку `agent-protocol.json`.
