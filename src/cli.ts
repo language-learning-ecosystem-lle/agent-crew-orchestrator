@@ -610,6 +610,7 @@ import {
   subjectOf,
   type TuiAction,
 } from "./orchestrator/tui.js";
+import { describeValveRefusal, livePairsOf, valveVerdict } from "./orchestrator/valve.js";
 import {
   beatBudgetFor,
   describeWatchdog,
@@ -10623,6 +10624,12 @@ type RunParams = {
   readonly roleId: string;
   readonly thread: string;
   /**
+   * WHOSE HAND RAISED THIS PAIR (thread 177, §3.4) — `hand` from `orchestrator run` and from
+   * nothing else; absent from the daemon's own calls, which is what makes the journal's mark
+   * mean "typed by a person" rather than "written by the version that has the field".
+   */
+  readonly by?: "hand";
+  /**
    * The prompt, built FROM THE DEADLINE (R20) rather than handed over ready-made: the
    * deadline is materialised by `planLaunch` inside this function, and the session is
    * told it in words. Passing the text in would have meant computing the same moment a
@@ -10911,6 +10918,9 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     ),
     continuation: p.continuation,
     ...(p.world === undefined ? {} : { world: p.world }),
+    // The mark travels to the one place that writes the `launch` event, so a run raised by
+    // hand says so in the journal whether it was typed in the foreground or backgrounded.
+    ...(p.by === undefined ? {} : { by: p.by }),
   });
   if (!plan.ok) {
     err(`agent-protocol: the launch of ${p.roleId}/${p.thread} was refused (${plan.reason})`);
@@ -12648,6 +12658,71 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     ? parseJournal(readFile(journalPath, "orchestrator journal"))
     : [];
 
+  // THE PLANNER'S GATE, ASKED ABOUT THIS ONE NAMED PAIR (thread 177, §3.4 — `valve.ts` holds
+  // the whole argument). It stands HERE, before `settleRun`, because it is the one refusal that
+  // must not have touched the world first: a workspace prepared and locked for a launch the
+  // ceiling was never going to allow is a lock an operator then has to go and find.
+  //
+  // IT IS NOT THE SAME QUESTION `planLaunch` ASKS BELOW, and the two are not interchangeable:
+  // `planLaunch` folds the pair's OWN history (its lease, its attempts, the global budget) and
+  // has never known anything about the rest of the box, which is precisely what the two ceilings
+  // of `parallelism` are about. While the workspace was one per role the lock made the second
+  // question unaskable; keyed by the pair, the trees no longer collide and a hand-typed run is
+  // the one launch that can exceed a number john pressed a button on.
+  const runThreads = loadThreads(mailRoot, registry.ids()).threads.map((loaded) => loaded.thread);
+  const runMarks = deliveryMarks(runThreads);
+  const runConfigForValve = configFrom(argv, undefined).config;
+  // WHAT THIS PAIR WOULD SPEND, by the same join the tick and the frame use: the window that
+  // decides is the ACCOUNT'S, and a valve that asked the box's own shelf would stand a healthy
+  // subscription down for a neighbour's five hours (B.3). Resolved once, in one expression, for
+  // the reason the join exists at all — two readings of "which account" is the defect, not the
+  // verbosity.
+  const valveInstanceAccount = instanceAccountOf({
+    instances: runConfigForValve.instances,
+    instance: local.config?.instance,
+  });
+  const valveChain = roleAccountChains({
+    registry,
+    roles: [roleId],
+    ...(valveInstanceAccount === undefined ? {} : { instanceAccount: valveInstanceAccount }),
+  }).get(roleId);
+  const valveAccounts = declaredAccounts(argv);
+  const valve = valveVerdict({
+    role: roleId,
+    thread,
+    events,
+    now,
+    // WHO IS LIVE IS READ FROM THE JOURNAL (see `valve.ts`): this process has no children and
+    // the daemon's registry of supervisors is in another process's memory. The fold is the
+    // very one `status` prints the live pairs from, with the same attempt ceiling and the same
+    // mail — a refusal here and a row there may not disagree about who holds a place.
+    running: livePairsOf(foldLeases(events, now, gates.maxAttempts.value, runMarks)),
+    // THE NUMBERS OF THE PROJECT, through the config's own reader — the function the daemon's
+    // tick and the operator's frame both count to. Silence in the config is `pairsPerRole: 1`
+    // with no box ceiling, so a project that has declared no parallelism gets exactly the rule
+    // the workspace lock used to enforce, now said by name instead of by collision.
+    ceilings: pairCeilings(runConfigForValve),
+    held: heldRoles(foldHolds(loadHolds(flag(argv, "--holds") ?? paths.holds), now)),
+    parked: parkedThreads(runThreads, { now, ttlSeconds: runParkTtlFrom(argv) }),
+    modeParked: modeParks(runThreads),
+    deliveryMarks: runMarks,
+    maxAttempts: gates.maxAttempts.value,
+    maxConsecutive: gates.maxConsecutive.value,
+    ...(valveChain === undefined ? {} : { chain: valveChain }),
+    ...(valveAccounts === undefined ? {} : { accounts: valveAccounts }),
+  });
+  if (!valve.ok) {
+    fail(
+      describeValveRefusal(
+        valve.refusal,
+        gates.maxAttempts,
+        kindForRole(argv, registry, valve.refusal.role),
+      ),
+      2,
+    );
+    return;
+  }
+
   // WHERE IT WILL WORK AND WHETHER IT CONTINUES (R17 + R18) — settled before the
   // launch is planned, because both answers end up ON the launch event.
   //
@@ -12695,11 +12770,17 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
       // The dry run answers the same question the real one does, so it reads the
       // same mail (thread 023) — a plan that refuses where `--write` would go is
       // worse than no plan.
-      deliveryMarks: deliveryMarks(
-        loadThreads(mailRoot, registry.ids()).threads.map((loaded) => loaded.thread),
-      ),
+      //
+      // AND IT IS THE MAIL THE VALVE ABOVE WAS ASKED WITH (thread 177): the marks were read
+      // once at the gate, and a second `loadThreads` here would be two readings of one
+      // mailbox inside one command — the dry run could then refuse where the gate passed.
+      deliveryMarks: runMarks,
       continuation: setup.continuation,
       ...(setup.world === undefined ? {} : { world: setup.world }),
+      // THE MARK IS ON THE DRY RUN TOO (§3.4): the plan it prints is the event it would
+      // write, and a plan that hid the one field distinguishing this launch from the
+      // daemon's would be a plan of a different launch.
+      by: "hand",
     });
     if (!plan.ok) {
       fail(`the launch was refused (${plan.reason}) — a ceiling fired, see the journal`, 2);
@@ -12815,6 +12896,10 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     ...(setup.workspace === undefined ? {} : { workspace: setup.workspace }),
     continuation: setup.continuation,
     ...(setup.world === undefined ? {} : { world: setup.world }),
+    // WHOSE HAND THIS IS (§3.4) — the mark of the manual launch, set at the only door that
+    // is typed by a person. The daemon calls the same `runOne` and says nothing, which is
+    // what makes the field's absence mean "the planner raised it".
+    by: "hand",
     ids: registry.ids(),
     now,
     maxConsecutive: gates.maxConsecutive.value,

@@ -210,6 +210,21 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
     mode: z.enum(["fresh", "resume"]).optional(),
     resumes: z.string().min(1).optional(),
     world: worldSchema.optional(),
+    // WHOSE HAND RAISED THIS PAIR (thread `177-workspace-per-pair`, §3.4). `hand` — somebody
+    // typed `orchestrator run --write`; ABSENT — the planner did, which is every launch this
+    // journal has ever recorded and the overwhelming majority of every launch to come.
+    //
+    // The asymmetry is the meaning, exactly as `dirty` above: the field is written only where
+    // there is something to say, so a journal from before it parses unchanged and its runs are
+    // read as what they were — the daemon's. A `by: "daemon"` would have been a claim made
+    // retroactively about thousands of lines nobody marked.
+    //
+    // IT EXISTS FOR THE MEASUREMENT AND NOT FOR THE RUN (the statement of work, §3.4: "the
+    // trace in the journal tells a manual raise from a planned one — otherwise the before/after
+    // of §5 counts our own probes as field"). Two pairs of one role put up BY HAND to prove the
+    // parallelism works are evidence about the valve; the same two raised by the planner are
+    // evidence about the field, and a reading that cannot separate them measures the tester.
+    by: z.literal("hand").optional(),
   }),
   // The turn left the role — the completion signal (populated from S2 on). Lease → draining.
   z.object({ kind: z.literal("handoff-detected"), ...base }),
