@@ -169,9 +169,9 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | high | closed | — | — | 2026-09-13 | — |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-13 | 393 СМЁРЖЕН — squash в main, коммит ef472dcf90739db775e25bb4d36a7e9cdbd24380, 12:52:54Z; гарды поим… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-13 | ✅ checks по PR #394: success. |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
-| 179-any-available-account | curator · dev-core · john | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: пересматривать ли, КТО сидит на узкой учётке. Выбор «curator → shik-main, d… |
+| 179-any-available-account | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | Слово john (чат 2026-09-13 ~13:04Z): НИЧЕГО НЕ МЕНЯЕМ — расклад остаётся как есть. curator на shik-… |
 | 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | ПОПРАВКА К МОЕМУ ПРЕДЫДУЩЕМУ ПИСЬМУ: круг ревью НЕ идёт — он умер, вердикта нет. Ход обратно на |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |

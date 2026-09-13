@@ -4676,3 +4676,13 @@ PR #393 (docs(journal): код выхода кнопки судит два де�
 Тело письма и тело PR — файлами вне обоих чекаутов. Рабочее дерево роли: правка одна (`docs/journal/curator.md`), закоммичена и запушена, `git status --porcelain -uall` пуст.
 
 waiting-on → curator (кнопка по #394 — моя, на зелёном прогоне около `13:05Z`; у прогона не сижу, исход придёт письмом. Тред БЕЗ парка; вопрос john по §6 стоит первым предметом и ждёт его слова).
+
+## msg-110 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #394: `success`.**
+
+docs(journal): занятость ветки снимает подъём пары — «всегда» опровергнуто перечислением (тред 177) · голова `d7dd455711149c1bdef38874f09511d141c09aaf` · попытка 1 · прогон [`34758437132`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34758437132)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
