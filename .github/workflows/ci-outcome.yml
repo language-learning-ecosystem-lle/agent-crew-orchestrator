@@ -534,6 +534,20 @@ jobs:
             ADDR_ARGS=(--thread "$THREAD")
             ADDR_SAY="тред ${THREAD}"
           fi
+          # АДРЕС ПАРКА `run:N`, И ТОЛЬКО КОГДА ЭТОТ НОМЕР ЕСТЬ (тред 188, форма
+          # (б) решения john 2026-09-13). Письмо об исходе прогона по PR #N —
+          # ровно то событие, которого ждёт `parked-on: run:N`; до этого поля у
+          # такого парка не было подъёмника вовсе (вердикта `checks` не пишет), и
+          # он стоял до 30-минутного потолка каждый раз.
+          # НАБОРОМ, А НЕ СТРОКОЙ, и по той же причине, что `ADDR_ARGS` выше:
+          # у красного main PR-адресата нет (`PR` пуст, адрес — стоячий слаг), а
+          # `--run-outcome ""` дверь отказывает кодом 2 и роняет доставку целиком.
+          # Пустой набор — это честное «раунда по PR тут не было».
+          if [ -n "${PR:-}" ]; then
+            OUTCOME_ARGS=(--run-outcome "$PR")
+          else
+            OUTCOME_ARGS=()
+          fi
           echo "3/3 · запись события в ${ADDR_SAY} (${WHAT}, исход ${CONCLUSION})"
           for attempt in $(seq 1 "$COMMS_PUSH_ATTEMPTS"); do
             git fetch --no-tags origin comms
@@ -544,7 +558,7 @@ jobs:
             if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
                   --root "${GITHUB_WORKSPACE}/agent-comms" --repo . --ref origin/main --no-fetch \
                   "${ADDR_ARGS[@]}" --from github --expects none ${WAIT_ARGS} \
-                  --worker gh-action \
+                  --worker gh-action "${OUTCOME_ARGS[@]}" \
                   --body-file "$BODY_TMP" --write --no-push); then
               echo "::error::new-message отказал — исход прогона ${RUN_ID} НЕ записан в ${ADDR_SAY}."
               exit 1

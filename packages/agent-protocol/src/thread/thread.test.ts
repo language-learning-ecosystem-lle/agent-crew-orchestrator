@@ -1269,6 +1269,45 @@ describe("parkingOf — a park on the ROUND running on a PR (thread 019)", () =>
     expect(parkingOf(thread([button, declaredVerdict]))?.pr).toBe(163);
   });
 
+  it("THE OUTCOME OF THAT ROUND, ANNOUNCED BY NUMBER, LIFTS IT (188) — the second own address", () => {
+    // Form (б) of john's decision of 2026-09-13. Until it the park had ONE address — the verdict
+    // pair — and the round most `run:` parks are taken on is `checks`, which declares no verdict:
+    // such a park had no lifter at all and stood to the 30-minute ceiling every time.
+    const parked = message({ parkedOn: "run:400" }, "Жду checks по #400.");
+    const outcome = announcement(
+      { date: "2026-08-02T09:20:00Z", runOutcome: 400 },
+      "checks по PR #400: success",
+    );
+    expect(parkingOf(thread([parked, outcome]))).toBeUndefined();
+  });
+
+  it("AND IT IS READ BY VALUE: somebody else's round says nothing about this park", () => {
+    const parked = message({ parkedOn: "run:400" });
+    const elsewhere = announcement(
+      { date: "2026-08-02T09:20:00Z", runOutcome: 399 },
+      "checks по PR #399: success",
+    );
+    expect(parkingOf(thread([parked, elsewhere]))?.pr).toBe(400);
+  });
+
+  it("AND IT IS THE ROUND PARK AND NOT THE BUTTON ONE: `pr:400` waits for the merge", () => {
+    // The negative control of the asymmetry: the end of a round on #400 is not the button on #400
+    // being pressed, and a `pr:` park whose address is `merged-pr` must not lift on this field.
+    const button = message({ parkedOn: "pr:400", parkMover: "curator" }, "Жду кнопки по #400.");
+    const outcome = announcement(
+      { date: "2026-08-02T09:20:00Z", runOutcome: 400 },
+      "checks по PR #400: success",
+    );
+    expect(parkingOf(thread([button, outcome]))?.pr).toBe(400);
+    expect(parkingOf(thread([button, outcome]))?.kind).toBe("event");
+  });
+
+  it("and a park whose run has NOT reported yet stands — the field is the whole signal", () => {
+    const parked = message({ parkedOn: "run:400" });
+    const beside = announcement({ date: "2026-08-02T09:20:00Z" }, "checks по PR #400: success");
+    expect(parkingOf(thread([parked, beside]))?.pr).toBe(400);
+  });
+
   it("the merge of THAT PR lifts it, wherever it was announced — the round cannot end twice", () => {
     const parked = message({ parkedOn: "run:163" });
     expect(parkingOf(thread([parked]), new Set([163]))).toBeUndefined();
