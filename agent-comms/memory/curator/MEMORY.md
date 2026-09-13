@@ -154,7 +154,7 @@
 - [Дверь печатает письма, легшие под твоим](letters-landing-under-yours-are-printed-by-the-door.md) — за время написания лента уехала; парк поверх новой работы запирает чужую пару
 - [Ожидание хода: письмо `waiting-on:` против `launch`](turn-wait-is-mail-letter-joined-with-launch.md) — `handoff-detected` не начало ожидания; сырая медиана переворачивает знак на парках
 - [Красный шаг доставки ≠ недоставленное письмо](delivery-step-failure-is-not-undelivered-mail.md) — push в `comms` отбит, а письмо предыдущего шага в ленте лежит
-- [Сгоревший круг читается записью `result`](burned-round-is-read-in-the-result-record.md) — `num_turns: 1`, `total_cost_usd: 0`, `modelUsage: {}`: полей 429 в логе НЕТ
+- [Сгоревший круг читается записью `result`](burned-round-is-read-in-the-result-record.md) — полей 429 в логе НЕТ; дешевле — ДЛИТЕЛЬНОСТЬ: мёртвый 45…56 с против живого 299…572 с, и стена бывает окном
 - [Курьер зовёт метку и на журнальном PR](courier-calls-for-a-label-on-a-journal-only-pr.md) — исключения 11.09 у `ci-outcome.yml` нет, ход уходит АВТОРУ: зов не исполнять
 - [Гард 3 у журнального PR — стоячие нормы 143+187](journal-pr-guard3-rests-on-standing-norms.md) — слова john в ленте ЭТОГО треда не нужно, но пять признаков нормы проверить построчно
 - [Ход под живым `checks` передаётся БЕЗ парка](no-park-beats-run-park-under-live-checks.md) — парк `run:N` поднимет позже очереди: замер 13.09 — подъём за 3,5 мин до зелени, кнопка в том же такте
