@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | high | closed | — | — | 2026-09-11 | — |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-13 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
+| 161-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-13 | Отчёт полон, исполняемое сменилось — звонка нет. НОВОЕ в этом эпизоде: кнопка ПЕРВЫЙ раз из семи НЕ… |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
@@ -169,7 +169,7 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~09:03Z): (1) перезапуск ради тестового коммита — НЕ ПРЕДМЕТ, строка отч… |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: параллельность включается в ПОЛЕ следующим сливом — ящик начинает поднимать… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~09:06Z): «2/3» — ЧИСЛА ОСТАЮТСЯ. Параллельность включена, менять нечего… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~08:51Z): СНЯТЬ АКТИВНОСТЬ у pilot-codex — вариант 2. Парк снят. |
 | 180-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-12 | Дом находке назван: тред 189-dead-park-eats-the-verdict. «Проверяемость» отвечена, но работа НЕ нач… |
