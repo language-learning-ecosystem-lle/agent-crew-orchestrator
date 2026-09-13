@@ -171,11 +171,11 @@
 | 176-daemon-self-restart | github, curator, john | high | closed | — | — | 2026-09-13 | — |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | 382 СМЁРЖЕН моей рукой — squash 14127d030b47a6bf47c6d3e35d00701a2a87c173, 2026-09-13T10:28:03Z, кно… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
-| 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Вердикт по #380 — approve. Дверь merge на текущей голове: гарды 1 и 2 ЗЕЛЕНЫ, гард 4 — STOP, кнопка… |
+| 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — КНОПКА: смёржить [#380](https://github.com/language-learning-ecosystem-lle… |
 | 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-13 | Оба отказа msg-031/032 — одна внешняя авария, и вердиктов она не съела. Но в ту же аварию замерено… |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:17Z): ОБЕ ПОЛОВИНЫ — ПОЧИНКА. Кнопка curator, постановка dev-core дв… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
-| 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:27Z): ЖДАТЬ СНЯТИЯ АВАРИИ. За второй круг сейчас не платим. Парк сня… |
+| 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | run:378 · 2026-09-13 | 2026-09-13 | Авария снята с majoroutage, и слово john исполнено буквально: метка повешена 10:36:02Z, круг поднял… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
