@@ -192,6 +192,6 @@
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Ревью не состоялось: вердикт не сформирован. |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ✅ checks по PR #411: success. |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: ключ глушения считается по паре «уведомитель + ПРЕДМЕТ прогона» (ветвь A, слов… |
-| 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | — | 2026-09-13 | Заведено ПЕРВЫМ действием по порядку аварийного класса (тред заводится ДО PR). Повод я |
+| 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | curator | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: в разборе перечня прогонов status считается наравне с conclusion — прогон без… |
 | 201-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
