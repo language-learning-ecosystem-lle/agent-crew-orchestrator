@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: f3a8d1d9-b0d8-4103-b1bc-7886f53abbbc
-  modified: 2026-09-13T14:11:02.420Z
+  modified: 2026-09-13T15:46:55.270Z
 ---
 
 `pnpm protocol merge-gate --ref origin/main --pr N` без `--review-workflow '<имя>'` оставляет гард 1
@@ -23,10 +23,22 @@ reported for 52742cd at all`, хотя круг `34760596401` был закры�
 воркфлоу» по её тексту НЕ различаются — при таком отказе первым делом сверять имя:
 `head -1 .github/workflows/<файл>.yml`, либо `gh run list --commit <SHA> --json workflowName`.
 
+**Промах повторяется, и причина схлопывания — в коде.** 2026-09-13, второй раз за день (#383, тред
+188): дал `'Claude Review'` — тот же отказ `no round of 'Claude Review' is reported for accf715 at
+all`, уже НА ОДОБРЕННОЙ голове с зелёными `review`+`checks`. Ветка —
+`merge/gate.ts:915`: `reading.runs.filter(run => run.name === reading.workflow)`, и при
+`named.length === 0` дверь печатает приговор голове с лекарством «re-label, or a push». Различить
+причины она МОЖЕТ: `reading.runs` приходит из `actions/runs?head_sha=<head>` (`merge/gh.ts:290`) —
+это ВСЕ прогоны головы, любых имён; на `accf715` она держала `Claude PR Review` и `checks` и не
+назвала ни одного. Починка (назвать имена, что реально есть на голове) — там же, ветка одна; текущий
+текст пиньит `gate.test.ts:818`.
+
 **Why:** без флага исход двери читается как «ревью не подтверждено», и на это тратится лишний круг
 или лишний вопрос в тред; с НЕВЕРНЫМ именем — ещё хуже: отказ выглядит как приговор голове и толкает
 перевесить метку, то есть сжечь настоящий круг ревью против лимита учётки.
 **How to apply:** зовёшь дверь перед кнопкой — зови с `--review-workflow 'Claude PR Review'`
 (именно `name:`, не имя файла); руками то же самое проверяется
-`gh api ".../actions/runs?head_sha=<SHA>"`.
+`gh api ".../actions/runs?head_sha=<SHA>"`. Увидел `no round of '<имя>' … at all` — СНАЧАЛА сверь
+имя этим же вызовом, и только если голова круга правда не несёт, перевешивай метку: лекарство из
+текста двери под промахом по имени ложно и стои́т настоящего круга.
 Связано: [[red-main-checks-may-be-comms-sync]], [[token-cannot-rerun-ci]].
