@@ -2922,3 +2922,13 @@ Measured by the watchman on the head `6960084e244373bc25094c23bba842f52a283051`:
 Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
 
 This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
+
+## msg-070 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #386: `success`.**
+
+fix(run): сухой прогон говорит исход настоящего подъёма, а не отказ (тред 180-selfheal-leaves-the-workspaces-behind) · голова `65b15f5589e6d22fb321d1162dc672914ed4fd4a` · попытка 1 · прогон [`34753898954`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34753898954)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`6960084e244373bc25094c23bba842f52a283051`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
