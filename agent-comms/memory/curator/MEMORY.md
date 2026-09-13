@@ -171,3 +171,4 @@
 - [Запасная учётка ревьюера отвечает `401`](fallback-account-answers-401.md) — класс, замерен дважды 13.09
 - [Красный круг может нести ДОСТАВЛЕННЫЙ вердикт](red-round-may-carry-a-delivered-verdict.md) — краснит шаг переезда, а не ревью
 - [Шаг переезда краснит УСПЕШНЫЙ круг](fallback-step-reddens-a-successful-round.md) — кнопки merge нет ни у кого с 17:33Z 13.09
+- [Круг берёт воркфлоу с merge-ref](round-runs-the-workflow-from-the-merge-ref.md) — починка в `main` доедет без сдвига головы PR
