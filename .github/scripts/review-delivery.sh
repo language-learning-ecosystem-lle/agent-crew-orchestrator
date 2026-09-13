@@ -309,14 +309,19 @@ park_value_of() { # <текст отказа двери>
   printf '%s' "$value"
 }
 
-# ЧТО ЭТО ПИСЬМО ГОВОРИТ О СТОЯЩЕМ ПАРКЕ (требование C постановки 088). Правило одно
-# и общее для обеих ветвей — и «вердикт есть», и «вердикта нет»:
+# ЧТО ЭТО ПИСЬМО ГОВОРИТ О СТОЯЩЕМ ПАРКЕ (требование C постановки 088, ЧЕТВЁРТЫЙ
+# случай — постановка 189 и слово john 2026-09-13). Правило одно и общее для обеих
+# ветвей — и «вердикт есть», и «вердикта нет»:
 #   · парк стои́т за ЭТИМ САМЫМ кругом (`run:<этот PR>` либо `pr:<этот PR>`) — письмо
 #     его СНИМАЕТ и называет: круг завершён, пусть и без продукта, и это правда;
 #   · парк стои́т за чем-то другим (человек, другой прогон, другой PR) — письмо встаёт
 #     РЯДОМ (`--parked-on <ровно то значение, что стои́т>`): чужой парк снимать нечем,
 #     и врать о нём нельзя;
-#   · парка нет — без флагов.
+#   · парка нет — без флагов;
+#   · парк ЧУЖОЙ, и на `--parked-on` дверь ОТВЕТИЛА, что его основание МЕРТВО, —
+#     повтор РОВНО ОДИН раз с `--park-lifted <ровно то же значение>` (`park_retry_flags`
+#     ниже; `park_flags` этот случай не знает вовсе, потому что он существует только
+#     ПОСЛЕ отказа записи, а не до неё).
 # Слепое `--park-lifted run:<PR>` чинило бы ровно один случай из четырёх: названный не
 # про тот парк, что стои́т, — ОТКАЗ записи (park-seen.ts:149), то есть письмо теряется
 # так же, как теряется сегодня.
@@ -328,6 +333,54 @@ park_flags() { # <значение стоящего парка (пусто — �
   else
     printf -- '--parked-on %s' "$value"
   fi
+}
+
+# ЯКОРИ ОТКАЗА «ОСНОВАНИЕ ПАРКА МЕРТВО» — куски отказа `run-park.ts`, которые
+# интерполяция шаблона НЕ режет. Полная фраза в исходнике двери разорвана двумя
+# подстановками (`${short(headSha)}`, `${input.pr}`, `${facts.checkRuns}`), поэтому
+# греп по ней целиком дал бы ноль на ЗДОРОВОМ дереве — проверка, красная всегда,
+# бесполезна. Отсюда два коротких якоря, и связь их с ИСТОЧНИКОМ проверяется:
+# `review-delivery.test.sh`, раздел 16, грепает ровно этот массив по
+# `packages/agent-protocol/src/thread/run-park.ts`. Переформулировала дверь отказ —
+# краснеет ТАМ, а не молча протухает здесь (условие разрешения john 2026-09-13).
+DEAD_PARK_ANCHORS=("every run on head " "has ALREADY FINISHED (")
+
+# ЧУЖОЙ ПАРК, ЧЬЁ ОСНОВАНИЕ ДВЕРЬ ОБЪЯВИЛА МЁРТВЫМ, — ЧЕТВЁРТЫЙ СЛУЧАЙ (тред 189).
+#
+# ЧТО ИЗМЕРЕНО (лог шага доставки, прогон 34703884006, 2026-09-12). В `16:01:15Z`
+# dev-core объявил парк `run:374`; в `16:08:47Z` прогон `34703874277` кончился —
+# основание парка умерло, а СНЯТЬ парк некому: `run:N` под завершившимся прогоном
+# лифта не имеет вовсе, поднять же некого, потому что тред запаркован. В `16:17:02Z`
+# курьер построил по правилу выше честный `--parked-on run:374`, и дверь отказала:
+# `every run on head 9b35aee08 of PR #374 has ALREADY FINISHED`. Итог: `--parked-on`
+# отказан дверью, `--park-lifted` запрещён правилом, письма не существует вовсе —
+# вердикт `approve` по #373 не лёг в свой тред и был спасён рукой из коммента PR.
+#
+# ПОЧЕМУ ЭТО НЕ ВРАНЬЁ О ЧУЖОМ ПАРКЕ. Мёртвым его объявила САМА ДВЕРЬ в своём отказе,
+# а не наш второй разбор ленты: курьер её ЦИТИРУЕТ, а не судит. Отсюда три границы,
+# и каждая — условие включения ветви, а не украшение:
+#   · включает ТОЛЬКО текст отказа двери (оба якоря выше);
+#   · значение — БУКВАЛЬНО то, что стои́т (`$value`, вычитанное `park_value_of` из
+#     текста двери же). Вычислять его из номера PR запрещено: слепое `run:<PR>` чинит
+#     один случай из четырёх и теряет письмо в остальных трёх;
+#   · только там, где мы писали `--parked-on <это же значение>`, то есть парк ЧУЖОЙ.
+#     Свой парк снимается первой ветвью и до отказа не доходит, а повтор тем же
+#     флагом был бы вторым писком той же ошибки.
+# Повтор РОВНО ОДИН: второй отказ оставляет шаг красным и называет, где лежит текст
+# вердикта. Разрешение узкое и шире его ничего нет — слово john 2026-09-13, тред 189.
+#
+# Печатает флаг повтора; ветвь не включается — ничего не печатает и выходит 1.
+park_retry_flags() { # <текст отказа записи> <значение стоящего парка> <флаги, с которыми писали>
+  local refusal="${1:-}" value="${2:-}" flags="${3:-}" anchor
+  [ -n "$value" ] || return 1
+  [ "$flags" = "--parked-on ${value}" ] || return 1
+  for anchor in "${DEAD_PARK_ANCHORS[@]}"; do
+    case "$refusal" in
+      *"$anchor"*) ;;
+      *) return 1 ;;
+    esac
+  done
+  printf -- '--park-lifted %s' "$value"
 }
 
 # АДРЕСАТ ХОДА: объявлен агентом или выведен правилом (требование A постановки 088).
@@ -904,7 +957,7 @@ deliver_to_thread() { # <адрес: <NNN-слаг> либо address:<слаг>>
   fi
   COMMS_PUSH_DIR=.comms-fallback
   COMMS_PUSH_REMOTE="$MAIL_REMOTE"
-  local attempt park park_args landed letter=""
+  local attempt park park_args landed letter="" write_out write_rc retry_args
   for attempt in $(seq 1 "$COMMS_PUSH_ATTEMPTS"); do
     git -C .comms-fallback fetch --no-tags "$MAIL_REMOTE" comms
     git -C .comms-fallback reset --hard FETCH_HEAD
@@ -915,14 +968,39 @@ deliver_to_thread() { # <адрес: <NNN-слаг> либо address:<слаг>>
     # shellcheck disable=SC2046 # аргументы флага парка разделяются по словам намеренно
     park_args=$(park_flags "$park" "$pr")
     [ -n "$park" ] && echo "На адресате '${address}' стои́т парк '${park}' — письмо идёт с '${park_args}'."
+    # ВЫВОД ЗАПИСИ ЧИТАЕТСЯ, А НЕ ТОЛЬКО ПЕЧАТАЕТСЯ (тред 189): четвёртый случай парка
+    # существует ТОЛЬКО в тексте отказа двери, и не прочитав его, курьер теряет вердикт
+    # целиком. Печатается он дословно и до любого разбора — лог шага не должен беднеть
+    # оттого, что мы стали отказ ещё и понимать.
+    write_rc=0
     # shellcheck disable=SC2086 # $park_args и $@ — набор аргументов, не строка
-    if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
+    write_out=$( (cd .code && pnpm -F agent-protocol --silent cli new-message \
           --root "$root" --repo . --ref "$REVIEW_DELIVERY_CONFIG_REF" \
           "${addr_args[@]}" --from "$from" --expects answer "$@" ${park_args} \
-          --worker gh-action --body-file "$body" --write --no-push); then
-      echo "::error::new-message отказал — по адресу '${address}' НЕ сообщено."
-      escalate_undelivered "$thread" "$park" "$pr"
-      return 1
+          --worker gh-action --body-file "$body" --write --no-push) 2>&1 ) || write_rc=$?
+    printf '%s\n' "$write_out"
+    if [ "$write_rc" != "0" ]; then
+      retry_args="$(park_retry_flags "$write_out" "$park" "$park_args")" || retry_args=""
+      if [ -z "$retry_args" ]; then
+        echo "::error::new-message отказал — по адресу '${address}' НЕ сообщено."
+        escalate_undelivered "$thread" "$park" "$pr"
+        return 1
+      fi
+      echo "Дверь объявила основание чужого парка '${park}' МЁРТВЫМ в своём же отказе — повтор РОВНО ОДИН раз с '${retry_args}'."
+      write_rc=0
+      # shellcheck disable=SC2086 # $retry_args и $@ — набор аргументов, не строка
+      write_out=$( (cd .code && pnpm -F agent-protocol --silent cli new-message \
+            --root "$root" --repo . --ref "$REVIEW_DELIVERY_CONFIG_REF" \
+            "${addr_args[@]}" --from "$from" --expects answer "$@" ${retry_args} \
+            --worker gh-action --body-file "$body" --write --no-push) 2>&1 ) || write_rc=$?
+      printf '%s\n' "$write_out"
+      if [ "$write_rc" != "0" ]; then
+        # ВТОРОГО ПОВТОРА НЕТ. Шаг остаётся красным, и лог называет, ГДЕ лежит текст
+        # вердикта: спасать его отсюда рукой — по этим двум адресам.
+        echo "::error::повтор с '${retry_args}' тоже отказан — по адресу '${address}' НЕ сообщено. Текст вердикта НЕ потерян: он лежит комментом в PR #${pr} и в артефакте прогона \`reviewer-execution-${pr}-${GITHUB_RUN_ID:-<run>}\`."
+        escalate_undelivered "$thread" "$park" "$pr"
+        return 1
+      fi
     fi
     landed="$(landed_thread "$(git -C .comms-fallback -c core.quotePath=false status \
       --porcelain --untracked-files=all -- agent-comms)")"
