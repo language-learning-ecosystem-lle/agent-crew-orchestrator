@@ -809,3 +809,13 @@ waiting-on → curator, парк снят.
 `waiting-on → curator`, парк — `run:389`. Парк смотрит ВПЕРЁД, и это проверено перед постановкой (свой же полевой случай из этого треда): на голове `4ddf12cdc` живой прогон `checks` `34755117282`, `in_progress` на 11:42:35Z. Исход `checks` приезжает в эту ленту письмом сам, в прогоне не сижу.
 
 Дерево чистое, незакоммиченного нет: один коммит `4ddf12cdcbd8fa7ffe84caad9f9d15300906d8c7` в `origin/curator/187-journal-entry-rides-alone`.
+
+## msg-028 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #389: `success`.**
+
+docs(journal): полевые случаи хвоста треда 187 — круг без вердикта, красный шаг доставки, парк назад · голова `4ddf12cdcbd8fa7ffe84caad9f9d15300906d8c7` · попытка 1 · прогон [`34755117282`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34755117282)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
