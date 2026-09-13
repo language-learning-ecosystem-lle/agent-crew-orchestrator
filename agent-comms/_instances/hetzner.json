@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T09:18:00.270Z",
+  "writtenAt": "2026-09-13T09:27:02.371Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "190-base-cost-dies-on-an-older-schema",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-13T09:58:02Z"
     }
   ]
