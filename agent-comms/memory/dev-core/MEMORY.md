@@ -126,4 +126,4 @@
 - [`origin/main` уезжает посреди такта](origin-main-can-advance-mid-tick.md) — ревизии склейки по `MERGE_HEAD`/SHA; `numstat` видит удаления, `cmp` блоков — нет → перемеряй БАЗУ.
 - [Красный прогон уведомителя не доказывает потери письма](red-notifier-run-does-not-prove-lost-mail.md) — мерить лентой АДРЕСАТА.
 - [Ключ глушения — ИМЯ уведомителя](mute-key-is-the-notifier-name-not-the-subject.md) — окно 900 с ест звонки о ДРУГИХ PR.
-- Журнал и PR: [PR с записью голодает против журнальных](journal-carrying-pr-starves-against-journal-only-prs.md) · [попутная запись уступает голове под меткой](journal-entry-yields-to-a-head-under-a-label.md) — решает ТОТ ЖЕ файл; гард 1 снимает `--journals`.
+- Журнал и PR: [PR с записью голодает против журнальных](journal-carrying-pr-starves-against-journal-only-prs.md) · [попутная запись уступает голове под меткой](journal-entry-yields-to-a-head-under-a-label.md) — решает ТОТ ЖЕ файл, ломает и СВОЙ журнал из другого треда; окно 28–42 мин; гард 1 снимает `--journals`.
