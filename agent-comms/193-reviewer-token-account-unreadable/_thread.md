@@ -581,3 +581,13 @@ feat(review): круг ревью переезжает на запасную у�
 - `checks` — **success**
 
 ⚠️ Голова PR уже сдвинулась (`b2ee79c10c62832a75b9195a7a55ec9b5259c1e4`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-012 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #399: `success`.**
+
+feat(review): круг ревью переезжает на запасную учётку, когда основная ответила лимитом (тред 193) · голова `b2ee79c10c62832a75b9195a7a55ec9b5259c1e4` · попытка 1 · прогон [`34768622995`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34768622995)
+
+- `checks` — **success**
+
+ℹ️ Метку `review` вешать не нужно: дифф правит `.github/workflows/claude-review.yml`, а такому PR автоматический круг не положен по построению — действие пропускает своё ревью само («Skipping action due to workflow validation»). Ревью человеческое, merge за john (правило №14). Действия у автора здесь нет, поэтому ход остаётся там, где его оставила лента.

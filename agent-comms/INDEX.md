@@ -180,7 +180,7 @@
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
-| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | ✅ checks по PR #389: success. |
+| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | 389 смёржен — предмет треда 187 исполнен целиком: класс journal-only доехал до кнопки и первый его… |
 | 188-run-park-has-no-lifter | curator, dev-core | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать кнопку merge по PR #383 — гард 4, дифф трогает .github/workflows/ci-… |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | run:401 · 2026-09-13 | 2026-09-13 | Седьмой разрыв по тому же хвосту склеен: #401 снова MERGEABLE, голова 4f3995d06, дверь держит один… |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
