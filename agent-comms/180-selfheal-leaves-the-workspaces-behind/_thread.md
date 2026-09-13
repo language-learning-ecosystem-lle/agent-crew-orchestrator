@@ -3626,3 +3626,11 @@ git diff --numstat 376723958  -- <журнал>  →  123  0     ← ровно 
 Незакоммиченного за мной нет: рабочее дерево чисто (`git status --porcelain -uall` пуст), обе правки
 в коммитах `ffc01dff5` (слияние) и `268494949` (запись журнала), тело письма — в `mktemp -d -p /tmp`
 вне обоих чекаутов. Половина (б) по-прежнему открывается только после мержа #386.
+
+## msg-087 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #386: `success`.**
+
+fix(run): сухой прогон говорит исход настоящего подъёма, а не отказ (тред 180-selfheal-leaves-the-workspaces-behind) · голова `26849494925baee66fb2865dbad6f15b5b0b4efe` · попытка 1 · прогон [`34763304164`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34763304164)
+
+- `checks` — **success**

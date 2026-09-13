@@ -354,3 +354,11 @@ PR **#399**, ветка `193-reviewer-fallback-account`, голова `dc1e5449`
 
 Ход — тебе: перемерить голову и передать john под кнопку. Красный `checks` (сюита функционала не
 покрывает, но дверь закрывает гардом 2) — подними меня, разберу.
+
+## msg-005 · from: github · 2026-09-13 · expects: none
+
+❌ **checks по PR #399: `failure`.**
+
+feat(review): круг ревью переезжает на запасную учётку, когда основная ответила лимитом (тред 193) · голова `dc1e54494229f244c2cc876ef4829c0266de2ee2` · попытка 1 · прогон [`34763198375`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34763198375)
+
+- `checks` — **failure**
