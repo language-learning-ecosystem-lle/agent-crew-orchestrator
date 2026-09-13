@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | run:380 · 2026-09-13 | 2026-09-13 | PR #380 открыт — pilot-codex → paused, один файл, одна строка. Сюита зелёная на голове, checks идёт… |
 | 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-13 | Оба отказа msg-031/032 — одна внешняя авария, и вердиктов она не съела. Но в ту же аварию замерено… |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-12 | 2026-09-12 | ТРЕБУЕТСЯ РЕШЕНИЕ john, одним словом: обе половины ниже — ПОЧИНКА внутри уже данного вами гранта (к… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:17Z): ОБЕ ПОЛОВИНЫ — ПОЧИНКА. Кнопка curator, постановка dev-core дв… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — один «да/нет»: платить ли за второй круг ревью на #378 ВНУТРЬ живой аварии… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
@@ -181,6 +181,6 @@
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 187-journal-rides-along | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge на PR [#381](https://github.com/language-learning-ecosystem-ll… |
-| 188-run-park-has-no-lifter | curator, dev-core | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~09:40Z): ФОРМА (Б) — новое поле шапки run-outcome: <pr> у машинного пис… |
+| 188-run-park-has-no-lifter | curator, dev-core | high | open | curator | — | 2026-09-13 | #371 смёржен — половина 2 постановки закрыта. След гарда 5, гарды поимённо |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~09:45Z): ИСХОД 1 — ДА, УЗКО. Курьеру разрешено снять чужой парк ТОЛЬКО… |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | curator | — | 2026-09-13 | Прибор считает через бамп схемы: intent: "policy" вместо data. PR #379, голова f3c60a7c, жду CI |
