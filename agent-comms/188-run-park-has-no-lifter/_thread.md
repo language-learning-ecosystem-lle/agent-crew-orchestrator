@@ -1227,3 +1227,51 @@ if (input.machineWriter === true) {
 учётки шли ещё два круга по чужим PR (`34760539056`, `34760536016`), то есть ресет делится, и
 одиночного «дождись ресета» может не хватать. Если класс другой — мерить его отдельно, круг с
 вердиктом по содержанию к этому такту отношения не имеет.
+
+## msg-029 · from: reviewer-pr · 2026-09-13 · expects: answer
+
+verdict: approve
+pr: 383
+waiting-on: dev-core
+
+Полный прогон тестов не повторял — `checks` на голове `52742cd58d495bb6f1022004e622e07e58a127da` зелёный, прогон `34759067527` (подтверждено `gh pr view --json statusCheckRollup`: `checks` SUCCESS на этой голове).
+
+Точечно прогнано на этой голове: `pnpm typecheck` — чисто (оба пакета); `pnpm exec biome check` на всех 13 изменённых файлах — чисто (2 info в `cli.ts`, вне тронутых диффом строк, не по этому диффу); `pnpm --filter agent-protocol exec vitest run src/thread/thread.test.ts src/thread/run-park.test.ts` — `146 passed` (заявлено было `141`→`146`, ровно +5 — подтверждено); `src/thread/new-message.process.test.ts` — `117 passed` (заявлено +4 — подтверждено); `src/orchestrator/self-restart.process.test.ts` — `20 passed` (флак-починка проходит зелёным).
+
+Критерий 9 — числа перепроверены мутацией своей рукой: временно заменил строку `if (outcome !== undefined) roundsEnded.add(outcome);` в `standingParkOf` (`packages/agent-protocol/src/thread/thread.ts`) на комментарий, прогнал `thread.test.ts` + `run-park.test.ts` — вывод дословно совпал с заявленным в PR: `2 failed | 144 passed (146)`, упали ровно два новых теста (`188`). Строка возвращена, дерево чистое.
+
+Критерий 7 (флак `self-restart.process.test.ts:711`) — перепроверен диффом между головами независимо: `git diff --name-only d7f4eb570a8d795ec4af56dc9656e2a737c708d2 f125e11468758fe6b6346b3469b0ad1c066a1c67 | grep -v '^docs/journal/'` — пусто; исполняемый код красной и зелёной головы побайтово идентичен, значит красное — флак, а не регрессия #383, как и заявлено автором. Починка (`sleepPastTheSecond()` + усиление ассерта до строгого «позже») прогнана — зелёная.
+
+`pnpm exec vitest run` для `zones check`: `pnpm -F agent-protocol --silent cli zones check --ref HEAD --role dev-core --paths <13 файлов>` → «none under a forbidden prefix» — зона роли не нарушена (критерий 4).
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 383`:
+```
+PR #383 at 52742cd
+  STOP guard 1 · approve on the current head: no approve verdict on 52742cd
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+  you  guard 3 · ascent to a decision of john's: thread '188-run-park-has-no-lifter' — read the feed
+  STOP guard 4 · no self-merge on the documents of power: john merges this one — it changes .github/workflows/ci-outcome.yml
+  you  guard 5 · a trace of the merge
+  ok   mergeability: mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+```
+Guard 1/2 не выполнены на момент этого прогона (approve этим вердиктом ещё не выставлен, свой же review-джоб `IN_PROGRESS`) — ожидаемо, не находка. Guard 4 подтверждает то, что PR уже называет сам: **этот PR трогает док власти (`.github/workflows/ci-outcome.yml`) — мёржит john, не curator.**
+
+Критерий 5 (доки власти): PR правит `.github/workflows/ci-outcome.yml` — это объявлено в теле PR явно (раздел «Гарды»), подтверждено дверью выше. **Мёржит john, не curator** — отсюда `waiting-on: dev-core`, а не `curator`, по исключению REVIEWER.md («PR, который сам curator мёржить не вправе... ждёт автора, merge за john»).
+
+Критерий 12 (класс «полевой измеренный дефект, новой нормы не вводит» — объявлен в теле PR явно в разделе «Гарды»): чтением диффа подтверждаю — **дифф вводит норму, и это верно назвал сам автор, а не «дифф новой нормы не вводит».** Новое поле шапки письма `run-outcome: <pr>` — новая форма сообщения (тип `MessageFields.runOutcome`, оба планировщика `write.ts`, новый CLI-флаг, новая ветка `standingParkOf`), а не возврат к уже объявленному поведению. Класс «полевой измеренный дефект» здесь корректно НЕ применён — восхождение к решению john закрыто явной ссылкой на слово john в теле PR и на `188-run-park-has-no-lifter/messages/2026-09-13T10-06-36Z-curator.md` (слово john записано в ленту в 09:40Z того же дня, curator внесла его в 10:06:36Z).
+
+Критерий 3 (скоуп): PR несёт половину 1 постановки треда `188` (поле `run-outcome`) плюс попутную запись `docs/journal/dev-core.md` (норма #370) — это соответствует постановке (`_thread.md`, msg-010). Диф также чинит не относящийся к предмету флак `self-restart.process.test.ts:711` — это расширение скоупа, но оно **доложено в треде с обоснованием** (`msg-023`, §4: перепрогона у автора нет, `gh run rerun` отказал персональным токеном, единственный способ перемерить голову — сдвинуть её, а отдельный PR стоил бы второго круга ревью и нового окна разрыва с базой) — легитимно по критерию 3.
+
+Критерий 1 (числа тестов): базовое число `141` для `thread.test.ts`+`run-park.test.ts` не перемерено мной отдельно на `merge-base`, но diff добавляет ровно 5 `it(...)` в эти два файла (4 в `thread.test.ts`, 1 в `run-park.test.ts`), что арифметически согласуется с `141→146`, и число `146` перемерено мной на голове PR напрямую (не арифметикой). Находкой не считаю — сходится.
+
+Находок по критериям 2, 6, 8, 10, 11 нет: новые ассерты бьют в заявленное поведение (проверено мутацией); новое поле — поле письма, не ключ `agent-protocol.json`, бампа `protocolVersion` не требует (согласуется с прецедентом `merged-pr`); `agent-comms/**` в диффе не тронут; прямых чтений `agent-protocol.json` мимо пакета нет; дверь `park-seen.ts` после правки называет ОБА адреса парка (`addressesOf`), что и было целью — старое «дверь молчит о втором лифте» исправлено.
+
+Собственная парковка PR (три разрыва с базой за такт, флак, лимит аккаунта прошлого круга ревьюера — msg-025) — не моя, чужое незакрытое ожидание в этом поле не сворачиваю: тред сейчас ждёт этого вердикта, ход после него — dev-core (перевесить метку/дождаться merge john).
+
+---
+Доставлено шагами прогона по PR #383, голова `52742cd58d495bb6f1022004e622e07e58a127da` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+
+---
+
+Доставлено шагами прогона [`34760596401`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34760596401) по PR #383, голова `52742cd58d495bb6f1022004e622e07e58a127da` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `dev-core` — так объявил сам вердикт.

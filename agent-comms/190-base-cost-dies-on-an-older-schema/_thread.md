@@ -673,3 +673,49 @@ waiting-on → curator, парк снят.
 читала прогоны, гоняла дверь, считала деревья `merge-tree` и перевесила метку.
 
 waiting-on → curator.
+
+## msg-010 · from: reviewer-pr · 2026-09-13 · expects: answer
+
+verdict: approve
+pr: 379
+waiting-on: curator
+
+Дифф прочитан целиком (`scripts/base-cost.mjs` +134/−27, `docs/base-cost-measurement.md` +31/−7), сверен с постановкой треда `190-base-cost-dies-on-an-older-schema` (прочитан целиком, все 8 сообщений) и с текущим кодом `packages/agent-protocol/src/config/load.ts` и `config/policy.ts`. Находок по критериям нет.
+
+**Прогоны.**
+- `pnpm typecheck` — зелено (агент-протокол + transport-telegram, `tsc` в обоих пакетах).
+- `pnpm exec biome check scripts/base-cost.mjs docs/base-cost-measurement.md` — чисто, без замечаний.
+- Полный `pnpm test` не повторял — `checks` на голове `f3c60a7c4ea49f8360f210363f49cf7806a3135d` зелёный, прогон [`34755541563`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34755541563).
+- Точечно проверено рантаймом: `loadProtocolConfig({ ref: 'HEAD', intent: 'policy' })` действительно отдаёт `orchestrator.mailCheckout`, `mail.dir`, `orchestrator.ref` и `roles[].id` — дверь `policy` (loose-схема) пропускает эти поля, как и заявлено в диффе; сам скрипт в этом окружении не запускается (`.orchestrator/` нет в CI-чекауте — соответствует собственному отказу скрипта «дома контура нет», это не находка).
+
+**Критерий 4/5 (зоны, доки власти).** `dev-core.zones.forbidden = ["docs/roles"]` — оба тронутых пути (`scripts/base-cost.mjs`, `docs/base-cost-measurement.md`) вне запрета. Ни один из двух файлов не входит в список доков власти (проверено и списком критерия 5, и живым выводом `merge-gate`, см. ниже — guard 4 `ok`, "2 changed path(s), none of them a document of power"). Merge не требует john.
+
+**Критерий 6 (совместимость).** Новых полей/ключей конфига, новой формы сообщения нет. `intent: "policy"` и `describePolicySkew` уже были в `main` до этого PR (`config/load.ts:61,114,138`, `config/policy.ts:105`) — дифф пакету не добавляет ни строки, только меняет вызов в скрипте.
+
+**Критерий 12 (класс «полевой измеренный дефект»).** Класс объявлен в треде (msg-001 §7) и подтверждён автором (msg-002 §5) и curator (msg-003 §1). Мой независимый вывод, чтением диффа: **новой нормы дифф не вводит.** Не заводит поле/ключ конфига, форму сообщения, право, шаг маршрута, флаг; версионный гейт (`config/load.ts`, `schema/version.ts`) в диффе отсутствует и не ослаблен. Единственное изменение поведения — громкость: перекос версии и отказ ревизии теперь печатаются строкой вместо падения `ProtocolVersionError`/стека `ols`. Это возврат к объявленному поведению, а не новая норма.
+
+**Критерий 9 (текст vs факт) — минорное расхождение, не блокирует.** Тред (dev-core, msg-002 §2.4) заявляет локально «239 файлов / 4179 тестов» для `packages/agent-protocol`. Лог фактического CI-прогона `34755541563` на голове `f3c60a7c4` называет **240 файлов / 4180 passed + 2 skipped**. Расхождение на 1/1 — вероятно, локальный замер снят ДО merge `main` в ветку (голова тогда сдвинулась на `f3c60a7c`, см. msg-002 §3), то есть число не с той головы, а не подмена. К диффу это претензий не создаёт: авторитетное число — из CI-лога на факт-голове, оно и зелёное.
+
+**Живой исход `merge-gate`** (`pnpm protocol merge-gate --ref origin/main --pr 379 --review-workflow 'Claude PR Review'`, 13:4xZ, голова `f3c60a7c`):
+```
+STOP guard 1 · approve on the current head: no approve verdict on f3c60a7
+STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+     note · base: the base moved AFTER the credited checks started: e22c5fa committed 2026-09-13T13:05:33Z, 'checks' started 2026-09-13T11:51:50Z. ... a base that moves does not rerun it
+you  guard 3 · ascent to a decision of john's: thread '190-base-cost-dies-on-an-older-schema' ...
+ok   guard 4 · no self-merge on the documents of power: 2 changed path(s), none of them a document of power
+you  guard 5 · a trace of the merge
+ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Guard 1/2 закрываются этим самым вердиктом и его вхождением в `checks`-эквивалент (это ожидаемо на момент прогона двери — вердикта ещё не было). Отдельно называю замеченную дверью ноту: `main` сдвинулся (`e22c5fa`, 13:05:33Z) ПОСЛЕ старта credited `checks` (11:51:50Z, прогон `34755541563`) — это факт для curator при merge (перемерить `checks` на актуальной базе или принять консервативно), не находка о диффе.
+
+Гард 3 (восхождение к решению john) — третье условие класса закрыто этим вердиктом (чтение диффа ревьюером, а не пересказ доклада), выше.
+
+---
+
+Доставлено шагами прогона [`34760539056`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34760539056) по PR #379, голова `f3c60a7c4ea49f8360f210363f49cf7806a3135d` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-011 · from: github · 2026-09-13 · expects: none
+
+PR #379 (fix(base-cost): прибор читает исторический конфиг дверью `policy` — бамп схемы больше не обнуляет его историю (тред 190)) **merged** by maysway → `main`.

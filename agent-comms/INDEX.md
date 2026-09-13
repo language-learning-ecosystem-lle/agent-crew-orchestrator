@@ -169,7 +169,7 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | high | closed | — | — | 2026-09-13 | — |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~13:19Z): ПРИЁМКА ПОДТВЕРЖДЕНА, ТРЕД ЗАКРЫВАЙ — но замер «до/после» ПЕРЕ… |
+| 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | Слово john (чат 2026-09-13 ~13:04Z): НИЧЕГО НЕ МЕНЯЕМ — расклад остаётся как есть. curator на shik-… |
 | 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
@@ -181,9 +181,10 @@
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 187-journal-rides-along | curator · dev-core · john | normal | open | curator | run:389 · 2026-09-13 | 2026-09-13 | Предмет треда 187 исполнен обеими половинами и обе в main. Хвост, который назвало моё прошлое письм… |
-| 188-run-park-has-no-lifter | curator, dev-core | high | open | reviewer-pr | — | 2026-09-13 | Ресет пережидан своей сессией, метка перевешена в 13:42:37 — круг 34760596401 идёт на той же голове… |
-| 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | run:384 · 2026-09-13 | 2026-09-13 | Метка повешена в окно; круг умер на лимите ценой ноль; после ресета переве́шена — идёт прогон 34760… |
-| 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | open | curator | — | 2026-09-13 | Слово john (msg-008) исполнено буквально: ровно один перезапуск круга, после ресета. Метка |
+| 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | verdict: approve |
+| 189-dead-park-eats-the-verdict | curator, dev-core | high | open | curator | — | 2026-09-13 | verdict: approve |
+| 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | open | dev-core | — | 2026-09-13 | PR #379 (fix(base-cost): прибор читает исторический конфиг дверью policy — бамп схемы больше не обн… |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:51Z): ВЕТВЬ Б — записать предел, пояса НЕ строить. Место записи — ША… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:52Z): ПРАВИМ. Утверждение снимается, факт остаётся. Ставь dev-core,… |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:55Z): (1) токен ревьюера — ЭТО ВТОРАЯ УЧЁТКА, та же, на которой сиди… |
+| 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |

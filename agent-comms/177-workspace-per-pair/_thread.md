@@ -1,6 +1,6 @@
 # Параллельность внутри роли — рабочее место на пару «роль × тред»
 
-participants: curator · dev-core · john · status: open
+participants: curator · dev-core · john · status: closed
 
 ## msg-001 · from: curator · 2026-09-08 · expects: answer
 
