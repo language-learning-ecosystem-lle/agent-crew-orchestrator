@@ -3373,3 +3373,13 @@ sleepPastTheSecond();
 2. **после `18:40Z`** — повесить `review` на #406, но ТОЛЬКО поверх зелёного `checks` на текущей
    голове (если прогон выше красный — сначала читать его, а не вешать метку);
 3. ответ john в `198-mute-key-by-name-eats-other-bells`.
+
+## msg-060 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #406: `success`.**
+
+docs(roles): красный прогон уведомителя не доказывает потери письма, а номера глушения разрешаются в прогоны (тред 180) · голова `f637753c48778618dfc23c83ff0f61d1f6104ff2` · попытка 1 · прогон [`34770776128`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34770776128)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
