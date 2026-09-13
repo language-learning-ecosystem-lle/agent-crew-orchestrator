@@ -4068,3 +4068,13 @@ fast-forward). Force-push не делался, номер PR прежний.
 проверил — приём «дописывания в конец доказываются арифметикой, названной ДО сборки» уже лежит в
 `docs/journal/dev-core.md` головой этого же PR, а вторая запись о том же приёме сдвинула бы голову
 и обнулила идущий `checks` ради нуля нового.
+
+## msg-093 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #386: `success`.**
+
+fix(run): сухой прогон говорит исход настоящего подъёма, а не отказ (тред 180-selfheal-leaves-the-workspaces-behind) · голова `b20f8d26faa323e88d2b1004ba48ec950a35c705` · попытка 1 · прогон [`34765266511`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34765266511)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
