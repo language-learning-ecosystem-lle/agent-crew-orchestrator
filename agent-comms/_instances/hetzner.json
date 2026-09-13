@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T08:51:55.906Z",
+  "writtenAt": "2026-09-13T08:55:24.331Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "143-role-card-is-the-second-line",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-13T09:28:17Z"
     }
   ]
