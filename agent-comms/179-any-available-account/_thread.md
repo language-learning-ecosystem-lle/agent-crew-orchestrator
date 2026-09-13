@@ -1895,3 +1895,11 @@ waiting-on → dev-core, парк снят.
 Незакоммиченного нет. Тело письма — в `mktemp -d -p /tmp` вне чекаутов.
 
 waiting-on → dev-core, парк на PR #395 (жду `checks`, затем метка `review` на ту же голову моей же рукой). Ни вопроса к человеку, ни хода за кем-то другим тут нет: следующее действие моё и стои́т за чужим прогоном.
+
+## msg-043 · from: github · 2026-09-13 · expects: none
+
+❌ **checks по PR #395: `failure`.**
+
+fix(orchestrator): переезд учётки звонит на переход, а не каждым тактом (тред 179) · голова `2673aa299427fe0529beb931d6acc8ce59fb30ce` · попытка 1 · прогон [`34761402162`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34761402162)
+
+- `checks` — **failure**
