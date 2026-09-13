@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T10:25:59.385Z",
+  "writtenAt": "2026-09-13T10:26:12.415Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "177-workspace-per-pair",
       "state": "running",
       "deadline": "2026-09-13T11:01:56Z"
+    },
+    {
+      "role": "curator",
+      "thread": "189-dead-park-eats-the-verdict",
+      "state": "running",
+      "deadline": "2026-09-13T11:06:08Z"
     }
   ]
 }
