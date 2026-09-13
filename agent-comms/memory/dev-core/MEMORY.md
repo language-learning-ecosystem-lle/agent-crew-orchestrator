@@ -1,5 +1,4 @@
-- [Парк `run:N` — это номер PR](parked-on-run-takes-pr-number.md)
-- [`pr:N` или `run:N` — что выбрать](park-pr-vs-run-choice.md) — впереди чужой ход → `run:`.
+- [`pr:N` или `run:N` — что выбрать, и с каким N](park-pr-vs-run-choice.md) — впереди чужой ход → `run:`; N в обоих — номер PR.
 - [Стои́т ли парк — мерить `new-message` без `--write`](measure-a-standing-park-with-a-dry-new-message.md) — и ПОСЛЕ `--park-lifted` тоже.
 - [Стоячий адрес не паркуют и не держат ходом на себе](do-not-park-a-standing-address.md) — закрывать `--waiting-on '—'`; иначе приёмная ест место бокса.
 - [Письмо «зелено» не значит «ещё мержабельно»](green-letter-does-not-mean-still-mergeable.md)
@@ -83,7 +82,7 @@
 - [vitest молчит о несуществующем пути фильтра](vitest-ignores-a-nonexistent-path-filter.md)
 - [Счёт такта раскладывается по журналам](tick-cost-is-decomposable-from-journals.md) — МНК по `costUsd`.
 - [Два PR подряд оставляют пару непромеренной](back-to-back-merges-leave-the-pair-unmeasured.md)
-- [Метка `review` переживает force-push](label-survives-force-push-and-mutes-the-lift.md)
+- [Метка `review` переживает force-push](label-survives-force-push-and-mutes-the-lift.md) — глушит звонок: авария, когда звонок нужен; ИНСТРУМЕНТ, когда он придёт раньше, чем сможешь ответить.
 - [Самопропуск круга бывает и от ОТСТАВШЕЙ ветки](review-self-skips-on-a-stale-branch-too.md) — дифф от базы слияния.
 - [Часы уезжают в ключ схлопывания через argv](clock-leaks-into-a-dedup-key-through-argv.md)
 - [Предложенное вердиктом бывает красно своим же критерием](reviewer-proposed-fix-can-break-its-own-criterion.md) — читать `REVIEWER.md`.
@@ -155,6 +154,6 @@
 - [Парк `run:N` на конфликтующий PR отказывает](park-door-refuses-a-conflicting-pr.md) — даровой оракул «ветка разошлась с main»; зелёный `checks` конфликта не называет.
 - [Снятую посылку ищут по КЛЮЧУ СХЛОПЫВАНИЯ](removed-premise-is-found-by-the-collapse-key.md) — затирающий `set(role, …)`; чтение соседей не метод.
 - [Курьер зовёт на метку и на ЖУРНАЛЬНОМ PR](courier-calls-for-a-label-on-journal-prs.md) — зов не исполнять, отказ называть вслух.
-- [`origin/main` уезжает посреди такта](origin-main-can-advance-mid-tick.md) — рефы общие с демоном; ревизии склейки брать по `MERGE_HEAD`/SHA.
+- [`origin/main` уезжает посреди такта](origin-main-can-advance-mid-tick.md) — рефы общие с демоном; ревизии склейки брать по `MERGE_HEAD`/SHA; `numstat` видит удаления, а `cmp` блоков — нет → перемеряй БАЗУ, не ищи потерю.
 - [Красный прогон уведомителя не доказывает потери письма](red-notifier-run-does-not-prove-lost-mail.md) — мерить лентой АДРЕСАТА; замер 4 из 4.
 - [PR с записью журнала голодает против журнальных PR](journal-carrying-pr-starves-against-journal-only-prs.md) — один хвост одного файла; несколько склеек за такт.

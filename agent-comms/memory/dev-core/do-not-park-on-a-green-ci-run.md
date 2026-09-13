@@ -74,4 +74,4 @@ status,conclusion`), и на маленьком диффе ожидай, что 
 прочитай вердикт (`gh pr view <N> --comments`) и доложи ИСХОД, передав ход кнопке. Парк снимется
 вердиктом круга только если круг ещё идёт (`pr:N` — под саму кнопку merge, см.
 [[park-pr-vs-run-choice]]). И `run:` берёт НОМЕР PR, а не id прогона
-([[parked-on-run-takes-pr-number]]).
+([[park-pr-vs-run-choice]]).
