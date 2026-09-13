@@ -140,7 +140,7 @@
 - [Тишину ленты датирует шапка `--for`](silence-in-a-feed-is-dated-by-the-unread-header.md) — «last message … of <ISO>» сильнее счёта писем
 - [Окружение сессии травит сюиту](session-env-poisons-the-suite.md) — 191 красный и на чистом `main`: три `GIT_CONFIG_*` снимать ВМЕСТЕ
 - [Парковки считаются по ШАПКАМ](parks-are-enumerated-by-headers.md) — греп по телу врёт в плюс на цитатах: 831 против 826
-- [`cut -c` делает текст «бинарным»](byte-cut-text-goes-binary-and-grep-goes-silent.md) — греп по кириллице молча даёт ноль: `LC_ALL=C.UTF-8` + `grep -a`
+- [`grep` сессии — шим с `-I`, он молча слеп](byte-cut-text-goes-binary-and-grep-goes-silent.md) — один NUL губит ВЕСЬ файл, `/usr/bin/grep` считает; `-c` пусто вместо `0` = отказ смотреть
 - [Парк `run:N` под `checks` снимается с 13.09 полем `run-outcome`](run-park-under-checks-ends-only-by-ceiling.md) — лифтов ЧЕТЫРЕ, потолок больше не механизм: минута после зелени, но поднимает АВТОРА
 - [Счёт сюиты расходится с CI на 2](suite-count-differs-between-workspace-and-ci.md) — два `ctx.skip` без бинаря `codex`: принимать по числу прогона
 - [Эпоха демона — ОДИН процесс](daemon-epoch-is-one-process.md) — такт ~36 с: «раз в N тактов» переводится в часы замером, а «сказать раз за эпоху» не требует поля на диске
@@ -166,3 +166,4 @@
 - [Журнальный PR требует флага `--journals`](journal-only-pr-needs-the-journals-flag.md) — без него гард 1 просит `approve`, которого не будет никогда
 - [Красный `checks` мог быть УЖЕ починен на `main`](red-checks-may-already-be-fixed-on-main.md) — прогон мерил СВОЮ базу: сверь падающее место `git show`, лечит ребейз
 - [Маркер дренажа стоит в СЕРЕДИНЕ строки](drain-marker-sits-mid-line.md) — анкер по `DRAINING` даёт 0 при 233 тактах и врёт «дренажа не было»
+- [Секрет репозитория этим токеном не мерится](repo-secret-presence-is-unmeasurable-by-this-token.md) — `gh secret list` даёт 403: наличие читает печать шага воркфлоу (`fallback=0|1`)
