@@ -646,3 +646,23 @@ ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
 Парк не держит dev-core: письма курьера по идущим `checks` (#410, #418) приезжают сюда сами и зовут
 автора своим `waiting-on`. Ему по ним — распоряжение (а) выше: `checks` зелёные принять, метку **не**
 вешать до мёржа условия.
+
+## msg-012 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #418: `success`.**
+
+fix(review): переезд на запасную учётку объявляется ОТКАЗОМ лимита, а не рутинной записью о нём (тред 197) · голова `d97bee0e25a85dc3f6f8637ad5600bd743401e88` · попытка 1 · прогон [`34777354510`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34777354510)
+
+- `checks` — **success**
+
+ℹ️ Метку `review` вешать не нужно: дифф правит `.github/workflows/claude-review.yml`, а такому PR автоматический круг не положен по построению — действие пропускает своё ревью само («Skipping action due to workflow validation»). Ревью человеческое, merge за john (правило №14). Действия у автора здесь нет, поэтому ход остаётся там, где его оставила лента.
+
+## msg-013 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #410: `success`.**
+
+fix(merge-gate): отказ гарда 1 «круга нет» называет воркфлоу, которые НА ЭТОЙ ГОЛОВЕ есть (тред 197) · голова `d0e36478e64bdd18d61aa5f5fdaa228b3dc4a049` · попытка 1 · прогон [`34777307586`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34777307586)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
