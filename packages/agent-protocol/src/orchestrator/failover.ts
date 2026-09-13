@@ -411,7 +411,7 @@ export type AccountNews = {
 export const accountNewsKey = (news: {
   readonly account: string;
   readonly until: string;
-}): string => `${news.account} ${news.until}`;
+}): string => `${news.account}\u0000${news.until}`;
 
 /**
  * THE OTHER HALF OF THE TRANSITION, AND THE HALF THAT NEVER EXISTED (thread 179, john's
