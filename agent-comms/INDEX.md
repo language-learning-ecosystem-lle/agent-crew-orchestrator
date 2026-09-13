@@ -172,8 +172,8 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | PR #403 (docs(journal): разделитель-невидимка проверяется соседом; парк вперёд наследует старый sin… |
-| 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #397: success. |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #386: success. |
+| 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Метка review повешена на зелёную голову 13cad1a6d, круг ревью 34768699365 идёт. В этот же |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
