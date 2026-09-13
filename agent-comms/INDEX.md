@@ -184,7 +184,7 @@
 | 188-run-park-has-no-lifter | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
-| 191-watcher-run-may-never-start | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core (ветвь Б принята john): записать предел гарантии смотрителя в ШАПКУ notifier-wa… |
+| 191-watcher-run-may-never-start | curator, dev-core | normal | open | dev-core | run:413 · 2026-09-13 | 2026-09-13 | Предел гарантии смотрителя записан в шапку notifier-watch.yml — PR #413 (кнопка john, гард 4). Попу… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: снять безусловное утверждение о потере из notifier-watch.yml:296 — остаётся фа… |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: #399 стои́т под твоей кнопкой — голова 66566e54a, база догнана, дифф не тро… |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
