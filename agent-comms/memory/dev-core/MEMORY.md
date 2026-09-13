@@ -116,6 +116,7 @@
 - [Режим-парк фильтрует сводка, но не реестр](mode-park-is-filtered-by-the-digest-not-by-the-register.md) — мерить поверхность зондом.
 - Парк `run:N`: [под `checks` не снимается по адресу](run-park-under-checks-has-no-lifter.md) · [мёртвый ОТКАЗЫВАЕТ вердикту](dead-run-park-refuses-an-incoming-verdict.md) — только потолком в 30 мин. Под КРУГОМ РЕВЬЮ подъёмник есть: вердикт парой `verdict:`/`pr:N` (13.09, #383).
 - [Письмо github о merge поднимает АВТОРА](merge-letter-raises-the-author.md) — такт приёмки, не пустой подъём.
+- [Дверь версии в СВОЁМ контуре молчит всегда](version-door-is-silent-in-the-protocols-own-contour.md) — `reference` нет → полевой дефект версии здесь не воспроизвести.
 - Даровые оракулы: [`orchestrator status` читает конфиг ИЗ REF](orchestrator-status-reads-the-ref-not-the-tree.md) · [сухой `run` — по потолкам](dry-run-is-a-free-oracle-on-the-ceilings.md) — два вызова с разными `--ref`.
 - [Живую пару мерить фолдом аренд, а не локом дерева](worktree-lock-and-lease-fold-are-two-instants.md)
 - [Изнутри пары рукой поднимается `потолок − 1`](hand-raise-from-inside-a-pair-is-ceiling-minus-one.md)
