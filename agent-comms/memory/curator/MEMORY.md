@@ -145,3 +145,4 @@
 - [Счёт сюиты расходится с CI на 2](suite-count-differs-between-workspace-and-ci.md) — два `ctx.skip` без бинаря `codex`: принимать по числу прогона
 - [Эпоха демона — ОДИН процесс](daemon-epoch-is-one-process.md) — такт ~36 с: «раз в N тактов» переводится в часы замером, а «сказать раз за эпоху» не требует поля на диске
 - [Прибор `base-cost` мерит только окно с последнего бампа схемы](base-cost-only-measures-since-the-last-schema-bump.md) — старше падает `ProtocolVersionError`, короче — вырождается: длину мерь git'ом
+- [`pr open` даёт 502 при зелёном статусе](pr-open-502-clears-after-a-minute.md) — сверить, что PR не создан, и повторить через минуту той же строкой
