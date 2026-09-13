@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T15:03:08.285Z",
+  "writtenAt": "2026-09-13T15:04:21.501Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "179-any-available-account",
-      "state": "draining",
-      "deadline": "2026-09-13T15:45:44Z"
-    },
     {
       "role": "curator",
       "thread": "190-base-cost-dies-on-an-older-schema",
