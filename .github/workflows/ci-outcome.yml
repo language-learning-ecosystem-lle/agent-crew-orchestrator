@@ -486,7 +486,12 @@ jobs:
             # `new-message`: роль сверяется с ДЕЙСТВУЮЩИМ конфигом дефолтной
             # ветки, а не с тем, что оказалось головой чекаута `.code`
             # (в claude-review.yml это уже стоило переданного хода — там же причина).
-            if (cd .code && pnpm -F agent-protocol --silent cli role exists --repo . --ref origin/main --role "$ROLE" >/dev/null 2>&1); then
+            # `--no-fetch`: `.code` стоит на `main` с чекаута, и `origin/main` в нём —
+            # ровно тот коммит, чей пакет запущен. Без флага загрузчик дофетчивает ref
+            # сам и может подать процессу конфиг НОВЕЕ его самого — уведомитель тогда
+            # отказывает «restart required» на своём же репозитории (тред 180, замер и
+            # разбор — в шапке того же вызова в `merge-notify.yml`).
+            if (cd .code && pnpm -F agent-protocol --silent cli role exists --repo . --ref origin/main --no-fetch --role "$ROLE" >/dev/null 2>&1); then
               WAIT_ARGS="--waiting-on ${ROLE}"
             elif [ -n "${MAIN_RED:-}" ]; then
               # Красный main без хода — звонок без адресата, то есть та же
@@ -537,7 +542,7 @@ jobs:
             # после `reset --hard origin/comms` именно поэтому: выбор делается по
             # той ленте, на которую пойдёт push.
             if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
-                  --root "${GITHUB_WORKSPACE}/agent-comms" --repo . --ref origin/main \
+                  --root "${GITHUB_WORKSPACE}/agent-comms" --repo . --ref origin/main --no-fetch \
                   "${ADDR_ARGS[@]}" --from github --expects none ${WAIT_ARGS} \
                   --worker gh-action \
                   --body-file "$BODY_TMP" --write --no-push); then

@@ -63,10 +63,14 @@ derive_rc=0
 
 # `derive --write` пересобирает _thread.md мигрированных + INDEX.
 # Конфиг протокола читается из main через git в .code (репо кода).
+# `--no-fetch`: `.code` встал на `main` чекаутом, и `origin/main` в нём — тот самый
+# коммит, чей пакет мы запускаем. Без флага загрузчик обновляет ref сам и может подать
+# процессу конфиг НОВЕЕ его самого — два merge'а подряд тогда роняют шаг «restart
+# required» (тред 180; замер — в шапке того же вызова в `merge-notify.yml`).
 run_derive() {
   derive_rc=0
   (cd "$CODE" && pnpm -F agent-protocol --silent cli derive \
-    --root "$MAIL" --repo "$CODE" --ref origin/main --write) || derive_rc=$?
+    --root "$MAIL" --repo "$CODE" --ref origin/main --no-fetch --write) || derive_rc=$?
 }
 
 # ЕДИНСТВЕННАЯ ДВЕРЬ ВЫХОДА С КОДОМ `derive`, и красный из неё не

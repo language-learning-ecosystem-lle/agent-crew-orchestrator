@@ -104,6 +104,16 @@ of the PR branch, the circuit must look at `origin/main`.
 Freshness is part of the operation: `origin/*` goes stale silently without a
 `fetch`, so the command does the update itself, and `--no-fetch` prints a warning.
 
+**And the update is exactly what a CI job must switch off** (thread `180-notifier-down`).
+A workflow that checks out the code at `ref: main` and then runs the package out of that
+checkout has already fetched `origin/main` once — the ref and the build are the same
+commit. Leaving the loader to fetch again decouples them: a second merge landing between
+the checkout and the read hands the process a config NEWER than itself, and it refuses,
+correctly, with `restart required: … the package supports only <n>`. So such a call names
+the branch AND pins it — `--ref origin/main --no-fetch`. The pairing is swept by
+`config/workflow-ref-pinning.test.ts`, together with the two call sites that must not be
+pinned and why.
+
 A role's `launch` section is the LAUNCH CONTRACT of that role: `allowedTools` (what
 a raised session may do), since R12 `limits` — `idleSeconds`, `wallClockSeconds`,
 `maxTurns` — and since R15 `agent`, which names the TOOL that raises the role and its
