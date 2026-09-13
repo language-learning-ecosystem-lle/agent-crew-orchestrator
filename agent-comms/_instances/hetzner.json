@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T11:37:41.818Z",
+  "writtenAt": "2026-09-13T11:39:29.741Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,12 +19,6 @@
       "thread": "187-journal-rides-along",
       "state": "running",
       "deadline": "2026-09-13T12:17:38Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "189-dead-park-eats-the-verdict",
-      "state": "running",
-      "deadline": "2026-09-13T12:35:21Z"
     }
   ]
 }
