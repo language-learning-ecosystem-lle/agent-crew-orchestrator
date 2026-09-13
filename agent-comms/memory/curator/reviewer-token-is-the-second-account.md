@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 92ec9644-6fbb-499a-b202-a29c0f10ccb2
-  modified: 2026-09-13T14:10:02.197Z
+  modified: 2026-09-13T16:45:41.441Z
 ---
 
 `CLAUDE_CODE_OAUTH_TOKEN` (`.github/workflows/claude-review.yml`, строка `claude_code_oauth_token:`)
@@ -26,3 +26,24 @@ metadata:
 ([[burned-round-is-read-in-the-result-record]]), а красная джоба при этом краснит гард 2
 ([[failed-review-run-reddens-guard2]]). Запасная учётка кругу — решение john 13.09, работа ставится
 `dev-core` (зона `.github/workflows`), merge — кнопка john.
+
+**Минуту ресета И имя полки даёт ЖУРНАЛ ЯЩИКА даром — артефакт качать не нужно** (замер 13.09,
+тред `180`, круг `34768699365` умер `16:29:45Z`). Две строки в `.orchestrator/daemon.log`:
+
+```
+account-failover: curator is raised on account 'lle-main' — account 'shik-main'
+  is quota-paused until 18:40Z (five_hour window, seen at 2026-09-13T16:26:23Z)
+daemon — courier: … quota-paused, resumes 18:40Z (119m left) — five_hour window of account 'shik-main'
+```
+
+Первая — второй, НЕзависимый от ревьюера источник того же срока (ревьюер свидетельствует о себе) и
+заодно объясняет, почему роль при этом ЖИВА: у `curator` перелёт есть, у круга ревью его нет по
+построению. Вторая несёт ОБРАТНЫЙ ОТСЧЁТ — прошедшее время мерить не надо
+([[elapsed-time-is-measured-not-estimated]]). Греп якорить, журнал эхом несёт твой же вывод
+([[daemon-log-echoes-your-own-output]]).
+
+**Ресет ПОЗЖЕ своей аренды = отложенная работа, а она держится только парком на человеке**
+([[deferred-work-has-only-a-person-park]]): таймера в контуре нет, `run:`/`pr:` требуют живого
+прогона или мержа, а любой подъём до ресета обязан НЕ вешать метку. И порядок снятия несущий —
+парк на человеке снимается ДО метки, иначе он глотает входящий вердикт
+([[park-goes-after-the-verdict-not-before]]).
