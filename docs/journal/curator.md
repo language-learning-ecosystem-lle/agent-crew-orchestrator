@@ -159,7 +159,8 @@ worktree at '.worktrees/dev-core@177-workspace-per-pair'`. Merge при этом
 git worktree list --porcelain | awk '/^worktree /{w=$2} /^branch /{print $2" <- "w}'
 ```
 
-Перечислено по всем открытым PR в `12:57Z`: **пять из шести** голов заняты деревом
+Перечислено по всем открытым PR в `12:55:34Z` (штамп снят той же командой, что и замер): **пять из
+шести** голов заняты деревом
 (`curator/187-journal-entry-rides-alone` #389, `curator/155-park-ground-vocabulary-canon` #388,
 `dev-core/180-dry-run-says-the-outcome` #386, `feat/189-dead-park-retry` #384,
 `fix/190-base-cost-reads-historic-config` #379) — на каждой кнопка вернёт `1`; свободна одна
