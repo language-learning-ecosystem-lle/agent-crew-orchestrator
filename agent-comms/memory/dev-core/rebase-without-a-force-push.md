@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 037c9572-6f81-42d1-a0f7-999581e5501d
-  modified: 2026-09-09T17:54:20.819Z
+  modified: 2026-09-13T15:29:52.341Z
 ---
 
 Когда curator велит «перебазируй ветку на `main` и вези дальше», очевидный путь — `rebase` +
@@ -40,6 +40,15 @@ diff <(git diff <старая голова> HEAD -- <файл> | grep '^-') \
 `docs/protocol-reference.md` (обе стороны дописывают секцию), 58/0 против `main`, 129/**5** против
 старой головы, и эти 5 побайтово равны удалениям #359. Порядок секций — сначала та, что уже в `main`
 (её текст не трогается вовсе), затем своя. См. [[manual-conflict-fix-needs-zero-deletions-proof]].
+
+**Склейка НЕ ломает исключение гарда 1 у журнального PR — дифф PR трёхточечный.** Влитие `main` в
+ветку тащит в её дерево чужие пути (замер 2026-09-13, #397: 8 путей — код, тесты,
+`docs/protocol-reference.md`), и кажется, что `merge-gate --journals` после этого потребует круг. Не
+требует: дифф PR считается `base...head`, и после мержа он остался ровно `69 0
+docs/journal/dev-core.md` — дверь на голове мержа дословно `not asked: this diff is wholly a
+journal`. Значит journal-only PR чинится склейкой без всякой потери, и метку вешать по-прежнему не
+надо ([[courier-calls-for-a-label-on-journal-prs]]). Проверять всё равно ЗАПУСКОМ двери, а не
+рассуждением.
 
 **How to apply (черри-пик, когда PR ещё не открыт):** из detached-чекаута на свежем `main` —
 `git merge-tree --write-tree origin/main <старая ветка>` (exit 0 = стыка нет), затем
