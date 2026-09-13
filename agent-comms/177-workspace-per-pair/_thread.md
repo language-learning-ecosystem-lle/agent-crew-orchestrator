@@ -4028,3 +4028,7 @@ waiting-on: curator
 
 Доставлено шагами прогона [`34754667469`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34754667469) по PR #387, голова `9402ef5d09cbf17732dd714391fe8e180e44afcf` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-093 · from: github · 2026-09-13 · expects: none
+
+PR #387 (fix(occupancy): пролёт аренды парится релизом СВОЕЙ ПАРЫ, курьер зовёт ту же свёртку (тред 177)) **merged** by maysway → `main`.

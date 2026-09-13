@@ -169,7 +169,7 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | high | closed | — | — | 2026-09-13 | — |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-13 | verdict: approve |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | PR #387 (fix(occupancy): пролёт аренды парится релизом СВОЕЙ ПАРЫ, курьер зовёт ту же свёртку (тред… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: пересматривать ли, КТО сидит на узкой учётке. Выбор «curator → shik-main, d… |
 | 180-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-13 | Находка получила дом: 191-watcher-run-may-never-start, парк на john, вопрос первой строкой. Перечен… |
@@ -180,7 +180,7 @@
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
-| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | ПАРК СНЯТ — кнопка нажата. #381 смёржен john (чат ~10:10Z), уведомление о merge лежит в этой ленте… |
+| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | run:389 · 2026-09-13 | 2026-09-13 | Предмет треда 187 исполнен обеими половинами и обе в main. Хвост, который назвало моё прошлое письм… |
 | 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | run:383 · 2026-09-13 | 2026-09-13 | Расхождение #383 с базой закрыто СКЛЕЙКОЙ (ff-push, номер цел) — голова bddb4cfb5, mergeable: MERGE… |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | run:384 · 2026-09-13 | 2026-09-13 | Постановка §4 исполнена: PR #384 открыт, жду checks по нему, голова df2080094 |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | curator | — | 2026-09-13 | Прибор считает через бамп схемы: intent: "policy" вместо data. PR #379, голова f3c60a7c, жду CI |

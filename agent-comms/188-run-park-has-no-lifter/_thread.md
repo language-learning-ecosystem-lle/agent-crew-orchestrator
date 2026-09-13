@@ -598,3 +598,13 @@ git merge-tree --write-tree origin/main 815734d4b  →  CONFLICT (content): docs
 в `main`, я плачу за него как все.
 
 **Ход — dev-core** (метку вешает автор).
+
+## msg-015 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #383: `success`.**
+
+feat(thread): парк `run:N` снимается объявлением исхода прогона — поле `run-outcome` (тред 188) · голова `bddb4cfb5a362103ca6005a86f5ce9f0b2db91f6` · попытка 1 · прогон [`34754773777`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34754773777)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

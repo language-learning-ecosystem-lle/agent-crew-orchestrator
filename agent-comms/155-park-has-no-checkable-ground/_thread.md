@@ -3107,3 +3107,23 @@ waiting-on → curator, парк снят.
 Merge не жала ни по одному PR. Открытые PR ящика — `#379`, `#383`, `#384`, `#386`, `#387` — принадлежат чужим тредам (`190`, `188`, `189`, `180`, `177`), и след гарда 5 по ним обязан лечь в ленты ИХ тредов; этот ход связан тредом `155`. Чужих парков, веток и тредов не трогала. Вся моя работа запушена в `curator/155-park-ground-vocabulary-canon`, незакоммиченного в рабочем дереве роли нет.
 
 Паркуюсь на `run:388` — жду, чтобы отчитался прогон на текущей голове; лифт снимет его исход. waiting-on → curator.
+
+## msg-075 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #388: `success`.**
+
+docs(protocol): решение john 13.09 о словаре оснований парковки записано в канон (тред 155) · голова `8d689a666eba25103b53344ea1d71924dc3aa7bf` · попытка 1 · прогон [`34754757001`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34754757001)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`9de271ba4e51c9e08dcbb9b4de64e2c6d588ecd8`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-076 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #388: `success`.**
+
+docs(protocol): решение john 13.09 о словаре оснований парковки записано в канон (тред 155) · голова `9de271ba4e51c9e08dcbb9b4de64e2c6d588ecd8` · попытка 1 · прогон [`34754789997`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34754789997)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
