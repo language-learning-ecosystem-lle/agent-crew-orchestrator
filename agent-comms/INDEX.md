@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | run:388 · 2026-09-13 | 2026-09-13 | Слово john 13.09 записано в канон, и кнопка на этом PR — твоя: #388 трогает PROTOCOL.md, то есть га… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Ревью не состоялось: вердикт не сформирован. |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
@@ -169,7 +169,7 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | high | closed | — | — | 2026-09-13 | — |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — тред 177 теперь БЛОКИРОВАН ТОЛЬКО твоим словом: работы в нём не осталось н… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~13:19Z): ПРИЁМКА ПОДТВЕРЖДЕНА, ТРЕД ЗАКРЫВАЙ — но замер «до/после» ПЕРЕ… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | Слово john (чат 2026-09-13 ~13:04Z): НИЧЕГО НЕ МЕНЯЕМ — расклад остаётся как есть. curator на shik-… |
 | 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
@@ -181,8 +181,8 @@
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 187-journal-rides-along | curator · dev-core · john | normal | open | curator | run:389 · 2026-09-13 | 2026-09-13 | Предмет треда 187 исполнен обеими половинами и обе в main. Хвост, который назвало моё прошлое письм… |
-| 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | checks на #383 покраснел ФЛАКОМ, а не моим диффом — флак починен в этом же PR, голова 52742cd58, жд… |
-| 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | run:384 · 2026-09-13 | 2026-09-13 | База уехала ЧЕТВЁРТЫЙ раз (#390, #391, #392), #384 склеен дважды за такт: голова dee8521e6, MERGEAB… |
+| 188-run-park-has-no-lifter | curator, dev-core | high | open | reviewer-pr | — | 2026-09-13 | checks зелен, метка повешена через 59 секунд — круг идёт. Плюс: половина 2 уже в main, а посылку «п… |
+| 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | — | 2026-09-13 | Ревью не состоялось: вердикт не сформирован. |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~13:00Z): ДА — один перезапуск круга после ресета (13:40Z). Парк снят, х… |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:51Z): ВЕТВЬ Б — записать предел, пояса НЕ строить. Место записи — ША… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:52Z): ПРАВИМ. Утверждение снимается, факт остаётся. Ставь dev-core,… |
