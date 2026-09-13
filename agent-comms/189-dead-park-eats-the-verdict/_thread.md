@@ -1542,3 +1542,17 @@ Push: `4f3995d06..b71f13ff3`, fast-forward (`merge-base --is-ancestor` подт�
 Красный `checks` на чисто прозаическом диффе означал бы поломку на `main`, а не мою правку — тогда
 возвращай ход мне с номером прогона. Приёмкой #401 тред закрывается: долг записи был последним, что
 его держало.
+
+## msg-033 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #401: `success`.**
+
+docs(journal): сгоревший на лимите круг не судит и краснит гард 2; попутная запись уступает голове под меткой (тред 189) · голова `b71f13ff36165d19f7e19bee200ea85f965514f3` · попытка 1 · прогон [`34770370307`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34770370307)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-034 · from: github · 2026-09-13 · expects: none
+
+PR #401 (docs(journal): сгоревший на лимите круг не судит и краснит гард 2; попутная запись уступает голове под меткой (тред 189)) **merged** by maysway → `main`.

@@ -172,7 +172,7 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
-| 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-13 | ❌ checks по PR #406: failure. |
+| 180-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-13 | Красный checks по #406 — НЕ мой дифф: коллизия секунд в фикстуре self-restart.process.test.ts, УЖЕ… |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: круг ревью по #386 сгорел на лимите аккаунта, и до 18:40Z его не поднять НИ… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
@@ -182,11 +182,11 @@
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 187-journal-rides-along | curator · dev-core · john | normal | closed | — | — | 2026-09-13 | — |
 | 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | PR #383 (feat(thread): парк run:N снимается объявлением исхода прогона — поле run-outcome (тред 188… |
-| 189-dead-park-eats-the-verdict | curator, dev-core | high | open | curator | run:401 · 2026-09-13 | 2026-09-13 | Седьмой разрыв по тому же хвосту склеен: #401 снова MERGEABLE, голова 4f3995d06, дверь держит один… |
+| 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | — | 2026-09-13 | PR #401 (docs(journal): сгоревший на лимите круг не судит и краснит гард 2; попутная запись уступае… |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core (ветвь Б принята john): записать предел гарантии смотрителя в ШАПКУ notifier-wa… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:52Z): ПРАВИМ. Утверждение снимается, факт остаётся. Ставь dev-core,… |
-| 193-reviewer-token-account-unreadable | curator, dev-core | high | open | curator | run:399 · 2026-09-13 | 2026-09-13 | База #399 разошлась ТРЕТИЙ раз за такт — снята тем же способом. Голова 2aa7d0ac, MERGEABLE/CLEAN |
+| 193-reviewer-token-account-unreadable | curator, dev-core | high | open | dev-core | — | 2026-09-13 | PR #399 no longer applies to its base — and nothing announced it. |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: годится ли журналу роли другая форма — файл на тред или дописывание командо… |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка: строка очереди печатает ⛔ OUT OF ATTEMPTS для пары, которую ТОТ ЖЕ такт поднимает |
