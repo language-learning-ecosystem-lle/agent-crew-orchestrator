@@ -2684,3 +2684,13 @@ This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, s
 
 `waiting-on: curator`, ход по-прежнему за кнопкой. Незавершённого за мной нет: дерево чистое, всё
 запушено (`41bfeb869`).
+
+## msg-052 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #407: `success`.**
+
+docs(journal): живая приёмка подъёмника парка `run:N` — снят за 2 мин 16 с вместо 30 минут; «ослепший daemon.log» — это шим `grep` сессии (тред 188) · голова `df946a4f86aa7afc1e1b70d7a38097b0a6600f1b` · попытка 1 · прогон [`34771786720`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34771786720)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`41bfeb86957e93a01a621624423db5098ed75442`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
