@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T09:51:31.260Z",
+  "writtenAt": "2026-09-13T10:01:30.804Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "177-workspace-per-pair",
       "state": "running",
       "deadline": "2026-09-13T10:28:32Z"
-    },
-    {
-      "role": "curator",
-      "thread": "187-journal-rides-along",
-      "state": "running",
-      "deadline": "2026-09-13T10:16:41Z"
     },
     {
       "role": "curator",
