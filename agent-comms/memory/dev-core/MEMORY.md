@@ -32,11 +32,11 @@
 - [Залогинен ли `gh` — меряется](bare-gh-in-a-session-has-no-login.md) — старый `. secrets.aco.env` рвёт `&&`-цепочку.
 - [Письмо себе — только `--expects none`](note-to-self-needs-expects-none.md)
 - [Класс упавшего круга — в артефакте прогона](failed-review-round-class-lives-in-the-artifact.md) — `claude-execution-output.json`, `-R`; `num_turns: 1` = цена ноль.
-- [Парк под кругом умирает вместе с кругом](park-under-a-round-dies-with-the-round.md) — `--park-lifted`, а ресет пережидать своей сессией.
+- [Парк под кругом умирает вместе с кругом](park-under-a-round-dies-with-the-round.md) — `--park-lifted`, а ресет пережидать своей сессией; класс 429 повторяющийся, срок ресета цитирует само письмо `reviewer-pr`.
 - [Круг ревью читает СНИМОК почты](review-round-reads-a-snapshot-of-the-mail.md)
 - [Нетронутое тело PR — само доказательство](unedited-pr-body-can-be-the-proof.md)
 - [Повод заметки — не тред рождения](note-cause-is-not-the-birth-thread.md) — нет → `thread:` не писать вовсе.
-- [Письмо в стоячий парк обязано назвать парк](letter-into-a-standing-park-must-name-it.md) — иначе отказ двери.
+- [Письмо в стоячий парк обязано назвать парк](letter-into-a-standing-park-must-name-it.md) — иначе отказ двери; но МАШИННОГО писателя дверь пропускает нотой, парк письма не теряет.
 - [Ручное разрешение конфликта доказывается нулём удалений](manual-conflict-fix-needs-zero-deletions-proof.md) — собирать механически.
 - [Коммутативность merge — не доказательство целости](commutative-merge-is-not-proof-nothing-was-eaten.md) — блоки побайтово.
 - [Тихая потеря — это неподнятый ход](silent-loss-is-the-unraised-turn.md)
