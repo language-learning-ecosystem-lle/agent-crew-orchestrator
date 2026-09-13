@@ -464,6 +464,199 @@ jobs:
             --max-turns ${{ github.event.inputs.max_turns || '250' }}
             --allowedTools "Read,Grep,Glob,Edit,Write,Bash,mcp__github_inline_comment__create_inline_comment"
 
+      # ПЕРЕЕЗД НА ЗАПАСНУЮ УЧЁТКУ — ПО МАШИННОЙ ЗАПИСИ ЛИМИТА, А НЕ ПО КРАСНОМУ ШАГУ
+      # (решение john 2026-09-13, чат ~12:55Z; постановка curator, тред
+      # `193-reviewer-token-account-unreadable`).
+      #
+      # ЧТО ЛЕЧИТСЯ, ИЗМЕРЕНО. Круг по #379 (прогон 34755949970, голова `f3c60a7`,
+      # 12:01:20Z) умер, НЕ НАЧАВШИСЬ: `num_turns: 1`, `total_cost_usd: 0`,
+      # `result: "You've hit your session limit · resets 1:40pm (UTC)"`, джоба `failure`.
+      # `CLAUDE_CODE_OAUTH_TOKEN` выдан со ВТОРОЙ учётки — той же, на которой сидит роль
+      # `curator` (слово john), и окно у них ОДНО: `12:00:02Z` вторая учётка ушла на
+      # полку, `12:01:20Z` круг умер её лимитом. Цена не только в отсутствующем вердикте:
+      # красный круг на голове закрывает дверь merge гардом 2 до нового зелёного круга, а
+      # перезапуск ДО ресета сжигает второй круг впустую. У сессионных ролей на этот
+      # случай есть вторая учётка, у круга ревью её не было — он просто умирал.
+      #
+      # ПРИЗНАК ЛИМИТА — МАШИННЫЕ ПОЛЯ ТРАНСКРИПТА, И ТОЛЬКО ОНИ (требование john №1:
+      # чужой сбой запасную учётку жечь не должен). Читается `execution_file` основного
+      # шага — тот самый файл, что уезжает артефактом `reviewer-execution-<pr>-<run>`:
+      #   · запись `type: rate_limit_event` где угодно в транскрипте;
+      #   · `api_error_status: 429` последней записи (класс `limit` функции
+      #     `review_failure_cause`, тред 118);
+      #   · последняя запись с `is_error: true`, чей `result` несёт текст лимита.
+      # ТРЕТИЙ ПУНКТ ЗАВЕДЁН ФАКТОМ, А НЕ ПРО ЗАПАС: сегодняшняя смерть 429 не несла
+      # вовсе (`subtype: success`, `is_error: true`, текст про session limit) — по двум
+      # первым признакам переезда бы не случилось.
+      # КРАСНЫЙ ШАГ ПРИЗНАКОМ НЕ ЯВЛЯЕТСЯ: обрыв по ходам, дефект H2 и отказ сети дают
+      # его так же, и переезд по ним платил бы второй учёткой за чужой отказ.
+      #
+      # ШАГ НЕ КРАСИТ ПРОГОН НИКОГДА (та же конструкция, что у `checks_on_head` и
+      # `guard` ниже): всё, чего он не установил, значит «переезда нет», то есть
+      # поведение до этой правки целиком. Отсутствие секрета — тот же случай
+      # (`fallback=0`), и он назван словами: john кладёт секрет своей рукой, и merge
+      # этого PR может опередить его руку.
+      #
+      # ПРОМПТ ЗАПАСНОГО КРУГА — ТОТ ЖЕ САМЫЙ ТЕКСТ, А НЕ ЕГО КОПИЯ. Второй литерал
+      # промпта в этом файле разошёлся бы с первым на первой же правке, и запасной круг
+      # судил бы по вчерашним правилам, ничего об этом не говоря. `claude-code-action`
+      # кладёт промпт шага в `${RUNNER_TEMP}/claude-prompts/claude-prompt.txt`
+      # (`action.yml` действия, `INPUT_PROMPT_FILE`) — отсюда и берём РОВНО тот текст,
+      # которым работал основной шаг. Файла нет — переезда нет, и причина названа.
+      - name: Лимит основной учётки — установить факт
+        id: limit
+        if: ${{ !cancelled() }}
+        env:
+          EXECUTION_FILE: ${{ steps.reviewer.outputs.execution_file }}
+          PROMPT_FILE: ${{ runner.temp }}/claude-prompts/claude-prompt.txt
+          # Значение НЕ ПЕЧАТАЕТСЯ и не уходит в выходы — шаг проверяет только его
+          # непустоту. Маскирование Actions на это и рассчитано, но полагаться на него
+          # как на единственную защиту здесь нечего.
+          FALLBACK_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_FALLBACK }}
+        run: |
+          # `-e` ЗДЕСЬ НЕ СТАВЯТ ПОТОМУ, ЧТО ОН УЖЕ СТОИ́Т (тред 130): `shell:` в файле не
+          # объявлен, харнесс запускает `run:` как `bash -e`. Разбор — у шага
+          # `checks_on_head` выше; отсюда же охраняемые `|| VAR=""` ниже.
+          set -uo pipefail
+          HIT=0; FALLBACK=0; EVIDENCE=""; WHY=""; PRIMARY_COPY=""
+
+          if [ -z "${EXECUTION_FILE:-}" ] || [ ! -s "${EXECUTION_FILE}" ]; then
+            WHY="транскрипта основного шага нет (execution_file пуст или файла по нему нет) — о лимите судить не по чему"
+          else
+            EVIDENCE=$(jq -r '
+              (if type == "array" then . else [.] end) as $rs
+              | (($rs | last) // {}) as $r
+              | (($r.result // "") | tostring) as $res
+              | if ([$rs[] | select((.type? // "") == "rate_limit_event")] | length) > 0 then "запись type=rate_limit_event"
+                elif (($r.api_error_status // null) | tostring) == "429" then "api_error_status=429 последней записи"
+                elif ($r.is_error == true) and ($res | ascii_downcase | test("session limit|usage limit|rate limit|limit reached")) then "result последней записи несёт текст лимита"
+                else "" end' "$EXECUTION_FILE" 2>/dev/null) || EVIDENCE=""
+            [ "$EVIDENCE" = "null" ] && EVIDENCE=""
+            if [ -n "$EVIDENCE" ]; then
+              HIT=1
+              # ТРАНСКРИПТ ОСНОВНОГО ШАГА — В ОТДЕЛЬНЫЙ ФАЙЛ, И ДО запуска запасного:
+              # путь выхода у действия один и тот же, второй шаг затирает им первый —
+              # вместе с ЕДИНСТВЕННЫМ доказательством лимита, которым эта ветка и
+              # проверяется в поле. Копия уезжает тем же артефактом (шаг в конце файла).
+              PRIMARY_COPY="${RUNNER_TEMP}/reviewer-execution-primary.json"
+              cp "$EXECUTION_FILE" "$PRIMARY_COPY" || PRIMARY_COPY=""
+            else
+              WHY="в транскрипте основного шага признака лимита нет — если вердикта нет, причина другая"
+            fi
+          fi
+
+          if [ "$HIT" = 1 ]; then
+            if [ -z "${FALLBACK_TOKEN:-}" ]; then
+              WHY="лимит основной учётки установлен, но секрета CLAUDE_CODE_OAUTH_TOKEN_FALLBACK в репозитории нет (пустое значение) — переезжать не на что"
+            elif [ ! -s "${PROMPT_FILE:-}" ]; then
+              WHY="лимит основной учётки установлен, но промпт основного шага не читается ('${PROMPT_FILE:-}') — запасной круг судил бы по другому тексту, а это не переезд, а второй ревьюер"
+            else
+              FALLBACK=1
+            fi
+          fi
+
+          {
+            echo "hit=${HIT}"
+            echo "fallback=${FALLBACK}"
+            echo "evidence=${EVIDENCE}"
+            echo "why=${WHY}"
+            echo "primary_copy=${PRIMARY_COPY}"
+          } >> "$GITHUB_OUTPUT"
+          # Промпт отдаётся выходом ТОЛЬКО когда переезд состоится: лишние килобайты в
+          # выходах шага пользы не несут, а делимитер многострочного выхода — лишний
+          # способ сломать шаг на ровном месте.
+          if [ "$FALLBACK" = 1 ]; then
+            {
+              echo "prompt<<CLAUDE_REVIEW_PROMPT_EOF"
+              cat "$PROMPT_FILE"
+              echo ""
+              echo "CLAUDE_REVIEW_PROMPT_EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ "$HIT" = 1 ]; then
+            echo "::warning::Основная учётка ревьюера ответила ЛИМИТОМ: ${EVIDENCE}."
+          fi
+          if [ "$FALLBACK" = 1 ]; then
+            echo "limit: ПЕРЕЕЗД на запасную учётку — ${EVIDENCE} (один переезд на прогон)"
+            echo "::notice::Круг переезжает на ЗАПАСНУЮ учётку: основная ответила лимитом (${EVIDENCE}). Переезд один на прогон, цепочки повторов нет."
+          else
+            echo "limit: переезда нет — ${WHY}"
+          fi
+          exit 0
+
+      # ЗАПАСНОЙ КРУГ — ОДИН И ТОЛЬКО ПО ЛИМИТУ (требования john №3 и №1). Второго такого
+      # шага в файле нет по построению: «цепочка повторов» здесь невозможна не потому, что
+      # её запрещает условие, а потому, что повторять нечем.
+      #
+      # СТРОКА ОСНОВНОГО ТОКЕНА ВЫШЕ НЕ ТРОНУТА (требование john №4): запасная учётка
+      # ДОБАВЛЕНА, а не подставлена вместо основной. Основной шаг ходит своим секретом
+      # всегда и первым.
+      #
+      # `prompt` — ВЫХОД ШАГА `limit`, то есть буквально текст, которым работал основной
+      # шаг (см. шапку выше). `claude_args` продублированы, и это осознанно: их источник —
+      # `github.event.inputs.max_turns`, который шагу `limit` неоткуда взять раньше самого
+      # основного шага. Три строки, расходящиеся видимо в диффе, дешевле промпта на 160
+      # строк, расходящегося незаметно.
+      - name: Ревью на ЗАПАСНОЙ учётке — переезд по лимиту основной
+        id: reviewer_fallback
+        if: ${{ !cancelled() && steps.limit.outputs.fallback == '1' }}
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_FALLBACK }}
+          additional_permissions: |
+            checks: read
+            actions: read
+          prompt: ${{ steps.limit.outputs.prompt }}
+          claude_args: |
+            --model claude-sonnet-5
+            --max-turns ${{ github.event.inputs.max_turns || '250' }}
+            --allowedTools "Read,Grep,Glob,Edit,Write,Bash,mcp__github_inline_comment__create_inline_comment"
+
+      # ЧЕЙ ВЫХОД ЧИТАЮТ ШАГИ ПОСЛЕ РЕВЬЮЕРА — УСТАНАВЛИВАЕТСЯ ЗДЕСЬ, ОДИН РАЗ. На
+      # `origin/main` `steps.reviewer.outputs.execution_file` читают ЧЕТЫРЕ потребителя:
+      # шаг `guard` (самопропуск), шаг итога доставок (причина отсутствия вердикта) и
+      # шаг артефакта (условие + путь). Отработай запасной шаг — все четверо обязаны
+      # читать ЕГО выход, иначе круг будет описан транскриптом сессии, которая ничего не
+      # решала. Поэтому потребители переведены на `reviewer_out`, а не на два условных
+      # выражения в каждом.
+      #
+      # ФАКТ ПЕРЕЕЗДА — ПО `outcome` ШАГА, А НЕ ПО НЕПУСТОМУ ВЫХОДУ: запасной шаг может
+      # отработать и не дать выхода (самопропуск действия, падение), и назвать это
+      # «переезда не было» значит умолчать о потраченном круге второй учётки.
+      - name: Выход ревьюера — основного шага или запасного
+        id: reviewer_out
+        if: ${{ !cancelled() }}
+        env:
+          PRIMARY_FILE: ${{ steps.reviewer.outputs.execution_file }}
+          FALLBACK_FILE: ${{ steps.reviewer_fallback.outputs.execution_file }}
+          FALLBACK_OUTCOME: ${{ steps.reviewer_fallback.outcome }}
+        run: |
+          # `-e` уже стои́т (см. шаг `checks_on_head`); шаг не красит прогон никогда.
+          set -uo pipefail
+          MOVED=0
+          case "${FALLBACK_OUTCOME:-skipped}" in
+            ""|skipped) MOVED=0 ;;
+            *)          MOVED=1 ;;
+          esac
+          FILE="${FALLBACK_FILE:-}"
+          USED=fallback
+          if [ -z "$FILE" ]; then
+            FILE="${PRIMARY_FILE:-}"
+            USED=primary
+          fi
+          {
+            echo "execution_file=${FILE}"
+            echo "used=${USED}"
+            echo "moved=${MOVED}"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$MOVED" = 1 ]; then
+            echo "reviewer-out: ПЕРЕЕЗД состоялся (исход запасного шага: ${FALLBACK_OUTCOME}); транскрипт круга — ${USED} ('${FILE:-нет}')"
+          else
+            echo "reviewer-out: переезда не было; транскрипт круга — ${USED} ('${FILE:-нет}')"
+          fi
+          exit 0
+
       # САМОПРОПУСК ДЕЙСТВИЯ УСТАНАВЛИВАЕТСЯ ФАКТОМ, А НЕ ЧИТАЕТСЯ ГЛАЗАМИ В ЛОГЕ
       # (тред 046). `claude-code-action` пропускает себя, если файл ЭТОГО воркфлоу
       # в прогоне отличается от версии на дефолтной ветке (в логе — «Skipping
@@ -500,7 +693,10 @@ jobs:
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EXECUTION_FILE: ${{ steps.reviewer.outputs.execution_file }}
+          # ВЫХОД ТОГО ШАГА, КОТОРЫЙ ОТРАБОТАЛ (основного или запасного) — см. шаг
+          # `reviewer_out`. Здесь он работает признаком «действие дало выход», и при
+          # переезде отвечать на это обязан запасной шаг: именно он ходил последним.
+          EXECUTION_FILE: ${{ steps.reviewer_out.outputs.execution_file }}
         run: |
           set -euo pipefail
           WF=.github/workflows/claude-review.yml
@@ -586,6 +782,11 @@ jobs:
           PR: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           RUN_ID: ${{ github.run_id }}
+          # ПЕРЕЕЗД НА ЗАПАСНУЮ УЧЁТКУ НАЗЫВАЕТСЯ ВСЛУХ (требование john №2): вердикт,
+          # вынесенный с другого окна, иначе неотличим от обычного, а знать это надо и
+          # тому, кто считает расход, и тому, кто читает суждение.
+          REVIEW_MOVED: ${{ steps.reviewer_out.outputs.moved }}
+          LIMIT_EVIDENCE: ${{ steps.limit.outputs.evidence }}
         run: |
           # `-e` не ставят потому, что он УЖЕ СТОИ́Т: `shell:` в файле не объявлен, харнесс
           # запускает `run:` как `bash -e`. Разбор — у шага `checks_on_head` выше (тред 130).
@@ -670,6 +871,13 @@ jobs:
               derived)  printf '⚠️ Ход передан роли `%s` — адресат ВЫВЕДЕН правилом (approve → `curator`, needs-fixes → `role:` из описания PR), а не объявлен вердиктом: строки `waiting-on:` в нём не было либо названной роли нет в конфиге.\n' "$WAIT" ;;
               *)        printf '⚠️ Ход НЕ ПЕРЕДАН никому: вердикт не объявил адресата, и вывести его не из чего (нет строки `role:` в описании PR либо такой роли нет в конфиге). Объявите ожидание вручную.\n' ;;
             esac
+            # СТРОКА ПЕРЕЕЗДА ЕДЕТ В ОБА АДРЕСА, потому что тело здесь ОДНО: коммент в PR
+            # и письмо в тред собираются из этого же файла. Условие — `if`, а не `&&`:
+            # неистинный тест в хвосте `&&`-списка убил бы шаг под `bash -e` (тред 130).
+            if [ "${REVIEW_MOVED:-0}" = "1" ]; then
+              printf '\n🔁 Круг доехал на ЗАПАСНОЙ учётке: основная ответила лимитом (%s), и сработал переезд — один на прогон, без цепочки повторов (`.github/workflows/claude-review.yml`, решение john 2026-09-13).\n' \
+                "${LIMIT_EVIDENCE:-признак лимита не назван}"
+            fi
           } >> "$BODY_TMP"
 
           WAIT_ARGS=""
@@ -850,7 +1058,16 @@ jobs:
           # ТРАНСКРИПТ ДЕЙСТВИЯ — ЭТОМУ ШАГУ, а не только гарду и артефакту: причина, по
           # которой круг кончился без вердикта, лежит машинными полями его последней
           # записи, и шаг идёт РАНЬШЕ загрузки артефакта, то есть файл ещё на диске.
-          EXECUTION_FILE: ${{ steps.reviewer.outputs.execution_file }}
+          # ПРИ ПЕРЕЕЗДЕ ЭТО ТРАНСКРИПТ ЗАПАСНОГО ШАГА (`reviewer_out`): причину круга
+          # называет та сессия, которая круг и кончила, а не та, что умерла лимитом.
+          EXECUTION_FILE: ${{ steps.reviewer_out.outputs.execution_file }}
+          # ПЕРЕЕЗД НАЗЫВАЕТСЯ ВСЛУХ И НА ВЕТВИ БЕЗ ВЕРДИКТА (требование john №2):
+          # круг, съевший вторую учётку и всё равно не давший суждения, обязан сказать
+          # об этом там, где читает человек.
+          REVIEW_MOVED: ${{ steps.reviewer_out.outputs.moved }}
+          LIMIT_HIT: ${{ steps.limit.outputs.hit }}
+          LIMIT_EVIDENCE: ${{ steps.limit.outputs.evidence }}
+          LIMIT_WHY: ${{ steps.limit.outputs.why }}
         run: |
           # `-e` не ставят потому, что он УЖЕ СТОИ́Т: `shell:` в файле не объявлен, харнесс
           # запускает `run:` как `bash -e`. Разбор — у шага `checks_on_head` выше (тред 130).
@@ -959,6 +1176,17 @@ jobs:
             SUMMARY_MARK='Ревью не состоялось: вердикт не сформирован'
           fi
 
+          # ПЕРЕЕЗД (ИЛИ ЕГО ОТСУТСТВИЕ ПРИ ЛИМИТЕ) — ВСЛУХ, НА ОБЕИХ ВЕТВЯХ ВЫШЕ
+          # (требование john №2). Три состояния, и они не сливаются: переезд состоялся;
+          # лимит был, а переезда не было (и почему именно); лимита не было — молчим.
+          if [ "${REVIEW_MOVED:-0}" = "1" ]; then
+            printf '\n🔁 Круг ехал на ЗАПАСНОЙ учётке: основная ответила лимитом (%s), переезд сработал — один на прогон. Если вердикта нет и после него, причина ниже уже про ЗАПАСНУЮ сессию.\n' \
+              "${LIMIT_EVIDENCE:-признак лимита не назван}" >> "$BODY_TMP"
+          elif [ "${LIMIT_HIT:-0}" = "1" ]; then
+            printf '\n⛔ Основная учётка ответила ЛИМИТОМ (%s), а переезда на запасную НЕ БЫЛО: %s\n' \
+              "${LIMIT_EVIDENCE:-признак лимита не назван}" "${LIMIT_WHY:-причина не установлена}" >> "$BODY_TMP"
+          fi
+
           # Роль сверяется С КОНФИГОМ И ЧЕРЕЗ ПАКЕТ (как в merge-notify): опечатка иначе
           # завалила бы `new-message`, и сообщение потерялось бы целиком. Лучше сказать
           # без передачи хода, чем не сказать. REF — ЯВНЫЙ `origin/main`, не `HEAD`:
@@ -1037,12 +1265,22 @@ jobs:
       # красной аннотацией в прогоне, за которым теперь следит смотритель. Ошибка
       # телеметрии, читающаяся как отказ доставки, — тот же класс, что лечит
       # шаг статуса выше.
+      #
+      # ШАГ ОДИН, А ФАЙЛОВ МОЖЕТ БЫТЬ ДВА (переезд на запасную учётку). Имя артефакта
+      # уникально ПО ПРОГОНУ, а не по шагу, — второй загружающий шаг столкнулся бы с
+      # первым именем, поэтому загрузчик остаётся один, а пути перечисляются списком:
+      # выход отработавшего шага (`reviewer_out`) плюс КОПИЯ транскрипта основного шага,
+      # снятая до запуска запасного (`limit.primary_copy`). Без копии доказательство
+      # лимита терялось бы: путь выхода у действия один, и запасной шаг его затирает.
+      # Пустая строка в списке безвредна — glob пустые строки не считает шаблоном.
       - name: Транскрипт ревьюера — артефактом (для диагноза H2)
-        if: ${{ !cancelled() && steps.reviewer.outputs.execution_file != '' }}
+        if: ${{ !cancelled() && steps.reviewer_out.outputs.execution_file != '' }}
         continue-on-error: true
         uses: actions/upload-artifact@v5
         with:
           name: reviewer-execution-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}-${{ github.run_id }}
-          path: ${{ steps.reviewer.outputs.execution_file }}
+          path: |
+            ${{ steps.reviewer_out.outputs.execution_file }}
+            ${{ steps.limit.outputs.primary_copy }}
           if-no-files-found: warn
           retention-days: 14
