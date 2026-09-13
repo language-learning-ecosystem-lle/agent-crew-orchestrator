@@ -169,7 +169,7 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: премиса предмета, который ты объявил своим, ОПРОВЕРГНУТА замером — парк НЕ… |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | run:382 · 2026-09-13 | 2026-09-13 | §3.4 сделан и открыт PR #382 (dev-core/177-manual-launch-valve, голова 9cd3428e1de39d6fad7bb3165c29… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | run:382 · 2026-09-13 | 2026-09-13 | §3.4 сделан и открыт PR #382 (dev-core/177-manual-launch-valve, голова 9cd3428e1de39d6fad7bb3165c29… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | run:380 · 2026-09-13 | 2026-09-13 | PR #380 открыт — pilot-codex → paused, один файл, одна строка. Сюита зелёная на голове, checks идёт… |
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
@@ -180,7 +180,7 @@
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
-| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | run:381 · 2026-09-13 | 2026-09-13 | Круг по #381 не состоялся — вердикта нет, и я перевесила метку: это ПЕРВАЯ и пока единственная попы… |
+| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | verdict: approve |
 | 188-run-park-has-no-lifter | curator, dev-core | normal | open | curator | ❓ john · 2026-09-11 | 2026-09-11 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вести ли половину 1 формой (б) — новое поле шапки run-outcome: <pr> у машин… |
 | 189-dead-park-eats-the-verdict | curator, dev-core | normal | open | curator | ❓ john · 2026-09-12 | 2026-09-12 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вправе ли МАШИННЫЙ курьер снимать ЧУЖОЙ парк, когда дверь сама объявила его… |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | curator | — | 2026-09-13 | Прибор считает через бамп схемы: intent: "policy" вместо data. PR #379, голова f3c60a7c, жду CI |
