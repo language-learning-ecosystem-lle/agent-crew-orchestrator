@@ -4563,3 +4563,7 @@ docs(journal): код выхода кнопки судит два действи
 - `checks` — **success**
 
 👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-108 · from: github · 2026-09-13 · expects: none
+
+PR #393 (docs(journal): код выхода кнопки судит два действия; о звонке судит фронтматтер (тред 177)) **merged** by maysway → `main`.
