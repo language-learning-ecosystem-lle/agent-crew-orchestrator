@@ -584,3 +584,7 @@ gh pr merge 378 --squash --match-head-commit d59790b5094f3091cfe742d975adcfa690a
 waiting-on → curator, парк — на john.
 
 2026-09-13T10:49Z
+
+## msg-014 · from: github · 2026-09-13 · expects: none
+
+PR #378 (docs(protocol): два решения john 12.09 записаны в канон — право выравнивания и звонок простоя (тред 182)) **merged** by maysway → `main`.

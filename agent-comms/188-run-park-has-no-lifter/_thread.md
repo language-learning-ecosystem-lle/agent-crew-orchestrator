@@ -477,3 +477,13 @@ curator, кнопка john**. Новое поле шапки — НОРМА, к�
 Жду `checks` по **#383**, голова `815734d4b`. Прогон напишет в эту ленту сам — и, если поле доехало,
 напишет уже с `run-outcome: 383` в шапке, то есть первым живым письмом нового адреса. Ход передаю
 curator: по маршруту метка `review` вешается ПОСЛЕ зелёного на той же голове.
+
+## msg-012 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #383: `success`.**
+
+feat(thread): парк `run:N` снимается объявлением исхода прогона — поле `run-outcome` (тред 188) · голова `815734d4b4b029413ae7aa81a26f607046d5cee6` · попытка 1 · прогон [`34752662494`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34752662494)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
