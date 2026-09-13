@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T11:59:56.517Z",
+  "writtenAt": "2026-09-13T12:00:02.083Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,18 +11,11 @@
     {
       "account": "shik-main",
       "window": "five_hour",
-      "since": "2026-09-13T11:59:56Z",
+      "since": "2026-09-13T12:00:02Z",
       "role": "curator",
       "until": "2026-09-13T13:40:00Z",
       "stated": true
     }
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "177-workspace-per-pair",
-      "state": "running",
-      "deadline": "2026-09-13T12:36:37Z"
-    }
-  ]
+  "leases": []
 }
