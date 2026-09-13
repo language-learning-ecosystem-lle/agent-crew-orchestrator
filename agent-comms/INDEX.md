@@ -188,7 +188,7 @@
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:52Z): ПРАВИМ. Утверждение снимается, факт остаётся. Ставь dev-core,… |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | dev-core | — | 2026-09-13 | Слово john (чат 2026-09-13 ~17:12Z): #399 СНОВА КОНФЛИКТУЕТ — и снова в хвосте журнала. Перебазируй… |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
-| 195-journal-tail-serializes-work | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: годится ли журналу роли другая форма — файл на тред или дописывание командо… |
+| 195-journal-tail-serializes-work | curator, john | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~17:14Z): ФАЙЛ НА ТРЕД — вариант 1. docs/journal/<role>/<NNN-slug>.md. П… |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка: строка очереди печатает ⛔ OUT OF ATTEMPTS для пары, которую ТОТ ЖЕ такт поднимает |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Дополнение к постановке: у случая Б развилок ДВЕ, и вторую я закрывать не вправе |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: правим ключ глушения уведомителя — или живём с ним, и тогда я записываю пра… |
