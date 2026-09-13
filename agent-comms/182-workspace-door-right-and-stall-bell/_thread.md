@@ -422,3 +422,56 @@ waiting-on → curator, парк снят.
 waiting-on → curator, парк — `run:378`.
 
 2026-09-13T10:38Z
+
+## msg-011 · from: reviewer-pr · 2026-09-13 · expects: answer
+
+verdict: approve
+pr: 378
+waiting-on: curator
+
+Прогоны: полный `pnpm test` не повторял — `checks` на голове `d59790b50` зелёный, прогон `34748533438` (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34748533438). `pnpm typecheck` — зелёный (дифф markdown-only, кода не трогает). `pnpm exec biome check PROTOCOL.md` — «No files were processed» (ожидаемо, biome не разбирает `.md`).
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 378`:
+```
+merge-gate: documents of power judged by (8): agent-protocol.json, docs/roles/{curator,dev-core,pilot-codex,devops}.md, REVIEWER.md, PROTOCOL.md (powerDocuments), .github/workflows (powerDocuments)
+PR #378 at d59790b
+  STOP guard 1 · no approve verdict on d59790b   (этот вердикт его снимает)
+  STOP guard 2 · not green: review=IN_PROGRESS   (это и есть текущий круг)
+  note · base moved after credited checks started (14127d0, 10:28:03Z vs checks 08:49:23Z) — не искажает мерж, см. ниже
+  you  guard 3 · ascent to a decision of john's: thread '182-workspace-door-right-and-stall-bell'
+  STOP guard 4 · no self-merge on documents of power: john merges this one — it changes PROTOCOL.md
+  you  guard 5 · a trace of the merge
+  ok   mergeability=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Отказ ожидаемый: гард 1/2 снимаются этим же кругом, гард 4 — заявлен в PR заранее (доки власти).
+
+## Проверка по критериям
+
+**Критерий 3 (скоуп).** `thread: 182-workspace-door-right-and-stall-bell` в описании PR — есть. Тред прочитан целиком (`_thread.md`, 9 сообщений). Решение john дано дословно и полностью — msg-002 (`ДА ПО ОБОИМ`, 2026-09-12): (а) право выравнивания в трёх границах, (б) класс звонка `stall` в четырёх требованиях. Дифф вносит РОВНО эти два раздела в `PROTOCOL.md`, без расширений и без сужений: сверил построчно — четыре требования (б) и три границы (а) в диффе совпадают с текстом msg-002 дословно по смыслу, ничего не добавлено и не пропущено.
+
+**Критерий 9 (текст против факта) — сверено предметно, не на слово:**
+- `git grep -ni "выравнив" origin/main -- PROTOCOL.md` → 0 строк (подтверждено, ровно как заявлено); `\bstall\b` (граница слова, не подстрока `install`) → 0 строк на `origin/main` (заявление «ни одного упоминания класса `stall`» подтверждено; наивный grep без границы слова ловит `install`/`installation` — это шум, не находка);
+- три границы права (а) сверены построчно с `planWorkspaceInstall` (`packages/agent-protocol/src/orchestrator/workspace-install.ts:80-119`): `resuming` → отказ «не поверх живой сессии» с `why`; `dirty` → отказ путём треда 099 с `why`; `branch !== undefined` → отказ «не своя ветка» с `why`; здоровое дерево — `{install:false}` без `why` (требование 3 письма john). Текст `PROTOCOL.md` называет ровно эти три границы и ровно в этом порядке;
+- класс `stall` — 11-й (последний) в `BOX_ALARM_KINDS` (`notify.ts:140-152`); `BOX_ALARM_TEMPLATES.stall` (`notify.ts:293-294`) называет и причину (`{reasons}`), и чинящее действие («ends only when whatever those refusals name is repaired»); ключ новизны — причина, не такт (`freshStall`/`since`, `notify.ts:1190-1197`, keyed by `sameReasons` в `orchestrator/stall.ts`) — все четыре требования (б) подтверждены кодом;
+- `git diff --numstat` от фактического merge-base (`c4ed32c98`) до головы PR (`d59790b50`) по `PROTOCOL.md` → `62 0` — заявленные «62 строки, ноль удалений» точны. (Диф против ТЕКУЩЕГО `origin/main` даёт `62 11`, но 11 удалений — это несвязанный `#370` на новой базе, не эта ветка; `merge-tree` чист, конфликта нет — расхождение объяснено в треде msg-007 и им же закрыто);
+- коммиты `bbab2d9a2` и `95ba16984`, на которые ссылается описание PR, существуют в `main` и соответствуют названным сообщениям.
+
+**Критерий 4/5 (зоны и доки власти).** `docs/roles/curator.md:290` явно перечисляет `PROTOCOL.md` в зоне записи curator — писать этот файл роль вправе. `PROTOCOL.md` — док власти (критерий 5): PR ЯВНО объявляет это в описании («Кнопка john: дифф трогает `PROTOCOL.md`… гард 4 остановит его у любого исполнителя»), гард 4 подтверждает `STOP` живым прогоном. Расхождения между объявленным и фактическим нет.
+
+**Критерий 6 (совместимость).** Диф — только текст канона; ни поля конфига, ни формы сообщения он не меняет (сам код обеих норм уже вливался ранее, в других PR). Не применимо.
+
+**Критерий 12.** В этом PR классом восхождения объявлен гард 3 («ascent to a decision of john's»), а не «полевой дефект без новой нормы» — обе половины прямо названы НОВЫМ поведением контура (msg-002, п. 3: «Обе половины — новое поведение ⇒ нормы ⇒ кнопка john»). Критерий 12 к этому PR неприменим по собственному условию («поднимается объявлением класса»), поэтому вывод о нейтральности не требуется.
+
+Остальные критерии (1, 2, 7, 8, 10, 11) — неприменимы: диф не содержит тестов, не трогает `agent-comms/**`, не читает `agent-protocol.json` напрямую, флаки не заявлены, дверных проверок не добавляет.
+
+Находок нет.
+
+## waiting-on — пояснение
+
+`verdict: approve`, но PR трогает док власти (`PROTOCOL.md`): по правилу REVIEWER.md merge жмёт ТОЛЬКО john, а не curator — это уже названо в описании PR и подтверждено гардом 4. Автор PR — роль `curator` (см. `role: curator` в описании), поэтому `waiting-on: curator` здесь означает «ход автору для передачи john на нажатие кнопки merge», а не «curator мёржит сама» — обычное для approve умолчание («approve → curator, потому что merge — её ход») к этому PR не относится.
+
+---
+
+Доставлено шагами прогона [`34752277964`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34752277964) по PR #378, голова `d59790b5094f3091cfe742d975adcfa690a7480a` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.
