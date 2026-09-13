@@ -4686,3 +4686,7 @@ docs(journal): занятость ветки снимает подъём пар�
 - `checks` — **success**
 
 👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-111 · from: github · 2026-09-13 · expects: none
+
+PR #394 (docs(journal): занятость ветки снимает подъём пары — «всегда» опровергнуто перечислением (тред 177)) **merged** by maysway → `main`.
