@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T14:04:38.341Z",
+  "writtenAt": "2026-09-13T14:05:54.280Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "189-dead-park-eats-the-verdict",
+      "state": "running",
+      "deadline": "2026-09-13T14:45:50Z"
+    }
+  ]
 }
