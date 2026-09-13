@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T17:30:12.851Z",
+  "writtenAt": "2026-09-13T17:30:34.018Z",
   "roles": [
     "curator",
     "dev-core",
@@ -29,6 +29,12 @@
       "thread": "193-reviewer-token-account-unreadable",
       "state": "running",
       "deadline": "2026-09-13T18:07:02Z"
+    },
+    {
+      "role": "curator",
+      "thread": "195-journal-tail-serializes-work",
+      "state": "running",
+      "deadline": "2026-09-13T18:10:30Z"
     }
   ]
 }
