@@ -453,7 +453,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # without --write: prints what it would send and leaves the state alone
                               # only what the transport CONFIRMED is marked announced (029): a failed
                               # delivery is a NON-ZERO exit with the state untouched, so it rings again
-  agent-protocol new-message  --root <mail> --ref <ref> (--thread <id> | --ensure-thread <slug> --title <t> --participants <a,b>) --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--park-ground <fact>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--task <d>]... [--write] [--no-push]
+  agent-protocol new-message  --root <mail> --ref <ref> (--thread <id> | --ensure-thread <slug> --title <t> --participants <a,b>) --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--park-ground <fact>] [--merged-pr <n>] [--run-outcome <n>] [--verdict <approve|needs-fixes> --pr <n>] [--task <d>]... [--write] [--no-push]
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
                               # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
@@ -532,7 +532,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # IT DOES ABOUT THE PARK (058, (B.3)): the refusal names the park in full —
                               # what it waits for, since when, whose turn it was declared on, the question in
                               # its own words. Three ways to pass, three different statements: carry what the
-                              # park waits for ('--delivers'/'--merged-pr'/'--verdict --pr'), carry the park
+                              # park waits for ('--delivers'/'--merged-pr'/'--run-outcome'/'--verdict --pr'), carry the park
                               # forward ('--parked-on <the same value>'), or name the lift:
                               # --park-lifted <person|pr:N|run:N>: THE PARK IS OVER AND THIS LETTER SAYS WHICH
                               # ONE IT ENDS. The value must MATCH the standing park — a flag taking any word
@@ -554,6 +554,14 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # ANYWHERE IN THE MAIL (023): the notifier writes into the thread named in
                               # the PR's description, which is not the thread parked on it — the readers
                               # judge a park against the merges of the WHOLE mail, not of its own feed
+                              # --run-outcome <n>: this message announces that the ROUND ON THAT PR has ENDED
+                              # (188, decision of john 2026-09-13, form (б)) — a thread parked on 'run:<n>'
+                              # lifts on it, in its own feed, exactly as it lifts on the verdict pair below.
+                              # WHY IT EXISTS: the round most 'run:' parks are taken on is 'checks', whose
+                              # outcome declares no verdict — so those parks had NO ADDRESS AT ALL and waited
+                              # out the 30-minute ceiling of the ageing layer every time (~52 min of frozen
+                              # pair measured in one day, 188). WHAT IT DOES NOT DO: it does not lift a 'pr:<n>'
+                              # park — that one waits for the BUTTON and its address is '--merged-pr <n>'
                               # --verdict approve|needs-fixes WITH --pr <n>: the verdict of a review round,
                               # declared in the HEADER (042, decision of john 2026-08-29) — the two lines
                               # REVIEWER.md already writes in the body, said where the R27 net may read them

@@ -234,6 +234,44 @@ describe("the age ceiling of a run: park (thread 062, layer 2)", () => {
     );
   });
 
+  // THE CEILING IS NOT THE LIFTER, and this is the whole half 1 of thread 188: a park answered
+  // BY ITS OWN ADDRESS is gone from both readings the moment the outcome arrives, not thirty
+  // minutes later. Before form (б) there was no address for the outcome of `checks` at all, so
+  // every such park spent the full ceiling — ~52 minutes of frozen pair in one measured day.
+  it("an outcome announced by number ends it BY ADDRESS — never printed stale (188)", () => {
+    const answered = thread([
+      message({ parkedOn: "run:243", date: "2026-08-08T15:03:00Z", expects: "none" }),
+      message({
+        from: "github",
+        worker: "gh-action",
+        runOutcome: 243,
+        date: "2026-08-08T15:12:00Z",
+        expects: "none",
+      }),
+    ]);
+    // Past the ceiling by two hours, and still not stale: there is no park left to be stale.
+    const now = new Date("2026-08-08T17:15:00Z");
+
+    expect(staleRunParks([answered], { now })).toEqual([]);
+    expect(parkedThreads([answered], { now })).toEqual(new Map());
+    // The negative control is one field apart: the same letter about ANOTHER round leaves the
+    // park standing, and then the ceiling — and only the ceiling — is what ends it.
+    const other = thread([
+      message({ parkedOn: "run:243", date: "2026-08-08T15:03:00Z", expects: "none" }),
+      message({
+        from: "github",
+        worker: "gh-action",
+        runOutcome: 242,
+        date: "2026-08-08T15:12:00Z",
+        expects: "none",
+      }),
+    ]);
+    expect(staleRunParks([other], { now })).toHaveLength(1);
+    expect(parkedThreads([other], { now: new Date("2026-08-08T15:20:00Z") })).toEqual(
+      new Map([["062-park-without-a-run", "run:243"]]),
+    );
+  });
+
   // Only the machine event is aged. A human thinks for as long as they think, and a merge
   // button legitimately waits for days.
   it("ages neither a person park nor a pr: park", () => {

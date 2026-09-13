@@ -432,6 +432,27 @@ export type MessageFields = {
    */
   readonly mergedPr?: number;
   /**
+   * THE OUTCOME OF THE RUN THIS MESSAGE ANNOUNCES (thread 188, decision of john 2026-09-13,
+   * form (б)) — the number of the pull request whose round has just ENDED. Written by the same
+   * machine writer that announces the outcome of CI (`.github/workflows/ci-outcome.yml`), read
+   * by `standingParkOf`: a thread parked on `run:<n>` lifts on the message that says this number.
+   *
+   * WHY A NEW FIELD RATHER THAN A WIDER LIFT. A `run:N` park had exactly one address of its own
+   * — the declared pair `verdict:`/`pr: N` of a REVIEW round (thread 042) — and the outcome of
+   * `checks` carries no such pair, so a park taken on `checks` had no lifter at all and waited
+   * out the 30-minute ceiling of {@link staleRunParks} every single time: measured in thread 188
+   * on 2026-09-11, ~52 minutes of frozen pair in one day. The two rejected repairs are named
+   * rather than forgotten: lifting on ANY letter of the machine writer (а) would end a park
+   * declared for another run whose number merely matched, and it would falsify the sentence
+   * variant «А» of #339 stands on ("an event park waits for a MACHINE, and a machine cannot
+   * write `--park-lifted`"); returning the wide lift of thread 023 (в) was refused by both.
+   *
+   * Not to be confused with {@link MessageFields.mergedPr}: that one says a PR has LANDED and
+   * lifts `pr:` and `run:` parks alike; this one says a ROUND ON IT has ended and lifts `run:`
+   * only. A `pr:N` park waits for the button and this field is not it.
+   */
+  readonly runOutcome?: number;
+  /**
    * THE VERDICT OF A REVIEW ROUND, DECLARED IN THE HEADER (thread 042, decision of john
    * 2026-08-29, `PROTOCOL.md` "ПУНКТ (ii) ПОЛУЧАЕТ ЧИТАЕМЫЙ ПРИЗНАК"), together with
    * {@link MessageFields.pr}, which says about WHICH pull request it is.
@@ -956,6 +977,21 @@ export const parseMessageFile = (raw: string): Message => {
     return value === undefined ? undefined : Number(value);
   });
 
+  // THE OTHER FACT THAT LIFTS AN EVENT PARK, and the only one the courier of CI outcomes has to
+  // state: "the round on PR N is over". A number, read exactly as `merged-pr` is — and dropped
+  // with the reason named rather than refusing the whole message, because a reader of an
+  // append-only feed that refuses a header it half-understands makes the thread unreadable to
+  // the planner over one field nobody plans with.
+  const runOutcome = soft(() => {
+    const value = raws.get("run-outcome");
+    if (value !== undefined && !/^\d+$/.test(value)) {
+      throw new MessageFormatError(
+        `'run-outcome: ${value}' — expected the number of the PR whose round has ended`,
+      );
+    }
+    return value === undefined ? undefined : Number(value);
+  });
+
   // THE VERDICT IS ONE FIELD IN TWO LINES (thread 042) — and it is read as one, in a single
   // `soft`, because half a pair says nothing: `verdict:` without `pr:` is an outcome without an
   // address, `pr:` alone is an address without an outcome, and either of them alone opening a
@@ -1005,6 +1041,7 @@ export const parseMessageFile = (raw: string): Message => {
     ...(delivers === undefined ? {} : { delivers }),
     ...(parkMover === undefined ? {} : { parkMover }),
     ...(mergedPr === undefined ? {} : { mergedPr }),
+    ...(runOutcome === undefined ? {} : { runOutcome }),
     ...(verdictPair ?? {}),
     ...(tasks.length === 0 ? {} : { tasks }),
     ...(suffix === undefined ? {} : { suffix }),
@@ -1069,6 +1106,10 @@ export const renderMessageFile = (message: Message): string => {
     // Beside `parked-on` because it is its counterpart: one freezes a turn behind an event,
     // this one says the event happened.
     ...(fields.mergedPr === undefined ? [] : [`merged-pr: ${fields.mergedPr}`]),
+    // Directly under `merged-pr`, because the two are the two event announcements of one park
+    // family and a reader scanning for "what ended here" must find them together: the button
+    // pressed, and the round finished (thread 188).
+    ...(fields.runOutcome === undefined ? [] : [`run-outcome: ${fields.runOutcome}`]),
     // The pair prints as a pair and in this order (thread 042): the outcome first, the address
     // after it, the way the reviewer has always written the two lines of the body.
     ...(fields.verdict === undefined ? [] : [`verdict: ${fields.verdict}`]),
