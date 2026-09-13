@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T19:28:57.313Z",
+  "writtenAt": "2026-09-13T19:29:26.531Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "200-run-census-drops-queued",
-      "state": "draining",
-      "deadline": "2026-09-13T20:22:42Z"
-    },
     {
       "role": "dev-core",
       "thread": "192-watcher-claims-a-loss-it-never-measured",
