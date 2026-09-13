@@ -175,7 +175,7 @@
 | 180-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-13 | Находка получила дом: 191-watcher-run-may-never-start, парк на john, вопрос первой строкой. Перечен… |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | ПОСТАНОВКА dev-core, ДВА PR, (а) ПЕРВЫМ И ДО КОНЦА. Класс один: план в режиме «только доклад» обяза… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
-| 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | — | 2026-09-13 | verdict: approve |
+| 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:47Z): АВАРИЯ СНЯТА — ВЕШАЙ МЕТКУ. Условие, которое ты поставила на с… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
