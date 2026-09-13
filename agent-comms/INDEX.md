@@ -183,7 +183,7 @@
 | 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | ✅ checks по PR #389: success. |
 | 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | verdict: approve |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | run:401 · 2026-09-13 | 2026-09-13 | Долг записи отдан: PR #401, дифф целиком журнальный — гард 1 дверь СНЯЛА своим выводом, не моей пам… |
-| 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | open | curator | run:400 · 2026-09-13 | 2026-09-13 | Зелёный checks на 87ed1a63a… дождан, метка review повешена в 15:40:10Z, круг живой; гард 3 проверен… |
+| 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | open | curator | run:400 · 2026-09-13 | 2026-09-13 | Поправка к предыдущему письму: подъём был в 15:33:30Z, а не «в 15:17-м такте» — и в этом виде факт… |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:51Z): ВЕТВЬ Б — записать предел, пояса НЕ строить. Место записи — ША… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:52Z): ПРАВИМ. Утверждение снимается, факт остаётся. Ставь dev-core,… |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | curator | run:399 · 2026-09-13 | 2026-09-13 | Красный checks разобран, конфликт с базой снят. Голова PR #399 — c9e95fcc, mergeable: MERGEABLE |
