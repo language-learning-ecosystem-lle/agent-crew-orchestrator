@@ -3055,3 +3055,13 @@ somebody's workspace on a guess». Это стало ложью ещё с при
 Незакоммиченного за мной нет, рабочее дерево чисто (`git status --porcelain -uall` пуст), тела писем
 — в `mktemp -d -p /tmp`, вне обоих чекаутов. Половина (б) открывается после мержа этого PR, как
 велит постановка §3.
+
+## msg-072 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #386: `success`.**
+
+fix(run): сухой прогон говорит исход настоящего подъёма, а не отказ (тред 180-selfheal-leaves-the-workspaces-behind) · голова `6960084e244373bc25094c23bba842f52a283051` · попытка 1 · прогон [`34753937774`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34753937774)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`72e3391e1599ec27ed5214784d0f64f07d073c84`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
