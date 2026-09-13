@@ -53,7 +53,7 @@
 - [Прошедшее время меряют `date`, а не числом ходов](elapsed-time-is-measured-not-estimated.md) — `date -u` в той же команде, что снимает факт
 - [Полевой критерий уступает перечислению](field-sample-criterion-yields-to-enumeration.md) — перечисление сильнее образца
 - [Хвост письма протухает молча](carried-tail-items-rot.md) — перемерять перед переносом в новое письмо
-- [Кнопка merge жмётся с `--match-head-commit`](merge-with-match-head-commit.md) — sha берут из вывода самой `merge-gate`; пишется в след
+- [Кнопка merge жмётся с `--match-head-commit`](merge-with-match-head-commit.md) — sha берут из вывода самой `merge-gate`; `--delete-branch` врёт кодом выхода в обе стороны
 - [Годность тега среза — это поиск по линии](cut-tag-validity-is-a-line-search.md) — дерево реза встречается у коммита линии `main`
 - [Креды мерятся пушем](credentials-measured-by-push.md) — `ls-remote` проходит анонимно
 - [Одно дерево во всех порядках ≠ целость](same-tree-proves-no-conflict-not-integrity.md) — целость мерится `diff` база↔слитое с нулём удалений
