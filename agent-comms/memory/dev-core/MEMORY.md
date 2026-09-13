@@ -115,7 +115,7 @@
 - [Дерево ПАРЫ может быть без `node_modules`](pair-worktree-may-have-no-node-modules.md) — почту гонять из главного чекаута.
 - [«Демон встал на новый код» — строка `daemon — code:`](daemon-log-dates-its-own-code.md) — окно склеивать из `daemon.log.1`+`daemon.log`.
 - [Режим-парк фильтрует сводка, но не реестр](mode-park-is-filtered-by-the-digest-not-by-the-register.md) — мерить поверхность зондом.
-- Парк `run:N`: [под `checks` не снимается по адресу](run-park-under-checks-has-no-lifter.md) · [мёртвый ОТКАЗЫВАЕТ вердикту](dead-run-park-refuses-an-incoming-verdict.md) — только потолком в 30 мин. Под КРУГОМ РЕВЬЮ подъёмник есть: вердикт парой `verdict:`/`pr:N` (13.09, #383).
+- Парк `run:N`: [под `checks` снимается полем `run-outcome` — с 13.09, #383](run-park-under-checks-has-no-lifter.md) · [мёртвый ОТКАЗЫВАЕТ вердикту](dead-run-park-refuses-an-incoming-verdict.md) — лифт поднимает АВТОРА (`waiting-on` письма исхода), не кнопку.
 - [Письмо github о merge поднимает АВТОРА](merge-letter-raises-the-author.md) — такт приёмки, не пустой подъём.
 - [Дверь версии в СВОЁМ контуре молчит всегда](version-door-is-silent-in-the-protocols-own-contour.md) — `reference` нет → полевой дефект версии здесь не воспроизвести.
 - Даровые оракулы: [`orchestrator status` читает конфиг ИЗ REF](orchestrator-status-reads-the-ref-not-the-tree.md) · [сухой `run` — по потолкам](dry-run-is-a-free-oracle-on-the-ceilings.md) — два вызова с разными `--ref`.
@@ -123,7 +123,6 @@
 - [Изнутри пары рукой поднимается `потолок − 1`](hand-raise-from-inside-a-pair-is-ceiling-minus-one.md)
 - [`cd <главный чекаут>` пишет в дерево ДЕМОНА](cd-prefix-in-bash-writes-into-the-daemon-checkout.md) — грязь там останавливает самоперезапуск.
 - [Снятую посылку ищут по КЛЮЧУ СХЛОПЫВАНИЯ](removed-premise-is-found-by-the-collapse-key.md) — затирающий `set(role, …)`.
-- [Курьер зовёт на метку и на ЖУРНАЛЬНОМ PR](courier-calls-for-a-label-on-journal-prs.md) — зов не исполнять, отказ называть вслух.
 - [`origin/main` уезжает посреди такта](origin-main-can-advance-mid-tick.md) — ревизии склейки по `MERGE_HEAD`/SHA; `numstat` видит удаления, `cmp` блоков — нет → перемеряй БАЗУ.
 - [Красный прогон уведомителя не доказывает потери письма](red-notifier-run-does-not-prove-lost-mail.md) — мерить лентой АДРЕСАТА.
 - [Ключ глушения — ИМЯ уведомителя](mute-key-is-the-notifier-name-not-the-subject.md) — окно 900 с ест звонки о ДРУГИХ PR, а хвост выезжает прицепом к чужой аварии часы спустя: номера из строки глушения разрешать `gh run view`.
