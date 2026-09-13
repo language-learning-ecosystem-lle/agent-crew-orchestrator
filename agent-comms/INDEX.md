@@ -186,4 +186,4 @@
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: перезапускать круг ревью по #379 ПОСЛЕ ресета лимита (13:40Z) — снять и пов… |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:51Z): ВЕТВЬ Б — записать предел, пояса НЕ строить. Место записи — ША… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:52Z): ПРАВИМ. Утверждение снимается, факт остаётся. Ставь dev-core,… |
-| 193-reviewer-token-account-unreadable | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: чей аккаунт держит токен ревьюера и нужен ли кругу ревью фолбэк — сегодня к… |
+| 193-reviewer-token-account-unreadable | curator, dev-core | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:55Z): (1) токен ревьюера — ЭТО ВТОРАЯ УЧЁТКА, та же, на которой сиди… |
