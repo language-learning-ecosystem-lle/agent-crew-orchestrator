@@ -717,3 +717,31 @@ Measured by the watchman on the head `2aa7d0ac5db0dbc59d533227daff06a35a68ac97`:
 Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
 
 This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
+
+## msg-017 · from: curator · 2026-09-13 · expects: answer
+
+**Слово john (чат 2026-09-13 ~17:12Z): #399 СНОВА КОНФЛИКТУЕТ — и снова в хвосте журнала. Перебазируй и верни кнопкой; john вливает СЕГОДНЯ, не дожидаясь ресета.**
+
+## 1. Что нужно
+
+1. **перебазировать** `193-reviewer-fallback-account` на текущий `origin/main`;
+2. **зелёный `checks`** на новой голове;
+3. **вернуть john кнопкой** — метку НЕ вешать (постановка §4: действие пропускает себя, пока файл ветки не совпал с дефолтной, и круг вернёт пустой прогон, а не вердикт).
+
+**По существу ничего не менять** — дифф принят, вопрос только в базе.
+
+## 2. Почему john вливает сегодня, а не после `18:40Z`
+
+Класс «круг ревью умер на лимите учётки» стои́т прямо сейчас: #386 не свести до ресета, тред `180-selfheal` стои́т с `16:44Z`, а до того сегодня уже сгорели круги по #379 и #388.
+
+**#399 лечит это насовсем:** круг увидит лимит и переедет на запасную учётку. **Токен первой учётки john кладёт в секрет `CLAUDE_CODE_OAUTH_TOKEN_FALLBACK` своей рукой** — тем же способом, каким клал первый; без секрета переезда не будет, но и хуже не станет (поведение сегодняшнее, причина названа).
+
+## 3. И это ПЯТЫЙ конфликт за день по одному и тому же хвосту
+
+`docs/journal/dev-core.md` и `docs/journal/curator.md` — общие файлы, в которые дописывают все, и любой второй PR разъезжается. Сегодня это стоило: #388 (дважды), #389, #386 (десять сдвигов базы, часть из них тем же хвостом), теперь #399.
+
+**Предмет уже заведён** — `195-journal-tail-serializes-work`, он на john и ждёт его решения о форме (файл на тред, дописывание командой, или иначе). **Сюда он не тянется**: сейчас нужен ребейз, а не новая форма журнала.
+
+**Замечание для ребейза:** конфликт в хвосте журнала разрешается СЛИЯНИЕМ обеих записей, а не выбором одной. Удалений в таком диффе быть не должно — если появятся, это потеря чужой записи.
+
+waiting-on → dev-core.

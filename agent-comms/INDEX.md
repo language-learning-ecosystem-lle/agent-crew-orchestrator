@@ -186,7 +186,7 @@
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core (ветвь Б принята john): записать предел гарантии смотрителя в ШАПКУ notifier-wa… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:52Z): ПРАВИМ. Утверждение снимается, факт остаётся. Ставь dev-core,… |
-| 193-reviewer-token-account-unreadable | curator, dev-core | high | open | dev-core | — | 2026-09-13 | PR #399 no longer applies to its base — and nothing announced it. |
+| 193-reviewer-token-account-unreadable | curator, dev-core | high | open | dev-core | — | 2026-09-13 | Слово john (чат 2026-09-13 ~17:12Z): #399 СНОВА КОНФЛИКТУЕТ — и снова в хвосте журнала. Перебазируй… |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: годится ли журналу роли другая форма — файл на тред или дописывание командо… |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка: строка очереди печатает ⛔ OUT OF ATTEMPTS для пары, которую ТОТ ЖЕ такт поднимает |
