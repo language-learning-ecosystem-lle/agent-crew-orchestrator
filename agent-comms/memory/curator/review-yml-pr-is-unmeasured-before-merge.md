@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: bf31d5ff-9fdf-425d-aa0c-82b300720b4f
-  modified: 2026-09-05T13:11:35.811Z
+  modified: 2026-09-13T09:06:37.517Z
 ---
 
 PR, который правит `.github/workflows/claude-review.yml`, **до мержа не проверяет ни одна машина**, и
@@ -33,3 +33,13 @@ python3 -c "import yaml; d=yaml.safe_load(open('$D/cr.yml')); print(list(d['jobs
 [[acceptance-on-the-merged-tree-is-cheap]], [[guard4-reach-ends-at-workflows]].
 
 **Из указателя (перенесено 2026-09-06, оглавление шло за потолок):** круг самопропускается, а в `checks.yml` нет ни actionlint, ни shellcheck: YAML и `bash -n` по блокам `run:` — рука curator
+
+**У гарда 1 с 13.09 ДВЕ формы «круга не будет», и вторая — ОПЦИЯ, а не поведение** (код `76156975`,
+PR #370, слово john 2026-09-11, тред `187`; норма — `PROTOCOL.md`, «Журнал едет попутным диффом»).
+Первая — выше: круг самопропускается на `claude-review.yml`, и гард 1 закрывает рука. Вторая —
+`merge-gate --journals <префиксы>`: диффу, ВСЕ пути которого лежат в журналах ролей, гард 1 не
+задаётся вовсе. Ключевое для руки у кнопки: **без флага исключения нет никакого** — документированная
+строка процедуры (`--ref origin/main --pr <n> --review-workflow 'Claude PR Review'`) поведения не
+меняет; **один путь вне журналов снимает исключение**, и отказ НАЗЫВАЕТ этот путь; снят только гард 1
+— гард 4 держится первым, гарды 2, 3 и 5 как были. Мерено `usage` работающего кода, а не докой.
+Родня: [[merge-with-match-head-commit]], [[guard4-reach-ends-at-workflows]].
