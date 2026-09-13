@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T14:27:19.035Z",
+  "writtenAt": "2026-09-13T14:27:26.198Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,6 +19,12 @@
       "thread": "190-base-cost-dies-on-an-older-schema",
       "state": "running",
       "deadline": "2026-09-13T15:07:15Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "193-reviewer-token-account-unreadable",
+      "state": "running",
+      "deadline": "2026-09-13T15:27:22Z"
     }
   ]
 }
