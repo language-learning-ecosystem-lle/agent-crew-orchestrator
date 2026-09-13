@@ -184,7 +184,7 @@
 | 188-run-park-has-no-lifter | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
-| 191-watcher-run-may-never-start | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ✅ checks по PR #415: success. |
+| 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Метка review повешена на зелёную голову #413 — круг 34776682181 идёт. Двери обоих PR промерены: #41… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | verdict: approve |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: #399 стои́т под твоей кнопкой — голова 66566e54a, база догнана, дифф не тро… |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
@@ -194,5 +194,5 @@
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: ключ глушения считается по паре «уведомитель + ПРЕДМЕТ прогона» (ветвь A, слов… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ✅ checks по PR #414: success. |
-| 201-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-13 | Разобрал три письма стоячего адреса. Состояний за ними два, и одно из писем — ложная тревога: круг… |
+| 201-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: круг ревью краснит САМ СЕБЯ после успешного вердикта — кнопки merge нет ни… |
