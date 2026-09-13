@@ -694,10 +694,97 @@ escalation_case() { # <номер состояния> <значение ЧУЖО
   check "чужой парк на треде PR ОСТАЛСЯ стоять" "$value" "$left"
 }
 
+# --- (14) ЧЕТВЁРТЫЙ СЛУЧАЙ ПАРКА ПРОТИВ ЖИВОЙ ДВЕРИ (тред 189, слово john 2026-09-13) ---
+#
+# ЧТО ЗДЕСЬ ПЕРЕМЕНИЛОСЬ И ПОЧЕМУ ЭТО ПРИЁМКА, А НЕ ПОДГОНКА. До треда 189 это состояние
+# было вторым `escalation_case` (чужой парк `run:191` → письмо в тред PR НЕ легло, отказ
+# адресован автору) и записывало ПРЕДЕЛ. Предел был замерен как ПОТЕРЯ: прогон
+# 34703884006 съел вердикт `approve` по #373 ровно так. Слово john 2026-09-13 предел
+# узко снимает, и состояние записывает новую норму: чужой парк `run:`, чьё основание
+# дверь объявила МЁРТВЫМ, письмо ПОЛУЧАЕТ — одним повтором с `--park-lifted <то же
+# значение>`. Адресный отказ при этом покрытия не теряет: его держит состояние (15)
+# (`pr:191`), у которого этой ветви нет вовсе.
+#
+# ПОЧЕМУ ЭТО СИЛЬНЕЕ ЮНИТА. В `review-delivery.test.sh` отказ пишет фикстура; здесь его
+# пишет ЖИВАЯ ДВЕРЬ (`run-park.ts`) — у арены нет ни сети, ни `gh`, и прогонов на голове
+# #191 она не находит ни одного, то есть отвечает тем самым отказом «основание мертво».
+# Разойдись якоря курьера с текстом двери — краснеет ЗДЕСЬ, а не только в разделе 16.
+dead_run_park_case() { # <номер состояния> <значение ЧУЖОГО парка> <id треда PR> <id приёмника>
+  local n="$1" value="$2"
+  note_state "$n"
+  echo "== ($n) чужой парк '${value}' с МЁРТВЫМ основанием: письмо ЛОЖИТСЯ одним повтором"
+  local arena="$WORK/e2e-$n" ws
+  ws="$arena/ws"
+  mkdir -p "$arena/mail/agent-comms" "$ws"
+  git -C "$arena/mail" init -q -b comms
+  git -C "$arena/mail" config user.name "integration"
+  git -C "$arena/mail" config user.email "integration@agents.invalid"
+  git -C "$arena/mail" config receive.denyCurrentBranch updateInstead
+  git -C "$ws" init -q -b work
+  git -C "$ws" config user.name "integration"
+  git -C "$ws" config user.email "integration@agents.invalid"
+  git -C "$ws" commit -q --allow-empty -m "рабочее дерево джобы"
+  git -C "$ws" remote add origin "https://example.invalid/mail.git"
+  ln -s "$CODE_DIR" "$ws/.code"
+
+  MAIL_DIR="$arena/mail"
+  ROOT="$MAIL_DIR/agent-comms"
+  local id="$3" recv="$4"
+  make_thread "$id" "$value"
+  make_thread "$recv" ""
+
+  local before after code
+  before="$(git -C "$MAIL_DIR" ls-tree -r --name-only comms -- "agent-comms/${id}/messages" | wc -l)"
+  (
+    cd "$ws" || exit 3
+    export GITHUB_WORKSPACE="$ws"
+    export GITHUB_SERVER_URL="https://example.invalid"
+    export GITHUB_REPOSITORY="owner/repo"
+    export MAIL_REMOTE="$MAIL_DIR"
+    export REVIEW_DELIVERY_DIR="$arena/.delivery"
+    export REVIEW_ESCALATION_ADDRESS="${recv#[0-9][0-9][0-9]-}"
+    export REVIEW_PR_AUTHOR="dev-core"
+    # shellcheck source=./comms-push.sh
+    source "${CODE_DIR}/.github/scripts/comms-push.sh"
+    # shellcheck source=./review-delivery.sh
+    source "${CODE_DIR}/.github/scripts/review-delivery.sh"
+    delivery_mark comment ok
+    deliver_to_thread "$id" reviewer-pr "$BODY" "вердикт ревьюера по #${PR}" "$PR" \
+      --waiting-on curator --verdict approve --pr "$PR"
+  ) > "$arena/out.log" 2>&1
+  code=$?
+
+  check "deliver_to_thread дошла до конца" "0" "$code"
+  after="$(git -C "$MAIL_DIR" ls-tree -r --name-only comms -- "agent-comms/${id}/messages" | wc -l)"
+  check "письмо ЛЕГЛО в УДАЛЁННУЮ почту треда PR" "$((before + 1))" "$after"
+  # ПЕРВЫЙ ОТКАЗ ОБЯЗАН БЫТЬ В ЛОГЕ ДОСЛОВНО: повтор молчаливым не бывает, иначе читатель
+  # лога не узнает, что дверь вообще отказывала.
+  check "отказ двери напечатан дословно" "да" \
+    "$(file_probe -F 'has ALREADY FINISHED' "$arena/out.log")"
+  check "повтор назван, и назван ОДНИМ" "1" \
+    "$(grep -c -- "повтор РОВНО ОДИН раз с '--park-lifted ${value}'" "$arena/out.log")"
+  # ЗНАЧЕНИЕ — БУКВАЛЬНО СТОЯЩЕЕ, а не вычисленное из номера PR: доставка идёт по #225,
+  # парк стои́т за #191.
+  # `-e` ОБЯЗАТЕЛЕН: шаблон начинается с дефиса, и без него `grep` читает его как свой
+  # флаг и выходит кодом 2. Проба это НЕ прячет («проба не состоялась»), а до треда 186
+  # тот же промах выглядел бы как честное «нет» — то есть как пройденная проверка.
+  check "вычисленного из номера PR значения в повторе нет" "нет" \
+    "$(file_probe -F -e "--park-lifted run:${PR}" "$arena/out.log")"
+  # ПАРК СНЯТ — письмо его именно СНЯЛО, а не встало рядом: иначе следующий писатель
+  # упёрся бы в тот же мёртвый парк, и лечение было бы разовым.
+  local left
+  left="$( (cd "$ws" && standing_park "$id") )"
+  check "мёртвый парк снят, а не оставлен стоять" "" "$left"
+  # ЭСКАЛАЦИИ НЕТ: письмо легло, звать автора не о чем.
+  check "письма об отказе в приёмнике НЕТ — звать автора не о чем" "0" \
+    "$(git -C "$MAIL_DIR" -c core.quotePath=false ls-tree -r --name-only comms \
+       -- "agent-comms/${recv}/messages" | grep -c -- '-reviewer-pr\.md$')"
+}
+
 # Слаг приёмника у состояний РАЗНЫЙ: у каждого своя почта, но один слаг на двоих
 # читался бы как «один адрес, два приёмника» — состояние, о котором эти состояния не
 # говорят ничего.
-escalation_case 14 "run:191" 910-фикстура-парка 911-stand-in-receiver
+dead_run_park_case 14 "run:191" 910-фикстура-парка 911-stand-in-receiver
 escalation_case 15 "pr:191"  912-фикстура-парка 913-second-receiver
 
 if [ "$FAILED" = "0" ]; then
