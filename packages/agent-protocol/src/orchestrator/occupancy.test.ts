@@ -208,4 +208,84 @@ describe("the day report — both shares out of what is already on the box", () 
     expect(report.thresholdNote).toContain("no threshold is applied");
     expect(renderDay(report).join("\n")).not.toMatch(/\bok\b|healthy|too (?:high|low)/);
   });
+
+  /**
+   * THE PREMISE `parallelism.pairsPerRole` REMOVED (thread `177-workspace-per-pair`). The walk
+   * used to key its open leases by the ROLE, which was sound while a role had one workspace and
+   * became a fiction the moment it could hold two: the second acquisition overwrote the first,
+   * so one session's start was paired with ANOTHER session's release.
+   *
+   * The stamps are the box's own, read off `journal.jsonl` at `2026-09-13T11:10Z` while this very
+   * role held two pairs — the same reason the rest of this file uses live stamps rather than
+   * whole hours.
+   */
+  const twoPairsOfOneRole: OrchestratorEvent[] = [
+    acquired("2026-09-13T10:35:14Z", "dev-core", "188-run-park-has-no-lifter"),
+    acquired("2026-09-13T10:46:29Z", "dev-core", "189-dead-park-eats-the-verdict"),
+    released("2026-09-13T10:46:37Z", "dev-core", "188-run-park-has-no-lifter"),
+    acquired("2026-09-13T10:47:17Z", "dev-core", "177-workspace-per-pair"),
+    released("2026-09-13T11:00:53Z", "dev-core", "189-dead-park-eats-the-verdict"),
+    released("2026-09-13T11:04:05Z", "dev-core", "177-workspace-per-pair"),
+  ];
+
+  it("pairs every lease with its OWN release when a role holds more than one at a time", () => {
+    const now = new Date("2026-09-13T11:10:00Z");
+    const events = [
+      ...twoPairsOfOneRole,
+      // …and two that are still open at the end of the file, one of them a second session of a
+      // thread that already appears above: the key is the pair, so the closed one does not eat it.
+      acquired("2026-09-13T11:05:17Z", "dev-core", "177-workspace-per-pair"),
+      acquired("2026-09-13T11:05:24Z", "dev-core", "180-selfheal-leaves-the-workspaces-behind"),
+    ];
+    const { spans, dropped } = leaseSpans(events, now);
+
+    // Five sessions in, five spans out — closed ones in the order they were released, the live
+    // ones closed at `now`. Keyed by the role this was three spans, one of which ran from the
+    // acquisition of `189` to the release of `188`.
+    expect(spans).toEqual([
+      { role: "dev-core", from: "2026-09-13T10:35:14Z", to: "2026-09-13T10:46:37Z" },
+      { role: "dev-core", from: "2026-09-13T10:46:29Z", to: "2026-09-13T11:00:53Z" },
+      { role: "dev-core", from: "2026-09-13T10:47:17Z", to: "2026-09-13T11:04:05Z" },
+      { role: "dev-core", from: "2026-09-13T11:05:17Z", to: "2026-09-13T11:10:00.000Z" },
+      { role: "dev-core", from: "2026-09-13T11:05:24Z", to: "2026-09-13T11:10:00.000Z" },
+    ]);
+    // AND NOT ONE OF THEM IS COUNTED AS DROPPED. Every release here answers an acquisition in
+    // the same file; the role key made the last two look like releases out of a rotated journal,
+    // which is the row that tells the reader the shares below are a lower bound.
+    expect(dropped).toBe(0);
+
+    const report = foldDay({ events, turns: [], now });
+    expect(report.roles[0]?.sessions).toBe(5);
+    expect(report.roles[0]?.busyMinutes).toBeCloseTo(51.9, 6);
+    // The window is 34.77 minutes and the role worked 51.9 of them: the share is over 100 % and
+    // is NOT capped — two pairs side by side is what it is measuring.
+    expect(report.roles[0]?.share).toBeGreaterThan(1);
+  });
+
+  it("does not ring the standstill on a role whose second pair blocked it to the end", () => {
+    // THE CONSEQUENCE THE COURIER PAYS, and the reason this is not a cosmetic count. The free
+    // tail is measured from the END of the last thing that blocked the pair. `dev-core` was busy
+    // until `11:04:05` on `177`; keyed by the role, that release was dropped and the last span
+    // ended at `11:00:53` — the class would read three extra minutes of idleness that never
+    // happened and ring on a saturated box, which is the false-call class #147 was written for.
+    const now = new Date("2026-09-13T11:10:00Z");
+    const { spans } = leaseSpans(twoPairsOfOneRole, now);
+    const turn = {
+      role: "dev-core",
+      thread: "180-selfheal-leaves-the-workspaces-behind",
+      since: "2026-09-13T10:40:00Z",
+    };
+
+    expect(freeTailMinutes({ busy: spans }, turn, now)).toBeCloseTo(5.92, 2);
+    expect(
+      unacceptedTurns({
+        turns: [turn],
+        raisedAt: new Map(),
+        busyRoles: new Set(),
+        busy: spans,
+        now,
+        afterMinutes: 7,
+      }),
+    ).toEqual([]);
+  });
 });
