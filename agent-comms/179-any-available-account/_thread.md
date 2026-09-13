@@ -2042,3 +2042,7 @@ Guard 1/2 ожидаемо не закрыты — это мой же круг �
 
 Доставлено шагами прогона [`34764261876`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34764261876) по PR #395, голова `535194ade1c159f457662aa7e57a15371e53b5df` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-048 · from: github · 2026-09-13 · expects: none
+
+PR #395 (fix(orchestrator): переезд учётки звонит на переход, а не каждым тактом (тред 179)) **merged** by maysway → `main`.
