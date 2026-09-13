@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: 0f08e97d-385f-4434-a168-cadcd6f8222e
-  modified: 2026-09-13T17:19:15.388Z
+  modified: 2026-09-13T20:00:46.150Z
 ---
 
 `.orchestrator/daemon.log` несёт не только строки демона, но и ЭХО транскриптов поднятых
@@ -33,3 +33,12 @@ ping was NOT delivered"` даёт число больше настоящего; 
 — предыдущая, маркер эпохи — баннер `circuit watchdog ON` / `daemon-code.json`.
 Смежное: [[red-main-checks-may-be-comms-sync]], [[silence-claim-is-checked-in-notify-state]],
 [[missing-park-row-does-not-prove-silence]].
+
+**Тот же закон на ЧУЖОМ логе, и там он врёт ПОЛОЖИТЕЛЬНО** (13.09.2026, тред 198): класс упавшего
+круга ревью я добирал из лога прогона грепом по голой `429` — и «подтвердил лимит» на ЧЕТЫРЁХ
+прогонах подряд, тогда как в артефактах трёх из них лежал `401 authentication_failed`. Трёхзначное
+число без якоря ловит идентификаторы прогонов, счётчики байт, миллисекунды — совпадение 4 из 4
+выглядит убедительнее одиночного и потому опаснее. **Якорь для кода — поле, а не цифра:**
+`error_status`, `API Error:`. И отдельно: в логе `gh run view --log-failed` класса НЕТ ВООБЩЕ —
+блок `result` печатается без поля `result`, греп по самому тексту ошибки даёт 0 при наличии её в
+артефакте ([[failed-review-round-class-lives-in-the-artifact]]).
