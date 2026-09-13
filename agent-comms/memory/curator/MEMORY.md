@@ -153,3 +153,4 @@
 - [Прогон, застрявший `queued`, невидим счёту исходов](queued-run-is-invisible-to-outcome-counts.md) — `conclusion: null` не попадает ни в одну кучу: группировать по `status/conclusion`
 - [Дверь печатает письма, легшие под твоим](letters-landing-under-yours-are-printed-by-the-door.md) — за время написания лента уехала; парк поверх новой работы запирает чужую пару
 - [Ожидание хода: письмо `waiting-on:` против `launch`](turn-wait-is-mail-letter-joined-with-launch.md) — `handoff-detected` не начало ожидания; сырая медиана переворачивает знак на парках
+- [Красный шаг доставки ≠ недоставленное письмо](delivery-step-failure-is-not-undelivered-mail.md) — push в `comms` отбит, а письмо предыдущего шага в ленте лежит
