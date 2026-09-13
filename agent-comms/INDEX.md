@@ -195,3 +195,4 @@
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ✅ checks по PR #414: success. |
 | 201-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-13 | Разобрал три письма стоячего адреса. Состояний за ними два, и одно из писем — ложная тревога: круг… |
+| 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: круг ревью краснит САМ СЕБЯ после успешного вердикта — кнопки merge нет ни… |
