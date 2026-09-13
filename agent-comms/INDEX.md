@@ -182,7 +182,7 @@
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 187-journal-rides-along | curator · dev-core · john | normal | closed | — | — | 2026-09-13 | — |
 | 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | PR #383 (feat(thread): парк run:N снимается объявлением исхода прогона — поле run-outcome (тред 188… |
-| 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | — | 2026-09-13 | PR #401 (docs(journal): сгоревший на лимите круг не судит и краснит гард 2; попутная запись уступае… |
+| 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core (ветвь Б принята john): записать предел гарантии смотрителя в ШАПКУ notifier-wa… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:52Z): ПРАВИМ. Утверждение снимается, факт остаётся. Ставь dev-core,… |
