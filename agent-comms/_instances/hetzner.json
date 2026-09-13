@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T14:06:13.025Z",
+  "writtenAt": "2026-09-13T14:09:30.819Z",
   "roles": [
     "curator",
     "dev-core",
@@ -23,7 +23,7 @@
     {
       "role": "curator",
       "thread": "193-reviewer-token-account-unreadable",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-13T14:46:07Z"
     }
   ]
