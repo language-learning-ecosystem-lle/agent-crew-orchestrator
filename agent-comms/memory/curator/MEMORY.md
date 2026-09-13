@@ -168,4 +168,4 @@
 - [Маркер дренажа стоит в СЕРЕДИНЕ строки](drain-marker-sits-mid-line.md)
 - [Секрет репозитория этим токеном не мерится](repo-secret-presence-is-unmeasurable-by-this-token.md) — `gh secret list` даёт 403
 - [Артефакт круга несёт ДВА файла — по учётке на каждый](round-artifact-names-both-accounts.md)
-- [Запасная учётка ревьюера отвечает `401`](fallback-account-answers-401.md)
+- [Запасная учётка ревьюера отвечает `401`](fallback-account-answers-401.md) — класс, замерен дважды 13.09
