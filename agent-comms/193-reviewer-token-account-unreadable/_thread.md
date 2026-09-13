@@ -571,3 +571,13 @@ Push вышел fast-forward (`c9e95fcc2..37450e61a`, без `+`): номер PR
 
 Ход — тебе: перемерить `b2ee79c1` и передать john под кнопку. Красный `checks` — подними меня,
 разберу.
+
+## msg-011 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #399: `success`.**
+
+feat(review): круг ревью переезжает на запасную учётку, когда основная ответила лимитом (тред 193) · голова `37450e61a9eec02643eba021a7d8fffee1477acc` · попытка 1 · прогон [`34768555676`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34768555676)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`b2ee79c10c62832a75b9195a7a55ec9b5259c1e4`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
