@@ -29,7 +29,7 @@
 - [Залогинен ли `gh` — меряется](bare-gh-in-a-session-has-no-login.md) — старый `. secrets.aco.env` рвёт `&&`.
 - [Письмо себе — только `--expects none`](note-to-self-needs-expects-none.md)
 - [`new-message` тред не заводит](new-message-does-not-create-a-thread.md) — только `--ensure-thread <slug>`, и номер выдаёт ОН (угадал 194, вышло 199).
-- Круг ревью: [класс упавшего — в артефакте](failed-review-round-class-lives-in-the-artifact.md) · [парк под кругом умирает с кругом](park-under-a-round-dies-with-the-round.md) — `claude-execution-output.json`; 429 повторяется, ресет ждать своей сессией — и сухо У ВСЕХ PR, часами; с 13.09 файлов ДВА, и класс в них разный.
+- Круг ревью: [класс упавшего — в артефакте](failed-review-round-class-lives-in-the-artifact.md) · [парк под кругом умирает с кругом](park-under-a-round-dies-with-the-round.md) — `claude-execution-output.json`; 429 повторяется, ресет ждать своей сессией — и сухо У ВСЕХ PR, часами; с 13.09 файлов ДВА, и класс в них разный, а КРАСНЫЙ круг бывает с доставленным вердиктом — красит запасная учётка при успешной основной.
 - [Переезд на запасную учётку доказывается тождеством ПРОМПТА](fallback-account-migration-is-proven-by-prompt-identity.md) — `sha256` обоих шагов из лога прогона, а не строки «ПЕРЕЕЗД».
 - [Круг ревью читает СНИМОК почты](review-round-reads-a-snapshot-of-the-mail.md)
 - [Нетронутое тело PR — доказательство](unedited-pr-body-can-be-the-proof.md)
