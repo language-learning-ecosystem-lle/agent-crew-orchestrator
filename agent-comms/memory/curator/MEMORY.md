@@ -108,7 +108,7 @@
 - [`run list --limit N` отдаёт НОВЕЙШИЕ N](run-list-truncates-to-the-newest-n.md) — усечение молчит и врёт в сторону «ничего не было»: мерить посуточно
 - [Сухой прогон двери почты бесплатен](mail-door-dry-run-measures-for-free.md) — без `--write` дверь судит и молчит в ленту
 - [Причина пропуска в системном письме — константа](system-letter-explains-its-own-gap-by-fixed-prose.md) — мерь файлом и веткой кода: `git show <тот sha>:<путь>`
-- [Перенос парка вперёд ПЕРЕОБЪЯВЛЯЕТ его](carrying-a-park-forward-redeclares-it.md) — `since`/`question`/`holder` новые, `park-ground` пропадает молча
+- [Перенос парка вперёд его НЕ обновляет](carrying-a-park-forward-redeclares-it.md) — `since`/вопрос/`ground` первого письма; новый парк = `--park-lifted` + `--parked-on` в одном письме
 - [Проза, отпускающая ход, требует заголовка](prose-releasing-the-turn-needs-the-header.md) — «ход никому» без `--waiting-on "—"` дверь отвергает
 - [Записанное ограничение читают в его блоке](recorded-limit-is-read-in-its-own-block.md) — фраза бывает про ДРУГОЙ гард
 - [Дренаж останавливает ВСЮ очередь](drain-stalls-the-whole-queue.md) — цена — от минут до часов, держит длинная сессия
