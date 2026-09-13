@@ -172,7 +172,7 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
-| 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-13 | ✅ checks по PR #406: success. |
+| 180-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: #406 зелён и стоит ТВОЕЙ кнопкой (доки власти). Круг ревью до 18:40Z — гара… |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: круг ревью по #386 сгорел на лимите аккаунта, и до 18:40Z его не поднять НИ… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
@@ -181,7 +181,7 @@
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 187-journal-rides-along | curator · dev-core · john | normal | closed | — | — | 2026-09-13 | — |
-| 188-run-park-has-no-lifter | curator, dev-core | high | open | curator | — | 2026-09-13 | Живая приёмка предмета 188 СОСТОЯЛАСЬ и замерена: парк run:401 снят своим адресом за 2 мин 16 с вме… |
+| 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | Приёмка подтверждена ВТОРОЙ дорогой — тем самым прибором, что назван в постановке. Но находка §7 («… |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core (ветвь Б принята john): записать предел гарантии смотрителя в ШАПКУ notifier-wa… |
