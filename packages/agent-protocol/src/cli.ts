@@ -389,7 +389,13 @@ import {
 } from "./orchestrator/metrics.js";
 import { hydrateFromStreams } from "./orchestrator/metrics-cache.js";
 import { handoffDetected, type Lifecycle, observeStep, stepEvent } from "./orchestrator/observe.js";
-import { foldDay, type ParkSpan, renderDay, type StandingTurn } from "./orchestrator/occupancy.js";
+import {
+  foldDay,
+  leaseSpans,
+  type ParkSpan,
+  renderDay,
+  type StandingTurn,
+} from "./orchestrator/occupancy.js";
 import {
   describeGhOutage,
   foldGhOutage,
@@ -5624,30 +5630,23 @@ const runNotify = async (input: {
         deliveryMarks(parsed),
       );
       const raisedAt = new Map<string, string>();
+      for (const event of events) {
+        if (event.kind === "lease-acquired")
+          raisedAt.set(`${event.role}\t${event.thread}`, event.ts);
+      }
       // AND WHEN EACH ROLE WAS BUSY — the same events read as spans, because "is the role busy
       // NOW" is not the question the age needs answering (the false field call of
       // 2026-08-29T02:53:11Z: thirteen of fourteen minutes were `curator`'s own queue behind
-      // `026`, and the pair fell out of it one tick before its own raise). One slot per role, so
-      // the spans of a role do not overlap; a lease still open at the end of the journal is that
-      // role's live session and is closed at `now`.
-      const busy: { role: string; from: string; to: string }[] = [];
-      const openLease = new Map<string, string>();
-      for (const event of events) {
-        if (event.kind === "lease-acquired") {
-          raisedAt.set(`${event.role}\t${event.thread}`, event.ts);
-          openLease.set(event.role, event.ts);
-          continue;
-        }
-        if (event.kind !== "lease-released") continue;
-        const from = openLease.get(event.role);
-        // A release with no acquisition in the journal (a rotated file, a hand-written
-        // `record`) names no span, and inventing one would subtract time nobody measured.
-        if (from === undefined) continue;
-        openLease.delete(event.role);
-        busy.push({ role: event.role, from, to: event.ts });
-      }
-      for (const [role, from] of openLease)
-        busy.push({ role, from, to: new Date(now).toISOString() });
+      // `026`, and the pair fell out of it one tick before its own raise).
+      //
+      // THE WALK IS {@link leaseSpans} AND NOT A COPY OF IT (thread `177-workspace-per-pair`).
+      // The copy that stood here keyed its open leases by the ROLE, on the premise of one slot
+      // per role that `parallelism.pairsPerRole` has removed — with two live pairs of one role it
+      // paired one session's acquisition with another's release and dropped the rest, which
+      // UNDERSTATES the busy time and so OVERSTATES the free tail this class rings on. The report
+      // (`orchestrator occupancy`) already folded the journal with the shared function; the
+      // courier is the surface the false calls were made on, and it now reads the same one.
+      const { spans: busy } = leaseSpans(events, new Date(now));
       const reasons = new Map<string, string>();
       for (const view of views) {
         if (view.exhausted)

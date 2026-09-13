@@ -2580,9 +2580,10 @@ export const planNotifications = (input: {
  * so thirteen of those fourteen minutes were the legitimate queue of check (б) and were counted
  * anyway: the pair fell out of the queue with its whole age in hand, one tick before its own
  * raise, and john was told `no reason known` about a box that had two reasons and was doing its
- * job. Left alone it would ring on EVERY queue longer than the threshold — one slot per role
- * makes that the normal shape of a working day, and a digest that cries at a working day is the
- * noise that teaches its reader to stop opening it.
+ * job. Left alone it would ring on EVERY queue longer than the threshold — a ceiling of slots per
+ * role (one at the time of this call, `parallelism.pairsPerRole` since) makes that the normal shape
+ * of a working day, and a digest that cries at a working day is the noise that teaches its reader
+ * to stop opening it.
  *
  * So the age is judged on the part of the standing time the role was FREE: `busy` carries the
  * lease spans out of the same journal `raisedAt` is read from, their overlap with the standing

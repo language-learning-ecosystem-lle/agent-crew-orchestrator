@@ -1888,9 +1888,10 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # raise, thirteen of the fourteen minutes being the role's own lease on `026`).
                             # The lease spans come out of the same journal, their overlap with the standing
                             # time is taken off, and only the part the role was FREE is measured against the
-                            # threshold. One slot per role makes a queue longer than 10 minutes the
-                            # normal shape of a working day, so without this the class would ring on it
-                            # every time
+                            # threshold. A ceiling of slots per role (`parallelism.pairsPerRole`) makes a
+                            # queue longer than 10 minutes the normal shape of a working day, so without
+                            # this the class would ring on it every time. The spans are paired by the
+                            # (role, thread) PAIR, so a role holding two leases at once contributes both
                             # AND A PARK IS SUBTRACTED THE SAME WAY — the same породу with
                             # another interval, and the class's SECOND false firing (2026-08-29T10:05Z:
                             # `curator×042` called at `6h 37m, no reason known` 39 seconds before its own
@@ -2725,7 +2726,10 @@ agent-protocol metrics      [--ref <ref>] [--root <comms>] [--journal <p>] [--se
                             # written and nothing reaching the network
                             # THE DAY REPORT (thread 042) is the last section, and it prints TWO shares side
                             # by side, because neither is interpretable alone:
-                            #   `role <id> busy <n> %` — the sum of the role's lease spans over the window;
+                            #   `role <id> busy <n> %` — the sum of the role's lease spans over the window.
+                            #   A span runs from a lease to the release OF THE SAME (role, thread) PAIR, so a
+                            #   role running two pairs side by side contributes both and the percentage MAY
+                            #   EXCEED 100: it is minutes worked over the window, not the occupancy of one slot;
                             #   `standing <role>×<thread> <t> in all free <t>` — for every pair standing at
                             #   the right edge, the whole standing time AND its uninterrupted free tail,
                             #   explicitly `0.0m` where there is none
