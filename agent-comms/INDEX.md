@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Поправка к моему письму 16:31:41Z: круг НЕ идёт. Он умер за 56 секунд до его отправки, и наши |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: круг ревью по #386 сгорел на лимите аккаунта, и до 18:40Z его не поднять НИ… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
