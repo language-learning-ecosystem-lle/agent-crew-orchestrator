@@ -126,7 +126,7 @@
 - [Запись самоперезапуска однослотовая](self-restart-record-is-single-slot.md) — затирается следующим ремонтом: поля мерятся журналом, штамп дрейфа на 4–5 с раньше
 - [Бамп схемы — кнопка john](schema-version-bump-is-johns-button.md) — конфиг обязан ехать тем же диффом: гард 4 STOP на любом новом поле
 - [Новая коробочная тревога — норма без схемы](new-box-alarm-is-a-norm-without-a-schema-bump.md) — повод звонить = john, но конфига в диффе быть не должно
-- [Ёмкость окна мерится долларами](window-capacity-is-measured-in-dollar-equivalent.md) — `total_cost_usd` у сессии и у круга; тариф — имя, не замер
+- [Ёмкость окна мерится долларами](window-capacity-is-measured-in-dollar-equivalent.md) — полка это `quota-exhausted` в журнале, а не пустой подъём; тарифы 1.66, не 4
 - [Сюита в worktree ломает контур](suite-in-a-worktree-breaks-the-contour.md) — общий `.git/config`: `origin` переписан, почта встала у всех
 - [Журнал курьера не оракул доставки](courier-journal-is-not-a-delivery-oracle.md) — «звонить не о чем» при 15 письмах: мерь приёмником
 - [Письмо самоперезапуска называет ОТПЕЧАТОК](self-restart-letter-names-the-footprint.md) — «смену исполняемого» с #352 мерит читатель одной командой
