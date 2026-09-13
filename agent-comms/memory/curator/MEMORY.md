@@ -115,7 +115,7 @@
 - [Смена читателя ломает файл БЕЗ хунков](reader-change-breaks-hunkless-consumers.md) — греп по значению; красный тест бывает восстановленной нормой
 - [Лента почты живёт на ветке `comms`](mail-feed-lives-on-the-comms-branch.md) — `git show origin/comms:./<тред>/_meta.md` из `agent-comms`: статусы даром
 - [Коммит среза не датирует рез](split-commit-does-not-date-the-cut.md) — даты унаследованы, тег lightweight
-- [Дверь `merge-gate` двигает `FETCH_HEAD`](merge-gate-clobbers-fetch-head.md) — замер после её вызова печатает пустой дифф и врёт молча
+- [`FETCH_HEAD` двигает и `merge-gate`, и ЧУЖАЯ сессия](merge-gate-clobbers-fetch-head.md) — пустой дифф без единой своей команды `fetch`: голову держать полным sha
 - [Отказ доступа не принимается на своём репозитории](access-refusal-class-cannot-be-accepted-here.md) — публичный + мелкогранулярный токен = отказа не бывает
 - [Незавершённость чека — это `bucket`](check-state-is-read-from-bucket.md) — `state` не знает слова `PENDING`: цикл выходит мгновенно и врёт «готово»
 - [Своя кнопка merge заводит слив за 23 с](own-merge-starts-a-drain-that-waits-for-me.md) — слив ждёт ИМЕННО эту сессию: merge — последнее действие хода
