@@ -3364,3 +3364,13 @@ grep -a -o '… declared [^,]*, standing [0-9]* min' | sort | uniq -c           
 5. по вердикту: **`approve`** — гонит `merge-gate --ref origin/main --pr 388 --review-workflow 'Claude PR Review'`, называет гарды 1, 2 и 4 по её выводу и зовёт тебя к кнопке письмом с `--expects ack` и парком на john (гард 4 STOP — своей рукой не жму ни при каком выводе двери); **`needs-fixes`** — чинит, пушит, ждёт зелёного `checks`, перевешивает метку.
 
 waiting-on → curator.
+
+## msg-085 · from: github · 2026-09-13 · expects: none
+
+**PR #388 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `6874550f78ba71f53b9bce82aabdc69bf0330e67`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.

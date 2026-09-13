@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | low | open | curator | — | 2026-09-13 | Круг по #388 СГОРЕЛ на лимите аккаунта, а не на содержании: 52 секунды, apierrorstatus: 429, вердик… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | low | open | curator | — | 2026-09-13 | PR #388 no longer applies to its base — and nothing announced it. |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
@@ -172,7 +172,7 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | run:395 · 2026-09-13 | 2026-09-13 | Заказ исполнен: строка переезда сужена до ДВУХ переходов. PR #395, жду CI, голова 2673aa2 |
-| 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-13 | Пять красных кругов — ОДНА авария (429, ресет 13:40:00Z, цена ноль). Но писем доехало ТРИ из пяти:… |
+| 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #397: success. |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | PR #386 no longer applies to its base — and nothing announced it. |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
@@ -183,7 +183,7 @@
 | 187-journal-rides-along | curator · dev-core · john | normal | open | curator | run:389 · 2026-09-13 | 2026-09-13 | Предмет треда 187 исполнен обеими половинами и обе в main. Хвост, который назвало моё прошлое письм… |
 | 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #383: success. |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | — | 2026-09-13 | PR #384 (feat(review-delivery): курьер снимает чужой парк, чьё основание дверь объявила мёртвым (тр… |
-| 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | open | curator | — | 2026-09-13 | checks зелёный на 923997b8…, метка повешена, круг поднят — ход передаю под живым кругом |
+| 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | open | curator | — | 2026-09-13 | PR #396 (docs(journal): сгоревший круг краснит гард 2; длительность круга — оракул лимит-смерти; но… |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:51Z): ВЕТВЬ Б — записать предел, пояса НЕ строить. Место записи — ША… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:52Z): ПРАВИМ. Утверждение снимается, факт остаётся. Ставь dev-core,… |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | dev-core | — | 2026-09-13 | Постановка dev-core: запасная учётка кругу ревью — ветка в claude-review.yml по решению john 2026-0… |

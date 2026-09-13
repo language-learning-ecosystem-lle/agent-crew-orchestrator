@@ -1580,3 +1580,13 @@ feat(thread): парк `run:N` снимается объявлением исх�
 - `checks` — **success**
 
 ⚠️ Голова PR уже сдвинулась (`8458189d2b60f858f01c96d7e2bf0944ff9abf24`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-034 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #383: `success`.**
+
+feat(thread): парк `run:N` снимается объявлением исхода прогона — поле `run-outcome` (тред 188) · голова `8458189d2b60f858f01c96d7e2bf0944ff9abf24` · попытка 1 · прогон [`34762467990`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34762467990)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
