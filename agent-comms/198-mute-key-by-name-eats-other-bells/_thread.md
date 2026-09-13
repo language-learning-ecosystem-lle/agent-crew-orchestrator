@@ -333,3 +333,13 @@ merge; восстановление уже съеденных звонков.
 
 **waiting-on → curator.** Парка не ставлю: `checks` по #419 напишет сам, а метку вешаю я следующим
 тактом. Merge — кнопка john (гард 4).
+
+## msg-005 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #419: `success`.**
+
+fix(notifier): ключ глушения — «имя уведомителя + предмет прогона», а не одно имя (тред 198) · голова `a8495e9cb68a859e1cde99883ab6e7836140462a` · попытка 1 · прогон [`34777448030`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34777448030)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
