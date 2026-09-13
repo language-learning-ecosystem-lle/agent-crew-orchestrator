@@ -728,3 +728,13 @@ feat(review-delivery): курьер снимает чужой парк, чьё �
 - `checks` — **success**
 
 ⚠️ Голова PR уже сдвинулась (`dee8521e63adcd2b2f958b1a48af022869e3a381`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-016 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #384: `success`.**
+
+feat(review-delivery): курьер снимает чужой парк, чьё основание дверь объявила мёртвым (тред 189) · голова `c8d793a3bae6994b3c711ccf41dbb72f5414ced8` · попытка 1 · прогон [`34757394275`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34757394275)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`dee8521e63adcd2b2f958b1a48af022869e3a381`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
