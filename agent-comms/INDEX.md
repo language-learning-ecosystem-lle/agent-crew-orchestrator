@@ -171,7 +171,7 @@
 | 176-daemon-self-restart | github, curator, john | high | closed | — | — | 2026-09-13 | — |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | 382 СМЁРЖЕН моей рукой — squash 14127d030b47a6bf47c6d3e35d00701a2a87c173, 2026-09-13T10:28:03Z, кно… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
-| 179-any-available-account | curator · dev-core · john | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — КНОПКА: смёржить [#380](https://github.com/language-learning-ecosystem-lle… |
+| 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:49Z): #380 СМЁРЖЕН его кнопкой. pilot-codex больше не объявлена рабо… |
 | 180-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-13 | Находка получила дом: 191-watcher-run-may-never-start, парк на john, вопрос первой строкой. Перечен… |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | ПОСТАНОВКА dev-core, ДВА PR, (а) ПЕРВЫМ И ДО КОНЦА. Класс один: план в режиме «только доклад» обяза… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
