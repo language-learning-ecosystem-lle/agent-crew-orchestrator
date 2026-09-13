@@ -505,23 +505,44 @@ export const selfRestartVerdict = (input: {
   readonly attempts: number;
   readonly ceiling: number;
 }): SelfRestartVerdict => {
-  // ONE ROLE IS ONE LIVE SESSION — a role holds one session by construction, so two entries
-  // naming the same role are two spellings of one fact and not two waits (thread 168: the
-  // drain line said `(curator, curator/160-…)` and a reader counted two). The key is the
-  // ROLE and the last write wins, which is what makes the lease's `role/thread` beat the
-  // bare name where both exist: the pair is the more informative of the two. A `Map` keeps
-  // the insertion order, so the running roles still come first and only leases nobody is
-  // running are appended. THE LENGTH IS UNTOUCHED WHERE IT DECIDES: the set of role keys is
-  // empty exactly when both inputs are, so `live.length > 0` below judges as it judged.
-  const live = [
-    ...new Map<string, string>([
-      ...input.running.map((role): [string, string] => [role, role]),
-      ...input.openLeases.map((lease): [string, string] => [
-        lease.role,
-        `${lease.role}/${lease.thread}`,
-      ]),
-    ]).values(),
-  ];
+  // ONE SESSION IS NAMED ONCE — and a session is a PAIR, not a role (thread 177). Two
+  // entries naming the same pair are two spellings of one fact and not two waits (thread
+  // 168: the drain line said `(curator, curator/160-…)` — one live session, named twice,
+  // and a reader of the log counting two). So the key is the PAIR where there is one and
+  // the bare role only where there is not.
+  //
+  // IT USED TO BE THE ROLE, and that key was a true premise until this thread took it away:
+  // while the workspace was one per role (R17) a role held one session by construction, so
+  // collapsing by role collapsed by session. Since `parallelism.pairsPerRole` a role holds
+  // up to N, and the role key made the N of them ONE entry with the last write winning —
+  // measured on this box 2026-09-13T10:52:58Z, where `dev-core×177-workspace-per-pair` and
+  // `dev-core×189-dead-park-eats-the-verdict` were both live and the drain line named only
+  // the second. The line is what tells an operator how much of the wait is left, so naming
+  // one of two sessions says the restart is one ending away when it is two.
+  //
+  // The running roles still come first and only leases nobody is running are appended; a
+  // running role with leases open is said BY THOSE LEASES, the pair being the more
+  // informative of the two. THE LENGTH IS UNTOUCHED WHERE IT DECIDES: the list is empty
+  // exactly when both inputs are, so `live.length > 0` below judges as it judged.
+  const leasesOf = new Map<string, string[]>();
+  for (const lease of input.openLeases) {
+    const said = leasesOf.get(lease.role) ?? [];
+    said.push(`${lease.role}/${lease.thread}`);
+    leasesOf.set(lease.role, said);
+  }
+  const named = new Set<string>();
+  const live: string[] = [];
+  const name = (entry: string): void => {
+    if (named.has(entry)) return;
+    named.add(entry);
+    live.push(entry);
+  };
+  for (const role of input.running) {
+    const pairs = leasesOf.get(role);
+    if (pairs === undefined) name(role);
+    else for (const pair of pairs) name(pair);
+  }
+  for (const pairs of leasesOf.values()) for (const pair of pairs) name(pair);
   if (input.stopping)
     return {
       kind: "stand",
