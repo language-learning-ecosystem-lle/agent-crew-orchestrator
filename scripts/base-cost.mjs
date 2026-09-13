@@ -48,6 +48,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { describePolicySkew } from "../packages/agent-protocol/src/config/policy.ts";
 import { loadProtocolConfig } from "../packages/agent-protocol/src/index.ts";
 import { buildLaunchPrompt } from "../packages/agent-protocol/src/orchestrator/launch.ts";
 
@@ -216,36 +217,94 @@ function fileAt(path, ts) {
 
 const CONFIG_PATH = "agent-protocol.json";
 const configCache = new Map();
+/** Ревизии конфига, о которых вывод обязан сказать строкой: перекос версии и отказы по данным. */
+const configSkew = new Map(); // sha → вердикт версии (печатается словами самой двери)
+const configRefusal = new Map(); // sha → {rev, reason, ticks}
+
 /**
- * Конфиг и раскладка «роль → путь карточки» на момент `ts`; `null` — конфига тогда ещё не было.
+ * Конфиг и раскладка «роль → путь карточки» на момент `ts`; `null` — конфига тогда ещё не было
+ * либо ревизия не прочиталась (причина записана и печатается, такт гасится).
  *
- * Читается САНКЦИОНИРОВАННОЙ дверью пакета — `loadProtocolConfig` с явным `ref`. Ни живым
- * рабочим деревом, ни `git show` мимо пакета: и то и другое критерий 10 называет в одном
- * перечислении, а перекос у них один — роль или путь её карточки, дописанные в фиче-ветке или
- * изменённые за окно, выглядели бы действующими всё окно назад.
+ * Читается САНКЦИОНИРОВАННОЙ дверью пакета — `loadProtocolConfig` с явным `ref`, и только ею. Ни
+ * живым рабочим деревом, ни `readFileSync`/`git show` мимо пакета: и то и другое критерий 10
+ * `REVIEWER.md` называет в одном перечислении, а перекос у них один — роль или путь её карточки,
+ * дописанные в фиче-ветке или изменённые за окно, выглядели бы действующими всё окно назад.
  *
- * `intent` — умолчательный `data`: нужны и пути карточек, и поля почты для `buildLaunchPrompt`,
- * а `policy` вторых не отдаёт намеренно. Версионный гейт на этом окне не срабатывает — замерено:
- * `protocolVersion` во ВСЕХ ревизиях конфига окна равен 25. Окно, пересекающее бамп версии,
- * дверь остановит по имени; это громкий отказ, а не тихое неверное число (см. «непокрытое» в доке).
+ * `intent: "policy"`, а НЕ умолчательный `data` (тред `190-base-cost-dies-on-an-older-schema`).
+ * Прибор — исторический читатель: он играет вчерашний такт и не читает и не пишет НИ БАЙТА данных
+ * протокола, а версионный гейт `data` отвечает ровно на вопрос «можно ли данные этой формы читать
+ * и писать» — вопрос, которого прибору задавать не нужно. С `data` каждый бамп схемы обнулял всю
+ * историю прибора: бампы v26 (`f9562234c`) и v27 (`2f17b9cd1`) отрезали его от всего, что раньше
+ * 2026-09-09, а окно короче примерно четырёх суток вырождает подгонку — прибор умирал ровно там,
+ * где нужен. `policy` — дверь для чужой ревизии, и она отвечает на обеих сторонах бампа: и
+ * `behind`, и `ahead` (отставший чекаут) читаются одинаково, перекос ПЕЧАТАЕТСЯ словами самой
+ * двери и не фатален. Отказ у неё остаётся — но отказ ПО ДАННЫМ: нет `roles`, нет
+ * `protocolVersion`, уехала форма карточек. Такой отказ гасит такт по имени (см. ниже), а не
+ * подставляет сегодняшний конфиг вчерашнему такту.
+ *
+ * Три поля почты форма `policy` не ОБЕЩАЕТ — она проверяет роли, зоны и пути карточек. Приезжают
+ * они тем же loose-проходом, каким `policy` пропускает ключи чужой версии, и берутся из него
+ * ГРОМКО (`mailOf`): каждое названо, проверено строкой и, не прочитавшись, гасит такт по имени.
+ * Читать их вторым, сырым чтением файла было бы прямым чтением `agent-protocol.json` мимо пакета —
+ * ровно то, что критерий 10 называет красным, и обещание доки «прямого чтения в скрипте нет».
  *
  * Кеш по sha ревизии: тактов сотни, а ревизий конфига за окно единицы.
  */
 function configAt(ts) {
   const rev = historyOf(CONFIG_PATH).find((c) => c.ts <= ts);
   if (!rev) return null;
-  if (!configCache.has(rev.sha)) {
+  if (!configCache.has(rev.sha)) configCache.set(rev.sha, readConfigRevision(rev));
+  const at = configCache.get(rev.sha);
+  if (!at) configRefusal.get(rev.sha).ticks += 1;
+  return at;
+}
+
+/** `{cardPathOf, mail}` ревизии конфига; `null` — ревизия не прочиталась, причина уже записана. */
+function readConfigRevision(rev) {
+  const refuse = (reason) => {
+    configRefusal.set(rev.sha, { rev, reason, ticks: 0 });
+    return null;
+  };
+  let loaded;
+  try {
     // `fetch: false` — сказано вслух, как требует дверь: ходим по конкретным sha, сеть не нужна.
-    // Отказ версионного гейта НЕ глушится: пусть падает с названной причиной, а не считает молча.
-    const { config } = loadProtocolConfig({ repo: REPO, ref: rev.sha, fetch: false });
-    const cardPathOf = new Map();
-    for (const r of config.roles ?? []) {
-      const doc = (r.instructions ?? []).find((d) => d.kind === "in-repo" && d.path);
-      if (doc) cardPathOf.set(r.id ?? r.name, doc.path);
-    }
-    configCache.set(rev.sha, { config, cardPathOf });
+    loaded = loadProtocolConfig({ repo: REPO, ref: rev.sha, fetch: false, intent: "policy" });
+  } catch (e) {
+    return refuse(`пути карточек не прочитаны: ${e.message.replace(/\n\s*/g, "; ")}`);
   }
-  return configCache.get(rev.sha);
+  if (loaded.version.state !== "current") configSkew.set(rev.sha, loaded.version);
+  const cardPathOf = new Map();
+  for (const r of loaded.config.roles) {
+    const doc = (r.instructions ?? []).find((d) => d.kind === "in-repo" && d.path);
+    if (doc) cardPathOf.set(r.id, doc.path);
+  }
+  const mail = mailOf(loaded.config);
+  if (typeof mail === "string") return refuse(mail);
+  return { cardPathOf, mail };
+}
+
+/**
+ * Три поля почты — узко и по именам, из конфига, уже прочитанного дверью. Возвращает `mail` для
+ * `buildLaunchPrompt` либо СТРОКУ причины: поле, которого нет или которое не строка, гасит такт по
+ * имени. Умолчания здесь запрещены — подставленный `origin/main` вместо непрочитанного
+ * `orchestrator.ref` и есть то самое тихое неверное число, против которого прибор держится, а
+ * форма `policy` этих полей не обещает, то есть молчать о них нельзя ВДВОЙНЕ.
+ */
+function mailOf(config) {
+  const named = {
+    "orchestrator.mailCheckout": config.orchestrator?.mailCheckout,
+    "mail.dir": config.mail?.dir,
+    "orchestrator.ref": config.orchestrator?.ref,
+  };
+  const lost = Object.entries(named)
+    .filter(([, v]) => typeof v !== "string" || v === "")
+    .map(([k]) => k);
+  if (lost.length > 0) return `поля почты не прочитаны: нет строк ${lost.join(", ")}`;
+  return {
+    command: "node --import tsx packages/agent-protocol/src/cli.ts",
+    root: `${named["orchestrator.mailCheckout"]}/${named["mail.dir"]}`,
+    ref: named["orchestrator.ref"],
+  };
 }
 
 /**
@@ -344,18 +403,12 @@ function promptPartsAt(tick) {
   if (!path) return null;
   const text = fileAt(path, tick.ts);
   if (text === null) return null;
-  const { config } = at;
-  const mail = {
-    command: "node --import tsx packages/agent-protocol/src/cli.ts",
-    root: `${config.orchestrator?.mailCheckout ?? ""}/${config.mail?.dir ?? "agent-comms"}`,
-    ref: config.orchestrator?.ref ?? "origin/main",
-  };
   const common = {
     role: tick.role,
     thread: tick.thread,
     deadline: tick.ts,
     windDownSeconds: 480,
-    mail,
+    mail: at.mail,
   };
   const withCard = buildLaunchPrompt({ ...common, instructions: [{ path, text }] });
   const bare = buildLaunchPrompt({ ...common, instructions: [] });
@@ -446,9 +499,61 @@ const CUT = 20_000;
 const fitRows = rows.filter((r) => r.base >= CUT);
 const X = fitRows.map((r) => [1, r.mcpTools, r.template + r.card, r.mem]);
 const y = fitRows.map((r) => r.base);
+
+/**
+ * Что случилось с ревизиями конфига окна — ОДНИ И ТЕ ЖЕ строки и в отчёте, и в отказе.
+ *
+ * В отказе они обязательны: погасив такты, прибор обязан сказать, ЧЕМ он их погасил, а не умереть
+ * стеком в подгонке. Именно это и случилось в пробе — строки стояли после подгонки, и на пустом
+ * наборе прогон падал в `ols` раньше, чем успевал назвать причину.
+ */
+function configNotes() {
+  const notes = [];
+  // Дверь `policy` проходит любую версию и ПЕЧАТАЕТ перекос вместо отказа. Молчать об этом нельзя:
+  // ревизия другой версии читается в обе стороны (`behind` — бамп, уже легший в `main`; `ahead` —
+  // отставший чекаут), и читатель обязан видеть, какие именно. Одной строкой, а не строкой на
+  // ревизию: фраза у них одна, и семь её копий — шум, а не громкость.
+  if (configSkew.size > 0) {
+    const byVersion = new Map();
+    for (const [sha, v] of configSkew) {
+      if (!byVersion.has(v.declared)) byVersion.set(v.declared, []);
+      byVersion.get(v.declared).push(sha.slice(0, 8));
+    }
+    const [[firstSha, firstVerdict]] = configSkew;
+    notes.push(
+      `Ревизий конфига ДРУГОЙ версии в окне: ${configSkew.size} (пакет пишет ` +
+        `${firstVerdict.supported}) — ` +
+        [...byVersion].map(([v, shas]) => `v${v}: ${shas.join(", ")}`).join("; ") +
+        `. Дверь \`policy\` их не отказывает и перекос называет сама: «` +
+        `${describePolicySkew({ ref: firstSha.slice(0, 8), version: firstVerdict })}».\n`,
+    );
+  }
+  // Ревизия, не прочитанная ПО ДАННЫМ, не подменяется сегодняшней: такты гасятся и названы здесь.
+  for (const { rev, reason, ticks } of configRefusal.values())
+    notes.push(
+      `**Ревизия конфига ${rev.sha.slice(0, 8)} (${rev.ts}) НЕ ПРОЧИТАНА** — ${reason}. ` +
+        `Такты на ней исключены из подгонки и свёртки: ${ticks}.\n`,
+    );
+  return notes;
+}
+
+if (fitRows.length === 0) {
+  console.error(
+    [
+      `base-cost: считать нечего — ни один такт окна (с ${SINCE}) не дал всех составляющих` +
+        ` (тактов с ценой в журнале: ${leases.length}, с лентой и составляющими: ${rows.length}).`,
+      ...configNotes(),
+    ].join("\n"),
+  );
+  process.exit(1);
+}
 const fit = ols(X, y);
 if (!fit) {
-  console.error("подгонка не сошлась — система вырождена");
+  console.error(
+    [`подгонка не сошлась — система вырождена (тактов в подгонке: ${fitRows.length})`]
+      .concat(configNotes())
+      .join("\n"),
+  );
   process.exit(1);
 }
 const [alpha, beta, gamma, delta] = fit.coef;
@@ -461,6 +566,8 @@ console.log(
   `Подгонка на ${fitRows.length} тактах со свежим промптом (${rows.length - fitRows.length} ` +
     `продолжений R18 отброшены: карточка им не пересылается).\n`,
 );
+
+for (const note of configNotes()) console.log(note);
 
 // Шаблон промпта — единственная составляющая, взятая не с ревизии такта. Число, не назвавшее свою
 // ревизию, чужой рукой не перепроверяется, а именно это дока обещает первой строкой.
