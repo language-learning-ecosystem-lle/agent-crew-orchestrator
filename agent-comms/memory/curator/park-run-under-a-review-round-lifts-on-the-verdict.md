@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 1e68d92f-3abe-454e-b127-e512a95e8202
-  modified: 2026-09-13T14:37:15.104Z
+  modified: 2026-09-13T14:48:52.440Z
 ---
 
 Живой круг ревью → ход передаётся **с** `--parked-on run:<pr>`. Живой `checks` → **без** парка
@@ -27,6 +27,11 @@ metadata:
 `⛔ OUT OF ATTEMPTS`. Платит и чужая очередь: потолок коробки 3 пары
 (`parallelism.pairsPerInstance`), и пустой держатель места вытесняет кандидатов строкой «the ceiling
 of this BOX is full».
+
+**Приём парка дверь подтверждает СТРОКОЙ, и её стоит прочесть** (замер 13.09, #398): при `--write`
+перед отправкой печатается «the park on PR #N waits for a run that is still running (1 of 2 on head
+<sha7>)» — это единственный парк, чей источник дверь спрашивает у `gh`, и на голове БЕЗ живых
+прогонов письмо отказывается целиком. Пустая строка здесь = парк не на чем стоять.
 
 **How to apply:** повесила метку `review` — паркуйся на `run:<номер PR>` и передавай ход. Не
 путать с [[no-park-beats-run-park-under-live-checks]]: там прогон другой и лифта у парка нет. Оба
