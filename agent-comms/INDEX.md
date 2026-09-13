@@ -171,7 +171,7 @@
 | 176-daemon-self-restart | github, curator, john | high | closed | — | — | 2026-09-13 | — |
 | 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
-| 179-any-available-account | curator · dev-core · john | high | open | curator | run:395 · 2026-09-13 | 2026-09-13 | Оба отказа сняты: сырой NUL в исходнике и расхождение с базой. CI зелен на 535194a, метка повешена,… |
+| 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-13 | verdict: approve |
 | 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #397: success. |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-13 | verdict: approve |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
