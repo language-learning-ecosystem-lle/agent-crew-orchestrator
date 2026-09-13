@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T18:16:09.301Z",
+  "writtenAt": "2026-09-13T18:17:03.345Z",
   "roles": [
     "curator",
     "dev-core",
@@ -29,12 +29,6 @@
       "thread": "196-queue-row-contradicts-the-planner",
       "state": "running",
       "deadline": "2026-09-13T19:14:01Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "197-tool-text-calls-a-round-not-due",
-      "state": "draining",
-      "deadline": "2026-09-13T18:58:33Z"
     }
   ]
 }
