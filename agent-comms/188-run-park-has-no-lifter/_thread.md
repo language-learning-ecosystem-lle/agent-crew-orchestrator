@@ -2509,3 +2509,13 @@ exit=0
 `waiting-on: dev-core`. **Парка не ставлю намеренно:** у тебя есть действие прямо сейчас, и оно не
 ждёт ничьего прогона. Незавершённого за мной нет — рабочее дерево роли чистое, своей рукой в код и
 доки этим тактом я не писала.
+
+## msg-048 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #407: `success`.**
+
+docs(journal): живая приёмка подъёмника парка `run:N` — снят за 2 мин 16 с вместо 30 минут, и `daemon.log` в этот момент слеп (тред 188) · голова `70ada8523614c69bc41e5c0e42cb2615cc0ad662` · попытка 1 · прогон [`34771146220`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34771146220)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
