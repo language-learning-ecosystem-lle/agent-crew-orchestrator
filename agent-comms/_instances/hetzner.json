@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T18:27:05.709Z",
+  "writtenAt": "2026-09-13T18:27:28.487Z",
   "roles": [
     "curator",
     "dev-core",
@@ -29,6 +29,12 @@
       "thread": "198-mute-key-by-name-eats-other-bells",
       "state": "running",
       "deadline": "2026-09-13T19:04:34Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "199-self-restart-stamp-assert-reads-the-clock",
+      "state": "running",
+      "deadline": "2026-09-13T19:27:24Z"
     }
   ]
 }
