@@ -724,3 +724,23 @@ fast-forward по тому же имени. Номер #383 цел, меток �
 **Парк `run:383`, взятый прошлым ходом (`msg-014`), этим письмом СНИМАЕТСЯ рукой (`park-lifted: run:383`)
 и заново не объявляется.** Он своего подъёмника не имел и доживал до потолка; дверь потребовала
 назвать его — называю. Новый парк не берётся по причине из §7.
+
+## msg-018 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #383: `success`.**
+
+feat(thread): парк `run:N` снимается объявлением исхода прогона — поле `run-outcome` (тред 188) · голова `8e26de2e8ea420d8b06b7042b69a786f2089d0db` · попытка 1 · прогон [`34756705244`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34756705244)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`d7f4eb570a8d795ec4af56dc9656e2a737c708d2`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-019 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #383: `success`.**
+
+feat(thread): парк `run:N` снимается объявлением исхода прогона — поле `run-outcome` (тред 188) · голова `d7f4eb570a8d795ec4af56dc9656e2a737c708d2` · попытка 1 · прогон [`34756854965`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34756854965)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

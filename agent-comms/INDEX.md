@@ -169,10 +169,10 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | high | closed | — | — | 2026-09-13 | — |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-13 | 391 СМЁРЖЕН — squash в main, коммит f7e1483cf1a26c204b39487947db5b40c94f160d, 12:16:30Z; гарды поим… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-13 | ✅ checks по PR #393: success. |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: пересматривать ли, КТО сидит на узкой учётке. Выбор «curator → shik-main, d… |
-| 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-13 | Звонок разобран: круг ревью умер ЛИМИТОМ АККАУНТА (ресет 13:40Z, цена ноль). Три красных письма за… |
+| 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #392: success. |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | run:386 · 2026-09-13 | 2026-09-13 | Второй конфликт того же рода на #386 снят — голова 7caf0390ee5e9ceb4581a06b294d12b0011c3f9f, |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — КНОПКА MERGE #378. Вердикт approve приехал, все три машинно проверяемых га… |
@@ -181,7 +181,9 @@
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 187-journal-rides-along | curator · dev-core · john | normal | open | curator | run:389 · 2026-09-13 | 2026-09-13 | Предмет треда 187 исполнен обеими половинами и обе в main. Хвост, который назвало моё прошлое письм… |
-| 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | Второй разрыв #383 закрыт склейкой (ff-push, номер цел) — голова d7f4eb570, mergeable: MERGEABLE. Ж… |
+| 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #383: success. |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | run:384 · 2026-09-13 | 2026-09-13 | База уехала ВТОРОЙ раз (#387), #384 снова склеен: голова e6db1af21, MERGEABLE, прогон 34755325660 |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: перезапускать круг ревью по #379 ПОСЛЕ ресета лимита (13:40Z) — снять и пов… |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:51Z): ВЕТВЬ Б — записать предел, пояса НЕ строить. Место записи — ША… |
+| 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: письмо смотрителя утверждает потерю, которой не мерило, — снять ли утвержде… |
+| 193-reviewer-token-account-unreadable | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: чей аккаунт держит токен ревьюера и нужен ли кругу ревью фолбэк — сегодня к… |
