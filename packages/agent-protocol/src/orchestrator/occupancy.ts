@@ -51,7 +51,13 @@ export type ParkSpan = {
 export type OccupancyRow = {
   readonly role: string;
   readonly busyMinutes: number;
-  /** `busyMinutes / windowMinutes`, 0…1. The window is the same for every role. */
+  /**
+   * `busyMinutes / windowMinutes`. The window is the same for every role — but the share is NOT
+   * capped at 1 and must not be read as "the part of the window this role was occupied for":
+   * `parallelism.pairsPerRole` lets one role hold N leases at once, and a role that ran two pairs
+   * side by side through the whole window is honestly 200 % — minutes WORKED over the window, not
+   * the occupancy of one slot. Capping it would hide exactly the thing this number is asked for.
+   */
   readonly share: number;
   readonly sessions: number;
 };
@@ -98,37 +104,56 @@ const WINDOW_FROM_JOURNAL =
   "the running process began carrying its code and NOT at the merge that changed it (§6.4)";
 
 /**
- * WHEN EACH ROLE HELD A LEASE, as closed spans — the same walk the courier does over the same
- * journal (`cli.ts`, the `notify` fold): one slot per role, a lease still open at the end of the
- * file is that role's live session and is closed at `now`, and a release with no acquisition
- * names no span at all.
+ * WHEN EACH ROLE HELD A LEASE, as closed spans — the walk the courier does over the same journal,
+ * and it is THIS function the courier calls (`cli.ts`, the `notify` fold), not a copy of it: a
+ * lease still open at the end of the file is a live session and is closed at `now`, a release
+ * with no acquisition names no span at all.
+ *
+ * THE OPEN LEASES ARE KEYED BY THE PAIR, NOT BY THE ROLE (thread `177-workspace-per-pair`). The
+ * premise this walk used to stand on — "one slot per role, so the spans of a role do not
+ * overlap" — was true while R17 gave a role one workspace and died with `parallelism.pairsPerRole`:
+ * a role may hold N live leases at once, and a role key keeps the LAST of them. Measured on the
+ * box's own journal, `2026-09-13T11:10Z`, `dev-core` holding two pairs: the walk paired the
+ * acquisition of one session with the release of ANOTHER, lost the live third, counted a real
+ * release as dropped, and reported 18.3 busy minutes where the journal holds 51.9. A span that
+ * pairs two different sessions is not a smaller number, it is a made-up one.
+ *
+ * So the spans of ONE ROLE MAY NOW OVERLAP, and both consumers are built for it: {@link foldDay}
+ * sums minutes worked (see {@link OccupancyRow.share}) and `freeTailMinutes` takes the end of the
+ * last blocking span, never their sum.
  *
  * The dropped releases are COUNTED as they are skipped. That is the difference between this walk
- * and the courier's: the courier judges one pair and a missing span only makes it more likely to
- * ring, while a report that eats them silently reports a box less busy than it was.
+ * and the courier's reading of it: the courier judges one pair and a missing span only makes it
+ * more likely to ring, while a report that eats them silently reports a box less busy than it was.
  */
 export const leaseSpans = (
   events: readonly OrchestratorEvent[],
   now: Date,
 ): { spans: { role: string; from: string; to: string }[]; dropped: number } => {
   const spans: { role: string; from: string; to: string }[] = [];
-  const open = new Map<string, string>();
+  // The separator is written as an ESCAPE and never typed — the same key `metrics` and the
+  // metrics cache pair their leases by, for the same reason (a control byte in a source file
+  // makes git call it binary).
+  const pairOf = (event: { role: string; thread: string }): string =>
+    `${event.role}\u0000${event.thread}`;
+  const open = new Map<string, { role: string; from: string }>();
   let dropped = 0;
   for (const event of events) {
     if (event.kind === "lease-acquired") {
-      open.set(event.role, event.ts);
+      open.set(pairOf(event), { role: event.role, from: event.ts });
       continue;
     }
     if (event.kind !== "lease-released") continue;
-    const from = open.get(event.role);
-    if (from === undefined) {
+    const held = open.get(pairOf(event));
+    if (held === undefined) {
       dropped += 1;
       continue;
     }
-    open.delete(event.role);
-    spans.push({ role: event.role, from, to: event.ts });
+    open.delete(pairOf(event));
+    spans.push({ role: event.role, from: held.from, to: event.ts });
   }
-  for (const [role, from] of open) spans.push({ role, from, to: now.toISOString() });
+  for (const [, held] of open)
+    spans.push({ role: held.role, from: held.from, to: now.toISOString() });
   return { spans, dropped };
 };
 
