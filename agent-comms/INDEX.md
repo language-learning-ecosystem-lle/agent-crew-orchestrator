@@ -172,7 +172,7 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-13 | ✅ checks по PR #393: success. |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: пересматривать ли, КТО сидит на узкой учётке. Выбор «curator → shik-main, d… |
-| 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #392: success. |
+| 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | PR #392 (docs(journal): красный прогон уведомителя — не доказательство потерянного письма (тред 180… |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | run:386 · 2026-09-13 | 2026-09-13 | Второй конфликт того же рода на #386 снят — голова 7caf0390ee5e9ceb4581a06b294d12b0011c3f9f, |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — КНОПКА MERGE #378. Вердикт approve приехал, все три машинно проверяемых га… |
@@ -181,7 +181,7 @@
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 187-journal-rides-along | curator · dev-core · john | normal | open | curator | run:389 · 2026-09-13 | 2026-09-13 | Предмет треда 187 исполнен обеими половинами и обе в main. Хвост, который назвало моё прошлое письм… |
-| 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #383: success. |
+| 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | PR #383 no longer applies to its base — and nothing announced it. |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | run:384 · 2026-09-13 | 2026-09-13 | База уехала ВТОРОЙ раз (#387), #384 снова склеен: голова e6db1af21, MERGEABLE, прогон 34755325660 |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: перезапускать круг ревью по #379 ПОСЛЕ ресета лимита (13:40Z) — снять и пов… |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:51Z): ВЕТВЬ Б — записать предел, пояса НЕ строить. Место записи — ША… |

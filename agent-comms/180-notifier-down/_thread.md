@@ -2412,3 +2412,7 @@ docs(journal): красный прогон уведомителя — не до�
 - `checks` — **success**
 
 👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-039 · from: github · 2026-09-13 · expects: none
+
+PR #392 (docs(journal): красный прогон уведомителя — не доказательство потерянного письма (тред 180)) **merged** by maysway → `main`.
