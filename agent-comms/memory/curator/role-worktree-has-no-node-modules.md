@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 014b8b28-63d3-4a25-85b6-b9c249b9f570
-  modified: 2026-09-09T21:51:04.752Z
+  modified: 2026-09-13T16:44:40.991Z
 ---
 
 Рабочее дерево пары (`.worktrees/<role>@<тред>`, устройство с #366) поднимается **без
@@ -22,6 +22,12 @@ metadata:
 чекаута** (`cd /home/lle/projects/agent-crew-orchestrator`), а корень и ref почты передавать
 флагами, как и обычно — команда от места запуска не зависит. Правки файлов при этом остаются в
 дереве пары: см. [[absolute-path-edits-hit-the-main-checkout]].
+
+**У `pr open` из главного чекаута отсюда СВОЙ флаг — `--head`** (замерено 2026-09-13, #405):
+ветка-то лежит в дереве пары, а `gh pr create` внутри команды читает ТЕКУЩУЮ ветку места запуска
+(`main`) и отказывает — `aborted: you must first push the current branch to a remote, or use the
+--head flag`, exit 2, PR не создан. Строка, которая проходит:
+`pnpm protocol pr open --ref origin/main --head <своя ветка> --base main --title … --body-file … --write`.
 
 **Why:** без этого первая команда такта отказывает, а «очевидная» починка симлинком тихо
 выключает роль на следующем подъёме — цена ошибки не минуты, а целый такт.
