@@ -1913,3 +1913,13 @@ Measured by the watchman on the head `2673aa299427fe0529beb931d6acc8ce59fb30ce`:
 Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
 
 This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
+
+## msg-045 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #395: `success`.**
+
+fix(orchestrator): переезд учётки звонит на переход, а не каждым тактом (тред 179) · голова `535194ade1c159f457662aa7e57a15371e53b5df` · попытка 1 · прогон [`34763785852`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34763785852)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
