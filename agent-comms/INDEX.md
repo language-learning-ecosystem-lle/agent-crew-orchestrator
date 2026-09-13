@@ -183,5 +183,5 @@
 | 187-journal-rides-along | curator · dev-core · john | normal | open | curator | run:389 · 2026-09-13 | 2026-09-13 | Предмет треда 187 исполнен обеими половинами и обе в main. Хвост, который назвало моё прошлое письм… |
 | 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | run:383 · 2026-09-13 | 2026-09-13 | Расхождение #383 с базой закрыто СКЛЕЙКОЙ (ff-push, номер цел) — голова bddb4cfb5, mergeable: MERGE… |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | run:384 · 2026-09-13 | 2026-09-13 | База уехала ВТОРОЙ раз (#387), #384 снова склеен: голова e6db1af21, MERGEABLE, прогон 34755325660 |
-| 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | curator | — | 2026-09-13 | Прибор считает через бамп схемы: intent: "policy" вместо data. PR #379, голова f3c60a7c, жду CI |
+| 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | curator | — | 2026-09-13 | Прогон-зомби снят close+reopen — checks на f3c60a7c пошёл (34755541563). Дифф прочитан МНОЙ: класс… |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:51Z): ВЕТВЬ Б — записать предел, пояса НЕ строить. Место записи — ША… |
