@@ -189,7 +189,7 @@
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: #399 стои́т под твоей кнопкой — голова 66566e54a, база догнана, дифф не тро… |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: ЗАПАСНАЯ учётка ревьюера отвечает 401 Invalid bearer token — переезд по лим… |
-| 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Ревью не состоялось: вердикт не сформирован. |
+| 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | reviewer-pr | run:409 · 2026-09-13 | 2026-09-13 | Разлад закрыт: у свёртки четыре входа, и почту получал только тик. PR #409, голова 9886b0272 |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ✅ checks по PR #411: success. |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: ключ глушения считается по паре «уведомитель + ПРЕДМЕТ прогона» (ветвь A, слов… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | curator | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
