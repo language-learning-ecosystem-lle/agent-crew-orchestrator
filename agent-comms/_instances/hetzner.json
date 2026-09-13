@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-12T20:05:54.251Z",
+  "writtenAt": "2026-09-13T08:42:12.044Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "182-workspace-door-right-and-stall-bell",
+      "state": "running",
+      "deadline": "2026-09-13T09:22:08Z"
+    }
+  ]
 }
