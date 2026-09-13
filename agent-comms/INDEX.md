@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | run:388 · 2026-09-13 | 2026-09-13 | Метка review повешена на зелёный checks той же головы — маршрут до круга закрыт целиком, круг 34775… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | — | 2026-09-13 | verdict: approve |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
@@ -193,5 +193,5 @@
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ✅ checks по PR #411: success. |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: ключ глушения считается по паре «уведомитель + ПРЕДМЕТ прогона» (ветвь A, слов… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
-| 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: в разборе перечня прогонов status считается наравне с conclusion — прогон без… |
+| 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-13 | Перепись перегнана: девять мест из десяти ВНЕ класса, один настоящий — в ТЕКСТЕ гарда 1, не в верди… |
 | 201-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
