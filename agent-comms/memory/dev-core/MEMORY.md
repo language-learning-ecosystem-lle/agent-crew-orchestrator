@@ -28,6 +28,7 @@
 - Число тестов: [перемеряется](test-counts-must-be-remeasured.md) · [дельту объясняет `vitest list`](attribute-a-test-count-delta-with-vitest-list.md) · [предсказанное доказывает ребейз](predicted-test-count-proves-a-rebase.md) — число назвать ДО прогона.
 - [Залогинен ли `gh` — меряется](bare-gh-in-a-session-has-no-login.md) — старый `. secrets.aco.env` рвёт `&&`.
 - [Письмо себе — только `--expects none`](note-to-self-needs-expects-none.md)
+- [`new-message` тред не заводит](new-message-does-not-create-a-thread.md) — только `--ensure-thread <slug>`, и номер выдаёт ОН (угадал 194, вышло 199).
 - Круг ревью: [класс упавшего — в артефакте](failed-review-round-class-lives-in-the-artifact.md) · [парк под кругом умирает с кругом](park-under-a-round-dies-with-the-round.md) — `claude-execution-output.json`; 429 повторяется, ресет ждать своей сессией — и сухо У ВСЕХ PR, часами.
 - [Круг ревью читает СНИМОК почты](review-round-reads-a-snapshot-of-the-mail.md)
 - [Нетронутое тело PR — доказательство](unedited-pr-body-can-be-the-proof.md)
