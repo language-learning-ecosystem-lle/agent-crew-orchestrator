@@ -1270,6 +1270,20 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(direct(contour(), "curator", "--merged-pr", "#127").code).toBe(2);
   });
 
+  // THE FORM OF THE VALUE IS THE SAME ONE, and it is chosen rather than inherited (thread 188):
+  // the field is an ADDRESS, and an address that is not a number addresses nothing. Refused at
+  // the flag, where it can still be retyped — not written and then dropped by the reader.
+  it("--run-outcome is the end of a round, and only a number is one", () => {
+    const contest = contour();
+
+    expect(direct(contest, "curator", "--run-outcome", "400").code).toBe(0);
+    expect(written(contest.root).fields.runOutcome).toBe(400);
+    const refused = direct(contour(), "curator", "--run-outcome", "#400");
+    expect(refused.code).toBe(2);
+    expect(refused.out).toContain("whose round has ended");
+    expect(direct(contour(), "curator", "--run-outcome", "").code).toBe(2);
+  });
+
   it("A PARK ON AN INFORMATIONAL MESSAGE PASSES — the park as a MODE, calling nobody", () => {
     // Refused from 034 until 2026-08-04 (decision of john, thread 023): the refusal rested on
     // such a park being one that informational traffic may lift and one that rings at a human
@@ -2061,6 +2075,76 @@ describe("a letter into a thread that is already parked (thread 058)", () => {
     expect(result.out).toContain("the park is NOT lifted by it");
     expect(result.out).toContain("--park-lifted john");
     expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(2);
+  });
+
+  /** The other park of thread 188: a role waiting out the round of `checks` on its own PR. */
+  const parkOnRun = (contest: { root: string }): void =>
+    writeFileSync(
+      join(contest.root, "016-x", "messages", "2026-09-13T09-03-00Z-dev-core.md"),
+      "---\nfrom: dev-core\ndate: 2026-09-13T09:03:00Z\nexpects: none\nwaiting-on: dev-core\nparked-on: run:400\n---\n\nЖду checks по #400, голова `59b5295`.\n",
+    );
+
+  /**
+   * THE JOINT OF HALF 1 OF THREAD 188, and it is the one a fixture cannot show: the FLAG
+   * `--run-outcome 400` → the CLI → the door → the header on disk → the reader of the feed.
+   * Same road the circuit walks — `ci-outcome.yml` calls exactly this command with exactly this
+   * flag — so the names are proved and not only the mapping (the lesson of 075).
+   */
+  it("THE OUTCOME OF THE ROUND ENDS A run: PARK BY ITS OWN ADDRESS — flag to feed (188)", () => {
+    const contest = contour();
+    parkOnRun(contest);
+
+    const result = asEvent(contest, "--run-outcome", "400");
+
+    // (1) NO NOTE AT ALL: the letter carries what the park waits for, so the door has nothing
+    // to say about a park that this very letter ends.
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("PARKED behind");
+
+    // (2) THE FIELD IS ON DISK, in the header, under the name the reader looks for.
+    const dir = join(contest.root, "016-x", "messages");
+    const landed = parseMessageFile(
+      readFileSync(join(dir, readdirSync(dir).sort().at(-1) as string), "utf8"),
+    );
+    expect(landed.fields.runOutcome).toBe(400);
+
+    // (3) AND THE PARK IS OVER FOR EVERY READER AFTER IT: the ordinary letter that would have
+    // been refused into a standing park goes through with nothing said about one.
+    const next = write(contest, { AGENT_PROTOCOL_WORKER: "claude-code" });
+    expect(next.code).toBe(0);
+    expect(next.out).not.toContain("PARKED behind");
+  });
+
+  it("REGRESSION: another round's number leaves it standing, and the note NAMES the address", () => {
+    const contest = contour();
+    parkOnRun(contest);
+
+    // ONE FIELD APART from the case above — the value, not the presence of the field.
+    const result = asEvent(contest, "--run-outcome", "399");
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("PARKED behind the round running on PR #400");
+    expect(result.out).toContain("the park is NOT lifted by it");
+    // THE SENTENCE THE DOOR ALREADY SAID AND COULD NOT HONOUR (thread 188, §2 of the statement):
+    // it promises a lift "announced by number", and for a `run:` park the only number it named
+    // was a REVIEW verdict, which the outcome of `checks` does not carry. Now it names both.
+    expect(result.out).toContain("--verdict <approve|needs-fixes> --pr 400");
+    expect(result.out).toContain("--run-outcome 400");
+  });
+
+  it("REGRESSION: the same number against a pr: park is NOT its address — the button is", () => {
+    const contest = contour();
+    writeFileSync(
+      join(contest.root, "016-x", "messages", "2026-09-13T09-03-00Z-dev-core.md"),
+      "---\nfrom: dev-core\ndate: 2026-09-13T09:03:00Z\nexpects: none\nwaiting-on: dev-core\nparked-on: pr:400\npark-mover: curator\n---\n\nЖду кнопки по #400.\n",
+    );
+
+    const result = asEvent(contest, "--run-outcome", "400");
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("PARKED behind the merge of PR #400");
+    expect(result.out).toContain("--merged-pr 400");
+    expect(result.out).not.toContain("--run-outcome 400");
   });
 
   /**
