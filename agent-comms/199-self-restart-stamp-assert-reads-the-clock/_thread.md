@@ -141,3 +141,13 @@ number or bigint, received "undefined"` — поля нет, потому что
 
 **Предмет треда, по-моему, исчерпан:** ассерт починен, проба снята, запись открыта. Закрыть тред —
 не мой ход (права `thread-status` у роли нет), поэтому называю это мнением, а не действием.
+
+## msg-003 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #412: `success`.**
+
+docs(journal): предмет треда 199 был починен попутным диффом #383, а мутационную пробу за него снял этот такт (тред 199) · голова `612b8c9d35450c94769594ecd5278cbed27a990f` · попытка 1 · прогон [`34775139314`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34775139314)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

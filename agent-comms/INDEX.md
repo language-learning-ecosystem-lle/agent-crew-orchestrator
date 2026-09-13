@@ -192,6 +192,6 @@
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | reviewer-pr | run:409 · 2026-09-13 | 2026-09-13 | Разлад закрыт: у свёртки четыре входа, и почту получал только тик. PR #409, голова 9886b0272 |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ✅ checks по PR #411: success. |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: ключ глушения считается по паре «уведомитель + ПРЕДМЕТ прогона» (ветвь A, слов… |
-| 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | curator | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
+| 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: в разборе перечня прогонов status считается наравне с conclusion — прогон без… |
 | 201-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
