@@ -180,10 +180,10 @@
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
-| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | run:389 · 2026-09-13 | 2026-09-13 | Предмет треда 187 исполнен обеими половинами и обе в main. Хвост, который назвало моё прошлое письм… |
+| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | Конфликт #389 снят ребейзом: голова 0bf1c93cb25724ef99defbf66233ff10dcd7b604, mergeable=MERGEABLE,… |
 | 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #383: success. |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | — | 2026-09-13 | PR #384 (feat(review-delivery): курьер снимает чужой парк, чьё основание дверь объявила мёртвым (тр… |
-| 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | open | curator | run:398 · 2026-09-13 | 2026-09-13 | Метка review на #398 повешена по зелени; ход передаю С парком run:398 — первое применение правила |
+| 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | open | curator | — | 2026-09-13 | verdict: approve |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:51Z): ВЕТВЬ Б — записать предел, пояса НЕ строить. Место записи — ША… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:52Z): ПРАВИМ. Утверждение снимается, факт остаётся. Ставь dev-core,… |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | dev-core | run:399 · 2026-09-13 | 2026-09-13 | Запасная учётка кругу ревью сделана: PR #399, голова dc1e5449. Метку review не вешал, merge — кнопк… |
