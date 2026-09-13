@@ -33,7 +33,7 @@
 - [Нетронутое тело PR — само доказательство](unedited-pr-body-can-be-the-proof.md)
 - [Повод заметки — не тред рождения](note-cause-is-not-the-birth-thread.md) — нет → `thread:` не писать вовсе.
 - [Письмо в стоячий парк обязано назвать парк](letter-into-a-standing-park-must-name-it.md) — иначе отказ двери; но МАШИННОГО писателя дверь пропускает нотой, парк письма не теряет.
-- [Ручное разрешение конфликта доказывается нулём удалений](manual-conflict-fix-needs-zero-deletions-proof.md) — собирать механически.
+- [Ручное разрешение конфликта доказывается нулём удалений](manual-conflict-fix-needs-zero-deletions-proof.md) — собирать механически; `--numstat` против КАЖДОГО РОДИТЕЛЯ, а если обе стороны дописывают в конец — арифметика строк и байт, названная ДО сборки.
 - [Коммутативность merge — не доказательство целости](commutative-merge-is-not-proof-nothing-was-eaten.md) — блоки побайтово.
 - [Тихая потеря — это неподнятый ход](silent-loss-is-the-unraised-turn.md)
 - [Номер треда уникален, слаг — нет](thread-id-unique-by-number-only.md)
@@ -108,7 +108,7 @@
 - [Свой парк убивает ЧУЖОЙ входящий вердикт](own-park-can-kill-an-incoming-verdict.md) — круг краснеет доставкой, нужен новый.
 - [Убитый прогон сюиты оставляет файл в дереве](killed-suite-leaves-a-file-in-the-tree.md) — `git add -A` унесёт его в коммит.
 - [Конфликт со вторым PR мерится диапазонами `@@`](second-pr-conflict-is-priced-by-hunk-ranges.md) — не именами файлов.
-- [Флак доказывается диффом между головами](flake-is-proven-by-a-diff-between-heads.md) — красное и зелёное на одном коде.
+- [Флак доказывается диффом между головами](flake-is-proven-by-a-diff-between-heads.md) — красное и зелёное на одном коде; локально — полный прогон против ОДИНОЧНОГО файла на той же голове.
 - [Тихий такт роняет строки курьера](quiet-tick-drops-the-courier-lines.md) — «нет строки сторожа» ≠ «сторож молчал».
 - [У `notify.state` нет частичной записи](notify-state-has-no-partial-write.md) — четыре ветки, класс без имени в ветке ею удаляется; тест — веткой доставленного дайджеста.
 - [Класс «полевой дефект» требует фразы АВТОРА о границе нормы](field-defect-class-needs-the-authors-own-boundary-sentence.md) — гард 4 её не заменяет; слать не дожидаясь запроса.
