@@ -93,6 +93,8 @@
 - [Отсутствие тега в перечне ничего не доказывает](tag-suspect-list-is-measured-by-tree.md)
 - [Перенос парка вперёд НЕ заводит потолок заново](carrying-a-park-forward-does-not-restart-its-ceiling.md) — `since` у первого письма; перезаводится снятием ПО ИМЕНИ, хватает ОДНОГО письма.
 - [Общие факты — не общий вызов](shared-facts-have-more-than-one-consumer.md)
+- [Фоновый прогон сюиты хранит только сводку](background-suite-run-keeps-only-its-summary.md) — имя упавшего файла теряется; свой `> /tmp/лог` в той же команде, и `exit code` харнесса врёт.
+- [Тест, пересказывающий чужой литерал, пиньит свою копию](test-that-restates-a-literal-pins-only-its-own-copy.md) — фразу воркфлоу вынимать регэкспом ИЗ yml.
 - [`is-ancestor` против тега реза отказывает ВСЕГДА](is-ancestor-against-a-split-tag-always-fails.md) — мерить тождеством дерева.
 - [Ноль хунков у потребителя не значит «цел»](zero-hunk-consumer-can-still-break.md)
 - [Заказанное мог исполнить ДРУГОЙ тред](order-may-be-executed-by-another-thread.md)
