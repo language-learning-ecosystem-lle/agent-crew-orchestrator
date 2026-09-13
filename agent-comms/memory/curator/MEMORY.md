@@ -131,7 +131,7 @@
 - [Журнал курьера не оракул доставки](courier-journal-is-not-a-delivery-oracle.md) — «звонить не о чем» при 15 письмах: мерь приёмником
 - [Письмо самоперезапуска называет ОТПЕЧАТОК](self-restart-letter-names-the-footprint.md) — «смену исполняемого» с #352 мерит читатель одной командой
 - [Приоритет ставится письмом В СВОЙ тред](priority-is-set-in-the-threads-own-feed.md) — ярус 1 очереди; чужой тред отсюда не поднять, можно понизить СЕБЯ
-- [Безгитовая копия дерева краснит 4 теста](gitless-tree-copy-reddens-four-tests.md) — не дефект; исключается копией чистого `origin/main`
+- [Копия дерева краснит тесты про git](gitless-tree-copy-reddens-four-tests.md) — число задаёт МЕСТО копии (4 вне чекаута, 1 внутри); вывод несёт дельта зелёных
 - [Молчание сторожа мерится доставленным дайджестом](watcher-silence-needs-a-delivered-digest.md) — окно ищут по `telegram: delivered`: 16/16 мерит гейт ПЕЧАТИ, а не обход
 - [Журнал ящика отражает твой же вывод](daemon-log-echoes-your-own-output.md) — греп якорить `^`, иначе `tail -1` врёт
 - [Текст squash — усмотрение curator](squash-text-is-the-curators-call.md) — тело PR не правят, кладут `--subject`/`--body-file` на кнопке
