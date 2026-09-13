@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T11:58:17.790Z",
+  "writtenAt": "2026-09-13T11:58:50.279Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "177-workspace-per-pair",
       "state": "running",
       "deadline": "2026-09-13T12:36:37Z"
+    },
+    {
+      "role": "curator",
+      "thread": "190-base-cost-dies-on-an-older-schema",
+      "state": "running",
+      "deadline": "2026-09-13T12:38:46Z"
     }
   ]
 }
