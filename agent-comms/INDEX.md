@@ -188,9 +188,10 @@
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: снять безусловное утверждение о потере из notifier-watch.yml:296 — остаётся фа… |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: #399 стои́т под твоей кнопкой — голова 66566e54a, база догнана, дифф не тро… |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
-| 195-journal-tail-serializes-work | curator, john | normal | open | curator | — | 2026-09-13 | ✅ checks по PR #408: success. |
-| 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | run:409 · 2026-09-13 | 2026-09-13 | Разлад закрыт: у свёртки четыре входа, и почту получал только тик. PR #409, голова 9886b0272 |
+| 195-journal-tail-serializes-work | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: ЗАПАСНАЯ учётка ревьюера отвечает 401 Invalid bearer token — переезд по лим… |
+| 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ✅ checks по PR #409: success. |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Дополнение к постановке: у случая Б развилок ДВЕ, и вторую я закрывать не вправе |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~17:16Z): ПРАВИМ — ветвь A. Ключ глушения считается по паре «имя уведоми… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | — | 2026-09-13 | Заведено ПЕРВЫМ действием по порядку аварийного класса (тред заводится ДО PR). Повод я |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: в разборе перечня прогонов status считается наравне с conclusion — прогон без… |
+| 201-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
