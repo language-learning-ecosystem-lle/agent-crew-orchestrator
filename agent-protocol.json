@@ -132,7 +132,7 @@
     {
       "id": "pilot-codex",
       "kind": "codex",
-      "status": "active",
+      "status": "paused",
       "wake": {
         "mode": "watch",
         "session": "crew-pilot-codex"
