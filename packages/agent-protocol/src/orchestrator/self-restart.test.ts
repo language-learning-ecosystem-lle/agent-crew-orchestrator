@@ -150,6 +150,34 @@ describe("selfRestartVerdict", () => {
     });
   });
 
+  // 177. THE PREMISE OF THE KEY ABOVE DIED IN THIS THREAD. `parallelism.pairsPerRole` lets
+  // one role hold two live sessions, and while the collapse was keyed by the ROLE the two
+  // of them came out as one entry — measured on the box 2026-09-13T10:52:58Z, where the
+  // drain line named `dev-core/189-dead-park-eats-the-verdict` alone while this very pair
+  // was live beside it. An operator reading it is told the restart is one ending away when
+  // it is two, which is the whole thing the line exists to say.
+  it("names BOTH pairs of one role — a role is no longer one session", () => {
+    const verdict = selfRestartVerdict({
+      ...facts,
+      // The supervisor registry holds bare roles and holds this one twice: both children
+      // are `dev-core`. Neither the duplicate nor the pairs may be lost.
+      running: ["dev-core", "dev-core"],
+      openLeases: [
+        { role: "dev-core", thread: "177-workspace-per-pair" },
+        { role: "dev-core", thread: "189-dead-park-eats-the-verdict" },
+      ],
+    });
+    expect(verdict).toEqual({
+      kind: "drain",
+      target: facts.target,
+      roles: ["dev-core/177-workspace-per-pair", "dev-core/189-dead-park-eats-the-verdict"],
+    });
+    // And the sentence a person actually reads carries both, not a count of them.
+    const said = describeSelfRestartDrain(verdict.kind === "drain" ? verdict.roles : []);
+    expect(said).toContain("dev-core/177-workspace-per-pair");
+    expect(said).toContain("dev-core/189-dead-park-eats-the-verdict");
+  });
+
   it("still drains when a running role has no lease and an orphan lease has no runner", () => {
     // The mixed list: deduplication must not eat either half, and the bare name stays
     // where — and only where — there is no pair to say instead.
