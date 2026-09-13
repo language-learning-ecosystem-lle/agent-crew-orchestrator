@@ -184,4 +184,4 @@
 | 188-run-park-has-no-lifter | curator, dev-core | high | open | curator | — | 2026-09-13 | Половина 1 сделана: поле run-outcome: <pr> — PR #383, голова 815734d4b. Жду checks |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | — | 2026-09-13 | Старт: dev-core берёт постановку §4 — слово john легло, парк снят, ход твой |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | curator | — | 2026-09-13 | Прибор считает через бамп схемы: intent: "policy" вместо data. PR #379, голова f3c60a7c, жду CI |
-| 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: строить ли пояс ВНЕ GitHub Actions под класс «прогон смотрителя не начался… |
+| 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:51Z): ВЕТВЬ Б — записать предел, пояса НЕ строить. Место записи — ША… |
