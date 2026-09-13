@@ -148,5 +148,5 @@
 - [`pr open` даёт 502 при зелёном статусе](pr-open-502-clears-after-a-minute.md) — сверить, что PR не создан, и повторить через минуту той же строкой
 - [Правку запрещённого файла мерят в памяти](forbidden-file-change-measured-in-memory.md) — проба в `/tmp` поверх `git show`: схема, реестр и дверь подъёма отвечают за секунды
 - [Упавший круг краснит гард 2](failed-review-run-reddens-guard2.md) — чек `review=FAILURE` на голове: кнопки нет ни у кого, лечит ОДИН успешный круг
-- [Парк `run:N` отказан у кончившегося круга](run-park-refused-when-the-round-is-over.md) — все прогоны `completed` → ход себе БЕЗ парка и `--expects none`
+- [Парк `run:N` отказан у кончившегося круга](run-park-refused-when-the-round-is-over.md) — все прогоны `completed` → ход себе БЕЗ парка, но подъём через 2 мин: заперт снаружи — парк на ЧЕЛОВЕКЕ
 - [Исход `checks` на PR звонит в тред](pr-checks-outcome-rings-into-the-thread.md) — письмо на КАЖДУЮ голову и на success тоже: зелень руками не ждут
