@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: 605c885b-6f1c-4500-b36c-512bf7a9369f
-  modified: 2026-09-13T10:08:32.571Z
+  modified: 2026-09-13T14:22:26.483Z
 ---
 
 `gh run list -w "Notifier Watch"` за окно: `skipped` = наблюдаемый прогон завершился не отказом, `success` = письмо об отказе отправлено. Значит счёт `199 skipped + 1 success` — это доказательство «отказ в окне ровно один», и оно короче и полнее, чем перебор `CI Outcome`/`Merge Notify`/`Comms Derived`/`Claude PR Review` по отдельности.
@@ -22,5 +22,12 @@ metadata:
 даже не вычислялся, письма нет, а счёт «skipped+success» этих строк не считает ни в одну кучу.
 Поэтому «звонков в окне ноль» доказывается ТОЛЬКО перечнем отказов наблюдаемых — у строки смотрителя
 надо смотреть `status`, а не только `conclusion`.
+
+**А `success` НЕ РАВЕН «письмо отправлено» — перемерено 13.09.2026.** Заглушённый отказ оставляет
+прогон смотрителя ЗЕЛЁНЫМ нарочно («заглушение не отказ»), письма при этом нет. Замер: три `success`
+за пять минут (`34759327001`, `34759533566`, `34759556615`) дали в тред ОДНО письмо — два последних
+заглушены. Значит счёт писем по `success` завышает их число; сколько заглушено, видно только
+`::notice::` в логе самого смотрителя (`gh run view <id> --log | grep ЗАГЛУШЁН`). Подробнее —
+[[mute-key-is-the-notifier-name-not-the-subject]].
 
 Связано: [[failed-review-round-class-lives-in-the-artifact]], [[identical-red-letters-may-be-two-incidents]], [[price-an-open-window-by-the-red-streak]], [[queued-watcher-run-loses-the-alarm]].

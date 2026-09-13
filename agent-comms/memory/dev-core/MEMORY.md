@@ -156,5 +156,6 @@
 - [Курьер зовёт на метку и на ЖУРНАЛЬНОМ PR](courier-calls-for-a-label-on-journal-prs.md) — зов не исполнять, отказ называть вслух.
 - [`origin/main` уезжает посреди такта](origin-main-can-advance-mid-tick.md) — рефы общие с демоном; ревизии склейки брать по `MERGE_HEAD`/SHA; `numstat` видит удаления, а `cmp` блоков — нет → перемеряй БАЗУ, не ищи потерю.
 - [Красный прогон уведомителя не доказывает потери письма](red-notifier-run-does-not-prove-lost-mail.md) — мерить лентой АДРЕСАТА; замер 4 из 4.
+- [Ключ глушения — ИМЯ уведомителя, а не предмет](mute-key-is-the-notifier-name-not-the-subject.md) — окно 900 с ест звонки о ДРУГИХ PR; `success` смотрителя ≠ письмо.
 - [PR с записью журнала голодает против журнальных PR](journal-carrying-pr-starves-against-journal-only-prs.md) — решает ТОТ ЖЕ файл, не «журнальность»; несколько склеек за такт.
 - [`pr open` требует `--ref`, а `--repo` — ПУТЬ](pr-open-needs-ref-and-repo-is-a-path.md) — слаг `owner/name` туда не кладётся.
