@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T12:36:53.926Z",
+  "writtenAt": "2026-09-13T12:39:35.578Z",
   "roles": [
     "curator",
     "dev-core",
@@ -23,12 +23,6 @@
       "thread": "180-selfheal-leaves-the-workspaces-behind",
       "state": "running",
       "deadline": "2026-09-13T13:27:47Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "189-dead-park-eats-the-verdict",
-      "state": "running",
-      "deadline": "2026-09-13T13:27:39Z"
     }
   ]
 }
