@@ -45,7 +45,10 @@ import type { DeliveryMarks } from "../thread/index-doc.js";
 import { parkedOnKind } from "../thread/thread.js";
 import { type AuthShelf, authRefusalRecorded, authShelfAgainst, openAuthShelves } from "./auth.js";
 import {
+  type AccountNews,
+  accountNewsKey,
   accountPauseAlarm,
+  accountResumedAlarm,
   chooseAccount,
   type DeclaredAccount,
   failoverAlarm,
@@ -270,6 +273,28 @@ type Skipped = {
    * be two facts that can disagree about one window.
    */
   readonly accountAlarms?: readonly AccountAlarm[];
+  /**
+   * THE LEDGER OF WHAT HAS ALREADY BEEN ANNOUNCED, HANDED BACK FOR THE NEXT TICK (thread 179).
+   *
+   * A `failover` is an event; the shut window behind it is a STATE, and until 2026-09-13 the
+   * planner rang the event once per reading of the state — 68 identical lines and 63 calls in
+   * forty minutes, most of them naming a raise the box ceiling had already refused that same
+   * tick. The narrowing needs exactly one thing this function does not otherwise have: what the
+   * PREVIOUS tick said. So the caller holds it and hands it back in ({@link TickInput.announced}),
+   * and this is the same ledger after this tick — every window still standing that has been
+   * announced, and nothing else.
+   *
+   * ABSENT MEANS THE LEDGER IS EMPTY — the same shape `cut` and `accountAlarms` use, and the
+   * caller must OVERWRITE with the empty set rather than keep what it holds. That is the one
+   * reading a caller can get wrong here, and it is not a matter of taste: a ledger kept because
+   * the field was missing would hold a window that has already ended, and the return line — said
+   * once and then dropped — would be said again at every tick for as long as the box ran.
+   *
+   * WHICH TICKS MEASURED AT ALL is told by the KIND and not by this field: `halt` and `disabled`
+   * return before the shelves are folded, so they say nothing about accounts and the caller keeps
+   * its ledger across them. Every other kind has read the shelves.
+   */
+  readonly announcedAccounts?: readonly AccountNews[];
 };
 
 /**
@@ -401,6 +426,17 @@ export const planTick = (input: {
    * there nobody is waiting and the sentence would be about the reader.
    */
   readonly accounts?: Readonly<Record<string, DeclaredAccount>>;
+  /**
+   * WHAT THE EARLIER TICKS OF THIS PROCESS HAVE ALREADY ANNOUNCED ABOUT ACCOUNTS (thread 179) —
+   * the ledger this function hands back as {@link TickDecision.announcedAccounts}, given to it
+   * again so a transition can be told from a re-reading of the state behind it.
+   *
+   * ABSENT MEANS "NOTHING HAS BEEN ANNOUNCED", which is what a daemon that has just started
+   * says, and it is the safe direction: the first failover of a fresh process rings, at the
+   * cost of one repeated line per restart. The opposite default — assuming everything standing
+   * was already told — would lose the one event this class exists for.
+   */
+  readonly announced?: readonly AccountNews[];
 }): TickDecision => {
   const maxConsecutive = input.maxConsecutive ?? MAX_CONSECUTIVE_RUNS;
   const held = input.held ?? [];
@@ -441,6 +477,41 @@ export const planTick = (input: {
     if (saidFor.has(role)) return;
     saidFor.add(role);
     accountAlarms.push(...alarms);
+  };
+  // ONE SUBSCRIPTION MOVING IS ONE PIECE OF NEWS, AND IT IS SAID ONCE — not once per tick and
+  // not once per role (thread 179, john's requirement of 2026-09-13 12:46Z). `saidFor` above
+  // already collapsed the threads of one role; what it could not collapse is the ticks, because
+  // a tick has no yesterday. This ledger is that yesterday: the caller hands back what was
+  // announced, and a window already in it is a state being re-read rather than news.
+  //
+  // THE KEY IS THE ACCOUNT AND ITS WINDOW, BY NAME OF THE REQUIREMENT — not the role. A second
+  // account closing is news and rings; the same account closing on a new window is news and
+  // rings; four hundred ticks over one window are one fact.
+  const announced = new Map<string, AccountNews>(
+    (input.announced ?? []).map((news) => [accountNewsKey(news), news]),
+  );
+  /** Announced windows still standing after this tick — the ledger handed back. */
+  const standing = new Map<string, AccountNews>();
+  // THE RETURN IS MEASURED FROM THE SHELVES AND NEVER FROM THE CANDIDATES, and that is not a
+  // detail: the loop below runs only over pairs that have a turn, so a quiet hour with no mail
+  // would otherwise read as "every shelf ended" and ring a return that did not happen. The fold
+  // above is unconditional, so the two transitions are measured by the same instrument.
+  const shelvedNow = new Set(shelves.map(accountNewsKey));
+  for (const [key, news] of announced) {
+    if (shelvedNow.has(key)) {
+      standing.set(key, news);
+      continue;
+    }
+    // THE WINDOW THIS BOX ANNOUNCED HAS ENDED. Said once, here, and then the key is gone: the
+    // next closure of the same account carries a new `until` and is a new piece of news.
+    accountAlarms.push(accountResumedAlarm(news));
+  }
+  /** One line per (account, window), whoever of the roles reaches it first. */
+  const sayNews = (news: AccountNews, alarm: AccountAlarm): void => {
+    const key = accountNewsKey(news);
+    if (standing.has(key)) return;
+    standing.set(key, news);
+    if (!announced.has(key)) accountAlarms.push(alarm);
   };
   // THE CEILINGS THIS TICK COUNTS TO. Read once, before the loop, exactly like the shelves
   // above: a plan whose rule could change between two candidates of one pass would be a
@@ -538,11 +609,17 @@ export const planTick = (input: {
       choice.kind === "failover"
         ? { ...candidate, account: choice.account, failover: { from: choice.from } }
         : candidate;
-    if (choice.kind === "failover")
-      say(candidate.role, [
+    if (choice.kind === "failover") {
+      // THE SWITCH ITSELF IS KEYED BY THE WINDOW THAT CAUSED IT (thread 179) and the refused
+      // links are keyed by the role, and the split is the whole repair: a shut window is one
+      // fact about one subscription however many roles walk into it, while a broken fall-back
+      // is a defect of ONE role's card and is read by whoever is holding that card open.
+      sayNews(
+        { account: choice.from, until: choice.shelf.until, role: candidate.role },
         failoverAlarm({ role: candidate.role, choice }),
-        ...refusalAlarms({ role: candidate.role, refusals: choice.refusals }),
-      ]);
+      );
+      say(candidate.role, refusalAlarms({ role: candidate.role, refusals: choice.refusals }));
+    }
     // THE REFUSED CREDENTIALS SIT BESIDE THE CLOSED WINDOW, and after it: when both are
     // true the window is the fact with a clock on it, and a box that cannot authenticate
     // will say so again the moment the window reopens.
@@ -597,7 +674,10 @@ export const planTick = (input: {
   // Present when there is something to say and absent when there is not — the same shape
   // `cut` uses, and for the same reason: an empty array on every quiet tick is a field
   // that teaches its reader to stop looking at it.
-  const said = accountAlarms.length === 0 ? {} : { accountAlarms };
+  const said = {
+    ...(accountAlarms.length === 0 ? {} : { accountAlarms }),
+    ...(standing.size === 0 ? {} : { announcedAccounts: [...standing.values()] }),
+  };
 
   // A CLOSED WINDOW WITH WORK BEHIND IT IS ITS OWN STATE, not `idle`. The journal record
   // is written against the head of what the shelf refused, once per DARK SPELL of the box
