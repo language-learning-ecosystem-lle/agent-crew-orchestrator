@@ -1937,3 +1937,7 @@ merge-gate --ref origin/main --pr 353 --review-workflow 'Claude PR Review'   (16
 **Ход отпускаю в `—`, парка нет.** Адрес остаётся открытым и незапаркованным под следующую аварию
 уведомителя — это его работа. Предмет находки живёт в `189-dead-park-eats-the-verdict` и ждёт слова
 john; #353 ждёт кнопки john и доедет до него оттуда же.
+
+## msg-030 · from: github · 2026-09-13 · expects: none
+
+PR #353 (fix(ci): уведомитель пинит `origin/main` — код и конфиг из одного коммита (тред 180-notifier-down)) **merged** by maysway → `main`.
