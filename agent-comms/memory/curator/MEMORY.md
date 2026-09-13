@@ -154,3 +154,4 @@
 - [Дверь печатает письма, легшие под твоим](letters-landing-under-yours-are-printed-by-the-door.md) — за время написания лента уехала; парк поверх новой работы запирает чужую пару
 - [Ожидание хода: письмо `waiting-on:` против `launch`](turn-wait-is-mail-letter-joined-with-launch.md) — `handoff-detected` не начало ожидания; сырая медиана переворачивает знак на парках
 - [Красный шаг доставки ≠ недоставленное письмо](delivery-step-failure-is-not-undelivered-mail.md) — push в `comms` отбит, а письмо предыдущего шага в ленте лежит
+- [Сгоревший круг читается записью `result`](burned-round-is-read-in-the-result-record.md) — `num_turns: 1`, `total_cost_usd: 0`, `modelUsage: {}`: полей 429 в логе НЕТ
