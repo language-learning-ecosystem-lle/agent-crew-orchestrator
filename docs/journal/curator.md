@@ -360,7 +360,7 @@ one box are live», пока `187` не кончилась `exited-without-hando
 `orchestrator run --max-attempts`: сессия, пишущая эту строку, и есть тот запуск.
 
 **Почему это противоречие, а не два разных факта.** Обе печати ключуются на ОДИН флаг:
-строка — `spentCeilings` (`packages/agent-protocol/src/orchestrator/priority.ts:500`,
+строка — `spentCeilings` (`packages/agent-protocol/src/orchestrator/priority.ts:503`,
 `.filter((view) => view.exhausted)`), пропуск — `tick.ts:491` (`if (view?.exhausted)`), причём в
 `tick.ts` проверка `exhausted` стоит ВЫШЕ потолка коробки. Пара, у которой `exhausted === true`, не
 может быть пропущена как `box-busy`, и тем более не может быть запущена.
