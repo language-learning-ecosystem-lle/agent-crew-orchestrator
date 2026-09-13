@@ -860,6 +860,39 @@ describe("guard 1 — the round of review behind the approve (thread 027)", () =
     expect(outcome?.detail).not.toContain("NO workflow at all");
   });
 
+  /**
+   * THE THIRD INPUT OF THE SAME BRANCH, and the one the statement of work did not name —
+   * the finding of the round of 2026-09-13 on #410 (thread 197). `actions/runs` answered
+   * with runs, and not one of them carries a `name`: the head is NOT empty, so the empty
+   * text would be a lie, and there is no list to print, so the naming text would invent
+   * one. The door says which of the two it is and sends the reader to the head by hand —
+   * a second round is the one thing that cannot be prescribed from this payload.
+   */
+  it("(в'') says runs ARE there but nameless, inventing neither an empty head nor a name (197)", () => {
+    const outcome = guard(
+      orphan({
+        state: "read",
+        workflow: REVIEW,
+        runs: [
+          run({ name: undefined, headSha: PUSHED_HEAD }),
+          run({ id: 32534201971, name: undefined, headSha: PUSHED_HEAD }),
+        ],
+      }),
+      1,
+    );
+
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("no round of 'Claude PR Review' is reported for e738643");
+    expect(outcome?.detail).toContain(
+      "2 run(s) ARE reported on it, none of them carrying a workflow name",
+    );
+    expect(outcome?.detail).toContain("read by hand");
+    // Neither of the other two texts of the branch: the head is not empty, and there is
+    // no name to check the flag against.
+    expect(outcome?.detail).not.toContain("NO workflow at all");
+    expect(outcome?.detail).not.toContain("CHECK THE VALUE");
+  });
+
   it("(г) an Actions resource the token cannot read is by-hand with GitHub's own words", () => {
     const outcome = guard(
       orphan({
