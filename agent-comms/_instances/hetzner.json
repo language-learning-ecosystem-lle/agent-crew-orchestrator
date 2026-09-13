@@ -1,21 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T18:38:58.680Z",
+  "writtenAt": "2026-09-13T18:40:17.737Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
-  ],
-  "quota": [
-    {
-      "account": "shik-main",
-      "window": "five_hour",
-      "since": "2026-09-13T16:26:23Z",
-      "role": "curator",
-      "until": "2026-09-13T18:40:00Z",
-      "stated": true
-    }
   ],
   "leases": [
     {
