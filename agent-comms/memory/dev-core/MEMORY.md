@@ -155,3 +155,4 @@
 - [Парк `run:N` на конфликтующий PR отказывает](park-door-refuses-a-conflicting-pr.md) — даровой оракул «ветка разошлась с main»; зелёный `checks` конфликта не называет.
 - [Снятую посылку ищут по КЛЮЧУ СХЛОПЫВАНИЯ](removed-premise-is-found-by-the-collapse-key.md) — затирающий `set(role, …)`; чтение соседей не метод.
 - [Курьер зовёт на метку и на ЖУРНАЛЬНОМ PR](courier-calls-for-a-label-on-journal-prs.md) — зов не исполнять, отказ называть вслух.
+- [`origin/main` уезжает посреди такта](origin-main-can-advance-mid-tick.md) — рефы общие с демоном; ревизии склейки брать по `MERGE_HEAD`/SHA.
