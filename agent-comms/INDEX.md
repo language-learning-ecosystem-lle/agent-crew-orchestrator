@@ -181,7 +181,7 @@
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 187-journal-rides-along | curator · dev-core · john | normal | open | curator | run:389 · 2026-09-13 | 2026-09-13 | Предмет треда 187 исполнен обеими половинами и обе в main. Хвост, который назвало моё прошлое письм… |
-| 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | ❌ checks по PR #383: failure. |
+| 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | checks на #383 покраснел ФЛАКОМ, а не моим диффом — флак починен в этом же PR, голова 52742cd58, жд… |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | run:384 · 2026-09-13 | 2026-09-13 | База уехала ЧЕТВЁРТЫЙ раз (#390, #391, #392), #384 склеен дважды за такт: голова dee8521e6, MERGEAB… |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~13:00Z): ДА — один перезапуск круга после ресета (13:40Z). Парк снят, х… |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:51Z): ВЕТВЬ Б — записать предел, пояса НЕ строить. Место записи — ША… |
