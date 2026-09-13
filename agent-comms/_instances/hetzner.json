@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T14:10:49.499Z",
+  "writtenAt": "2026-09-13T14:10:51.834Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,12 +19,6 @@
       "thread": "189-dead-park-eats-the-verdict",
       "state": "running",
       "deadline": "2026-09-13T14:45:50Z"
-    },
-    {
-      "role": "curator",
-      "thread": "193-reviewer-token-account-unreadable",
-      "state": "draining",
-      "deadline": "2026-09-13T14:46:07Z"
     }
   ]
 }
