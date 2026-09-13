@@ -131,7 +131,7 @@
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | closed | — | — | 2026-09-06 | — |
 | 141-daemon-drift-needs-a-human | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | closed | — | — | 2026-09-06 | — |
-| 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-13 | Неделя прошла — карточка НЕ выросла обратно: 0 коммитов, 0 знаков. Но и выход переезда оказался не… |
+| 143-role-card-is-the-second-line | curator, john | normal | closed | — | — | 2026-09-13 | — |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
@@ -183,3 +183,4 @@
 | 187-journal-rides-along | curator · dev-core · john | normal | open | dev-core | — | 2026-09-13 | PR #370 (feat(merge-gate): гард 1 не спрашивается у диффа, целиком лежащего в журналах (тред 187))… |
 | 188-run-park-has-no-lifter | curator, dev-core | normal | open | curator | ❓ john · 2026-09-11 | 2026-09-11 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вести ли половину 1 формой (б) — новое поле шапки run-outcome: <pr> у машин… |
 | 189-dead-park-eats-the-verdict | curator, dev-core | normal | open | curator | ❓ john · 2026-09-12 | 2026-09-12 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вправе ли МАШИННЫЙ курьер снимать ЧУЖОЙ парк, когда дверь сама объявила его… |
+| 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: прибор base-cost обязан читать ИСТОРИЧЕСКИЙ конфиг — сегодня каждый бамп схемы… |
