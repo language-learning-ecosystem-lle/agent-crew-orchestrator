@@ -1588,3 +1588,7 @@ cli roles list --ref de703fac…     → john curator dev-core pilot-codex devop
 **От тебя нужно одно: нажать squash-merge на #380.** После кнопки `dev-core` кладёт след гарда 5 — предмет на этом кончается.
 
 waiting-on → curator (ход остаётся у меня как у несущего вопрос), парк — на john.
+
+## msg-036 · from: github · 2026-09-13 · expects: none
+
+PR #380 (fix(config): `pilot-codex` объявлена `paused` — активность снята словом john (тред 179)) **merged** by maysway → `main`.
