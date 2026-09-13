@@ -12059,9 +12059,11 @@ const settleRun = (input: {
    * is going to touch that tree, and what it owes the reader is the outcome the real launch
    * would have. The parent of `--detach` writes nothing either, but the launch it is part
    * of does — its child repeats this whole command and prepares the tree under its own
-   * lock. Told apart here, the two can be repaired one at a time: half (а) is the plan's
-   * speech, half (б) is the parent's refusal, and until (б) lands the parent keeps the
-   * behaviour it has today, whole and by name.
+   * lock. Told apart here, the two were repaired one at a time: half (а) gave the plan its
+   * sentence, half (б) took the parent's refusal off the faults the child fixes. What the
+   * flag decides now is not WHETHER the stale build is fatal — it is fatal for neither —
+   * but WHO the line about the levelling names: a launch that would happen, or the child
+   * that is about to.
    */
   readonly background?: boolean;
 }): RunSetup => {
@@ -12185,14 +12187,23 @@ const settleRun = (input: {
       // that does write does its levelling, so there is one site that decides and one site
       // that speaks.
       //
-      // THE SECOND SITUATION IS DECLINED BY NAME AND NOT BY `write` (half (б), not this
-      // diff): the parent of a background launch writes nothing either, and for it the
-      // stale build is still the end of the run, exactly as it was — `input.background` is
-      // what tells the two apart, because `write` cannot.
+      // AND THE SECOND SITUATION IS NO LONGER THE END OF THE RUN EITHER (thread 180, half
+      // (б), john's decision of 2026-09-13 — curator's letter `msg-067`). Until this diff
+      // the line above read `input.background === true || !levelling.install`, and that
+      // clause killed the PARENT of a background launch over a fault its own child repairs
+      // on its way in: the child re-runs this whole command with `--write` and levels the
+      // tree under its own lock, so a parent that refused here refused a launch that would
+      // have gone through. What is left is the borders and nothing else — the same three,
+      // read from the same state, for a plan, for a parent and for a real launch alike.
+      //
+      // THE PARENT STILL PREPARES NOTHING. `write` is false for it by construction
+      // (`write && !detach` at the call site) and that is untouched: the levelling point
+      // below is guarded by `input.write`, so the parent passes THROUGH here, says what the
+      // child will do, and forks. The self-lock the comment at the call site warns about
+      // cannot come back through this line.
       const levelling = mayLevel(true);
-      if (input.background === true || !levelling.install) {
-        if (levelling.install === false && levelling.why !== undefined)
-          lines.push(`levelling — stands aside: ${levelling.why}`);
+      if (!levelling.install) {
+        if (levelling.why !== undefined) lines.push(`levelling — stands aside: ${levelling.why}`);
         return { ok: false, reason: build.reason, lines };
       }
       staleBuild = build.reason;
@@ -12433,8 +12444,20 @@ const settleRun = (input: {
     // would be a real install in a run that promised to touch nothing — so the mode is
     // asked immediately above it, where the reader of the install can see it, rather than
     // a screen away where the borders are read.
+    //
+    // AND THE PARENT OF `--detach` READS THE SAME TWO LINES FOR A DIFFERENT REASON (half
+    // (б), requirement Б4): the fault is named with the door's own words either way, and the
+    // second line says who repairs it — a hypothetical launch for a plan, the child being
+    // forked a screen below for the parent. `background` is the caller's own flag, the one
+    // `write` could not stand in for.
     if (staleBuild !== undefined) lines.push(`package — ${staleBuild}`);
-    lines.push(`levelling — ${describePlannedWorkspaceInstall({ role: role.id, path })}`);
+    lines.push(
+      `levelling — ${describePlannedWorkspaceInstall({
+        role: role.id,
+        path,
+        ...(input.background === true ? { background: true } : {}),
+      })}`,
+    );
   } else if (levelling.install) {
     lines.push(`levelling — ${levelling.note}`);
     const outcome = runWorkspaceInstall({ path, repo });

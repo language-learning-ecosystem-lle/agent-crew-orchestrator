@@ -242,6 +242,21 @@ const run = (
   return { code: result.status ?? 1, out: `${result.stdout ?? ""}${result.stderr ?? ""}` };
 };
 
+/**
+ * A DETACHED CHILD IS NOT THIS PROCESS'S TO LEAVE RUNNING (half (б)). The parent prints the
+ * pid it forked; the group is ended by that number, and a child that is already gone is not
+ * an error here — `ESRCH` means the thing this is for has happened by itself.
+ */
+const reapChild = (output: string): void => {
+  const pid = Number(/went to the background, pid (\d+)/.exec(output)?.[1] ?? "");
+  if (!Number.isInteger(pid) || pid <= 0) return;
+  try {
+    process.kill(-pid, "SIGKILL");
+  } catch {
+    /* already gone */
+  }
+};
+
 describe("the box levels the workspace it issued (thread 180, john 2026-09-12)", () => {
   it("detached, clean, behind → the circuit installs INTO THAT TREE and the launch goes through", () => {
     const repo = contour();
@@ -416,30 +431,89 @@ describe("the box levels the workspace it issued (thread 180, john 2026-09-12)",
   });
 
   /**
-   * THE BORDER OF THIS DIFF, HELD BY A TEST SO THAT IT CANNOT MOVE BY ACCIDENT (thread 180,
-   * half (б) is a separate PR with a LIVE acceptance john asked for). `write` is false for
-   * the parent of a background launch too, and if the plan's repair were keyed on `write`
-   * the parent would have been repaired here, silently and unreviewed. It is keyed on which
-   * situation it is instead, and this case is what says so: the parent's behaviour today is
-   * unchanged, refusal and all. Half (б) changes THIS case on purpose.
+   * HALF (б), AND IT IS THE CASE HALF (а) DELIBERATELY LEFT RED-BY-DESIGN (thread 180, john's
+   * decision of 2026-09-13 — curator's `msg-067`). `write` is false for the parent of a
+   * background launch exactly as it is for a plan, which is why the two had to be told apart
+   * by a flag of their own before either could move. This is the second of them: over a tree
+   * the borders COVER, the parent no longer dies on a fault its own child repairs on the way
+   * in.
+   *
+   * WHAT IS ASSERTED HERE IS EXACTLY WHAT THE PARENT ALONE DECIDES — that it does not refuse
+   * (Б1) and that the terminal keeps both facts (Б4). THE DISK IS DELIBERATELY NOT ASSERTED
+   * IN THIS CASE, and the reason is the subject of the diff rather than a gap in it: the
+   * child is forked for real here, it inherits this test's PATH, and it levels that same tree
+   * on its own clock. A `pnpmCalls(repo)).toEqual([])` beside a live child would be a race
+   * dressed as a measurement — red or green by scheduling. Б2 is measured where it is
+   * measurable: in the border cases below, where the parent refuses and no child exists, and
+   * by the `input.write` guard that the levelling point carries (held by the dry-run cases
+   * above, which share that guard with the parent).
    */
-  it("the PARENT of a background launch is NOT the dry run — it still refuses (half (б) is not this diff)", () => {
-    const repo = contour();
-    const tree = staleWorkspace(repo);
+  for (const flag of ["--detach", "-d"] as const) {
+    it(`the PARENT of a background launch (${flag}) over a COVERED tree → no refusal, and the child levels it`, () => {
+      const repo = contour();
+      staleWorkspace(repo);
 
-    const result = run(repo, pnpmShim(repo, true), ["--write", "--detach"]);
+      const result = run(repo, pnpmShim(repo, true), ["--write", flag]);
+      // The child is a real detached process in its own group: it is ended before anything is
+      // asserted, so that nothing of this case outlives it into the rest of the suite.
+      reapChild(result.out);
 
-    expect(result.code).toBe(2);
-    expect(result.out).toContain(
-      "is not usable: the workspace of 'dev-core' runs 'agent-protocol'",
-    );
-    // Not a word of the plan's new sentence, and no child: this is the defect half (б)
-    // repairs, and it is still here.
-    expect(result.out).not.toContain("a real launch would level");
-    expect(pnpmCalls(repo)).toEqual([]);
-    expect(versionIn(tree)).toBe(BEHIND);
-    expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
-  });
+      // Б1: the launch is not ended here. The defect half (б) closes is exactly this exit 2.
+      expect(result.code).toBe(0);
+      expect(result.out).not.toContain("is not usable");
+      // Б4: the fault keeps the door's own words, and the line beside it names WHO repairs
+      // it. Not the plan's conditional — this launch has a child, and it is being forked.
+      expect(result.out).toContain("DIFFERENT BUILD");
+      expect(result.out).toContain("the child of this background launch levels the workspace");
+      expect(result.out).not.toContain("a real launch would level");
+      expect(result.out).toContain("the supervisor went to the background");
+    });
+  }
+
+  /**
+   * Б3, THE NEGATIVE HALF, ONE CASE PER FAULT THE CHILD WOULD NOT REPAIR. The difference has
+   * to be the MACHINE sign — the parent forks in exactly the case the plan would have said
+   * `install: true` — and these three are what says it is not a coincidence of text: each
+   * tree is behind on its build in the same way as the case above, and each is refused,
+   * because a border stands in front of the levelling. A dirty tree may carry a session's
+   * unlanded work, a tree on the role's own branch is not the circuit's to move, and a resume
+   * is a tree somebody is still in.
+   */
+  for (const border of [
+    {
+      name: "the role's OWN branch",
+      said: "dev-core/180-x",
+      set: (_repo: string, tree: string): void => {
+        git(tree, "checkout", "-q", "-b", "dev-core/180-x");
+      },
+      argv: ["--write"] as const,
+    },
+    {
+      name: "DIRT",
+      said: "uncommitted",
+      set: (_repo: string, tree: string): void => {
+        writeFileSync(join(tree, "CARD.md"), "a session was writing here\n");
+      },
+      argv: ["--write"] as const,
+    },
+  ]) {
+    it(`Б3: the parent of a background launch over a tree OUT of the borders (${border.name}) still dies with 2`, () => {
+      const repo = contour();
+      const tree = staleWorkspace(repo);
+      border.set(repo, tree);
+
+      const result = run(repo, pnpmShim(repo, true), [...border.argv, "--detach"]);
+
+      expect(result.code).toBe(2);
+      expect(result.out).toContain(border.said);
+      // Neither the child's sentence nor the plan's: nothing is going to level this tree, and
+      // saying otherwise would be the new silence replacing the old one.
+      expect(result.out).not.toContain("the child of this background launch levels");
+      expect(pnpmCalls(repo)).toEqual([]);
+      expect(versionIn(tree)).toBe(BEHIND);
+      expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
+    });
+  }
 
   it("a tree already on the circuit's build → no install, no line, and the session runs", () => {
     const repo = contour();

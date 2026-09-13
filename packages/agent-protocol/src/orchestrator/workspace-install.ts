@@ -131,12 +131,23 @@ export const planWorkspaceInstall = (input: {
  * borders are not re-derived: whoever prints this line has already been told `install: true`
  * by the decision above, and a plan that disagreed with the launch about the borders would
  * be exactly the defect it is written against.
+ *
+ * AND THERE ARE TWO READERS OF IT, NOT ONE (half (б)). Nothing is written in either case, but
+ * what the reader is owed differs: a plan is told what a launch WOULD do, while whoever typed
+ * `--detach` is told what the child that is being forked right now WILL do — a parent that
+ * borrowed the plan's conditional would describe a levelling nobody had promised, over a tree
+ * that is about to be levelled for real. The caller hands in which of the two it is; this
+ * function derives nothing about the mode on its own.
  */
 export const describePlannedWorkspaceInstall = (input: {
   readonly role: string;
   readonly path: string;
+  /** This is the parent of a background launch, not a plan — its child does the levelling. */
+  readonly background?: boolean;
 }): string =>
-  `not run — this is a plan: a real launch would level the workspace of '${input.role}' onto the build the circuit runs (installing into '${input.path}') and carry on`;
+  input.background === true
+    ? `not run by this process: the child of this background launch levels the workspace of '${input.role}' onto the build the circuit runs (installing into '${input.path}') under its own lock, and carries on`
+    : `not run — this is a plan: a real launch would level the workspace of '${input.role}' onto the build the circuit runs (installing into '${input.path}') and carry on`;
 
 /** What actually happened, as the caller measured it — the text is the journal's line. */
 export type WorkspaceInstallOutcome =
