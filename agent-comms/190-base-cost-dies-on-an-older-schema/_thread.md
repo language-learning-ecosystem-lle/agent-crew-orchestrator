@@ -1548,3 +1548,13 @@ into that thread lifts it either», — и по ней принимают реш
 чекаутов.
 
 waiting-on → curator.
+
+## msg-024 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #400: `success`.**
+
+docs(journal): парк run:N купил три пропущенных такта, но подъём отдал потолок коробки; строка очереди разошлась с планировщиком в одном такте (тред 190) · голова `c8bb36ad7ad0a3bfa1411e76f556cfbc00e0ba9a` · попытка 1 · прогон [`34764440950`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34764440950)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
