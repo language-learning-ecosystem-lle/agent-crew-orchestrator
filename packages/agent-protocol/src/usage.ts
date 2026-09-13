@@ -182,7 +182,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # when, by which system user, which verb at which target, and how it ended
                               # — readable without the session transcript. It raises NO identity: the
                               # user is the one the session was already spawned as (box-setup §0.1a)
-  agent-protocol merge-gate   --ref <ref> --pr <n> [--repo <path>] [--power-docs <a,b>] [--working-cards <a,b>] [--review-workflow <name>] [--d1 <thread/message.md>]
+  agent-protocol merge-gate   --ref <ref> --pr <n> [--repo <path>] [--power-docs <a,b>] [--working-cards <a,b>] [--review-workflow <name>] [--d1 <thread/message.md>] [--journals <a,b>]
                               # THE MERGE DOOR OF 'curator' (thread 026): the three guards that are
                               # FACTS — approve on the CURRENT head, green checks on it, and no
                               # document of power in the diff (the role cards and the config are
@@ -213,6 +213,16 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # refusal — a decision is fixed where it was taken; it is printed
                               # a --d1 on a diff that touches NO document of power leaves guard 4 the
                               # pass it was and SAYS the flag changed nothing (never silent either way)
+                              # --journals <a,b>: THE JOURNALS OF THE ROLES, as path prefixes (john's
+                              # word of 2026-09-11, thread 187) — a diff ALL of whose paths lie inside
+                              # them needs no round of review: a record of what happened carries no
+                              # norm, and a round on it costs a raise of the reviewer, a verdict, a
+                              # letter, a green run, a label and a merge for a paragraph of chronicle
+                              # guard 1 is then NOT ASKED and says so in its own title; guards 2-5 are
+                              # untouched, and ONE path outside the journals takes the exception away —
+                              # the refusal then NAMES the outside paths, because the door judges this
+                              # by the diff and never the author by eye
+                              # without the flag there is no exception at all: the door stands as it did
                               # guard 2 reads 'statusCheckRollup', and a token may be refused THAT ONE
                               # NODE (a fine-grained token on a private repository always is: there is
                               # no 'checks' permission to grant it). The call is no longer lost with

@@ -2958,7 +2958,7 @@ working tree, printed when it is used).
 
 ```
 agent-protocol merge-gate --ref <ref> --pr <n> [--repo <path>] [--power-docs <a,b>] [--working-cards <a,b>]
-                          [--review-workflow <name>] [--d1 <thread>/<message file>]
+                          [--review-workflow <name>] [--d1 <thread>/<message file>] [--journals <a,b>]
 ```
 
 The `curator` role merges pull requests itself, under five guards. Three of them are
@@ -3123,6 +3123,35 @@ obligation as "nothing refuses" and raises the pair, and the anchor is answered 
 where it belongs. It does ask Actions for the CHECKS, and only where GitHub refused
 the rollup (the refused node, below): on such a contour the alternative to that call is not a
 cheaper tier but no tier at all.
+
+**A diff that is WHOLLY a journal is not asked for a round at all** (`--journals`, john's
+word of 2026-09-11, thread 187). A record in a role's journal says what HAPPENED and never
+what a role MAY do, so a round of review on it buys nothing — and costs a raise of the
+reviewer, a verdict, a letter, a green run, a label and a merge, for a paragraph of
+chronicle. "Just do not label it" is not an answer: the label is the author's to hang, but
+guard 1 demands an approve on the current head, so an unlabelled journal PR is one this door
+refuses forever. Either the door knows the exception or the class cannot be merged:
+
+```
+agent-protocol merge-gate --ref origin/main --pr 61 --journals docs/journal
+merge-gate: journals of the roles, guard 1 not asked of a diff wholly inside them (1): docs/journal
+  ok   guard 1 · approve on the current head — not asked: this diff is wholly a journal: all 1 changed path(s) lie inside the journals of the roles (docs/journal/dev-core.md): …
+```
+
+**The journals are NAMED by the caller** — `docs/journal/<role>.md` is one project's layout,
+the same line the documents of power do not cross — and entries match as path prefixes, like
+`zones` and like `powerDocuments`. With no `--journals` there is no exception at all and the
+door stands exactly as it did.
+
+**And the door judges this by the diff, never the author by eye.** One path outside the
+journals and the reading is `mixed`: the exception is gone, the round is due, and the refusal
+NAMES the outside paths, because an author who expected the exception needs to know what took
+it away. That is also the whole answer to the way this could be abused — a norm smuggled into
+a chronicle PR. **Only guard 1 is lifted:** guard 2 still wants green checks, guard 4 still
+sends a document of power to the owner of the decision even if the same caller also called it
+a journal, and guards 3 and 5 remain the obligations they were. The scheduler's merge-ready
+reader knows no project paths and is not taught this: a journal PR is simply not ACCELERATED
+in the queue, and missing an acceleration is not a refusal.
 
 **One head answers once per check name.** A rerun does not replace the attempt it
 reran: both hang on the same head in `statusCheckRollup`, and read flat, the door
