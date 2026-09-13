@@ -44,7 +44,7 @@
 - [Названный случай — образец, а не класс](reported-instance-is-a-sample.md) — чужая находка перечисляется скриптом по всему предмету ДО постановки
 - [Машинный конфиг — в `$HOME`, не в репозитории](machine-config-is-instance-file.md) — тильда = дом ДЕМОНА (`aco-hetzner`), его `secrets.envFile`
 - [Хвост PR требует своего треда](pr-tail-sweep-needs-the-owning-thread.md) — след гарда 5 обязан лечь в ленту ЕГО треда, а владелец бывает ЗАКРЫТ — сверять `status:`
-- [Общий хвост файла сериализует мержи](protocol-reference-tail-serializes-merges.md) — цена чужого merge — АННУЛИРОВАННЫЙ вердикт
+- [Общий хвост файла сериализует мержи](protocol-reference-tail-serializes-merges.md) — цена чужого merge — АННУЛИРОВАННЫЙ вердикт, а у журнального PR только ребейз
 - [Переезд шага отменяет объявленное исключение](moved-step-repeals-declared-exception.md) — приёмка читается КОДОМ ВЫХОДА
 - [Штамп письма зажимается вперёд](message-stamp-is-clamped-forward.md) — время в теле позже своего штампа невозможно
 - [`mergedBy` не называет руку](merged-by-does-not-name-the-hand.md) — обе кнопки печатают `maysway`, «письмо ДО merge» тоже не улика — только `STOP` гарда 4 и чей след
