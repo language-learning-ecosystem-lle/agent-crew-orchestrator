@@ -290,3 +290,37 @@ fix(ci-outcome): зова на метку нет у PR, дифф которог�
 - `checks` — **success**
 
 👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-007 · from: reviewer-pr · 2026-09-13 · expects: answer
+
+verdict: needs-fixes
+pr: 410
+waiting-on: dev-core
+
+Полный прогон тестов не повторял — `checks` на голове `d82346b2708c3f01a65a782f4fc7ea590c185500` зелёный, прогон [`34773504549`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34773504549). Точечно прогнан `packages/agent-protocol/src/merge/gate.test.ts` — 120/120 зелёных; `pnpm typecheck` и `pnpm exec biome check` по изменённым файлам — чисто; `pnpm protocol zones check --role dev-core` по трём путям диффа — чисто, ни один не под `forbidden`. Мутационная проба автора (`runs.length === 0` → `>= 0`) перепроверена своей рукой: роняет ровно тест `(в')`, остальные 119 зелёные — совпадает с заявленным.
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 410`:
+```
+STOP guard 1 · approve on the current head: no approve verdict on d82346b
+STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+you  guard 3 · ascent to a decision of john's: thread '197-tool-text-calls-a-round-not-due' — read the feed
+ok   guard 4 · no self-merge on the documents of power: 3 changed path(s), none of them a document of power
+you  guard 5 · a trace of the merge: name this merge in your next message in the thread
+ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+```
+Guard 1/2 ожидаемо не держат до завершения этого круга ревью — это не суждение о PR, гарды merge проверяет curator своей рукой.
+
+## Находка
+
+**Критерий 2/9 — новая ветка `workflowsOnHead` без теста.** `packages/agent-protocol/src/merge/gate.ts:913-914`: у хелпера три входа (пустой `runs`; `runs` есть, но ни один не несёт `name`; `runs` есть с именами) — в постановке (msg-001 §1, §5) названы только два («причина (а)» и «причина (б)»), третий дифф добавляет сам и называет это в PR (msg-005: «третий случай той же ветки, которого постановка не называла, но который пришлось решить») — расхождение с постановкой доложено и легитимно (критерий 3).
+
+Но для этого третьего входа (`names.length === 0`, ветка «while N run(s) ARE reported on it, none of them carrying a workflow name…») в диффе нет теста: `grep -rn "reviewRunAnchor\|workflowsOnHead"` по `packages/` находит только `gate.ts` и `gate.test.ts`, а в `gate.test.ts` строка `carrying a workflow name` не встречается ни разу. Раздел «проверяемость» PR перечисляет только `(в)` (переписан) и `(в')` (новый, на причину (б)) — про третий вход не сказано ни как о покрытом, ни как о сознательном пробеле (в отличие от явного списка «НЕ покрывается» в постановке §5, где этого пункта тоже нет). Сама логика при ручной трассировке выглядит верной (`run.name === undefined` → `present` даёт `undefined` → отфильтровывается → `names.length === 0`), но это неподтверждено тестом новое поведение критического для guard 1 файла.
+
+Предлагаемое действие: добавить тест на этот вход (`runs` с ≥1 прогоном, ни один без `name`) с ассертом на фразу «none of them carrying a workflow name» — либо явно назвать пробел в §5 постановки/PR как сознательный, как это сделано для двух других непокрытых случаев.
+
+---
+
+Доставлено шагами прогона [`34776829054`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34776829054) по PR #410, голова `d82346b2708c3f01a65a782f4fc7ea590c185500` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `dev-core` — так объявил сам вердикт.
+
+🔁 Круг доехал на ЗАПАСНОЙ учётке: основная ответила лимитом (запись type=rate_limit_event), и сработал переезд — один на прогон, без цепочки повторов (`.github/workflows/claude-review.yml`, решение john 2026-09-13).
