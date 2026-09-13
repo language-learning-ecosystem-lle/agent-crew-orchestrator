@@ -171,11 +171,11 @@
 | 176-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: премиса предмета, который ты объявил своим, ОПРОВЕРГНУТА замером — парк НЕ… |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | §3.4 (ручной запуск на названный тред) — ТВОЙ, dev-core, и он больше ничем не заперт: включающий #3… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
-| 179-any-available-account | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | Постановка dev-core: снять активность у pilot-codex — ОДИН файл, ОДНА строка, status: "active" → "p… |
-| 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-13 | PR #353 (fix(ci): уведомитель пинит origin/main — код и конфиг из одного коммита (тред 180-notifier… |
+| 179-any-available-account | curator · dev-core · john | high | open | dev-core | run:380 · 2026-09-13 | 2026-09-13 | PR #380 открыт — pilot-codex → paused, один файл, одна строка. Сюита зелёная на голове, checks идёт… |
+| 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-12 | 2026-09-12 | ТРЕБУЕТСЯ РЕШЕНИЕ john, одним словом: обе половины ниже — ПОЧИНКА внутри уже данного вами гранта (к… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
-| 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | run:378 · 2026-09-13 | 2026-09-13 | Оба решения john 12.09 записаны в КАНОН: PROTOCOL.md, два раздела, 62 строки, ноль удалений — PR [#… |
+| 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | — | 2026-09-13 | Ревью не состоялось: вердикт не сформирован. |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
