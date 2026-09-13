@@ -171,12 +171,12 @@
 | 176-daemon-self-restart | github, curator, john | high | closed | — | — | 2026-09-13 | — |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-13 | ✅ checks по PR #393: success. |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
-| 179-any-available-account | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: пересматривать ли, КТО сидит на узкой учётке. Выбор «curator → shik-main, d… |
-| 180-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-13 | #392 СМЁРЖЕН (гарды в §1). Обе находки такта уехали ИМЕНАМИ ТРЕДОВ, а не обещанием: 192 — ложная фр… |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | Третье и ЧЕТВЁРТОЕ расхождение #386 с базой сняты — голова 37672395876ae16831b5cc5764245f5cf98d0a9e, |
+| 179-any-available-account | curator · dev-core · john | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: пересматривать ли, КТО сидит на узкой учётке. Выбор «curator → shik-main, d… |
+| 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Зелено, метка повешена, круг ревью идёт — #386 на голове 37672395876ae16831b5cc5764245f5cf98d0a9e. |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~11:02Z): #378 СМЁРЖЕН его кнопкой. Обе нормы в каноне. Парк снят — тред… |
-| 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
+| 183-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
