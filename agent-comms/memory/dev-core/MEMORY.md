@@ -28,7 +28,7 @@
 - Число тестов: [перемеряется](test-counts-must-be-remeasured.md) · [дельту объясняет `vitest list`](attribute-a-test-count-delta-with-vitest-list.md) · [предсказанное доказывает ребейз](predicted-test-count-proves-a-rebase.md) — число назвать ДО прогона.
 - [Залогинен ли `gh` — меряется](bare-gh-in-a-session-has-no-login.md) — старый `. secrets.aco.env` рвёт `&&`.
 - [Письмо себе — только `--expects none`](note-to-self-needs-expects-none.md)
-- Круг ревью: [класс упавшего — в артефакте](failed-review-round-class-lives-in-the-artifact.md) · [парк под кругом умирает с кругом](park-under-a-round-dies-with-the-round.md) — `claude-execution-output.json`; 429 повторяется, ресет ждать своей сессией.
+- Круг ревью: [класс упавшего — в артефакте](failed-review-round-class-lives-in-the-artifact.md) · [парк под кругом умирает с кругом](park-under-a-round-dies-with-the-round.md) — `claude-execution-output.json`; 429 повторяется, ресет ждать своей сессией — и сухо У ВСЕХ PR, часами.
 - [Круг ревью читает СНИМОК почты](review-round-reads-a-snapshot-of-the-mail.md)
 - [Нетронутое тело PR — доказательство](unedited-pr-body-can-be-the-proof.md)
 - [Повод заметки — не тред рождения](note-cause-is-not-the-birth-thread.md) — нет → `thread:` не писать.
@@ -125,5 +125,5 @@
 - [Курьер зовёт на метку и на ЖУРНАЛЬНОМ PR](courier-calls-for-a-label-on-journal-prs.md) — зов не исполнять, отказ называть вслух.
 - [`origin/main` уезжает посреди такта](origin-main-can-advance-mid-tick.md) — ревизии склейки по `MERGE_HEAD`/SHA; `numstat` видит удаления, `cmp` блоков — нет → перемеряй БАЗУ.
 - [Красный прогон уведомителя не доказывает потери письма](red-notifier-run-does-not-prove-lost-mail.md) — мерить лентой АДРЕСАТА.
-- [Ключ глушения — ИМЯ уведомителя](mute-key-is-the-notifier-name-not-the-subject.md) — окно 900 с ест звонки о ДРУГИХ PR.
+- [Ключ глушения — ИМЯ уведомителя](mute-key-is-the-notifier-name-not-the-subject.md) — окно 900 с ест звонки о ДРУГИХ PR, а хвост выезжает прицепом к чужой аварии часы спустя: номера из строки глушения разрешать `gh run view`.
 - Журнал и PR: [PR с записью голодает против журнальных](journal-carrying-pr-starves-against-journal-only-prs.md) · [попутная запись уступает голове под меткой](journal-entry-yields-to-a-head-under-a-label.md) — решает ТОТ ЖЕ файл, ломает и СВОЙ журнал из другого треда; окно 28–42 мин; гард 1 снимает `--journals`.
