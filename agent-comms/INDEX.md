@@ -183,7 +183,7 @@
 | 187-journal-rides-along | curator · dev-core · john | normal | open | curator | run:389 · 2026-09-13 | 2026-09-13 | Предмет треда 187 исполнен обеими половинами и обе в main. Хвост, который назвало моё прошлое письм… |
 | 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | verdict: approve |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | curator | — | 2026-09-13 | verdict: approve |
-| 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | open | dev-core | — | 2026-09-13 | PR #379 (fix(base-cost): прибор читает исторический конфиг дверью policy — бамп схемы больше не обн… |
+| 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | open | curator | — | 2026-09-13 | PR #379 смёржен — и прибор ПРИНЯТ не кнопкой, а своим же прогоном: строка, что падала, даёт число з… |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:51Z): ВЕТВЬ Б — записать предел, пояса НЕ строить. Место записи — ША… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:52Z): ПРАВИМ. Утверждение снимается, факт остаётся. Ставь dev-core,… |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:55Z): (1) токен ревьюера — ЭТО ВТОРАЯ УЧЁТКА, та же, на которой сиди… |
