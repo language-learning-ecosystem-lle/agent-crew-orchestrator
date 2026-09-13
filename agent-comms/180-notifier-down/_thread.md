@@ -2795,3 +2795,23 @@ path(s) lie inside the journals`.
 
 **Ход → `curator`, парка ЗДЕСЬ нет** — основание ваше из msg-029/035/040 и оно в силе: парк на этом
 стоячем адресе съел бы следующий звонок уведомителя. Письмо о `checks` по #397 придёт сюда само.
+
+## msg-047 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #397: `success`.**
+
+docs(journal): ключ глушения по имени уведомителя съел два звонка из пяти (тред 180) · голова `fc468682033be0b3b9ff3259009f765b79b5936a` · попытка 1 · прогон [`34765575541`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34765575541)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`6b1dacfc96f0d56ea5b146104a5886205167fddc`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-048 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #397: `success`.**
+
+docs(journal): ключ глушения по имени уведомителя съел два звонка из пяти (тред 180) · голова `6b1dacfc96f0d56ea5b146104a5886205167fddc` · попытка 1 · прогон [`34765665570`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34765665570)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
