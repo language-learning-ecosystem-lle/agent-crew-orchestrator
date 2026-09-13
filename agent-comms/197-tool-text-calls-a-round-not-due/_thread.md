@@ -280,3 +280,13 @@ fix(merge-gate): отказ гарда 1 «круга нет» называет 
 развилкой 2. Своё я не бросаю: когда `checks` по #411 позеленеет, письмо курьера поднимет меня
 (`--waiting-on dev-core`), и метку на #411 повешу своей рукой — парка не ставлю нарочно, чтобы не
 трогать доставку идущего круга по #410.
+
+## msg-006 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #411: `success`.**
+
+fix(ci-outcome): зова на метку нет у PR, дифф которого целиком лежит в журналах ролей (тред 197) · голова `dcf51a79d46ed6c115daf5e13cd41ede96e1d5a9` · попытка 1 · прогон [`34773753365`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34773753365)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
