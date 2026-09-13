@@ -833,10 +833,19 @@ export type CodeDriftAlarm = {
  *  - `failover` — a run has been moved onto ANOTHER SUBSCRIPTION. An event, not a state,
  *    and the loud one by the statement of this thread (§4 of 2026-08-28: the owner of both
  *    subscriptions learns it from the system, not from a bill). It is NEVER weighed against
- *    the memory below — see {@link planNotifications}.
+ *    the memory below — see {@link planNotifications};
+ *  - `resumed` — the account that was moved OFF is back (thread 179). The other half of the
+ *    same transition, and an event for the same reason.
+ *
+ * THE TWO EVENTS ARE NARROWED BEFORE THEY GET HERE, and that is why they are still allowed
+ * past the memory below. Until 2026-09-13 `failover` was an event in name and a state in
+ * behaviour: the tick said it for as long as the window held, which on the field was 68
+ * identical lines and 63 calls in forty minutes. The narrowing is the PLANNER'S, keyed by
+ * account and window (`AccountNews` of `orchestrator/failover.ts`), because only the planner
+ * can tell a second closure from a second reading of the first — this function sees one tick.
  */
 export type AccountAlarm = {
-  readonly kind: "failover" | "held" | "chain";
+  readonly kind: "failover" | "resumed" | "held" | "chain";
   /** Whose launches the sentence is about — every one of the three names a role. */
   readonly role: RoleId;
   /**
@@ -1489,12 +1498,15 @@ export const parseNotifyState = (raw: string): NotifyState => {
       continue;
     }
     if (columns[0] === "account") {
-      // The kind is checked against the three this class has: a line that is not one of them
+      // The kind is checked against the four this class has: a line that is not one of them
       // is dropped rather than half-read, on the freeze rule — a key that is not the key
       // announces the same standstill a second time. The fourth column may be empty and the
       // line then has three, which is why it is read by position and not by count.
       const [, kind, role, about] = columns;
-      if ((kind === "failover" || kind === "held" || kind === "chain") && role !== undefined)
+      if (
+        (kind === "failover" || kind === "resumed" || kind === "held" || kind === "chain") &&
+        role !== undefined
+      )
         accounts.push(`${kind}\t${role}\t${about ?? ""}`);
       continue;
     }
@@ -2108,20 +2120,23 @@ export const planNotifications = (input: {
   //    seconds. The memory is the composition the caller hands over, so a window that reopens
   //    drops its key by itself and the NEXT closure of the same role rings again;
   //  - AN EVENT IS NEVER WEIGHED AGAINST IT. A `failover` is a run spending somebody else's
-  //    subscription, and the statement of this thread makes it loud on purpose: it is not
-  //    looked up in `seen` at all, so no standing pause can swallow it. Which raises are new
-  //    is the caller's measurement (it is the caller that reads the journal), and that is the
-  //    one honest place for it — this function cannot tell a second raise from a re-read.
+  //    subscription, and a `resumed` is that subscription coming back; the statement of this
+  //    thread makes both loud on purpose, so neither is looked up in `seen` at all and no
+  //    standing pause can swallow them. Which TRANSITIONS are new is the caller's measurement
+  //    (it is the caller that reads the journal and holds the ledger between ticks), and that
+  //    is the one honest place for it — this function cannot tell a second closure of a window
+  //    from a second reading of the first, and until thread 179 nobody did: the pass-through
+  //    below was a state ringing every thirty seconds under an event's name.
   const seenAccounts = new Set(input.seen.accounts ?? []);
   const accountAlarms = human ? (input.accounts ?? []) : [];
+  const isAccountEvent = (alarm: AccountAlarm): boolean =>
+    alarm.kind === "failover" || alarm.kind === "resumed";
   const freshAccounts = accountAlarms.filter(
-    (alarm) => alarm.kind === "failover" || !seenAccounts.has(accountAlarmKey(alarm)),
+    (alarm) => isAccountEvent(alarm) || !seenAccounts.has(accountAlarmKey(alarm)),
   );
-  // A `failover` is an event and leaves no state to remember: the raise it names happened
-  // once, and a key kept for it would silence the next one of the same role.
-  const accountKeys = accountAlarms
-    .filter((alarm) => alarm.kind !== "failover")
-    .map(accountAlarmKey);
+  // An EVENT leaves no state to remember: the transition it names happened once, and a key
+  // kept for it would silence the next one of the same account.
+  const accountKeys = accountAlarms.filter((alarm) => !isAccountEvent(alarm)).map(accountAlarmKey);
   const freshAuth = auth !== undefined && authAlarmKey(auth) !== input.seen.auth;
   const freshGh = gh !== undefined && gh.since !== input.seen.gh;
   const freshMergeability =
