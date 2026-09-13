@@ -373,6 +373,66 @@ export const failoverAlarm = (input: {
   about: `${input.choice.from} → ${input.choice.account}`,
 });
 
+/**
+ * ONE PIECE OF ACCOUNT NEWS, AS THE TICK CARRIES IT FROM ONE TICK TO THE NEXT (thread 179).
+ *
+ * The line above is an EVENT and was said every tick a candidate met the shut window — which
+ * is a state, not an event, so it was said for as long as the state held. Measured on the box
+ * 2026-09-13: 68 identical lines behind five or six sessions, and sixty of them named a raise
+ * that never happened (the ceiling of the box dropped the candidate the same tick). The
+ * mechanism rang on a STATE while calling itself an event.
+ *
+ * This is the state it rings on, held between ticks so the ringing can be narrowed to its two
+ * TRANSITIONS — the account going onto the shelf and coming back off it. Three fields, and
+ * only the first two are the identity:
+ *
+ *  - `account` and `until` — WHAT IS NEWS, and john's requirement in his own words: the key is
+ *    the pair "account + state" and not the tick and not the role. A second account closing is
+ *    a second piece of news and rings; the same account closing again after its window reopened
+ *    is a NEW window (a new `until`) and rings; the same window read four hundred times by four
+ *    hundred ticks is one fact and rings once;
+ *  - `role` — NOT part of the identity, and carried only so the return line can name whose
+ *    primary came back. Keying by it is exactly the defect that was measured: one subscription
+ *    moving is one piece of news however many roles reach for it.
+ */
+export type AccountNews = {
+  /** The account whose window closed — the id as the repository names it. */
+  readonly account: string;
+  /** When that window reopens, UTC ISO to the second: the other half of the identity. */
+  readonly until: string;
+  /** Whose primary it is — evidence for the sentence, never part of {@link accountNewsKey}. */
+  readonly role: RoleId;
+};
+
+/**
+ * THE IDENTITY OF ONE PIECE OF ACCOUNT NEWS — the account and the window it reopens at, and
+ * NOTHING ELSE. The role is deliberately absent: see {@link AccountNews}.
+ */
+export const accountNewsKey = (news: {
+  readonly account: string;
+  readonly until: string;
+}): string => `${news.account}\u0000${news.until}`;
+
+/**
+ * THE OTHER HALF OF THE TRANSITION, AND THE HALF THAT NEVER EXISTED (thread 179, john's
+ * requirement 2): the shelf the box announced has ended and the normal state is back.
+ *
+ * Without it the narrowing below would be a mute: a reader told once "your money moved" and
+ * then nothing would have no way to tell "it moved back an hour ago" from "it is still moving
+ * and the box went quiet about it". The line therefore carries the clock the pause line
+ * carried, so the two read as one story rather than as two unrelated sentences.
+ */
+export const describeAccountResumed = (news: AccountNews): string =>
+  `account-failover: ${describeAccount(news.account)} is off the shelf — its window reopened at ${resumesAt(news)}, and ${news.role} is raised on it again`;
+
+/** The transition back, as the digest takes it — see {@link describeAccountResumed}. */
+export const accountResumedAlarm = (news: AccountNews): AccountAlarm => ({
+  kind: "resumed",
+  role: news.role,
+  text: describeAccountResumed(news),
+  about: `${news.account}${ABOUT_JOIN}${resumesAt(news)}`,
+});
+
 export const accountPauseAlarm = (input: {
   readonly role: RoleId;
   readonly choice: Extract<AccountChoice, { kind: "paused" }>;
