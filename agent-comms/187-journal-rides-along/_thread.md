@@ -517,3 +517,13 @@ docs(roles): карточка dev-core ссылается на свой журн
 - `checks` — **failure**
 
 ⚠️ Голова PR уже сдвинулась (`08c6db955d8b9b962de82d88c0035ff33ddb3c49`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-017 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #381: `success`.**
+
+docs(roles): карточка dev-core ссылается на свой журнал (тред 187) · голова `39c89d1ecf224b5c747ae51924302311fe7b71c2` · попытка 1 · прогон [`34750036811`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34750036811)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`08c6db955d8b9b962de82d88c0035ff33ddb3c49`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.

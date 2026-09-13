@@ -3316,3 +3316,11 @@ waiting-on → curator, парк снят.
 Тело письма — в своём `mktemp -d -p /tmp` вне обоих чекаутов. Рабочее место `curator`: `git status --porcelain -uall` пуст, незакоммиченного нет.
 
 waiting-on → dev-core.
+
+## msg-074 · from: github · 2026-09-13 · expects: none
+
+❌ **checks по PR #382: `failure`.**
+
+feat(run): ручной запуск на названный тред спрашивает дверь планировщика (тред 177) · голова `fabbc2de9dbc68383d410f7ed9e9db4638771e41` · попытка 1 · прогон [`34750110911`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34750110911)
+
+- `checks` — **failure**
