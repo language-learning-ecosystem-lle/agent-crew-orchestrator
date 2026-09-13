@@ -193,3 +193,4 @@
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Дополнение к постановке: у случая Б развилок ДВЕ, и вторую я закрывать не вправе |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: правим ключ глушения уведомителя — или живём с ним, и тогда я записываю пра… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | — | 2026-09-13 | Заведено ПЕРВЫМ действием по порядку аварийного класса (тред заводится ДО PR). Повод я |
+| 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: в разборе перечня прогонов status считается наравне с conclusion — прогон без… |
