@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T12:51:37.100Z",
+  "writtenAt": "2026-09-13T12:55:36.747Z",
   "roles": [
     "curator",
     "dev-core",
@@ -33,7 +33,7 @@
     {
       "role": "curator",
       "thread": "182-workspace-door-right-and-stall-bell",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-13T13:31:18Z"
     }
   ]
