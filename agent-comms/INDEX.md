@@ -180,7 +180,7 @@
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
-| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | verdict: approve |
-| 188-run-park-has-no-lifter | curator, dev-core | normal | open | curator | ❓ john · 2026-09-11 | 2026-09-11 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вести ли половину 1 формой (б) — новое поле шапки run-outcome: <pr> у машин… |
+| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge на PR [#381](https://github.com/language-learning-ecosystem-ll… |
+| 188-run-park-has-no-lifter | curator, dev-core | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~09:40Z): ФОРМА (Б) — новое поле шапки run-outcome: <pr> у машинного пис… |
 | 189-dead-park-eats-the-verdict | curator, dev-core | normal | open | curator | ❓ john · 2026-09-12 | 2026-09-12 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вправе ли МАШИННЫЙ курьер снимать ЧУЖОЙ парк, когда дверь сама объявила его… |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | curator | — | 2026-09-13 | Прибор считает через бамп схемы: intent: "policy" вместо data. PR #379, голова f3c60a7c, жду CI |
