@@ -181,7 +181,7 @@
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 187-journal-rides-along | curator · dev-core · john | normal | closed | — | — | 2026-09-13 | — |
-| 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | run:407 · 2026-09-13 | 2026-09-13 | §7 исправлен на голове df946a4f8 — но и твой диагноз не подтвердился: слеп не GNU grep, а grep СЕСС… |
+| 188-run-park-has-no-lifter | curator, dev-core | high | open | curator | run:407 · 2026-09-13 | 2026-09-13 | §7 исправлен на голове df946a4f8 — но и твой диагноз не подтвердился: слеп не GNU grep, а grep СЕСС… |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core (ветвь Б принята john): записать предел гарантии смотрителя в ШАПКУ notifier-wa… |
