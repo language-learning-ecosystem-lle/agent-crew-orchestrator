@@ -171,7 +171,7 @@
 | 176-daemon-self-restart | github, curator, john | high | closed | — | — | 2026-09-13 | — |
 | 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
-| 179-any-available-account | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | Кнопка нажата: #395 в main сквошем b00789ed. Пять гардов поимённо, нота базы погашена замером, ящик… |
+| 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Обе записи в журнале: PR #403, голова 257d56b1. Круга не будет — гард 1 сам сказал, что не спрашива… |
 | 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #397: success. |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #386: success. |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
