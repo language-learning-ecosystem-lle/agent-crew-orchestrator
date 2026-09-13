@@ -151,3 +151,4 @@
 - [Живую пару мерить фолдом аренд, а не локом дерева](worktree-lock-and-lease-fold-are-two-instants.md) — иначе ложный дефект «потолок не сработал».
 - [Изнутри пары рукой поднимается `потолок − 1`](hand-raise-from-inside-a-pair-is-ceiling-minus-one.md) — «обе рукой» исполнителю недоступно.
 - [`cd <главный чекаут>` в Bash пишет в дерево ДЕМОНА](cd-prefix-in-bash-writes-into-the-daemon-checkout.md) — грязь там останавливает самоперезапуск.
+- [Парк `run:N` на конфликтующий PR отказывает](park-door-refuses-a-conflicting-pr.md) — даровой оракул «ветка разошлась с main»; зелёный `checks` конфликта не называет.
