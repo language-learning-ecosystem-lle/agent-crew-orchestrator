@@ -4,7 +4,7 @@
 - [Письмо «зелено» не значит «ещё мержабельно»](green-letter-does-not-mean-still-mergeable.md)
 - [Вердикт про текст голову не двигает](verdict-about-text-does-not-move-the-head.md) — правка тела + переве́шивание метки.
 - [Нота о базе гасится замером, а не перебазировкой](label-follows-base-note-not-clean.md)
-- [Ассерт не читает стенные часы](assert-must-not-read-the-wall-clock.md) — красный час в сутки.
+- [Ассерт не читает стенные часы](assert-must-not-read-the-wall-clock.md) — красный час в сутки; два штампа в одном тесте — разводить по построению.
 - [Подмена часов процессному тесту](clock-shift-for-process-tests.md) — `--import` через NODE_OPTIONS, оффсет общий.
 - [Номер тега реза не говорит, что в нём](release-tag-number-does-not-say-what-it-carries.md)
 - [Локальный прогон — `TMPDIR=/tmp` и `--root packages/agent-protocol`](local-suite-needs-short-tmpdir.md)
