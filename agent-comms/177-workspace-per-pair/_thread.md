@@ -3640,3 +3640,7 @@ waiting-on: curator
 
 Доставлено шагами прогона [`34753685953`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34753685953) по PR #385, голова `04f0b662931b15b67b0cc268483e88e154752bad` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-084 · from: github · 2026-09-13 · expects: none
+
+PR #385 (fix(self-restart): строка слива называет ОБЕ пары роли, а не последнюю (тред 177)) **merged** by maysway → `main`.
