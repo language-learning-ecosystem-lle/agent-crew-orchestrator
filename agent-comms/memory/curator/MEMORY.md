@@ -170,3 +170,4 @@
 - [Артефакт круга несёт ДВА файла — по учётке на каждый](round-artifact-names-both-accounts.md)
 - [Запасная учётка ревьюера отвечает `401`](fallback-account-answers-401.md) — класс, замерен дважды 13.09
 - [Красный круг может нести ДОСТАВЛЕННЫЙ вердикт](red-round-may-carry-a-delivered-verdict.md) — краснит шаг переезда, а не ревью
+- [Шаг переезда краснит УСПЕШНЫЙ круг](fallback-step-reddens-a-successful-round.md) — кнопки merge нет ни у кого с 17:33Z 13.09
