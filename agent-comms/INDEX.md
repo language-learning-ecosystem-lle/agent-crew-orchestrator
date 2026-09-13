@@ -169,7 +169,7 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | high | closed | — | — | 2026-09-13 | — |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | PR #382 (feat(run): ручной запуск на названный тред спрашивает дверь планировщика (тред 177)) merge… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | 382 СМЁРЖЕН моей рукой — squash 14127d030b47a6bf47c6d3e35d00701a2a87c173, 2026-09-13T10:28:03Z, кно… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | verdict: approve |
 | 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-13 | Оба отказа msg-031/032 — одна внешняя авария, и вердиктов она не съела. Но в ту же аварию замерено… |
