@@ -1959,6 +1959,13 @@ export const planLaunch = (input: {
   readonly world?: World;
   /** Sessions that wrote into the mail (`isSelfTurnDelivery`, thread 023). */
   readonly deliveryMarks?: DeliveryMarks;
+  /**
+   * WHOSE HAND IS RAISING THIS PAIR (thread 177, §3.4) — `hand` from the manual `run` and
+   * from nothing else; absent everywhere the planner is the one raising, which is the daemon
+   * and every journal line written before the mark existed. It travels onto the `launch`
+   * event and changes no decision here: the gate is the same one either way.
+   */
+  readonly by?: "hand";
 }): LaunchPlan => {
   const { events, role, thread, now, wallClockMs } = input;
   const maxConsecutive = input.maxConsecutive ?? MAX_CONSECUTIVE_RUNS;
@@ -1990,6 +1997,7 @@ export const planLaunch = (input: {
       ...(continuation === undefined ? {} : { mode: continuation.mode }),
       ...(continuation?.mode === "resume" ? { resumes: continuation.session } : {}),
       ...(input.world === undefined ? {} : { world: input.world }),
+      ...(input.by === undefined ? {} : { by: input.by }),
     },
   ];
   return { ok: true, deadline, raisedAt: ts, events: events2 };
