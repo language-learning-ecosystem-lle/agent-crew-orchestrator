@@ -104,7 +104,7 @@
 - [Предсказанное число тестов доказывает ребейз](predicted-test-count-proves-a-rebase.md) — назвать ДО прогона.
 - [Стенд `gh`, разбирающий вызовы по `$2`, промахивается](gh-stub-dispatch-on-argv-position-misroutes.md) — разбирать `"$*"`.
 - [Потерянную квитанцию push'а воспроизводит `receive-pack`](lost-push-receipt-is-reproducible-by-receive-pack.md) — без сети, ключ по URL.
-- [`headSha` прогона не называет исполненный код](run-headsha-does-not-name-the-code-it-ran.md) — скрипты едут `ref: main`.
+- [`headSha` прогона не называет исполненный код](run-headsha-does-not-name-the-code-it-ran.md) — скрипты едут `ref: main`; `workflow_run` берёт и `.yml` с дефолтной ветки, значит новое поле видно только ПОСЛЕ merge.
 - [`pull --ff-only` отказывает только над путями, что ЗАПИШЕТ](pull-ff-only-refuses-only-over-paths-it-would-write.md) — `--porcelain` без `-uall` прячет.
 - [Бамп схемы ломает свои же команды с ветки](schema-bump-breaks-own-cli-from-the-branch.md) — почта И шаг CI отказывают.
 - [Множество из чужого модуля — его же ключом](set-from-another-module-needs-its-own-key.md) — два `pairKey` в пакете.
