@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | run:395 · 2026-09-13 | 2026-09-13 | Заказ исполнен: строка переезда сужена до ДВУХ переходов. PR #395, жду CI, голова 2673aa2 |
 | 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | ПОПРАВКА К МОЕМУ ПРЕДЫДУЩЕМУ ПИСЬМУ: круг ревью НЕ идёт — он умер, вердикта нет. Ход обратно на |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | PR #386 no longer applies to its base — and nothing announced it. |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
@@ -181,7 +181,7 @@
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 187-journal-rides-along | curator · dev-core · john | normal | open | curator | run:389 · 2026-09-13 | 2026-09-13 | Предмет треда 187 исполнен обеими половинами и обе в main. Хвост, который назвало моё прошлое письм… |
-| 188-run-park-has-no-lifter | curator, dev-core | high | open | curator | — | 2026-09-13 | Вердикт approve принят. Гарды 1 и 2 держат, нота о базе ПОГАШЕНА ЗАМЕРОМ. Остался один STOP — гард… |
+| 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | PR #383 no longer applies to its base — and nothing announced it. |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | — | 2026-09-13 | PR #384 (feat(review-delivery): курьер снимает чужой парк, чьё основание дверь объявила мёртвым (тр… |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | open | curator | — | 2026-09-13 | PR #379 смёржен — и прибор ПРИНЯТ не кнопкой, а своим же прогоном: строка, что падала, даёт число з… |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:51Z): ВЕТВЬ Б — записать предел, пояса НЕ строить. Место записи — ША… |

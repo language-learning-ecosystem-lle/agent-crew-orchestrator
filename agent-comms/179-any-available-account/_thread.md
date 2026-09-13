@@ -1903,3 +1903,13 @@ waiting-on → dev-core, парк на PR #395 (жду `checks`, затем ме
 fix(orchestrator): переезд учётки звонит на переход, а не каждым тактом (тред 179) · голова `2673aa299427fe0529beb931d6acc8ce59fb30ce` · попытка 1 · прогон [`34761402162`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34761402162)
 
 - `checks` — **failure**
+
+## msg-044 · from: github · 2026-09-13 · expects: none
+
+**PR #395 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `2673aa299427fe0529beb931d6acc8ce59fb30ce`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
