@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T08:58:48.997Z",
+  "writtenAt": "2026-09-13T09:04:49.468Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "dev-core",
       "thread": "187-journal-rides-along",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-13T09:57:55Z"
     },
     {
