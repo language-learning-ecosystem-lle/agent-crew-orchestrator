@@ -898,6 +898,89 @@ describe("personParksOf — the declarations a LIFTED park leaves behind (thread
     });
   });
 
+  it("A LETTER THAT LIFTS AND DECLARES IN ONE BREATH IS THE START OF THE NEW PARK (188)", () => {
+    // The defect measured in the feed of 187 on 2026-09-11: `declaredAt` walked back from
+    // `found - 1`, so the `park-lifted:` in the header of the declaring letter itself was
+    // invisible to it and the letter was read as a carrier of the park it had just ended. All
+    // four fields came back from the old declaration — and with them the old `since`, which for a
+    // `run:` park is its AGE: the new park was printed stale (`ageSeconds: 2824` against a ceiling
+    // of 1800) in the minute of its own life. The door of 058 asks for exactly this one letter;
+    // the workaround was to write two.
+    const feed = thread([
+      at(
+        "2026-09-11T14:00:00Z",
+        { parkedOn: "run:400", parkGround: "checks по голове a1b2c3d", waitingOn: "dev-core" },
+        "# Жду checks по #400",
+      ),
+      at(
+        "2026-09-11T15:00:00Z",
+        {
+          parkLifted: "run:400",
+          parkedOn: "run:400",
+          parkGround: "checks по голове e4f5a6b",
+          waitingOn: "dev-core",
+        },
+        "# Голова переехала — жду checks заново",
+      ),
+    ]);
+
+    expect(parkingOf(feed)).toMatchObject({
+      kind: "run",
+      pr: 400,
+      since: "2026-09-11T15:00:00Z",
+      question: "Голова переехала — жду checks заново",
+      ground: "checks по голове e4f5a6b",
+    });
+  });
+
+  it("AND THE BARE CARRY-FORWARD STILL RE-DECLARES NOTHING — #339 is not touched (188)", () => {
+    // The negative control of the sentence above, and it is a control rather than a gloss: the
+    // two feeds differ by ONE header field. Take `park-lifted:` away and the second letter is the
+    // honest report beside the park that thread 155 made it — same `since`, same question, same
+    // ground, same ceiling. Only ENDING the park by name starts a new one.
+    const feed = thread([
+      at(
+        "2026-09-11T14:00:00Z",
+        { parkedOn: "run:400", parkGround: "checks по голове a1b2c3d", waitingOn: "dev-core" },
+        "# Жду checks по #400",
+      ),
+      at(
+        "2026-09-11T15:00:00Z",
+        {
+          parkedOn: "run:400",
+          parkGround: "checks по голове e4f5a6b",
+          waitingOn: "dev-core",
+        },
+        "# Голова переехала — жду checks заново",
+      ),
+    ]);
+
+    expect(parkingOf(feed)).toMatchObject({
+      kind: "run",
+      pr: 400,
+      since: "2026-09-11T14:00:00Z",
+      question: "Жду checks по #400",
+      ground: "checks по голове a1b2c3d",
+    });
+  });
+
+  it("A LIFT OF ANOTHER PARK IN THE SAME LETTER RE-DECLARES NOTHING EITHER (188)", () => {
+    // The second negative control, and the one that says the new line reads the VALUE and not the
+    // presence of the field: a letter ending `run:399` while carrying `run:400` forward is still a
+    // carrier of `run:400`. Naming the wrong park lifts nothing — the rule the door of 058 refuses
+    // on, read here from the same side.
+    const feed = thread([
+      at("2026-09-11T14:00:00Z", { parkedOn: "run:400", waitingOn: "dev-core" }, "# Жду #400"),
+      at(
+        "2026-09-11T15:00:00Z",
+        { parkLifted: "run:399", parkedOn: "run:400", waitingOn: "dev-core" },
+        "# Заодно закрыл прошлый",
+      ),
+    ]);
+
+    expect(parkingOf(feed)).toMatchObject({ since: "2026-09-11T14:00:00Z", question: "Жду #400" });
+  });
+
   it("carries `asks` — a park declared as a MODE asked nothing, so its lift owes nothing", () => {
     expect(
       personParksOf(thread([at("2026-08-22T17:44:22Z", { parkedOn: "john", expects: "none" })])),
@@ -1404,6 +1487,31 @@ describe("parkSpansOf — FOR HOW LONG the thread was frozen behind a park (thre
     expect(spans).toEqual([
       { kind: "person", on: "john", from: "2026-08-29T03:27:44Z", to: "2026-08-29T10:05:00Z" },
       { kind: "person", on: "john", from: "2026-08-29T10:30:00Z" },
+    ]);
+  });
+
+  it("AND IN ONE LETTER IT IS TWO SPANS MEETING AT A POINT — the sentence, tested (188)", () => {
+    // The second consumer of the same defect, and the reason it is named here rather than left to
+    // `parkingOf`: the spans are the courier's ARITHMETIC of how long the box could not raise a
+    // pair. Until 2026-09-11 a letter that ended the park and declared it again in its own header
+    // produced ONE span running through it — the freeze of the first park was billed over the
+    // life of the second, and the second had no beginning of its own anywhere in the history.
+    const spans = parkSpansOf(
+      thread(
+        declared,
+        message("2026-08-29T10:05:00Z", {
+          from: "curator",
+          expects: "ack",
+          parkLifted: "john",
+          parkedOn: "john",
+          waitingOn: "curator",
+        }),
+      ),
+    );
+
+    expect(spans).toEqual([
+      { kind: "person", on: "john", from: "2026-08-29T03:27:44Z", to: "2026-08-29T10:05:00Z" },
+      { kind: "person", on: "john", from: "2026-08-29T10:05:00Z" },
     ]);
   });
 
