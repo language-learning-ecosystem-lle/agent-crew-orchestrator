@@ -1,4 +1,4 @@
-- Парк: [`pr:N` или `run:N`](park-pr-vs-run-choice.md) · [не на зелёный прогон](do-not-park-on-a-green-ci-run.md) · [не на конфликтующий PR](park-door-refuses-a-conflicting-pr.md) — чужой ход впереди → `run:`; отказ двери = оракул «ветка разошлась с main».
+- Парк: [`pr:N` или `run:N` — N ВСЕГДА номер PR, не прогона](park-pr-vs-run-choice.md) · [не на зелёный прогон](do-not-park-on-a-green-ci-run.md) · [не на конфликтующий PR](park-door-refuses-a-conflicting-pr.md) — чужой ход впереди → `run:`; отказ двери = оракул «ветка разошлась с main».
 - Мерить парк: [сухим `new-message`](measure-a-standing-park-with-a-dry-new-message.md) · [пустая строка ≠ тишина](missing-park-row-does-not-prove-silence.md) — и ПОСЛЕ `--park-lifted`.
 - [Стоячий адрес не паркуют](do-not-park-a-standing-address.md) — закрывать `--waiting-on '—'`.
 - [Письмо «зелено» ≠ «ещё мержабельно»](green-letter-does-not-mean-still-mergeable.md)
