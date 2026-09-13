@@ -147,3 +147,7 @@
 - [Мёртвый парк `run:N` ОТКАЗЫВАЕТ входящему вердикту](dead-run-park-refuses-an-incoming-verdict.md) — доставщику нечем его ни назвать, ни обойти; текст брать из коммента PR.
 - [Письмо github о merge поднимает АВТОРА](merge-letter-raises-the-author.md) — такт приёмки влитого, не пустой подъём.
 - [`orchestrator status` читает конфиг ИЗ REF](orchestrator-status-reads-the-ref-not-the-tree.md) — два вызова с разными `--ref` = даровой оракул на правку `agent-protocol.json`.
+- [Сухой `orchestrator run` — даровой оракул по потолкам](dry-run-is-a-free-oracle-on-the-ceilings.md) — держатели со временем, журнал не двигается.
+- [Живую пару мерить фолдом аренд, а не локом дерева](worktree-lock-and-lease-fold-are-two-instants.md) — иначе ложный дефект «потолок не сработал».
+- [Изнутри пары рукой поднимается `потолок − 1`](hand-raise-from-inside-a-pair-is-ceiling-minus-one.md) — «обе рукой» исполнителю недоступно.
+- [`cd <главный чекаут>` в Bash пишет в дерево ДЕМОНА](cd-prefix-in-bash-writes-into-the-daemon-checkout.md) — грязь там останавливает самоперезапуск.
