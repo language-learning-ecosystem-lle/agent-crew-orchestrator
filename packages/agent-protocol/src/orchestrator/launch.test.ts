@@ -867,6 +867,37 @@ describe("planLaunch", () => {
     if (!plan.ok) return;
     expect(plan.deadline).toBe("2026-07-24T14:15:00Z");
     expect(plan.events.map((e) => e.kind)).toEqual(["lease-acquired", "launch"]);
+    // AND IT SAYS NOTHING ABOUT WHOSE HAND (thread 177, §3.4): absence is the planner, which
+    // is every launch this journal has recorded. The assertion is here rather than in its own
+    // case because the field's whole meaning is the asymmetry — a `by` written by default
+    // would make the mark of the manual launch unreadable, and it would be written HERE.
+    expect(plan.events.find((event) => event.kind === "launch")).not.toHaveProperty("by");
+  });
+
+  it("a launch raised BY HAND is marked on the event, and the mark decides nothing (§3.4)", () => {
+    const plan = planLaunch({
+      events: [],
+      role: "dev-core",
+      thread: "177-workspace-per-pair",
+      now: NOW,
+      wallClockMs: 900_000,
+      by: "hand",
+    });
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    // The measurement of §5 counts the field's absence as the planner's work, so the manual
+    // raise has to be distinguishable in the journal ALONE — without the shell history of
+    // whoever typed it.
+    expect(plan.events.find((event) => event.kind === "launch")).toEqual({
+      kind: "launch",
+      ts: "2026-07-24T14:00:00Z",
+      role: "dev-core",
+      thread: "177-workspace-per-pair",
+      by: "hand",
+    });
+    // …and the gate it passed is the same one: the deadline and the lease are unchanged by the
+    // mark, which is what makes it a trace rather than a mode.
+    expect(plan.deadline).toBe("2026-07-24T14:15:00Z");
   });
 
   it("the pair is already running → an already-running refusal (no second run)", () => {

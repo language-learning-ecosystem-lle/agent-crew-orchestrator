@@ -2639,6 +2639,22 @@ agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
                             # the tool, its binary and its parameters: see "The machine config" above
                             # the role works in its OWN worktree (orchestrator.workdir.worktrees), put back at the base
                             # per fresh package; --fresh forbids resuming the previous session (S11, S12)
+                            # THE EMERGENCY VALVE ASKS THE PLANNER'S GATE (thread 177, §3.4): it raises EXACTLY the
+                            #   named pair and never the head of a queue, and before it touches anything it asks the
+                            #   questions the daemon's tick asks about that pair — the two ceilings of
+                            #   `parallelism` (pairsPerRole / pairsPerInstance), a live lease on the pair, a `hold` on
+                            #   the role, a PARK of the thread and the ACCOUNT'S rate-limit window. Each refuses BY
+                            #   NAME (exit 2), in the daemon's own words, and a full ceiling names WHO holds the places
+                            #   and SINCE WHEN — `dev-core×180-selfheal since 09:10Z` is the difference between "the
+                            #   rule is working" and "a dead session is sitting in a place nobody will free"
+                            # WHO IS LIVE comes from the JOURNAL (unclosed leases), not from this process: a hand-typed
+                            #   run has no children and the daemon's are in another process's memory
+                            # The daemon's enable flag and stop flag are NOT asked — this is the launch you type when
+                            #   that loop is off or being repaired. The GLOBAL run budget (--max-runs) and the pair's
+                            #   attempt ceiling stay where they were, on the launch gate below the valve, which is why
+                            #   `run --max-attempts <ceiling+1>` is still the one hand that lifts a substantive freeze
+                            # The `launch` event of a run typed by hand carries `by: "hand"`; absence means the planner
+                            #   raised it, so a before/after measurement does not count our own probes as field
 agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] \
                             [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] \
                             [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once] \
