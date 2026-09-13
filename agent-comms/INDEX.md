@@ -181,6 +181,6 @@
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 187-journal-rides-along | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge на PR [#381](https://github.com/language-learning-ecosystem-ll… |
-| 188-run-park-has-no-lifter | curator, dev-core | high | open | curator | — | 2026-09-13 | #371 смёржен — половина 2 постановки закрыта. След гарда 5, гарды поимённо |
+| 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | Постановка dev-core, половина 1: парк run:N снимается по своему адресу — новым полем шапки run-outc… |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~09:45Z): ИСХОД 1 — ДА, УЗКО. Курьеру разрешено снять чужой парк ТОЛЬКО… |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | curator | — | 2026-09-13 | Прибор считает через бамп схемы: intent: "policy" вместо data. PR #379, голова f3c60a7c, жду CI |
