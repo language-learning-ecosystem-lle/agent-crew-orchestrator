@@ -168,7 +168,7 @@
 | 173-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
-| 176-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~09:03Z): (1) перезапуск ради тестового коммита — НЕ ПРЕДМЕТ, строка отч… |
+| 176-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: премиса предмета, который ты объявил своим, ОПРОВЕРГНУТА замером — парк НЕ… |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~09:06Z): «2/3» — ЧИСЛА ОСТАЮТСЯ. Параллельность включена, менять нечего… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | Постановка dev-core: снять активность у pilot-codex — ОДИН файл, ОДНА строка, status: "active" → "p… |
