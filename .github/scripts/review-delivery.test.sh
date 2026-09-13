@@ -122,6 +122,43 @@ check "парк за ЧУЖИМ кругом — письмо встаёт ря�
 check "парк за ЧУЖИМ merge — письмо встаёт рядом" \
   "--parked-on pr:191" "$(park_flags 'pr:191' 204)"
 
+# --- 1a. ЧЕТВЁРТЫЙ случай: чужой парк, чьё основание дверь объявила мёртвым ----
+#
+# Тред 189, слово john 2026-09-13. Дословный отказ двери снят с прогона 34703884006
+# (доставка вердикта по #373 в тред, запаркованный на `run:374`): парк был честно
+# назван `--parked-on run:374`, и дверь отказала — прогон `34703874277` кончился за
+# восемь минут до записи. Сегодня это ПОТЕРЯ вердикта, и ветвь ниже её закрывает.
+DEAD_PARK_REFUSAL="agent-protocol: --parked-on 'run:374' — every run on head 9b35aee08 of PR #374 has ALREADY FINISHED (2 runs, none queued or in progress), so the outcome this park waits for has already happened: its message is in the feed BEHIND the park, and the lift only ever looks forward (thread 032, the live race of 2026-08-23 — 22 minutes of a frozen pair). Read the outcome and report it, or, if you have just pushed or just put up the label, wait for the round to appear ('gh pr checks 374') and park then"
+check "мёртвое основание ЧУЖОГО парка — повтор снимает его тем же значением" \
+  "--park-lifted run:374" \
+  "$(park_retry_flags "$DEAD_PARK_REFUSAL" 'run:374' '--parked-on run:374')"
+check "и ветвь отвечает кодом 0, а не молчанием" "код 0" \
+  "$(rc_probe park_retry_flags "$DEAD_PARK_REFUSAL" 'run:374' '--parked-on run:374')"
+# ЗНАЧЕНИЕ — БУКВАЛЬНО ТО, ЧТО СТОИ́Т (пункт 3 приёмки). Доставка шла по PR #373, парк
+# стоял за #374: вычисленное из номера PR `run:373` дверь отказала бы так же, как
+# отказывает слепому `--park-lifted run:<PR>` в шапке `park_flags`.
+check "вычисленного из номера PR значения в повторе нет" "нет" \
+  "$(grep_probe "$(park_retry_flags "$DEAD_PARK_REFUSAL" 'run:374' '--parked-on run:374')" -F 'run:373')"
+# ГРАНИЦЫ ВЕТВИ — каждая проверяется отдельно, потому что каждая её ВЫКЛЮЧАЕТ.
+check "иной отказ двери ветвь НЕ включает" "" \
+  "$(park_retry_flags "agent-protocol: --waiting-on 'nobody' is not a role" 'run:374' '--parked-on run:374')"
+check "иной отказ двери — и код это говорит" "код 1" \
+  "$(rc_probe park_retry_flags "agent-protocol: --waiting-on 'nobody' is not a role" 'run:374' '--parked-on run:374')"
+check "отказ про МОЛЧАНИЕ о парке ветвь НЕ включает" "код 1" \
+  "$(rc_probe park_retry_flags "agent-protocol: thread '067-park-lift-narrowing' is PARKED behind the round running on PR #204 since 2026-09-02T17:33:09Z, and this message says nothing about it. Say what THIS letter does about the park: '--parked-on run:204' if the question still stands" 'run:204' '--parked-on run:204')"
+check "парка нет — снимать нечего, ветви нет" "код 1" \
+  "$(rc_probe park_retry_flags "$DEAD_PARK_REFUSAL" '' '')"
+# СВОЙ парк снимается ПЕРВОЙ ветвью `park_flags` и до этого отказа не доходит; повтор
+# тем же флагом был бы вторым писком той же ошибки.
+check "парк за ЭТИМ кругом (писали --park-lifted) повтора не получает" "код 1" \
+  "$(rc_probe park_retry_flags "$DEAD_PARK_REFUSAL" 'run:374' '--park-lifted run:374')"
+check "флаги не про то же значение — ветви нет" "код 1" \
+  "$(rc_probe park_retry_flags "$DEAD_PARK_REFUSAL" 'run:374' '--parked-on run:999')"
+# ОДНОГО ЯКОРЯ МАЛО: обе половины фразы двери обязаны стоять в тексте, иначе «отказ про
+# мёртвое основание» опознавался бы в любом предложении со словом `head`.
+check "половины фразы двери недостаточно" "код 1" \
+  "$(rc_probe park_retry_flags "agent-protocol: every run on head 9b35aee08 is fine" 'run:374' '--parked-on run:374')"
+
 # --- 2. Стоящий парк читается из отказа двери, а не угадывается ---------------
 
 # Дословный отказ круга по PR #204 (прогон 33661622377) — первоисточник постановки.
@@ -834,6 +871,53 @@ check "и старого \$HEAD_SHA в печати не осталось" "" \
 # «не прочитано» ≠ «строки нет» — три места различения (тред 082).
 check "причина «описание НЕ ПРОЧИТАНО» названа отдельно во всех трёх местах" "3" \
   "$(grep -c 'НЕ ПРОЧИТАНО (gh pr view отказал за все попытки)' "$WF")"
+
+# --- 16. Четвёртый случай: ветвь ЗОВЁТСЯ, и якоря связаны с ИСТОЧНИКОМ --------
+#
+# ПОЧЕМУ ЭТОТ РАЗДЕЛ — УСЛОВИЕ РАЗРЕШЕНИЯ, А НЕ ДОВЕСОК (слово john 2026-09-13).
+# Ветвь опознаёт отказ по ФРАЗЕ двери, а фраза живёт в `packages/**` и может быть
+# переформулирована безобидным PR. Юнит 1a этого не заметит НИКОГДА: отказ в нём
+# пишет фикстура, а не дверь, — ветвь молча перестала бы включаться, и ни одна
+# проверка не покраснела бы. Поэтому якоря курьера грепаются по ИСТОЧНИКУ.
+#
+# ЧЕМ ЭТО ОТЛИЧАЕТСЯ ОТ `run-park.test.ts:123` (`toContain("ALREADY FINISHED")`). Тот
+# связывает дверь с ЕЁ СОБСТВЕННОЙ фразой: согласованная правка двери и её теста одним
+# PR оставит обоих зелёными, а курьер протухнет. Здесь связывается ШАБЛОН КУРЬЕРА с
+# источником — красит именно расхождение между ними.
+DOOR=../../packages/agent-protocol/src/thread/run-park.ts
+check "контроль: греп читает тот самый исходник двери" "да" \
+  "$(file_probe -F 'export const' "$DOOR")"
+for anchor in "${DEAD_PARK_ANCHORS[@]}"; do
+  check "якорь курьера '${anchor}' стои́т в исходнике двери дословно" "да" \
+    "$(file_probe -F "$anchor" "$DOOR")"
+done
+# ПОЧЕМУ ЯКОРЯ — КУСКИ, А НЕ ФРАЗА ЦЕЛИКОМ. В исходнике она разорвана интерполяцией,
+# и греп по ней целиком отвечает `нет` на ЗДОРОВОМ дереве: проверка, построенная так,
+# красна всегда и потому не проверяет ничего. Замер curator, тред 189.
+check "контроль: фраза ЦЕЛИКОМ в исходнике не находится — интерполяция её режет" "нет" \
+  "$(file_probe -F 'every run on head 9b35aee08 of PR #374 has ALREADY FINISHED' "$DOOR")"
+# КОНТРОЛЬНАЯ МУТАЦИЯ: переформулированный отказ якорями НЕ находится, то есть раздел
+# покраснеет ровно тогда, ради чего написан.
+check "контроль мутации: переформулированного отказа в исходнике нет" "нет" \
+  "$(file_probe -F 'has ALREADY COMPLETED (' "$DOOR")"
+
+# ЗОВЁТ ли доставка эту ветвь — юнит 1a не знает: `deliver_to_thread` сетевая и здесь
+# не гоняется. Единственное чтение — греп по самому файлу, и контроль формы идёт рядом.
+SELF=./review-delivery.sh
+check "ветвь повтора зовётся из доставки — ровно одним местом" "1" \
+  "$(grep -cF 'retry_args="$(park_retry_flags "$write_out" "$park" "$park_args")"' "$SELF")"
+check "повтор пишет ИМЕННО флагами повтора, а не построенными заново" "1" \
+  "$(grep -cF '"$@" ${retry_args} \' "$SELF")"
+check "вывод записи читается, а не только печатается" "2" \
+  "$(grep -cE '^[[:space:]]*write_out=\$\( \(cd \.code' "$SELF")"
+check "второго повтора нет: после второго отказа — эскалация и красный шаг" "да" \
+  "$(file_probe -F "::error::повтор с '\${retry_args}' тоже отказан" "$SELF")"
+check "и лог называет, ГДЕ лежит текст вердикта" "да" \
+  "$(file_probe -F 'reviewer-execution-${pr}-${GITHUB_RUN_ID:-<run>}' "$SELF")"
+# ШАПКА `park_flags` ПЕРЕПИСАНА ВМЕСТЕ С КОДОМ (пункт 4 приёмки): правило из трёх
+# случаев стало правилом из четырёх, и четвёртый назван словами.
+check "шапка park_flags называет четвёртый случай" "да" \
+  "$(file_probe -F 'парк ЧУЖОЙ, и на `--parked-on` дверь ОТВЕТИЛА, что его основание МЕРТВО' "$SELF")"
 
 if [ "$FAILED" = "0" ]; then
   echo "доставка вердикта: все проверки прошли"
