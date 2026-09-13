@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T19:08:04.447Z",
+  "writtenAt": "2026-09-13T19:08:19.712Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,12 +19,6 @@
       "thread": "191-watcher-run-may-never-start",
       "state": "running",
       "deadline": "2026-09-13T20:05:32Z"
-    },
-    {
-      "role": "curator",
-      "thread": "196-queue-row-contradicts-the-planner",
-      "state": "running",
-      "deadline": "2026-09-13T19:40:03Z"
     }
   ]
 }
