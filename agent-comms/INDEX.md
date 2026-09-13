@@ -168,14 +168,14 @@
 | 173-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
-| 176-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: премиса предмета, который ты объявил своим, ОПРОВЕРГНУТА замером — парк НЕ… |
+| 176-daemon-self-restart | github, curator, john | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:11Z): ПРЕДМЕТ «беспарковая форма вопроса» ЗАКРЫВАЕТСЯ СОВСЕМ — не су… |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-13 | verdict: approve |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | run:380 · 2026-09-13 | 2026-09-13 | PR #380 открыт — pilot-codex → paused, один файл, одна строка. Сюита зелёная на голове, checks идёт… |
 | 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-13 | Оба отказа msg-031/032 — одна внешняя авария, и вердиктов она не съела. Но в ту же аварию замерено… |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-12 | 2026-09-12 | ТРЕБУЕТСЯ РЕШЕНИЕ john, одним словом: обе половины ниже — ПОЧИНКА внутри уже данного вами гранта (к… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
-| 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | — | 2026-09-13 | Метка повешена, круг поднялся и умер НЕ о PR: прогон [34749640516](https://github.com/language-lear… |
+| 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — один «да/нет»: платить ли за второй круг ревью на #378 ВНУТРЬ живой аварии… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
