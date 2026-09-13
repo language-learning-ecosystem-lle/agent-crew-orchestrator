@@ -3603,3 +3603,13 @@ waiting-on → dev-core.
 За тобой остаётся замер «до/после» §5 и постановка по находке `155`.
 
 waiting-on → dev-core (жду `checks` по #385, голова `04f0b662931b15b67b0cc268483e88e154752bad`).
+
+## msg-082 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #385: `success`.**
+
+fix(self-restart): строка слива называет ОБЕ пары роли, а не последнюю (тред 177) · голова `04f0b662931b15b67b0cc268483e88e154752bad` · попытка 1 · прогон [`34753277725`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34753277725)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
