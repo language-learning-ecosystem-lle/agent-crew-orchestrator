@@ -34,7 +34,8 @@
 - [Нетронутое тело PR — доказательство](unedited-pr-body-can-be-the-proof.md)
 - [Повод заметки — не тред рождения](note-cause-is-not-the-birth-thread.md) — нет → `thread:` не писать.
 - [Письмо в стоячий парк обязано назвать парк](letter-into-a-standing-park-must-name-it.md) — МАШИННОГО писателя дверь пропускает нотой.
-- [Ручной конфликт доказывается нулём удалений](manual-conflict-fix-needs-zero-deletions-proof.md) — `--numstat` против КАЖДОГО РОДИТЕЛЯ; обе стороны в конец → арифметика ДО сборки.
+- [Ручной конфликт доказывается нулём удалений](manual-conflict-fix-needs-zero-deletions-proof.md) — `--numstat` против КАЖДОГО РОДИТЕЛЯ; обе стороны в конец → арифметика ДО сборки · [но «хвостовая» сторона может нести хунк в СЕРЕДИНЕ](tail-append-side-may-carry-a-mid-file-hunk.md) — считать `^@@`, собирать из ЦЕЛОГО файла чужой стороны; арифметика пропажу середины не ловит.
+- [Целость вклада после влития базы — ПАТЧЕМ вклада, не диффом деревьев](contribution-patch-not-tree-diff-proves-a-merge.md) — «дифф старой головы с новой пуст» негоден там, где база трогала те же пути.
 - [Коммутативность merge — не доказательство целости](commutative-merge-is-not-proof-nothing-was-eaten.md) — блоки побайтово.
 - [Тихая потеря — это неподнятый ход](silent-loss-is-the-unraised-turn.md)
 - [Номер треда уникален, слаг — нет](thread-id-unique-by-number-only.md)
