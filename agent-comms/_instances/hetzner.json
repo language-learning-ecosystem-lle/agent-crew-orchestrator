@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T09:16:33.858Z",
+  "writtenAt": "2026-09-13T09:18:00.270Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "177-workspace-per-pair",
-      "state": "draining",
-      "deadline": "2026-09-13T09:51:56Z"
-    },
     {
       "role": "dev-core",
       "thread": "190-base-cost-dies-on-an-older-schema",
