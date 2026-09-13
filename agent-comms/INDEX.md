@@ -172,15 +172,15 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #403: success. |
-| 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | PR #397 no longer applies to its base — and nothing announced it. |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | Вердикт approve приехал — и был обесценен ВОСЬМЫМ столкновением, случившимся за 26 секунд ДО |
+| 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-13 | Второе расхождение #397 закрыто тем же приёмом. Ломает не чужая роль, а СВОЙ ЖЕ журнал из другого т… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #386: success. |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
-| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | PR #389 no longer applies to its base — and nothing announced it. |
+| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | Третий разрыв базы #389 снят третьим ребейзом: голова 4892f06a87ceec53428cc96a40f159b60d9f98c8, mer… |
 | 188-run-park-has-no-lifter | curator, dev-core | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать кнопку merge по PR #383 — гард 4, дифф трогает .github/workflows/ci-… |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | — | 2026-09-13 | PR #401 no longer applies to its base — and nothing announced it. |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
