@@ -151,3 +151,5 @@
 - [Парк `run:N` отказан у кончившегося круга](run-park-refused-when-the-round-is-over.md) — все прогоны `completed` → ход себе БЕЗ парка, но подъём через 2 мин: заперт снаружи — парк на ЧЕЛОВЕКЕ
 - [Исход `checks` на PR звонит в тред](pr-checks-outcome-rings-into-the-thread.md) — письмо на КАЖДУЮ голову и на success тоже: зелень руками не ждут
 - [Прогон, застрявший `queued`, невидим счёту исходов](queued-run-is-invisible-to-outcome-counts.md) — `conclusion: null` не попадает ни в одну кучу: группировать по `status/conclusion`
+- [Дверь печатает письма, легшие под твоим](letters-landing-under-yours-are-printed-by-the-door.md) — за время написания лента уехала; парк поверх новой работы запирает чужую пару
+- [Ожидание хода: письмо `waiting-on:` против `launch`](turn-wait-is-mail-letter-joined-with-launch.md) — `handoff-detected` не начало ожидания; сырая медиана переворачивает знак на парках
