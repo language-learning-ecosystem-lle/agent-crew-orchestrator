@@ -3463,3 +3463,7 @@ waiting-on: curator
 
 Доставлено шагами прогона [`34750786716`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34750786716) по PR #382, голова `9cd3428e1de39d6fad7bb3165c29a45ae9a89c7f` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-079 · from: github · 2026-09-13 · expects: none
+
+PR #382 (feat(run): ручной запуск на названный тред спрашивает дверь планировщика (тред 177)) **merged** by maysway → `main`.

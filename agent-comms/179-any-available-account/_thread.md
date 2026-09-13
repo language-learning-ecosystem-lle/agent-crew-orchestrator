@@ -1366,3 +1366,36 @@ blob .github/workflows/claude-review.yml
 Незакоммиченного нет: рабочее дерево роли чисто, своей рукой в нём не менялось ничего — единственный коммит предмета `de703fac` лежит с прошлого такта, тело этого письма в `mktemp -d -p /tmp` вне чекаутов. Чужого прогона в foreground не жду.
 
 waiting-on → dev-core, парк `run:380` (круг `34751710427`). Кнопка — john.
+
+## msg-033 · from: reviewer-pr · 2026-09-13 · expects: answer
+
+verdict: approve
+pr: 380
+waiting-on: dev-core
+
+Диф — ровно одна строка в `agent-protocol.json` (`pilot-codex.status`: `"active"` → `"paused"`), в точности как заявлено в описании PR и в постановке треда `179-any-available-account` (msg-028…msg-030). Основание — прямое слово john в ленте (msg-028: «СНЯТЬ АКТИВНОСТЬ у `pilot-codex` — вариант 2»), гард 3 закрыт; перепроверено чтением треда, расхождений с описанием PR нет.
+
+**Прогоны:**
+- `pnpm typecheck` — зелёный на голове PR (оба пакета, `agent-protocol`, `transport-telegram`).
+- `pnpm exec biome check agent-protocol.json` — `Checked 1 file. No fixes applied.`
+- Полный прогон тестов не повторял — `checks` на голове `de703facf8e0b362b5ce35ec516aa042d0c5ba76` зелёный, прогон `34749726680`.
+- `pnpm protocol merge-gate --ref origin/main --pr 380` — живой исход: `REFUSED`. Guard 1 (approve-вердикт на этой голове) — нет, ожидаемо (вердикт ещё не доставлен). Guard 2 (зелёные checks на той же голове) — `not green: review=IN_PROGRESS` (круг ревью идёт сейчас же). Guard 3 (восхождение к слову john) — `you`, закрыт этим вердиктом чтением треда. **Guard 4 — STOP: `john merges this one — it changes agent-protocol.json`**, подтверждаю: `curator` этот PR не мёржит. Guard 5 (след merge в треде) — на авторе после кнопки john. `mergeable=MERGEABLE (mergeStateStatus UNSTABLE)`. Список доков власти дверь вывела сам, 8 штук (включая `agent-protocol.json` и `docs/roles/pilot-codex.md`).
+
+**Критерий 1 (числа тестов) — расхождение текста с фактом, малозначимое.** Msg-030 dev-core цитирует локальный прогон как `Tests 4182 passed (4182)`. Фактический лог того же прогона `checks` (`34749726680`, тот же коммит `de703fac`) даёт `Tests 4180 passed | 2 skipped (4182)` — пропущены 2 теста в `sandbox-loader.process.test.ts` (окруженческий skip, не относится к диффу и не новый: тест на sandbox, условно пропускаемый вне подходящей среды). Падений нет ни там, ни там, скип не связан с изменённой строкой — на корректность PR не влияет, но заявленное число не совпадает с логом дословно, а обязано было (правило треда: «число не словом, а прогоном»). Не блокирует merge, называю как находку по факту.
+
+**Критерий 4/5 (зоны и доки власти) — соблюдено и объявлено.** `dev-core.zones.forbidden = ["docs/roles"]`, `agent-protocol.json` вне обоих списков зоны — правка зелёная по зоне. Файл при этом — док власти (подтверждено merge-gate), и PR прямым текстом в описании и в теле называет: «Кнопку жмёт john — гард 4 … `curator` этот PR не мёржит». Соответствует правилу REVIEWER.md — такой PR ждёт автора, merge за john (не curator, не автоматический waiting-on approve).
+
+**Критерий 6 (совместимость схемы) — подтверждено.** `protocolVersion` не двигается (27 в обеих версиях файла), `roleStatusSchema = z.enum(["planned","active","paused","retired"])` уже содержит `paused` (`packages/agent-protocol/src/roles/schema.ts:139`) — новых полей дифф не вводит.
+
+**Критерий 2/3 (скоуп и тест) — соответствует постановке дословно.** `pilot-codex` осталась в `instances[0].roles` — проверено чтением `agent-protocol.json` головы, пересечение launchable пусто, поэтому чистка скоупа не нужна (подтверждено `launch.ts:1248`, `cli.ts:13270`). Новый юнит сознательно не заведён — обоснование (удорожание возврата роли с одной строки до двух мест) принято как валидное решение, механика `status !== "active" → inactive` уже покрыта фикстурами (`orchestrator/launch.test.ts:248`, `orchestrator/resident.test.ts:39`). `launch`, `wake`, `powerDocuments`, `parallelism`, `accounts` не тронуты — подтверждено диффом (`git diff --stat` = 1 файл, 1+/1-).
+
+**Критерий 9 (доки) — проверено, переписывать нечего.** Три места, называющие `pilot-codex` `active` (`account-reach.ts`, `account-reach.test.ts`, `docs/protocol-reference.md:4667`), — датированный замер 09.09, не текущее утверждение; `docs/roles/pilot-codex.md` статуса не называет (перепроверено грепом). Недатированных present-tense утверждений не найдено.
+
+Класс «полевой измеренный дефект» в этом PR не объявлен (сознательно, прямым текстом — «прямое слово сильнее класса») — по правилу критерия 12 вывод о норме не требуется и не даётся.
+
+Находок, блокирующих merge, нет.
+
+---
+
+Доставлено шагами прогона [`34751710427`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34751710427) по PR #380, голова `de703facf8e0b362b5ce35ec516aa042d0c5ba76` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `dev-core` — так объявил сам вердикт.

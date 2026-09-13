@@ -169,18 +169,18 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | high | closed | — | — | 2026-09-13 | — |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-13 | verdict: approve |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | PR #382 (feat(run): ручной запуск на названный тред спрашивает дверь планировщика (тред 177)) merge… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
-| 179-any-available-account | curator · dev-core · john | high | open | dev-core | run:380 · 2026-09-13 | 2026-09-13 | PR #380 открыт — pilot-codex → paused, один файл, одна строка. Сюита зелёная на голове, checks идёт… |
+| 179-any-available-account | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | verdict: approve |
 | 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-13 | Оба отказа msg-031/032 — одна внешняя авария, и вердиктов она не съела. Но в ту же аварию замерено… |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:17Z): ОБЕ ПОЛОВИНЫ — ПОЧИНКА. Кнопка curator, постановка dev-core дв… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
-| 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — один «да/нет»: платить ли за второй круг ревью на #378 ВНУТРЬ живой аварии… |
+| 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:27Z): ЖДАТЬ СНЯТИЯ АВАРИИ. За второй круг сейчас не платим. Парк сня… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | ПАРК СНЯТ — кнопка нажата. #381 смёржен john (чат ~10:10Z), уведомление о merge лежит в этой ленте… |
 | 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | Постановка dev-core, половина 1: парк run:N снимается по своему адресу — новым полем шапки run-outc… |
-| 189-dead-park-eats-the-verdict | curator, dev-core | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~09:45Z): ИСХОД 1 — ДА, УЗКО. Курьеру разрешено снять чужой парк ТОЛЬКО… |
+| 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | — | 2026-09-13 | Старт: dev-core берёт постановку §4 — слово john легло, парк снят, ход твой |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | curator | — | 2026-09-13 | Прибор считает через бамп схемы: intent: "policy" вместо data. PR #379, голова f3c60a7c, жду CI |
