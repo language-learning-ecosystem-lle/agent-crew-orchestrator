@@ -92,6 +92,22 @@ const addressOf = (parking: Parking): string => {
     : `--merged-pr ${parking.pr}`;
 };
 
+/**
+ * EVERY ADDRESS OF THIS PARK, and not only the first one — the sentence the door says to a
+ * MACHINE WRITER, where naming an incomplete set is a promise the code does not keep.
+ *
+ * It was exactly such a promise until 2026-09-13 (thread 188): the note already told the machine
+ * writer that the park lifts "when the event it waits for is announced by number", and for a
+ * `run:` park the only number it would accept was the pair of a REVIEW verdict — which the
+ * outcome of `checks` does not carry and cannot. The sentence was true about `pr:` parks and
+ * false about the parks most often taken. Form (б) of john's decision makes it true by giving the
+ * outcome its own address; this helper is what makes the door SAY so.
+ */
+const addressesOf = (parking: Parking): string =>
+  parking.kind === "run"
+    ? `'${addressOf(parking)}' or '--run-outcome ${parking.pr}'`
+    : `'${addressOf(parking)}'`;
+
 /** Does carrying that address END the park, or only speak to it? */
 const addressLifts = (parking: Parking): boolean => parking.kind !== "person";
 
@@ -123,6 +139,8 @@ export const judgeParkSeen = (input: {
   readonly delivers?: string;
   readonly mergedPr?: number;
   readonly verdictPr?: number;
+  /** The PR whose ROUND this letter announces as ended (thread 188) — the address of a `run:` park. */
+  readonly runOutcome?: number;
   readonly lifted?: string;
   /**
    * WHY THE PARK IS UNKNOWN, when the feed of the thread could not be read at all — the
@@ -204,7 +222,15 @@ export const judgeParkSeen = (input: {
   // A ROUND IS OVER WHEN ITS PR IS MERGED TOO (`parkingOf` reads it that way): the verdict it
   // waited for cannot arrive after the button, so an announcement of that merge addresses the
   // park just as the verdict does.
-  if (parking.kind === "run" && (input.verdictPr === parking.pr || input.mergedPr === parking.pr))
+  // AND THE OUTCOME OF THAT ROUND IS THE THIRD OF THEM (thread 188): `run-outcome: N` is the
+  // number of the round coming back in a header, which is what this park has always waited for —
+  // it simply had no field to say it in until form (б).
+  if (
+    parking.kind === "run" &&
+    (input.verdictPr === parking.pr ||
+      input.mergedPr === parking.pr ||
+      input.runOutcome === parking.pr)
+  )
     return { ok: true };
 
   const holder = parking.holder === undefined ? "" : `, declared on ${parking.holder}'s turn`;
@@ -234,11 +260,11 @@ export const judgeParkSeen = (input: {
   if (input.machineWriter === true) {
     return {
       ok: true,
-      note: `'${input.thread}' is PARKED behind ${describePark(parking)} since ${parking.since}${holder}, and this letter is a MACHINE EVENT — it is not asked what it does about the park.${question} The letter is written as it is; the park is NOT lifted by it — since 2026-09-08 a park ends only when a letter NAMES it ('--park-lifted ${value}')${addressLifts(parking) ? `, or when the event it waits for is announced by number ('${addressOf(parking)}'), which this letter does not carry` : ""}`,
+      note: `'${input.thread}' is PARKED behind ${describePark(parking)} since ${parking.since}${holder}, and this letter is a MACHINE EVENT — it is not asked what it does about the park.${question} The letter is written as it is; the park is NOT lifted by it — since 2026-09-08 a park ends only when a letter NAMES it ('--park-lifted ${value}')${addressLifts(parking) ? `, or when the event it waits for is announced by number (${addressesOf(parking)}), which this letter does not carry` : ""}`,
     };
   }
   return {
     ok: false,
-    reason: `thread '${input.thread}' is PARKED behind ${describePark(parking)} since ${parking.since}${holder}, and this message says nothing about it.${question} A letter written into a standing park reads as if the thread were alive — measured on 2026-08-30: the report of a session raised 31 seconds before the park landed two minutes after it, and the call to the human showed that report instead of the question the thread was frozen on. Say what THIS letter does about the park: '${addressOf(parking)}' if it carries what the park waits for (${addressLifts(parking) ? "that is what lifts it" : "which since 2026-09-08 speaks to the park without ending it"}), '--parked-on ${value}' if the question still stands and your letter is a report beside it, or '--park-lifted ${value}' if the park is over and you are naming it as you write`,
+    reason: `thread '${input.thread}' is PARKED behind ${describePark(parking)} since ${parking.since}${holder}, and this message says nothing about it.${question} A letter written into a standing park reads as if the thread were alive — measured on 2026-08-30: the report of a session raised 31 seconds before the park landed two minutes after it, and the call to the human showed that report instead of the question the thread was frozen on. Say what THIS letter does about the park: ${addressesOf(parking)} if it carries what the park waits for (${addressLifts(parking) ? "that is what lifts it" : "which since 2026-09-08 speaks to the park without ending it"}), '--parked-on ${value}' if the question still stands and your letter is a report beside it, or '--park-lifted ${value}' if the park is over and you are naming it as you write`,
   };
 };
