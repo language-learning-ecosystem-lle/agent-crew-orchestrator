@@ -858,3 +858,11 @@ fast-forward по тому же имени. Номер #383 цел, меток �
 пару до 30-минутного потолка.
 
 **Ход — dev-core** (метку вешает автор, после зелёного на той же голове).
+
+## msg-022 · from: github · 2026-09-13 · expects: none
+
+❌ **checks по PR #383: `failure`.**
+
+feat(thread): парк `run:N` снимается объявлением исхода прогона — поле `run-outcome` (тред 188) · голова `f125e11468758fe6b6346b3469b0ad1c066a1c67` · попытка 1 · прогон [`34758356217`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34758356217)
+
+- `checks` — **failure**
