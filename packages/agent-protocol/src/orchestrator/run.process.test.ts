@@ -118,7 +118,17 @@ const machineConfig = (repo: string, agents: Record<string, { exec: string }>): 
   writeFileSync(join(dir, "local.json"), `${JSON.stringify({ agents }, null, 2)}\n`);
 };
 
-const run = (repo: string, exec: string): { code: number; out: string } => {
+const run = (
+  repo: string,
+  exec: string,
+  /**
+   * ANYTHING ELSE THIS PARTICULAR CASE HAS TO SAY AT THE DOOR — empty for all but one of
+   * them. It exists because the manual launch now asks the planner's gate (thread 177,
+   * §3.4), so a case that raises the SAME pair twice in one journal has to be able to move
+   * the clock past whatever the first run shelved; see the `--now` in the quota case below.
+   */
+  extra: readonly string[] = [],
+): { code: number; out: string } => {
   try {
     const out = execFileSync(
       TSX,
@@ -126,6 +136,7 @@ const run = (repo: string, exec: string): { code: number; out: string } => {
         CLI,
         "orchestrator",
         "run",
+        ...extra,
         "--ref",
         "HEAD",
         "--no-fetch",
@@ -353,7 +364,15 @@ describe("running a role as a process — the outcome is always recorded", () =>
       })}'\nexit 1`;
 
     run(repo, stub(repo, signal("five_hour", five.epoch)));
-    run(repo, stub(repo, signal("seven_day", seven.epoch)));
+    // THE SECOND RUN MOVES ITS CLOCK PAST THE FIRST SHELF, and that is the manual launch's
+    // new gate working rather than a fixture being humoured (thread 177, §3.4): the first run
+    // closed the five-hour window of this box, and a hand-typed launch now asks the account's
+    // shelf exactly as the daemon's tick does — refused BY NAME while that window stands, with
+    // no second closure in the journal and this test's road left half walked. Six hours on, the
+    // shelf has reopened by the clock and the run happens; the two `until` stamps are computed
+    // by the case itself and are unaffected by the moment the launch is made.
+    const past = new Date((five.epoch + 3600) * 1000).toISOString().slice(0, 19);
+    run(repo, stub(repo, signal("seven_day", seven.epoch)), ["--now", `${past}Z`]);
 
     const events = journal(repo);
     const closures = events.filter(
