@@ -42,7 +42,8 @@
 - [Коммутативность merge — не доказательство целости](commutative-merge-is-not-proof-nothing-was-eaten.md) — блоки побайтово.
 - [Тихая потеря — это неподнятый ход](silent-loss-is-the-unraised-turn.md)
 - [Номер треда уникален, слаг — нет](thread-id-unique-by-number-only.md)
-- [Окно отказов: покрытие доказывается](notifier-watch-runs-count-the-window.md) — мерить `.[-1].createdAt`.
+- [Окно отказов: покрытие доказывается](notifier-watch-runs-count-the-window.md) — мерить `.[-1].createdAt`; у смотрителя четыре состояния, не два.
+- [Прогон смотрителя в `queued` теряет звонок](queued-watcher-run-loses-the-alarm.md) — отказ наблюдаемого без письма вовсе; мерить `status`, не `conclusion`.
 - [Свою невлитую дверь гонять детач-чекаутом](run-an-unmerged-door-by-detach-checkout.md)
 - [Тело шага `.yml` вынимается и гоняется](yaml-step-body-is-testable-when-extracted.md) — но `env:` харнесс подменяет.
 - [Ассерт «файла нет» = «ничего не объявлено»](existence-assert-is-a-proxy-for-nothing-announced.md) — новый писатель краснит чужое.

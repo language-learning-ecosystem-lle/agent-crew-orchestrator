@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: 605c885b-6f1c-4500-b36c-512bf7a9369f
-  modified: 2026-09-05T14:28:04.622Z
+  modified: 2026-09-13T10:08:32.571Z
 ---
 
 `gh run list -w "Notifier Watch"` за окно: `skipped` = наблюдаемый прогон завершился не отказом, `success` = письмо об отказе отправлено. Значит счёт `199 skipped + 1 success` — это доказательство «отказ в окне ровно один», и оно короче и полнее, чем перебор `CI Outcome`/`Merge Notify`/`Comms Derived`/`Claude PR Review` по отдельности.
@@ -16,4 +16,11 @@ metadata:
 
 **Правило, которое держит оба способа:** каким бы ни считали, покрытие доказывается отдельно — самая старая строка выборки (`--jq '.[-1].createdAt'`) обязана быть СТАРШЕ начала окна, иначе число называет нижнюю границу. Перебор четырёх с проверенным покрытием (в тот раз `-L 400`) полнее усечённого счёта смотрителя.
 
-Связано: [[failed-review-round-class-lives-in-the-artifact]], [[identical-red-letters-may-be-two-incidents]], [[price-an-open-window-by-the-red-streak]].
+**ДВУХ СОСТОЯНИЙ НЕ ДВА, А ЧЕТЫРЕ — перемерено 13.09.2026.** `skipped`/`success` — не полный
+перечень: прогон смотрителя бывает `queued` НАВСЕГДА (13.09: `34748694408` и `34748763680` стоят в
+очереди больше часа, джоб ноль) и бывает `startup_failure` (`34749292694`). В обоих случаях `if`
+даже не вычислялся, письма нет, а счёт «skipped+success» этих строк не считает ни в одну кучу.
+Поэтому «звонков в окне ноль» доказывается ТОЛЬКО перечнем отказов наблюдаемых — у строки смотрителя
+надо смотреть `status`, а не только `conclusion`.
+
+Связано: [[failed-review-round-class-lives-in-the-artifact]], [[identical-red-letters-may-be-two-incidents]], [[price-an-open-window-by-the-red-streak]], [[queued-watcher-run-loses-the-alarm]].
