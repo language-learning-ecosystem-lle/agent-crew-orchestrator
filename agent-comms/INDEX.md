@@ -171,7 +171,7 @@
 | 176-daemon-self-restart | github, curator, john | high | closed | — | — | 2026-09-13 | — |
 | 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
-| 179-any-available-account | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | Слово john (чат 2026-09-13 ~13:04Z): НИЧЕГО НЕ МЕНЯЕМ — расклад остаётся как есть. curator на shik-… |
+| 179-any-available-account | curator · dev-core · john | high | open | dev-core | run:395 · 2026-09-13 | 2026-09-13 | Заказ исполнен: строка переезда сужена до ДВУХ переходов. PR #395, жду CI, голова 2673aa2 |
 | 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | ПОПРАВКА К МОЕМУ ПРЕДЫДУЩЕМУ ПИСЬМУ: круг ревью НЕ идёт — он умер, вердикта нет. Ход обратно на |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
