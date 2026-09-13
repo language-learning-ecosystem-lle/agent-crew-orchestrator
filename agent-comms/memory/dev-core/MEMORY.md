@@ -42,6 +42,7 @@
 - [Номер треда уникален, слаг — нет](thread-id-unique-by-number-only.md)
 - [Свою невлитую дверь — детач-чекаутом](run-an-unmerged-door-by-detach-checkout.md)
 - Шаг Actions: [тело `.yml` вынимается и гоняется](yaml-step-body-is-testable-when-extracted.md) · [шаг — `bash -e`](github-step-shell-is-bash-e.md) · [`headSha` не называет исполненный код](run-headsha-does-not-name-the-code-it-ran.md) · [проводка пиньётся сюитой доставки](workflow-wiring-is-pinned-by-a-delivery-integration-suite.md) — `env:` харнесс подменяет; скрипты едут `ref: main`.
+- [«Только комментарий» доказывается РАЗБОРОМ обеих ревизий](comment-only-diff-is-proven-by-parsing.md) — `#` внутри `run:|`/`script:|` это ДАННЫЕ: счётчик несомментных строк даёт 0 на изменившемся поведении.
 - [Ассерт «файла нет» = «ничего не объявлено»](existence-assert-is-a-proxy-for-nothing-announced.md)
 - [Отказ `gh --jq` рядится в отказ API](gh-jq-failure-masquerades-as-api-refusal.md) · [это gojq](gh-jq-runs-gojq-not-jq.md) — `|| VAR='?'` печатает свой дефект.
 - `/tmp`: [`TMPDIR` сессии ВНУТРИ чекаута](session-tmpdir-lives-inside-the-checkout.md) · [бэкап в голый `/tmp` вернёт ЧУЖОЙ файл](backup-to-a-bare-tmp-path-restores-a-foreign-file.md) · [глоб `/tmp/tmp.*` поднимает чужое](tmp-glob-picks-a-foreign-roles-file.md) — `mktemp -d -p /tmp`; снимок держать индексом git.
