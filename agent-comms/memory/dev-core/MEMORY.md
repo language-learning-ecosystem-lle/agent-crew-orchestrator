@@ -15,7 +15,7 @@
 - Дверь merge: [гард 1 — имя воркфлоу](merge-gate-guard1-needs-review-workflow-name.md) · [гард 2 — КРУГ](merge-gate-guard2-reports-the-review-round.md) · [`BLOCKED` — часто идущий круг](blocked-merge-state-may-be-just-the-open-round.md) — `--review-workflow 'Claude PR Review'`; промах по имени рядится в «круга не было» и толкает сжечь круг.
 - [Ветка может опережать тред](branch-may-be-ahead-of-thread.md)
 - [Чужой дом мерится путями, не именами ролей](foreign-home-measured-by-paths-not-role-names.md) — `LLE` без `\b` ловит `CALLED`.
-- [Счёт по `daemon.log` — только с якорем](daemon-log-grep-needs-an-anchor.md) — и якорь бывает НУЛЕВОЙ: ноль строк демона = «наблюдений нет», не «аварий нет».
+- [Счёт по `daemon.log` — только с якорем](daemon-log-grep-needs-an-anchor.md) — и якорь бывает НУЛЕВОЙ: ноль строк демона = «наблюдений нет», не «аварий нет» · [но СНАЧАЛА подозревай свой греп](session-grep-is-blind-to-a-log-with-a-nul-byte.md) — шим сессии с `-I` пропускает файл с NUL целиком: `-c` печатает ПУСТО вместо `0`, лечит `grep -a`.
 - Смотритель: [пачка = одна причина](notifier-letters-collapse-to-one-cause.md) · [одинаковые = две аварии](identical-red-letters-may-be-two-incidents.md) · [окно — серией красных](price-an-open-window-by-the-red-streak.md) · [покрытие доказывается](notifier-watch-runs-count-the-window.md) · [`queued` теряет звонок](queued-watcher-run-loses-the-alarm.md) — мерить `.[-1].createdAt`/`status`, не `conclusion`.
 - [Лежалый PR может быть перекрыт](stale-pr-may-be-superseded.md) — `add/add` = предмет уже сел.
 - [`git stash` на чистом дереве достаёт чужой](stash-on-clean-tree-pops-a-foreign-stash.md)
