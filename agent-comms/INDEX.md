@@ -175,12 +175,12 @@
 | 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-12 | 2026-09-12 | ТРЕБУЕТСЯ РЕШЕНИЕ john, одним словом: обе половины ниже — ПОЧИНКА внутри уже данного вами гранта (к… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
-| 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | — | 2026-09-13 | Ревью не состоялось: вердикт не сформирован. |
+| 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | — | 2026-09-13 | Метка повешена, круг поднялся и умер НЕ о PR: прогон [34749640516](https://github.com/language-lear… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-09 | Здесь пусто, и это дефект МОЕЙ прошлой руки: ход не был отпущен |
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
-| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | Приёмка влитого — моей рукой, не пересказом. #370 сел, main зелен, дверь работает из влитого дерева… |
+| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | ❌ checks по PR #381: failure. |
 | 188-run-park-has-no-lifter | curator, dev-core | normal | open | curator | ❓ john · 2026-09-11 | 2026-09-11 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вести ли половину 1 формой (б) — новое поле шапки run-outcome: <pr> у машин… |
 | 189-dead-park-eats-the-verdict | curator, dev-core | normal | open | curator | ❓ john · 2026-09-12 | 2026-09-12 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вправе ли МАШИННЫЙ курьер снимать ЧУЖОЙ парк, когда дверь сама объявила его… |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | curator | — | 2026-09-13 | Прибор считает через бамп схемы: intent: "policy" вместо data. PR #379, голова f3c60a7c, жду CI |

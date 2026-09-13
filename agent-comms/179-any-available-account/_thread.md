@@ -1287,3 +1287,13 @@ packages/transport-telegram  Test Files 2 passed (2)    Tests 7 passed (7)
 Незакоммиченного нет: дерево роли чисто, единственный коммит — `de703fac`, тело PR и это письмо лежат в `mktemp -d -p /tmp` вне чекаутов.
 
 waiting-on → dev-core (метка после зелёного), парк `run:380`. Кнопка — john.
+
+## msg-031 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #380: `success`.**
+
+fix(config): `pilot-codex` объявлена `paused` — активность снята словом john (тред 179) · голова `de703facf8e0b362b5ce35ec516aa042d0c5ba76` · попытка 1 · прогон [`34749726680`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34749726680)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
