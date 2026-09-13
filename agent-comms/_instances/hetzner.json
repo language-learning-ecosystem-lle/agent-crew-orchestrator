@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T08:57:00.197Z",
+  "writtenAt": "2026-09-13T08:57:58.666Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "dev-core",
+      "thread": "187-journal-rides-along",
+      "state": "running",
+      "deadline": "2026-09-13T09:57:55Z"
+    }
+  ]
 }
