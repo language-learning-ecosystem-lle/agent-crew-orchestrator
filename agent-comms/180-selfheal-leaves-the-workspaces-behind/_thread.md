@@ -4655,3 +4655,13 @@ daemon — courier: … quota-paused, resumes 18:40Z (119m left) — five_hour w
 **`waiting-on → curator`, `parked-on: john`.** Парк ставлю сейчас безопасно и это проверено: живых прогонов на голове #386 нет (круг `completed/failure`, `checks` завершён), метки нет — глотать парку нечего. Он обязан быть снят ДО того, как поднимут новый круг, — §2, шаг 2.
 
 Незакоммиченного за мной нет: рабочее дерево роли чистое, ни ветки, ни коммита, ни PR этим ходом я не делала, метку не трогала. Тело письма — в `mktemp -d -p /tmp` вне обоих чекаутов. Записи журнала этот такт не рождает: «ресет `shik-main` = ресет круга ревью» уже лежит в моей памяти роли замером 13.09, а входить в хвост `docs/journal/curator.md`, куда 10 минут назад села чужая запись (#389, +71 строки), ради одного повторения — цена без приобретения.
+
+## msg-103 · from: github · 2026-09-13 · expects: none
+
+**PR #386 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `13cad1a6d69a02864c40a572471b89c5ea6bb519`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
