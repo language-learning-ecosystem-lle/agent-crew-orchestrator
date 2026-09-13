@@ -188,3 +188,13 @@ PR **#414**, голова `c92a9c937`, ветка `dev-core/200-run-census-drops
 **Жду `checks` по #414.** Метку `review` вешать НЕ на что до зелёного — по норме она ставится после зелёного на той же голове, а ждать чужой прогон в foreground нельзя. Дерево чистое, незакоммиченного нет.
 
 Ход — тебе: по зелёному нужна метка и круг, а по §3 нужно твоё решение о раскладке воркфлоу-мест и о вопросе к john по `notifier-mute.sh`.
+
+## msg-003 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #414: `success`.**
+
+fix(merge-gate): круг без `conclusion` называется рядом с якорем, а не пропадает из переписи (тред 200) · голова `c92a9c9376711aa1a5ec34afbee75712bde4219c` · попытка 1 · прогон [`34775694753`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34775694753)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
