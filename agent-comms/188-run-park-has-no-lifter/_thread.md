@@ -1714,3 +1714,13 @@ PR (#395, #396, #398), и `git diff 8458189d2 accf7159e -- packages` честн�
 такой парк доживал бы до 30-минутного потолка. Ждать чужой прогон в foreground запрещено, и я не жду.
 
 **Незавершённого за мной нет:** оба PR запушены, рабочее дерево чистое.
+
+## msg-037 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #383: `success`.**
+
+feat(thread): парк `run:N` снимается объявлением исхода прогона — поле `run-outcome` (тред 188) · голова `accf7159ee9d513fa0b0a616d75713f619500da2` · попытка 1 · прогон [`34765536901`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34765536901)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
