@@ -58,6 +58,7 @@
 - [Срок аренды — только по `date -u`](lease-clock-only-from-date-u.md)
 - [Ссылка комментария на покрытие — грепом](coverage-claims-in-comments-must-be-grepped.md) — может указывать в пустоту.
 - [Зелёный push-прогон на `main` письма не рождает](green-push-run-on-main-writes-no-letter.md) — читать рукой В СВОЁМ такте.
+- [Зелёный `checks` ПО PR письмо рождает](green-pr-checks-writes-a-letter.md) — ход отдавать сразу, не дочитывать.
 - [На какой учётке живёт сессия](which-account-a-session-runs-on.md)
 - [Греп по имени считает комментарии за вызовы](name-grep-counts-comments-as-callers.md) — мерить формой вызова.
 - [Цвет сюиты решает дверь ЕЁ БАЗЫ](suite-color-depends-on-the-door-of-its-base.md)
