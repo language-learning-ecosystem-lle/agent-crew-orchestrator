@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T10:46:20.166Z",
+  "writtenAt": "2026-09-13T10:46:33.586Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,6 +19,12 @@
       "thread": "182-workspace-door-right-and-stall-bell",
       "state": "running",
       "deadline": "2026-09-13T11:25:09Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "189-dead-park-eats-the-verdict",
+      "state": "running",
+      "deadline": "2026-09-13T11:46:29Z"
     }
   ]
 }
