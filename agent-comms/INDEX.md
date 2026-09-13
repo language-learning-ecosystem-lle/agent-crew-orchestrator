@@ -172,7 +172,7 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | open | curator | run:382 · 2026-09-13 | 2026-09-13 | §3.4 сделан и открыт PR #382 (dev-core/177-manual-launch-valve, голова 9cd3428e1de39d6fad7bb3165c29… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | run:380 · 2026-09-13 | 2026-09-13 | PR #380 открыт — pilot-codex → paused, один файл, одна строка. Сюита зелёная на голове, checks идёт… |
-| 180-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
+| 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~09:15Z): #353 СМЁРЖЕН его кнопкой. Уведомитель пинит ветку — код и конф… |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-12 | 2026-09-12 | ТРЕБУЕТСЯ РЕШЕНИЕ john, одним словом: обе половины ниже — ПОЧИНКА внутри уже данного вами гранта (к… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | — | 2026-09-13 | Метка повешена, круг поднялся и умер НЕ о PR: прогон [34749640516](https://github.com/language-lear… |
