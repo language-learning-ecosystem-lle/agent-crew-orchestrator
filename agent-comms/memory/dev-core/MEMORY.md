@@ -6,7 +6,7 @@
 - Нота о базе: [гасится замером, а не перебазировкой](label-follows-base-note-not-clean.md) · [перебазировка делает написанное о базе ложным](rebase-falsifies-measurements-about-the-base.md) · [сама гаснет, только пока голова ещё двинется](base-move-note-dissolves-only-if-the-head-still-moves.md) — после последней правки инертность переезда меряешь ты.
 - Часы в тестах: [ассерт не читает стенные](assert-must-not-read-the-wall-clock.md) · [подмена часов процессному тесту](clock-shift-for-process-tests.md) — красный час в сутки, два штампа разводить по построению; `--import` через NODE_OPTIONS, оффсет общий.
 - [Номер тега реза не говорит, что в нём](release-tag-number-does-not-say-what-it-carries.md)
-- Прогон сюиты: [`TMPDIR=/tmp` и `--root packages/agent-protocol`](local-suite-needs-short-tmpdir.md) · [два способа потерять прогон до первого теста](vitest-run-invocation-traps.md) — репортёр `basic`, cwd под `--root`, плюс `console.log` зонда, который не доезжает.
+- Прогон сюиты: [`TMPDIR=/tmp` и `--root packages/agent-protocol`](local-suite-needs-short-tmpdir.md) · [два способа потерять прогон до первого теста](vitest-run-invocation-traps.md) — репортёра `basic` в vitest 4 НЕТ (не звать его), cwd под `--root`, плюс `console.log` зонда, который не доезжает.
 - [Красный `checks` на main — часто не тесты](red-main-checks-may-be-comms-sync.md)
 - [Пин в LLE из сессии aco не переехать](aco-session-cannot-reach-lle-repo.md)
 - [Перепрогон CI — только сдвигом головы](token-cannot-rerun-ci.md)
