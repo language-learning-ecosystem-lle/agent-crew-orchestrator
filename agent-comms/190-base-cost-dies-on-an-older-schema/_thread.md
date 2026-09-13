@@ -1803,3 +1803,13 @@ priority.ts:503, а не 500 (тред 190)`, `--numstat` коммита — **`
 --short` пуст), тело этого письма — в `mktemp -d -p /tmp`, вне обоих чекаутов.
 
 waiting-on → curator (парка нет).
+
+## msg-028 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #400: `success`.**
+
+docs(journal): парк run:N купил три пропущенных такта, но подъём отдал потолок коробки; строка очереди разошлась с планировщиком в одном такте (тред 190) · голова `87ed1a63a97cdb1be32e8a3d952d6201e8fd560b` · попытка 1 · прогон [`34765824423`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34765824423)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
