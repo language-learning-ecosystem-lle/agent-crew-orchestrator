@@ -713,8 +713,9 @@ export const parkSpansOf = (thread: Thread): readonly ParkSpan[] => {
  *    `pr:`/`run:` parks lift on the first live letter behind them.
  *
  * WHAT REPLACED THEM is one field and one boundary: the hand says `--park-lifted`, and an event
- * park still lifts on ITS OWN ADDRESS (the merge of the PR it names, the verdict of the round it
- * names) because no machine can write that flag. john's argument for the trade, in his words: it
+ * park still lifts on ITS OWN ADDRESS (the merge of the PR it names; for a `run:` park, the
+ * verdict of the round it names or the outcome of that round announced by number — thread 188)
+ * because no machine can write that flag. john's argument for the trade, in his words: it
  * exchanges an INVISIBLE error for a VISIBLE one. A park that goes out by itself is seen by
  * nobody until it is too late; a park somebody forgot to end is a column in the registry, a line
  * in every digest, and a human walking the parks several times a day.
@@ -725,12 +726,18 @@ const standingParkOf = (thread: Thread): number | undefined => {
   // NAME, and nothing else lifts one any more:
   //
   //  · `park-lifted: <the same value>` — the hand ending it, the only lift a writer declares;
-  //  · the verdict of the round an event park was declared to wait for (`verdict:`/`pr: N` against
-  //    a `run:N` park). The merge — `merged-pr: N` against `pr:N` and `run:N` alike — is judged one
+  //  · THE END OF THE ROUND an event park was declared to wait for, announced BY NUMBER in the
+  //    header against a `run:N` park. Two declarations say it and they rank equally, which is why
+  //    they share one set: the verdict of a REVIEW round (the pair `verdict:`/`pr: N`, thread 042)
+  //    and the outcome of any round (`run-outcome: N`, thread 188, decision of john 2026-09-13).
+  //    The second exists because `checks` — the round most `run:` parks are taken on — declares no
+  //    verdict and therefore left those parks with no address at all: they waited out the 30-minute
+  //    ceiling of `staleRunParks` every time, ~52 minutes of frozen pair measured in one day.
+  //    The merge — `merged-pr: N` against `pr:N` and `run:N` alike — is judged one
   //    level up, in `parkingOf`, against the WHOLE mail: the notifier writes into the PR's own
   //    thread, which is not this one (thread 023).
   const lifted = new Set<string>();
-  const verdicts = new Set<number>();
+  const roundsEnded = new Set<number>();
   for (let at = thread.messages.length - 1; at >= 0; at -= 1) {
     const message = thread.messages[at];
     if (message === undefined) return undefined;
@@ -744,11 +751,16 @@ const standingParkOf = (thread: Thread): number | undefined => {
       const named = parkedOnKind(on);
       // THE PARK'S OWN ADDRESS STILL LIFTS IT, and this is the boundary of the decision rather
       // than an exception to it: an event park waits for a MACHINE, and a machine cannot write
-      // `--park-lifted`. The round it named is over when the verdict about that number arrives —
-      // the DECLARED PAIR `verdict:`/`pr:` in the header, the sign of 042, no body text read.
+      // `--park-lifted`. The round it named is over when THAT NUMBER comes back in a header —
+      // the DECLARED PAIR `verdict:`/`pr:` (the sign of 042) or `run-outcome:` (thread 188), no
+      // body text read in either case.
       // Take this away and `pr:`/`run:` parks become a class of threads frozen for ever with no
       // ceiling under them, which is the invisible failure variant «А» was chosen against.
-      if (named.kind === "run" && verdicts.has(named.pr)) return undefined;
+      //
+      // AND IT IS THE `run:` PARK AND ONLY IT. A `pr:N` park waits for the BUTTON, and the end of
+      // a round on N is not the button being pressed — its address stays `merged-pr: N`, judged
+      // one level up. That asymmetry is a negative control of thread 188, not a detail.
+      if (named.kind === "run" && roundsEnded.has(named.pr)) return undefined;
       // AND IT STANDS WHERE IT WAS DECLARED, not where it was last mentioned (thread 155, §3.2 of
       // curator's statement). Repeating the same value in a later letter is a REPORT BESIDE the
       // park — which is what the door of 058 asks every writer for — and until this walk was
@@ -761,7 +773,11 @@ const standingParkOf = (thread: Thread): number | undefined => {
     const ends = message.fields.parkLifted;
     if (ends !== undefined) lifted.add(ends);
     const pr = message.fields.pr;
-    if (pr !== undefined && declaresVerdict(message)) verdicts.add(pr);
+    if (pr !== undefined && declaresVerdict(message)) roundsEnded.add(pr);
+    // THE VALUE IS READ, NOT THE PRESENCE OF THE FIELD: a `run-outcome:` about another PR says
+    // nothing about this park, exactly as somebody else's verdict does.
+    const outcome = message.fields.runOutcome;
+    if (outcome !== undefined) roundsEnded.add(outcome);
   }
   return undefined;
 };

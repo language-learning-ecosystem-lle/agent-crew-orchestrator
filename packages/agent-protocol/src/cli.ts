@@ -4116,6 +4116,18 @@ const newMessage = (argv: readonly string[]): void => {
     fail(`--merged-pr '${mergedPrRaw}' — expected the number of a PR`, 2);
   }
   const mergedPr = mergedPrRaw === undefined ? undefined : Number(mergedPrRaw);
+  // THE OTHER COUNTERPART OF AN EVENT PARK (thread 188, decision of john 2026-09-13, form (б)):
+  // the outcome notifier says which PR's round has ENDED, and a thread parked on `run:` that
+  // number lifts. Written by a workflow and not by an agent, exactly as `--merged-pr` is, so the
+  // door checks the shape only — the step knows the number of the PR it has just reported on.
+  const runOutcomeRaw = flag(argv, "--run-outcome");
+  if (runOutcomeRaw !== undefined && !/^\d+$/.test(runOutcomeRaw)) {
+    fail(
+      `--run-outcome '${runOutcomeRaw}' — expected the number of the PR whose round has ended`,
+      2,
+    );
+  }
+  const runOutcome = runOutcomeRaw === undefined ? undefined : Number(runOutcomeRaw);
   // THE VERDICT OF A ROUND (thread 042): the pair that opens a new turn at the same holder. The
   // halves are judged together in `planNewMessage`, so the refusal is one for both doors.
   const verdictFields = verdictFrom(argv);
@@ -4138,6 +4150,7 @@ const newMessage = (argv: readonly string[]): void => {
     ...(parkedOn === undefined ? {} : { parkedOn }),
     ...(delivers === undefined ? {} : { delivers }),
     ...(mergedPr === undefined ? {} : { mergedPr }),
+    ...(runOutcome === undefined ? {} : { runOutcome }),
     ...(verdictFields.pr === undefined ? {} : { verdictPr: verdictFields.pr }),
     ...(parkLifted === undefined ? {} : { lifted: parkLifted }),
     // WHO IS WRITING, not what about (thread 072): the door asks a RAISED SESSION what its
@@ -4274,6 +4287,7 @@ const newMessage = (argv: readonly string[]): void => {
       ...(delivers === undefined ? {} : { delivers }),
       ...(parkMover === undefined ? {} : { parkMover }),
       ...(mergedPr === undefined ? {} : { mergedPr }),
+      ...(runOutcome === undefined ? {} : { runOutcome }),
       ...verdictFields,
       ...(tasks.length === 0 ? {} : { tasks }),
       text,

@@ -72,6 +72,20 @@ const git = (repo: string, ...args: string[]): string =>
     encoding: "utf8",
   });
 
+/**
+ * BLOCK UNTIL THE WALL CLOCK HAS CROSSED INTO THE NEXT WHOLE SECOND.
+ *
+ * Every stamp this package writes is UTC ISO TO THE SECOND, so two stamps taken by two
+ * back-to-back ticks are equal whenever both fall inside one second — and an assertion
+ * that they differ then decides red or green by the phase of a clock nobody set. This
+ * turns that phase into a fact of the fixture: after it, the next stamp is in a later
+ * second by construction. Synchronous on purpose — the tests that need it raise the CLI
+ * with `spawnSync` and have no await to hang the wait on.
+ */
+const sleepPastTheSecond = (): void => {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000 - (Date.now() % 1000) + 5);
+};
+
 const CONFIG = {
   protocolVersion: CURRENT_PROTOCOL_VERSION,
   mail: { branch: "comms", dir: "agent-comms" },
@@ -690,6 +704,17 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
           reason: "completed",
         })}\n`,
       );
+      // AND THE TWO STAMPS ARE MADE TO LAND IN DIFFERENT SECONDS, deliberately, because the
+      // assertion further down is that the `go` RE-STAMPED `at`. Both stamps are ISO to the
+      // second and these two ticks run back to back, so without this the pair collides
+      // whenever the fixture is fast enough — measured on run 34758356217 of PR #383,
+      // `expected '2026-09-13T12:55:35Z' not to be '2026-09-13T12:55:35Z'`, on a head whose
+      // executable code was byte-identical to one that had just gone green. In the field the
+      // pair CANNOT collide — the ticks that could re-stamp a legacy record are half a minute
+      // apart, which is the premise `selfRestartWent` is written on — so the collision is an
+      // artefact of the fixture and is paid for by the fixture. Do not delete: the assertion
+      // below is load-bearing, and without this wait it is a coin toss.
+      sleepPastTheSecond();
       expect(tick(home.cli, home.repo)).toContain("SELF-RESTART: the loaded code is behind");
 
       const memory = parseSelfRestartMemory(
@@ -708,7 +733,13 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
       // nowhere but here — the tick writes it, and no unit over the writer can prove the
       // tick called the writer.
       expect(memory?.went).toBe(true);
-      expect(memory?.at).not.toBe(memory?.drainSince);
+      // Strictly LATER, not merely different, and now that the seconds are separated by
+      // construction the stronger form costs nothing: a `go` that stamped `at` from anything
+      // but its own moment — the drain's value carried over, a moment cached before the wait
+      // — is the same defect wearing a different value, and `not.toBe` would let half of
+      // those through. A missing field parses to NaN and fails here, which is the answer it
+      // deserves.
+      expect(Date.parse(memory?.at ?? "")).toBeGreaterThan(Date.parse(memory?.drainSince ?? ""));
 
       // And the successor, reading that file and nothing else, recognises the restart as
       // its own and gets all four facts of it — the input of the letter, end to end.

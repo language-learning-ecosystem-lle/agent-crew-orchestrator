@@ -2136,7 +2136,7 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             (--thread <id> | --ensure-thread <slug> --title <t> --participants <a,b>) \
                             --from <role> \
                             --expects answer|ack|none [--waiting-on <role>] \
-                            --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--park-ground <fact>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
+                            --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--park-ground <fact>] [--merged-pr <n>] [--run-outcome <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
                             # --ensure-thread <slug>: A STANDING ADDRESS INSTEAD OF ONE THREAD (thread 080,
                             # decision of john 2026-09-03). It says WHICH ADDRESS the letter is for and lets
                             # the command find the thread currently playing that address's receiver: the one
@@ -2175,7 +2175,8 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # changes NOTHING about what lifts a park, and it is a REFUSAL and not a warning
                             # because `--write` is one action: a warning would be a remark about a letter
                             # already lying in an append-only feed. Three ways to pass — carry what the park
-                            # waits for (`--delivers` / `--merged-pr` / `--verdict --pr`), carry the park
+                            # waits for (`--delivers` / `--merged-pr` / `--run-outcome` / `--verdict --pr`),
+                            # carry the park
                             # forward (`--parked-on <the same value>`), or name the lift:
                             # --park-lifted <person|pr:N|run:N>: THE PARK IS OVER AND THIS LETTER SAYS WHICH
                             # ONE IT ENDS. The value must MATCH the standing park. SINCE 2026-09-08 (thread
@@ -2192,7 +2193,11 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # 2026-08-30T20:14Z to 2026-09-02T10:51Z not one letter from GitHub reached this
                             # mail — every merge went into silence, `pr:` parks degenerated into timers). The
                             # note says the park is NOT lifted and NOT touched: the only thing that lifts an
-                            # event park is the field the notifier already carries (`--merged-pr N`)
+                            # event park is a field a notifier already carries (`--merged-pr N` for `pr:N`;
+                            # `--run-outcome N` or the verdict pair for `run:N` — thread 188), and the note
+                            # NAMES THEM ALL, because a door that promises a lift it does not honour is the
+                            # defect of 188: the sentence was true of `pr:` parks and false of the `run:`
+                            # parks taken on `checks`, whose outcome declares no verdict
                             # THE BOUNDARY IS WHO SENDS, NOT WHO SIGNS, and reading it as "no card, so no norm
                             # to apply" cost a second incident: `reviewer-pr` HAS a card (`REVIEWER.md`) and
                             # is still a step of the review job. Measured in a consumer contour 2026-09-03
@@ -2481,6 +2486,23 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # in the PR's description, and the thread parked on that PR is another one —
                             # so a park is judged against the merges of the WHOLE mail (`mergedPrs`), not
                             # against the feed it happens to lie in
+                            # --run-outcome <n>: THIS MESSAGE ANNOUNCES THAT THE ROUND ON THAT PR HAS ENDED
+                            # (thread 188, decision of john 2026-09-13, form (б)) — a thread parked on
+                            # `run:<n>` lifts on it, by the same mechanism and in the same walk as the
+                            # verdict pair below. Written by the machine writer of run outcomes
+                            # (`.github/workflows/ci-outcome.yml`), and the door checks the shape only
+                            # WHY IT EXISTS: a `run:N` park had ONE address — the verdict pair — and the
+                            # round most such parks are taken on is `checks`, which declares no verdict.
+                            # So a park on `checks` had no lifter at all and waited out the 30-minute
+                            # ceiling of `staleRunParks` every time (~52 min of frozen pair in one day,
+                            # measured in 188). The two refused repairs are named rather than forgotten:
+                            # lifting on ANY letter of the machine writer would end a park declared for
+                            # another run whose number merely matched, and returning the wide lift of 023
+                            # was refused by both parties
+                            # WHAT IT DOES NOT DO: it does not lift a `pr:<n>` park — that one waits for
+                            # the BUTTON and its address is `--merged-pr <n>` — and it touches no park on
+                            # a person. It is read BY VALUE: `run-outcome: 399` against a `run:400` park
+                            # leaves the park standing
                             # --verdict approve|needs-fixes WITH --pr <n>: THE VERDICT OF A REVIEW ROUND,
                             # declared in the HEADER (thread 042, decision of john 2026-08-29). The two
                             # lines `REVIEWER.md` already asks for in the BODY, said where the R27 net is

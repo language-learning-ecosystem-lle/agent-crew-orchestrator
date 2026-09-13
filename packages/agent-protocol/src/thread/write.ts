@@ -98,6 +98,13 @@ export type NewMessageInput = {
   /** The PR this message announces as merged — it lifts the parks that wait on it (thread 023). */
   readonly mergedPr?: number;
   /**
+   * The PR whose ROUND this message announces as ended (thread 188) — it lifts a `run:` park on
+   * that number. Carried through this door for the reason `park-ground` and `park-lifted` are:
+   * both writing commands come through here, and a field one of them passes and the other drops
+   * goes into an append-only feed without a word (the lesson of 075).
+   */
+  readonly runOutcome?: number;
+  /**
    * The verdict of a review round and the PR it is about (thread 042) — declared and refused as
    * ONE field, see the refusal in `planNewMessage`.
    */
@@ -191,6 +198,7 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
     ...(input.delivers === undefined ? {} : { delivers: input.delivers }),
     ...(input.parkMover === undefined ? {} : { parkMover: input.parkMover }),
     ...(input.mergedPr === undefined ? {} : { mergedPr: input.mergedPr }),
+    ...(input.runOutcome === undefined ? {} : { runOutcome: input.runOutcome }),
     ...(input.verdict === undefined ? {} : { verdict: input.verdict }),
     ...(input.pr === undefined ? {} : { pr: input.pr }),
     ...(input.tasks === undefined ? {} : { tasks: input.tasks }),
@@ -279,6 +287,8 @@ export type NewThreadInput = {
   readonly launch?: LaunchDirective;
   readonly priority?: ThreadPriorityValue;
   readonly mergedPr?: number;
+  /** The PR whose round this opening message announces as ended (thread 188) — see above. */
+  readonly runOutcome?: number;
   readonly tasks?: readonly TaskDeclaration[];
   readonly text: string;
 };
@@ -321,6 +331,7 @@ export const planNewThread = (input: NewThreadInput): PlannedFile[] => {
     ...(input.launch === undefined ? {} : { launch: input.launch }),
     ...(input.priority === undefined ? {} : { priority: input.priority }),
     ...(input.mergedPr === undefined ? {} : { mergedPr: input.mergedPr }),
+    ...(input.runOutcome === undefined ? {} : { runOutcome: input.runOutcome }),
     ...(input.tasks === undefined ? {} : { tasks: input.tasks }),
     text: input.text,
     threadHasMessages: true, // a new thread is file-based by construction
