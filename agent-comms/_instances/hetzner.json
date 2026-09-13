@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T09:27:02.371Z",
+  "writtenAt": "2026-09-13T09:27:24.964Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "dev-core",
-      "thread": "190-base-cost-dies-on-an-older-schema",
-      "state": "draining",
-      "deadline": "2026-09-13T09:58:02Z"
-    }
-  ]
+  "leases": []
 }
