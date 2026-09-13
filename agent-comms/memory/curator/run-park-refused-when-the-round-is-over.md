@@ -20,4 +20,11 @@ metadata:
 на себя БЕЗ парка (`--waiting-on curator`, и тогда `--expects none`: дверь отказывает связке
 `--expects ack` + `waiting-on curator` + без парка как состоянию без законного исхода). Парк на
 человеке тут тоже неверен — он заморозит тред за чужим словом, которого работа не ждёт.
-См. [[failed-review-run-reddens-guard2]], [[run-park-under-checks-ends-only-by-ceiling]].
+Замер 2026-09-13 09:57Z (тред `187`, PR #381): отказ СЧИТАЕТ прогоны вслух — «every run on head
+`08c6db955` has ALREADY FINISHED (2 runs, none queued or in progress)», а принятый парк печатает
+«waits for a run that is still running (1 of 3 on head …)». Отсюда форма, когда ждать ЕСТЬ чего:
+парк ставится ПОСЛЕ действия, поднимающего прогон (push, перевешивание метки), и прогон перемеряется
+между действием и письмом — он появляется за ~1–40 с.
+
+См. [[failed-review-run-reddens-guard2]], [[run-park-under-checks-ends-only-by-ceiling]],
+[[pr-checks-outcome-rings-into-the-thread]].
