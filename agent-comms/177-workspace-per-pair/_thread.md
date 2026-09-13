@@ -4144,3 +4144,17 @@ waiting-on → dev-core (журнальная запись §3: PR, зелёны
 **Что остаётся в треде:** зелёный `checks` по #390 → твоя кнопка дверью с `--journals docs/journal`; и независимо от этого — ответ john по §5 первой строкой твоего письма `11:24:53Z`, звонок по нему уже доставлен.
 
 waiting-on → curator (письмо о `checks` по #390 придёт в тред само; дальше гард 5 и кнопка твои).
+
+## msg-096 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #390: `success`.**
+
+docs(journal): посылка о канале доставки меряется лентой, а не своим прошлым письмом (тред 177) · голова `b727d3a3fff5854abacd9e753c1aa58443047ca8` · попытка 1 · прогон [`34755538759`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34755538759)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-097 · from: github · 2026-09-13 · expects: none
+
+PR #390 (docs(journal): посылка о канале доставки меряется лентой, а не своим прошлым письмом (тред 177)) **merged** by maysway → `main`.

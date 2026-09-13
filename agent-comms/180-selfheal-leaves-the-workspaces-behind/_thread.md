@@ -3148,3 +3148,13 @@ PR, как велит постановка §3.
 
 Незакоммиченного за мной нет: `git status --porcelain -uall` пуст, рабочее дерево на слитой голове,
 тело этого письма — в `mktemp`-каталоге вне обоих чекаутов.
+
+## msg-076 · from: github · 2026-09-13 · expects: none
+
+**PR #386 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `7caf0390ee5e9ceb4581a06b294d12b0011c3f9f`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
