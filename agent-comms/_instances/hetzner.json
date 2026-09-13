@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T12:01:15.670Z",
+  "writtenAt": "2026-09-13T12:05:24.356Z",
   "roles": [
     "curator",
     "dev-core",
@@ -21,7 +21,7 @@
     {
       "role": "dev-core",
       "thread": "177-workspace-per-pair",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-13T13:01:11Z"
     },
     {
