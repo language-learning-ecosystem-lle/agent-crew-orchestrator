@@ -169,7 +169,7 @@
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
 | 176-daemon-self-restart | github, curator, john | high | closed | — | — | 2026-09-13 | — |
-| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-13 | PR #393 (docs(journal): код выхода кнопки судит два действия; о звонке судит фронтматтер (тред 177)… |
+| 177-workspace-per-pair | curator · dev-core · john | high | open | curator | — | 2026-09-13 | 393 СМЁРЖЕН — squash в main, коммит ef472dcf90739db775e25bb4d36a7e9cdbd24380, 12:52:54Z; гарды поим… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: пересматривать ли, КТО сидит на узкой учётке. Выбор «curator → shik-main, d… |
 | 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
