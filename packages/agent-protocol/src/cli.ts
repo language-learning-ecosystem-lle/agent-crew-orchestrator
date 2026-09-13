@@ -236,7 +236,7 @@ import {
   repositoryConfigCheck,
   type SigningPlace,
 } from "./orchestrator/doctor.js";
-import { chainRefusals, describeChainRefusal } from "./orchestrator/failover.js";
+import { type AccountNews, chainRefusals, describeChainRefusal } from "./orchestrator/failover.js";
 import {
   describeDeliveredFreezeLetter,
   FREEZE_LETTER_TURN,
@@ -13820,6 +13820,18 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
    * never at all for a run that died without writing one. The live tick knows it at once.
    */
   let pendingAccounts: readonly AccountAlarm[] = [];
+  /**
+   * AND WHAT HAS ALREADY BEEN SAID ABOUT THEM (thread 179) — the ledger the planner hands back
+   * every tick and is given again on the next, which is what turns a line said for as long as a
+   * window held into a line said when the window OPENED and when it CLOSED.
+   *
+   * IT LIVES IN THIS PROCESS AND NOT IN A FILE, and the cost is named rather than hidden: a
+   * daemon replaced mid-window re-announces the switch once. That is the same loss
+   * `pendingAccounts` above already carries, it falls on the safe side (a repeated line, never a
+   * missing one), and a file would be a third memory of accounts beside the journal and
+   * `notify.state` — two of which already disagree about nothing only because there are two.
+   */
+  let announcedAccounts: readonly AccountNews[] = [];
   const dialCourier = async (): Promise<void> => {
     let run: NotifyRun;
     try {
@@ -14379,6 +14391,9 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
         ...(roleChains.get(candidate.role) ?? {}),
       })),
       ...(declaredForPlan === undefined ? {} : { accounts: declaredForPlan }),
+      // WHAT THIS PROCESS HAS ALREADY SAID ABOUT ACCOUNTS (thread 179) — see the declaration
+      // above. Without it every tick is the first tick and every state is news.
+      announced: announcedAccounts,
       now: new Date(),
       // The mail is already parsed for the queue above — the set of sessions that
       // wrote is what keeps a run that delivered into its own turn out of the
@@ -14413,7 +14428,22 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
     // that every account it may spend is shut and until when. Printed every tick the fact
     // holds, like the skips and for the same reason — a state that was announced once and
     // then went quiet is indistinguishable, hours later, from a circuit that died.
+    //
+    // …AND SINCE THREAD 179 THESE ARE TRANSITIONS AND NOT READINGS. The paragraph above used to
+    // end "printed every tick the fact holds, like the skips and for the same reason", and the
+    // field disproved it: a `quota` skip IS printed every tick and says "this pair was not
+    // raised", so the silence between the two failover lines is visible in the place john asked
+    // for it — beside the candidate that did not move, naming its own cause. What was printed
+    // every tick here was an EVENT, and an event repeated 68 times is not evidence that the
+    // circuit is alive, it is the noise that teaches its reader to skip the section.
     for (const alarm of decision.accountAlarms ?? []) err(`agent-protocol: ${alarm.text}`);
+    // THE LEDGER IS REPLACED WHOLE, INCLUDING BY NOTHING — an absent field means "no window
+    // stands announced any more", not "no news": keeping the old one would say the return line
+    // again at every tick for as long as this process ran. Which ticks measured is told by the
+    // kind (`halt` and `disabled` return before the shelves are folded), so those two are the
+    // two that leave the ledger alone: a stopped circuit has measured nothing.
+    if (decision.kind !== "halt" && decision.kind !== "disabled")
+      announcedAccounts = decision.announcedAccounts ?? [];
     // …AND THE SAME MEASUREMENT GOES TO THE DIGEST OF THE PERSON WHOSE MONEY IT IS (thread
     // 036, the remainder of §4). It is HANDED ON rather than re-derived: `notify` can read
     // the shelves itself, and a second reading of one window is two facts that can disagree.

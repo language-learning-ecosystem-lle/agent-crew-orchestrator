@@ -1660,3 +1660,150 @@ describe("planTick — the ceilings of parallelism (thread 177, v27 `parallelism
     expect(line).toContain("dev-acme itself may be idle");
   });
 });
+
+/**
+ * THREAD 179 — THE SWITCH RINGS ON A TRANSITION AND NOT ON A READING OF THE STATE BEHIND IT.
+ *
+ * The field case these are written from (john on the box, 2026-09-13): `grep -c account-failover
+ * .orchestrator/daemon.log` → 68 identical lines behind five or six sessions of `curator`, and 63
+ * calls to john in forty minutes — one every forty seconds, which is the tick. Sixty of them named
+ * a raise that never happened: the ceiling of the box (`3 of 3 pair(s)`) dropped the candidate the
+ * same tick that announced its switch. The class is the one john had already cured twice this week
+ * (the self-restart letter, the collision watchman): a mechanism that rings on a STATE while
+ * calling itself an event.
+ *
+ * Every `it` below is the mutation that would bring the noise back, written as a control pair:
+ * ONE tick and TWO ticks over the very same journal, so what is proved is the narrowing itself and
+ * not an accident of the fixture.
+ */
+describe("planTick — one switch, one line (179)", () => {
+  const shelved = (account: string, until = "2026-07-24T16:00:00Z") =>
+    ({
+      kind: "lease-released",
+      ts: "2026-07-24T13:50:00Z",
+      role: "dev-core",
+      thread: "t9",
+      reason: "quota-exhausted",
+      until,
+      window: "five_hour",
+      account,
+    }) as OrchestratorEvent;
+
+  const declared = { main: { kind: "claude-code" }, second: { kind: "claude-code" } };
+  const chain = (role: string, thread: string): Candidate => ({
+    role,
+    thread,
+    account: "main",
+    fallback: ["second"],
+    worker: "claude-code",
+  });
+  const said = (decision: TickDecision): readonly string[] =>
+    (decision.accountAlarms ?? []).map((alarm) => alarm.text);
+  const switches = (decision: TickDecision): number =>
+    said(decision).filter((line) => line.includes("is raised on")).length;
+
+  /** The tick as the daemon runs it: the ledger of the previous one handed back in. */
+  const tick = (input: {
+    readonly events: readonly OrchestratorEvent[];
+    readonly candidates: readonly Candidate[];
+    readonly announced?: TickDecision["announcedAccounts"];
+  }): TickDecision =>
+    planTick({
+      ...base,
+      candidates: [...input.candidates],
+      accounts: declared,
+      events: [...input.events],
+      ...(input.announced === undefined ? {} : { announced: input.announced }),
+      enabled: true,
+      stopped: false,
+    });
+
+  it("the SECOND tick over the same shut window says nothing — the state is not re-announced", () => {
+    const events = [shelved("main")];
+    const first = tick({ events, candidates: [chain("dev-core", "t1")] });
+    expect(switches(first)).toBe(1);
+    // The ledger is the whole repair, and it is handed back even though it is not empty here.
+    expect(first.announcedAccounts).toEqual([
+      { account: "main", until: "2026-07-24T16:00:00Z", role: "dev-core" },
+    ]);
+    const second = tick({
+      events,
+      candidates: [chain("dev-core", "t1")],
+      announced: first.announcedAccounts,
+    });
+    // Same journal, same candidate, same switch — and SILENCE. Without the ledger this is the
+    // 68 lines: the tick would read the shelf again and call the reading an event.
+    expect(said(second)).toEqual([]);
+    // …and the pair still moves. The narrowing is of the sentence, never of the mechanism.
+    expect(second.kind === "plan" ? second.launches[0]?.account : undefined).toBe("second");
+  });
+
+  it("a SECOND ROLE on the same shut window does not double the line — the key is the account", () => {
+    // The gate before this one was the role ("one role, one answer per tick"), which collapsed
+    // the threads of a role and nothing else. On the field the same window was reached by
+    // `curator` again and again; on a box where two roles name it, the old gate would have said
+    // one subscription moving as two separate pieces of news.
+    const decision = tick({
+      events: [shelved("main")],
+      candidates: [chain("dev-core", "t1"), chain("curator", "t2")],
+    });
+    expect(switches(decision)).toBe(1);
+    expect(decision.announcedAccounts).toHaveLength(1);
+  });
+
+  it("the window ENDING is said once, and then the ledger is empty", () => {
+    const announced = [
+      { account: "main", until: "2026-07-24T16:00:00Z", role: "dev-core" as const },
+    ];
+    // The journal no longer holds the shelf: the window this box announced has reopened.
+    const back = tick({ events: [], candidates: [chain("dev-core", "t1")], announced });
+    expect(said(back)).toEqual([
+      "account-failover: account 'main' is off the shelf — its window reopened at 16:00Z, and dev-core is raised on it again",
+    ]);
+    // ABSENT IS THE EMPTY LEDGER, and the caller must overwrite with it rather than keep what
+    // it holds — otherwise this very line is said again at every tick from here on.
+    expect(back.announcedAccounts).toBeUndefined();
+    // Said ONCE: the next tick carries the emptied ledger and has nothing left to report.
+    const after = tick({
+      events: [],
+      candidates: [chain("dev-core", "t1")],
+      announced: back.announcedAccounts,
+    });
+    expect(said(after)).toEqual([]);
+  });
+
+  it("a QUIET tick announces no return — the shelves are the instrument, never the candidates", () => {
+    // The defect this forbids: measuring "is it still shelved" from the loop over candidates.
+    // That loop runs only over pairs with a turn, so an hour with no mail would read as every
+    // window ending and would ring a return that did not happen — and would then ring the
+    // switch again as news the moment a candidate came back.
+    const announced = [
+      { account: "main", until: "2026-07-24T16:00:00Z", role: "dev-core" as const },
+    ];
+    const quiet = tick({ events: [shelved("main")], candidates: [], announced });
+    expect(said(quiet)).toEqual([]);
+    expect(quiet.announcedAccounts).toEqual(announced);
+  });
+
+  it("a NEW window of the same account is news again — the key carries the moment", () => {
+    // "Said once" must not mean "said once ever". The account closing again after its window
+    // reopened is a second piece of news, and what tells the two apart is `until`.
+    const announced = [
+      { account: "main", until: "2026-07-24T16:00:00Z", role: "dev-core" as const },
+    ];
+    const decision = tick({
+      events: [shelved("main", "2026-07-24T21:00:00Z")],
+      candidates: [chain("dev-core", "t1")],
+      announced,
+    });
+    // Both halves of the transition, in the order they happened: the old window ended and a
+    // new one closed on top of it.
+    expect(said(decision)).toEqual([
+      "account-failover: account 'main' is off the shelf — its window reopened at 16:00Z, and dev-core is raised on it again",
+      expect.stringContaining("is raised on account 'second'"),
+    ]);
+    expect(decision.announcedAccounts).toEqual([
+      { account: "main", until: "2026-07-24T21:00:00Z", role: "dev-core" },
+    ]);
+  });
+});
