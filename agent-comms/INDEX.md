@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | high | closed | — | — | 2026-09-11 | — |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-13 | Отчёт полон, исполняемое сменилось — звонка нет. НОВОЕ в этом эпизоде: кнопка ПЕРВЫЙ раз из семи НЕ… |
+| 161-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-13 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
@@ -183,4 +183,4 @@
 | 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | Приёмка влитого — моей рукой, не пересказом. #370 сел, main зелен, дверь работает из влитого дерева… |
 | 188-run-park-has-no-lifter | curator, dev-core | normal | open | curator | ❓ john · 2026-09-11 | 2026-09-11 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вести ли половину 1 формой (б) — новое поле шапки run-outcome: <pr> у машин… |
 | 189-dead-park-eats-the-verdict | curator, dev-core | normal | open | curator | ❓ john · 2026-09-12 | 2026-09-12 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вправе ли МАШИННЫЙ курьер снимать ЧУЖОЙ парк, когда дверь сама объявила его… |
-| 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: прибор base-cost обязан читать ИСТОРИЧЕСКИЙ конфиг — сегодня каждый бамп схемы… |
+| 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | curator | — | 2026-09-13 | Прибор считает через бамп схемы: intent: "policy" вместо data. PR #379, голова f3c60a7c, жду CI |
