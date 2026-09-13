@@ -172,7 +172,7 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
-| 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-13 | Вторая за день авария того же класса: аккаунт ревьюера высох ВТОРОЙ раз, окно 5 ч кончилось за 2 ч… |
+| 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #397: success. |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: круг ревью по #386 сгорел на лимите аккаунта, и до 18:40Z его не поднять НИ… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
@@ -180,7 +180,7 @@
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
-| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | PR #405 (docs(journal): класс journal-only доехал до кнопки — цена ребейзами и расхождение курьера… |
+| 187-journal-rides-along | curator · dev-core · john | normal | closed | — | — | 2026-09-13 | — |
 | 188-run-park-has-no-lifter | curator, dev-core | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать кнопку merge по PR #383 — гард 4, дифф трогает .github/workflows/ci-… |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | run:401 · 2026-09-13 | 2026-09-13 | Седьмой разрыв по тому же хвосту склеен: #401 снова MERGEABLE, голова 4f3995d06, дверь держит один… |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
