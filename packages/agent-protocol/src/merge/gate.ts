@@ -920,6 +920,35 @@ export const reviewRunAnchor = (input: {
       run.status === "completed" &&
       run.conclusion === "success",
   );
+  // A ROUND WITHOUT A `conclusion` FALLS OUT OF BOTH PILES, AND THAT IS THE SILENCE (thread
+  // 200). `rounds` keeps the closed successful ones; the two branches below that print
+  // anything print either `named` or `rounds`. A round of THIS workflow on THIS head that is
+  // `queued`/`in_progress` and carries `conclusion: null` is in neither — so once ONE closed
+  // round anchors the verdict, a second round still in flight beside it is reported nowhere,
+  // and the reader is told "anchored" with no hint that the answer is about to be re-asked.
+  // Measured on the notifier's own workflow 2026-09-13: two runs sat `queued` with zero jobs
+  // for over an hour and appeared in no count at all — `status` was never weighed beside
+  // `conclusion`.
+  //
+  // IT ONLY SPEAKS, and the scope is exactly that: the state and the exit code are the same
+  // with an unfinished round beside the anchor and without one (locked by test). A round that
+  // has not answered cannot anchor anything, and turning it into a refusal would be a change
+  // of the norm, which is john's. Naming it costs one clause and ends the silence.
+  const unfinished = named.filter(
+    (run) =>
+      run.headSha === head &&
+      run.event === "pull_request" &&
+      run.status !== "completed" &&
+      run.conclusion === undefined,
+  );
+  const besideUnfinished =
+    unfinished.length === 0
+      ? ""
+      : ` — and BESIDE it ${unfinished.length} round(s) of '${reading.workflow}' on this head have not answered yet (${unfinished
+          .map(describeRun)
+          .join(
+            "; ",
+          )}): a run with no 'conclusion' anchors nothing, and this one may still replace the verdict credited here`;
   if (rounds.length === 0)
     return {
       state: "orphan",
@@ -963,7 +992,7 @@ export const reviewRunAnchor = (input: {
     );
     return {
       state: "anchored",
-      detail: `inside the round ${window?.run.id ?? "?"} of '${reading.workflow}' on this head (${window?.run.createdAt ?? "?"}…${window?.run.updatedAt ?? "?"})`,
+      detail: `inside the round ${window?.run.id ?? "?"} of '${reading.workflow}' on this head (${window?.run.createdAt ?? "?"}…${window?.run.updatedAt ?? "?"})${besideUnfinished}`,
     };
   }
   return {
@@ -979,7 +1008,7 @@ export const reviewRunAnchor = (input: {
       .map(describeRun)
       .join(
         "; ",
-      )}. A verdict sent from a round that read ANOTHER head is anchored here by GitHub anyway — it answers about the tree that round analysed, not about this one. What is missing is a round of review on this head`,
+      )}. A verdict sent from a round that read ANOTHER head is anchored here by GitHub anyway — it answers about the tree that round analysed, not about this one. What is missing is a round of review on this head${besideUnfinished}`,
   };
 };
 
