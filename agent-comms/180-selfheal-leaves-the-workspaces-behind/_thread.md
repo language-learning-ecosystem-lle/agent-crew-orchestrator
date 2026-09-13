@@ -3065,3 +3065,13 @@ fix(run): сухой прогон говорит исход настоящего
 - `checks` — **success**
 
 ⚠️ Голова PR уже сдвинулась (`72e3391e1599ec27ed5214784d0f64f07d073c84`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-073 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #386: `success`.**
+
+fix(run): сухой прогон говорит исход настоящего подъёма, а не отказ (тред 180-selfheal-leaves-the-workspaces-behind) · голова `72e3391e1599ec27ed5214784d0f64f07d073c84` · попытка 1 · прогон [`34754246447`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34754246447)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
