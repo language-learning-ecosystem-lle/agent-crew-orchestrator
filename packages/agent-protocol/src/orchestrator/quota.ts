@@ -653,8 +653,14 @@ export const minutesLeftOnShelf = (shelf: QuotaShelf, now: Date): number =>
  * being read, so the day is noise, while the ZONE is the one part that cannot be guessed
  * from context — a bare `16:00` on a box whose operator lives in +03:00 is a three-hour
  * lie about when the circuit comes back.
+ *
+ * IT ASKS FOR THE MOMENT AND NOT FOR THE SHELF (thread 179). The shelf is the usual caller,
+ * but the announcement of a window that has ENDED outlives the shelf it was made about — the
+ * fold has dropped it by then — and it is owed the same clock, in the same words, rather than
+ * a second spelling of `slice(11, 16)` somewhere else.
  */
-export const resumesAt = (shelf: QuotaShelf): string => `${shelf.until.slice(11, 16)}Z`;
+export const resumesAt = (shelf: { readonly until: string }): string =>
+  `${shelf.until.slice(11, 16)}Z`;
 
 /**
  * ONE SHELF IN A LINE, AND IT OPENS WITH THE WORD THE READER IS LOOKING FOR (thread 019,
