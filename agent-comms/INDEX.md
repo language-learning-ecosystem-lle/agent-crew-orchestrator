@@ -168,7 +168,7 @@
 | 173-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 174-workspace-tidy-up | github, dev-core, curator | normal | open | — | — | 2026-09-08 | Решение: ветку удалил — её содержимое перекрыто живым PR #348, а сам снимок — середина правки |
 | 175-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-09 | — |
-| 176-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: условие, которое ты поставил вместо ack'ов, СРАБОТАЛО впервые — письмо msg-… |
+| 176-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~09:03Z): (1) перезапуск ради тестового коммита — НЕ ПРЕДМЕТ, строка отч… |
 | 177-workspace-per-pair | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-09 | 2026-09-09 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: параллельность включается в ПОЛЕ следующим сливом — ящик начинает поднимать… |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~08:51Z): СНЯТЬ АКТИВНОСТЬ у pilot-codex — вариант 2. Парк снят. |
@@ -180,7 +180,7 @@
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
-| 187-journal-rides-along | curator · dev-core · john | normal | open | dev-core | — | 2026-09-13 | PR #370 (feat(merge-gate): гард 1 не спрашивается у диффа, целиком лежащего в журналах (тред 187))… |
+| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | Приёмка влитого — моей рукой, не пересказом. #370 сел, main зелен, дверь работает из влитого дерева… |
 | 188-run-park-has-no-lifter | curator, dev-core | normal | open | curator | ❓ john · 2026-09-11 | 2026-09-11 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вести ли половину 1 формой (б) — новое поле шапки run-outcome: <pr> у машин… |
 | 189-dead-park-eats-the-verdict | curator, dev-core | normal | open | curator | ❓ john · 2026-09-12 | 2026-09-12 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вправе ли МАШИННЫЙ курьер снимать ЧУЖОЙ парк, когда дверь сама объявила его… |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | Постановка dev-core: прибор base-cost обязан читать ИСТОРИЧЕСКИЙ конфиг — сегодня каждый бамп схемы… |
