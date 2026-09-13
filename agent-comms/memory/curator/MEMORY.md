@@ -157,7 +157,7 @@
 - [Сгоревший круг читается записью `result`](burned-round-is-read-in-the-result-record.md) — полей 429 в логе НЕТ
 - [Курьер зовёт метку и на журнальном PR](courier-calls-for-a-label-on-a-journal-only-pr.md)
 - [Гард 3 у журнального PR — стоячие нормы 143+187](journal-pr-guard3-rests-on-standing-norms.md)
-- [Ход под живым `checks` передаётся БЕЗ парка](no-park-beats-run-park-under-live-checks.md)
+- [Ход под живым `checks`: парк решает наличие своей работы на минуты](no-park-beats-run-park-under-live-checks.md) — с 13.09 парк дешёв
 - [Отложенная работа держится только парком на человеке](deferred-work-has-only-a-person-park.md) — таймера нет
 - [Токен ревьюера — вторая учётка](reviewer-token-is-the-second-account.md) — `shik-main`, общая с `curator`
 - [Под кругом РЕВЬЮ парк `run:<pr>` правилен](park-run-under-a-review-round-lifts-on-the-verdict.md) — его снимает само письмо вердикта
