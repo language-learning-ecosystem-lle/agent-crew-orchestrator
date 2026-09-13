@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: пересматривать ли, КТО сидит на узкой учётке. Выбор «curator → shik-main, d… |
 | 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | 🔕 Уведомитель Claude PR Review отказал: failure. |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Зелено, метка повешена, круг ревью идёт — #386 на голове 37672395876ae16831b5cc5764245f5cf98d0a9e. |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | ПОПРАВКА К МОЕМУ ПРЕДЫДУЩЕМУ ПИСЬМУ: круг ревью НЕ идёт — он умер, вердикта нет. Ход обратно на |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~11:02Z): #378 СМЁРЖЕН его кнопкой. Обе нормы в каноне. Парк снят — тред… |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
