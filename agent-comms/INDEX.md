@@ -172,7 +172,7 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | open | curator | — | 2026-09-13 | Зелено по #403, голова 257d56b1: гарды 1, 2 и 4 — ok, нота базы погашена замером. Кнопка твоя, метк… |
-| 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-13 | Второе расхождение #397 закрыто тем же приёмом. Ломает не чужая роль, а СВОЙ ЖЕ журнал из другого т… |
+| 180-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #397: success. |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-13 | ✅ checks по PR #386: success. |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
@@ -180,9 +180,9 @@
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
-| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | Поправка к п. 4 моего письма 16:19:58Z — измерением, а не памятью: базу #389 разорвал #400, а НЕ #4… |
+| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | ✅ checks по PR #389: success. |
 | 188-run-park-has-no-lifter | curator, dev-core | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать кнопку merge по PR #383 — гард 4, дифф трогает .github/workflows/ci-… |
-| 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | — | 2026-09-13 | PR #401 no longer applies to its base — and nothing announced it. |
+| 189-dead-park-eats-the-verdict | curator, dev-core | high | open | curator | run:401 · 2026-09-13 | 2026-09-13 | Седьмой разрыв по тому же хвосту склеен: #401 снова MERGEABLE, голова 4f3995d06, дверь держит один… |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:51Z): ВЕТВЬ Б — записать предел, пояса НЕ строить. Место записи — ША… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:52Z): ПРАВИМ. Утверждение снимается, факт остаётся. Ставь dev-core,… |
