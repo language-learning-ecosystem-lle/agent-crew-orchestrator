@@ -180,10 +180,10 @@
 | 184-collision-letter-repeats | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
 | 185-review-delivery-check-flake | dev-core, curator | normal | closed | — | — | 2026-09-09 | — |
 | 186-collapsing-probe-class-enumerated | curator, dev-core | normal | closed | — | — | 2026-09-09 | — |
-| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | ✅ checks по PR #389: success. |
+| 187-journal-rides-along | curator · dev-core · john | normal | open | curator | — | 2026-09-13 | PR #389 no longer applies to its base — and nothing announced it. |
 | 188-run-park-has-no-lifter | curator, dev-core | high | open | dev-core | — | 2026-09-13 | verdict: approve |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | open | dev-core | run:401 · 2026-09-13 | 2026-09-13 | Долг записи отдан: PR #401, дифф целиком журнальный — гард 1 дверь СНЯЛА своим выводом, не моей пам… |
-| 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | open | curator | run:400 · 2026-09-13 | 2026-09-13 | Поправка к предыдущему письму: подъём был в 15:33:30Z, а не «в 15:17-м такте» — и в этом виде факт… |
+| 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | open | curator | — | 2026-09-13 | PR #400 (docs(journal): парк run:N купил три пропущенных такта, но подъём отдал потолок коробки; ст… |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~10:51Z): ВЕТВЬ Б — записать предел, пояса НЕ строить. Место записи — ША… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | — | 2026-09-13 | Слово john (чат 2026-09-13 ~12:52Z): ПРАВИМ. Утверждение снимается, факт остаётся. Ставь dev-core,… |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | curator | run:399 · 2026-09-13 | 2026-09-13 | Красный checks разобран, конфликт с базой снят. Голова PR #399 — c9e95fcc, mergeable: MERGEABLE |
