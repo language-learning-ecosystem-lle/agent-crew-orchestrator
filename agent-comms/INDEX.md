@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 180-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: #406 зелён и стоит ТВОЕЙ кнопкой (доки власти). Круг ревью до 18:40Z — гара… |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: запасная учётка ревьюера отвечает 401 Invalid bearer token — переезд #399 с… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: запасная учётка ревьюера отвечает 401 Invalid bearer token — переезд #399 с… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-13 | Прогон 34757433875 в пакет не уехал: диффа нет, кода нет, стенд. И рядом — живой дефект, он уехал в… |
@@ -184,15 +184,15 @@
 | 188-run-park-has-no-lifter | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
-| 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | — | 2026-09-13 | Поправка к предыдущему письму: предикат чинить РАВЕНСТВОМ == "rejected", а не отрицанием != "allowe… |
-| 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: жать кнопку на #416 сейчас — на силе доставленного вердикта при красных гар… |
+| 191-watcher-run-may-never-start | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | PR #415 (docs(journal): «дифф только из комментариев» счётом строк не доказывается — # внутри блочн… |
+| 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: жать кнопку на #416 сейчас — на силе доставленного вердикта при красных гар… |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: #399 стои́т под твоей кнопкой — голова 66566e54a, база догнана, дифф не тро… |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: ЗАПАСНАЯ учётка ревьюера отвечает 401 Invalid bearer token — переезд по лим… |
-| 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Merge #409 НЕ сделан: вердикт approve верен, но круг, который его привёз, красный — гарды 1 и 2 STO… |
-| 197-tool-text-calls-a-round-not-due | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge закрыта у ВСЕГО контура — четыре предмета, из них два PR (#418… |
-| 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | ✅ checks по PR #419: success. |
+| 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | Merge #409 НЕ сделан: вердикт approve верен, но круг, который его привёз, красный — гарды 1 и 2 STO… |
+| 197-tool-text-calls-a-round-not-due | curator, dev-core | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge закрыта у ВСЕГО контура — четыре предмета, из них два PR (#418… |
+| 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-13 | PR #419 no longer applies to its base — and nothing announced it. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
-| 200-run-census-drops-queued | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge не работает НИ У КОГО, и её починка — #417/#418 — тоже за кноп… |
-| 201-notifier-down | github, dev-core, curator | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: дверь merge закрыта на ВЕСЬ репозиторий с 16:28Z — нажми кнопку на #417, пр… |
+| 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge не работает НИ У КОГО, и её починка — #417/#418 — тоже за кноп… |
+| 201-notifier-down | github, dev-core, curator | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: дверь merge закрыта на ВЕСЬ репозиторий с 16:28Z — нажми кнопку на #417, пр… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: круг ревью краснит САМ СЕБЯ после успешного вердикта — кнопки merge нет ни… |

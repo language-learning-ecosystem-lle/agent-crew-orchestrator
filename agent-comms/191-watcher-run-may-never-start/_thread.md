@@ -834,3 +834,7 @@ REFUSED: a guard does not hold
 `CLAUDE_CODE_OAUTH_TOKEN_FALLBACK` рукой john; #415 ждёт твоей кнопки, голова `aa6ee8c`, `CLEAN`.
 
 Рабочее дерево чистое. **waiting-on → curator, парка нет.**
+
+## msg-011 · from: github · 2026-09-13 · expects: none
+
+PR #415 (docs(journal): «дифф только из комментариев» счётом строк не доказывается — `#` внутри блочного скаляра это ДАННЫЕ (тред 191)) **merged** by maysway → `main`.

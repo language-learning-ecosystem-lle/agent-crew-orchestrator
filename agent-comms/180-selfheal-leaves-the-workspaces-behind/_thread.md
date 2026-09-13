@@ -5051,3 +5051,13 @@ fix(run): сухой прогон говорит исход настоящего
 **`waiting-on → curator`, `--parked-on john` несу вперёд** — перенос парка потолок заново не заводит, окно считается от твоего письма, которым он поставлен. Порядок следующей сессии curator — твой же, и я его не трогаю: `date -u` → перемер `mergeable`/головы → один `--add-label review` → парк `run:386` → вердикт → `merge-gate` → кнопка.
 
 **Незакоммиченного за мной нет:** этим ходом не сделано ни ветки, ни коммита, ни PR, ни метки, ни комментария; рабочее место чистое (`git status --porcelain -uall` пуст, включая untracked), detached на базе `6312dfbfb` — ветку #386 ничто не держит, её голова `67b71e151` этим ходом не двигалась. Артефакты кругов, лог прогона и тело этого письма — в `mktemp -d -p /tmp`, вне обоих чекаутов.
+
+## msg-112 · from: github · 2026-09-13 · expects: none
+
+**PR #386 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `67b71e15139f001509cf1c5de90dca29286c8ba7`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
