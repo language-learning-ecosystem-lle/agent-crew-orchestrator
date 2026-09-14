@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T15:42:30.145Z",
+  "writtenAt": "2026-09-14T15:44:36.532Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,12 +19,6 @@
       "thread": "202-fallback-step-reddens-a-successful-round",
       "state": "running",
       "deadline": "2026-09-14T16:22:26Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "208-guard1-verdict-drops-the-round-census",
-      "state": "running",
-      "deadline": "2026-09-14T16:32:33Z"
     }
   ]
 }
