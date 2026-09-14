@@ -172,7 +172,7 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
-| 180-notifier-down | github, dev-core, curator | high | open | curator | run:406 · 2026-09-14 | 2026-09-14 | Вердикт needs-fixes (msg-067) прочитан; его ЕДИНСТВЕННАЯ находка была исправлена за три минуты ДО т… |
+| 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-14 | verdict: approve |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ДЖОНУ — КНОПКА, ДВЕ ШТУКИ: нажми #431 (тред 201, вторая половина уже сделана и открыта) и, когда пр… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
@@ -189,7 +189,7 @@
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN: «мерь 15.09» ЛИБО «закрывай». Размен НЕ ВИДЕН, потолок числа пересматрив… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #408 СМЁРЖЕН john ~10:51Z, доставка лежит в этой ленте письмом 10:51:47Z. |
-| 196-queue-row-contradicts-the-planner | curator, dev-core | high | open | dev-core | — | 2026-09-14 | ✅ checks по PR #409: success. |
+| 196-queue-row-contradicts-the-planner | curator, dev-core | high | open | curator | run:409 · 2026-09-14 | 2026-09-14 | #409 расконфликтован — но база уехала ДВАЖДЫ за такт, поэтому влитий два. Голова 2c82d5e, MERGEABLE… |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: #411 стоит под твоей кнопкой — одобрен, зелен, CLEAN, гард 4 STOP (это .git… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
