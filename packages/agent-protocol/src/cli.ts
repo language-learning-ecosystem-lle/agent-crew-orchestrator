@@ -12199,12 +12199,20 @@ const settleRun = (input: {
       // that does write does its levelling, so there is one site that decides and one site
       // that speaks.
       //
-      // THE SECOND SITUATION IS DECLINED BY NAME AND NOT BY `write` (half (б), not this
-      // diff): the parent of a background launch writes nothing either, and for it the
-      // stale build is still the end of the run, exactly as it was — `input.background` is
-      // what tells the two apart, because `write` cannot.
+      // AND THE PARENT OF A BACKGROUND LAUNCH IS NOT REFUSED EITHER (thread 180, half (б),
+      // john's decision of 2026-09-13). It writes nothing — but the launch it is part of
+      // does: its child repeats this whole command with `--write` and levels the tree under
+      // its own lock. Refusing the parent for a fault its own child would repair was the
+      // standstill of half (а) wearing the other mask: `-d` on a tree the grant covers died
+      // with code 2 at the very door john's grant told it to level. The parent is not the
+      // repairer and does not become one here — it says the outcome and forks.
+      //
+      // THE TWO ARE STILL TOLD APART BY A MACHINE FACT, NOT BY TEXT. What lets either of
+      // them through is `levelling.install` — the plan's own answer about john's three
+      // borders — so a dirty tree, one on the role's own branch and a resume end the
+      // parent's run exactly as they did, by name and with code 2.
       const levelling = mayLevel(true);
-      if (input.background === true || !levelling.install) {
+      if (!levelling.install) {
         if (levelling.install === false && levelling.why !== undefined)
           lines.push(`levelling — stands aside: ${levelling.why}`);
         return { ok: false, reason: build.reason, lines };
@@ -12448,7 +12456,16 @@ const settleRun = (input: {
     // asked immediately above it, where the reader of the install can see it, rather than
     // a screen away where the borders are read.
     if (staleBuild !== undefined) lines.push(`package — ${staleBuild}`);
-    lines.push(`levelling — ${describePlannedWorkspaceInstall({ role: role.id, path })}`);
+    lines.push(
+      `levelling — ${describePlannedWorkspaceInstall({
+        role: role.id,
+        path,
+        // WHICH OF THE TWO SILENT RUNS THIS IS (half (б)): the flag the caller already
+        // handed in, not a second reading of the mode. `write` is false for both, which is
+        // exactly why it cannot be the one that answers this.
+        ...(input.background === true ? { background: true } : {}),
+      })}`,
+    );
   } else if (levelling.install) {
     lines.push(`levelling — ${levelling.note}`);
     const outcome = runWorkspaceInstall({ path, repo });

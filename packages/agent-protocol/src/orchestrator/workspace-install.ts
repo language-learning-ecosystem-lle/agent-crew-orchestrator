@@ -135,8 +135,19 @@ export const planWorkspaceInstall = (input: {
 export const describePlannedWorkspaceInstall = (input: {
   readonly role: string;
   readonly path: string;
+  /**
+   * WHO IS NOT DOING IT, AND WHY THE TWO MUST NOT SHARE A SENTENCE (thread 180, half (б)).
+   * A plan is nobody's launch: it owes the reader the outcome a real one WOULD have. The
+   * parent of a background launch is half of a launch that is really happening — the
+   * levelling is not skipped, it is done by its child, under the child's own lock. Saying
+   * "this is a plan" on the parent's terminal would be a false sentence about a tree that
+   * is about to be levelled for real, so the caller hands in which of the two it is.
+   */
+  readonly background?: boolean;
 }): string =>
-  `not run — this is a plan: a real launch would level the workspace of '${input.role}' onto the build the circuit runs (installing into '${input.path}') and carry on`;
+  input.background === true
+    ? `not run here — this run only forks: the child of this background launch levels the workspace of '${input.role}' onto the build the circuit runs (installing into '${input.path}') under its own lock, and carries on`
+    : `not run — this is a plan: a real launch would level the workspace of '${input.role}' onto the build the circuit runs (installing into '${input.path}') and carry on`;
 
 /** What actually happened, as the caller measured it — the text is the journal's line. */
 export type WorkspaceInstallOutcome =
