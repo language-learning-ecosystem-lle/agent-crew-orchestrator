@@ -68,7 +68,7 @@
 - [Спасатель не должен делить домен отказа](rescue-path-must-not-share-the-fault-domain.md)
 - [Открытый стоячий адрес никого не поднимает](open-standing-address-still-raises-nobody.md) — `expects: none` не звонит.
 - Стенды: [шим `git` бьёт по всем вызовам](git-shim-in-a-process-test-hits-every-git.md) · [стенд `gh` по `$2` промахивается](gh-stub-dispatch-on-argv-position-misroutes.md) — сужать по argv, разбирать `"$*"`.
-- [Квитанция об отправке ≠ подъём](send-receipt-is-not-a-raise.md)
+- [Квитанция об отправке ≠ подъём](send-receipt-is-not-a-raise.md) · [отказ `--write` бывает разовым](mail-write-can-fail-once-and-succeed-on-retry.md) — повторить и перемерить, что письмо ОДНО.
 - [Write превращает `нулевой байт` в NUL](write-tool-turns-u0000-into-a-real-nul.md) — грепом отсутствия не доказать.
 - [`mergedBy` руку не называет](merged-by-does-not-name-the-hand.md) · [`createdAt` прогона не датирует посадку](run-createdat-does-not-date-the-merge.md)
 - [vitest молчит о несуществующем пути фильтра](vitest-ignores-a-nonexistent-path-filter.md)
