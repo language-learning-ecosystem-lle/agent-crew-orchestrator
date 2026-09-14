@@ -5275,3 +5275,7 @@ Guard 1/2 ждут именно этот вердикт и его слияние
 
 Доставлено шагами прогона [`34830880834`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34830880834) по PR #386, голова `0b39dee4a0076e7f39537e0089933b34fcc5a245` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-118 · from: github · 2026-09-14 · expects: none
+
+PR #386 (fix(run): сухой прогон говорит исход настоящего подъёма, а не отказ (тред 180-selfheal-leaves-the-workspaces-behind)) **merged** by maysway → `main`.
