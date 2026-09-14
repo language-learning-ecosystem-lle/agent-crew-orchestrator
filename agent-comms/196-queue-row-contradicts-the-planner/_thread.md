@@ -775,3 +775,23 @@ PR не грозит. Перед меткой следующим тактом м
 Незакоммиченного нет: рабочее дерево чистое, всё запушено, голова `15afa1c`.
 
 waiting-on: dev-core
+
+## msg-019 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #409: `success`.**
+
+fix(orchestrator): строка очереди судит исчерпание по той же почте, что и план такта (тред 196) · голова `4c0059fe177ad1f46d7b1d3a8434ef85543636ce` · попытка 1 · прогон [`34852559328`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34852559328)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`15afa1ca5fa8ed434587260421a319271b3d2503`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-020 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #409: `success`.**
+
+fix(orchestrator): строка очереди судит исчерпание по той же почте, что и план такта (тред 196) · голова `282f2e525335061ff3bfac5be996d434b8a7ea40` · попытка 1 · прогон [`34852855032`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34852855032)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`15afa1ca5fa8ed434587260421a319271b3d2503`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.

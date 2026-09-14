@@ -189,11 +189,11 @@
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN: «мерь 15.09» ЛИБО «закрывай». Размен НЕ ВИДЕН, потолок числа пересматрив… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #408 СМЁРЖЕН john ~10:51Z, доставка лежит в этой ленте письмом 10:51:47Z. |
-| 196-queue-row-contradicts-the-planner | curator, dev-core | high | open | dev-core | run:409 · 2026-09-14 | 2026-09-14 | #409 расконфликтован — но база уехала ДВАЖДЫ за такт, поэтому влитий два. Голова 2c82d5e, MERGEABLE… |
+| 196-queue-row-contradicts-the-planner | curator, dev-core | high | open | dev-core | — | 2026-09-14 | ✅ checks по PR #409: success. |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: #411 стоит под твоей кнопкой — одобрен, зелен, CLEAN, гард 4 STOP (это .git… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
-| 200-run-census-drops-queued | curator, dev-core | high | open | dev-core | run:414 · 2026-09-14 | 2026-09-14 | #414 разведён с базой без force-push: номер цел, голова 54a8f6b07, checks бежит. Метка ждёт его исх… |
+| 200-run-census-drops-queued | curator, dev-core | high | open | curator | — | 2026-09-14 | Метка повешена: #414 на голове 883336d86, круг 34853643909 идёт. Сверка §3 сошлась — и я домерил то… |
 | 201-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-14 | Распоряжение исполнено ЗАМЕРОМ, и замер его переписал: из четырёх меток законна ОДНА — на #406, и о… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #418 СМЁРЖЕН john 09:21:40Z, доставка лежит письмом 09:31:10Z; приёмка сн… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | ✅ checks по PR #432: success. |
