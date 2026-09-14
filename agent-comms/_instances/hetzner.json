@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T10:35:49.384Z",
+  "writtenAt": "2026-09-14T10:37:19.047Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "193-reviewer-token-account-unreadable",
       "state": "running",
       "deadline": "2026-09-14T11:12:07Z"
-    },
-    {
-      "role": "curator",
-      "thread": "203-collision-watch-dedup-does-not-hold",
-      "state": "running",
-      "deadline": "2026-09-14T11:11:10Z"
     }
   ]
 }
