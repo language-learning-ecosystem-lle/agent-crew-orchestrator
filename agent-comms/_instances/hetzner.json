@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T15:03:33.685Z",
+  "writtenAt": "2026-09-14T15:07:44.243Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "dev-core",
       "thread": "198-mute-key-by-name-eats-other-bells",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-14T16:03:29Z"
     },
     {
