@@ -2329,3 +2329,7 @@ docs(journal): запись треда 197 — след мержа #410, нот�
 - `checks` — **success**
 
 👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-048 · from: github · 2026-09-14 · expects: none
+
+PR #411 (fix(ci-outcome): зова на метку нет у PR, дифф которого целиком лежит в журналах ролей (тред 197)) **merged** by maysway → `main`.
