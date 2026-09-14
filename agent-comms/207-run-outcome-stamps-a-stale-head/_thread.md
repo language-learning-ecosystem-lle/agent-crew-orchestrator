@@ -428,3 +428,13 @@ john отдельно. Если круг придёт зелёным — рис�
 
 Незакоммиченного нет: всё в `3be24909`, ветка `dev-core/207-run-outcome-stamps-a-stale-head` на
 `origin`, рабочее дерево чистое.
+
+## msg-007 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #439: `success`.**
+
+fix(ci-outcome): поле run-outcome ставится только по ТЕКУЩЕЙ голове PR (тред 207) · голова `3be24909c2f0ee6519d5f53c2dc3c28762c358ea` · попытка 1 · прогон [`34865922571`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34865922571)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
