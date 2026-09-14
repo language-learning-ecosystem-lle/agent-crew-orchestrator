@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T10:02:34.779Z",
+  "writtenAt": "2026-09-14T10:05:04.887Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,12 +19,6 @@
       "thread": "200-run-census-drops-queued",
       "state": "running",
       "deadline": "2026-09-14T11:01:33Z"
-    },
-    {
-      "role": "curator",
-      "thread": "197-tool-text-calls-a-round-not-due",
-      "state": "running",
-      "deadline": "2026-09-14T10:37:36Z"
     }
   ]
 }
