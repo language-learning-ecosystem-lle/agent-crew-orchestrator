@@ -157,3 +157,4 @@
 - [«Не связанный такт» не наступает](unbound-tick-never-comes.md) — работа по слову john ставится В ТОМ ЖЕ треде, где слово
 - [Кнопка merge не передаётся письмом](directive-letter-cannot-hand-over-the-button.md) — исполнитель обязан отступить; глагол «мёржи» не пишется не-curator
 - [Запись журнала едет КОМАНДОЙ, а не PR](journal-entry-rides-a-command-not-a-pr.md) — `journal write` в ветку почты с 14.09, цена дома находки = ноль; ТЕКСТ нормы — в открытом #437, карточка пока называет `docs/journal/`
+- [Дерево роли перечекаучивается на каждом подъёме](role-worktree-is-rechecked-out-at-every-raise.md) — свежий `main` в detached HEAD; ветка PR и ручной чекаут такт не переживают
