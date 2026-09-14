@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T10:17:43.635Z",
+  "writtenAt": "2026-09-14T10:17:51.782Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,6 +19,12 @@
       "thread": "193-reviewer-token-account-unreadable",
       "state": "running",
       "deadline": "2026-09-14T10:57:32Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "192-watcher-claims-a-loss-it-never-measured",
+      "state": "running",
+      "deadline": "2026-09-14T11:17:48Z"
     }
   ]
 }
