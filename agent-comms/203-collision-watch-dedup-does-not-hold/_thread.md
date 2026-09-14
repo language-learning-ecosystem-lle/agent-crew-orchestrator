@@ -183,3 +183,13 @@ waiting-on: dev-core
 
 Доставлено шагами прогона [`34830033316`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34830033316) по PR #420, голова `96e365b37f27286fcdae2d966c2fb6ecd8c6061a` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `dev-core` — так объявил сам вердикт.
+
+## msg-006 · from: github · 2026-09-14 · expects: none
+
+**PR #420 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `96e365b37f27286fcdae2d966c2fb6ecd8c6061a`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
