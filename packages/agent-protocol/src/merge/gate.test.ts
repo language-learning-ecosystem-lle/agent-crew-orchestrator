@@ -820,6 +820,77 @@ describe("guard 1 — the round of review behind the approve (thread 027)", () =
 
     expect(outcome?.state).toBe("fail");
     expect(outcome?.detail).toContain("no round of 'Claude PR Review' is reported for e738643");
+    // THE NEGATIVE CONTROL OF THE REPAIR OF 197: with nothing on the head, the refusal says so
+    // and invents no name — the empty list is the answer, not a silence.
+    expect(outcome?.detail).toContain("NO workflow at all reports a run on this head");
+    expect(outcome?.detail).toContain("re-label, or a push");
+    expect(outcome?.detail).not.toContain("CHECK THE VALUE");
+  });
+
+  /**
+   * THE SECOND CAUSE OF THE SAME BRANCH (thread 197, measured 2026-09-13 on the head
+   * `accf7159`): `--review-workflow 'Claude Review'` was asked, and `'Claude PR Review'` was
+   * standing on that head, closed and green. The old text of this branch knew ONE medicine —
+   * "re-label, or a push" — and it is the expensive one: it burns a second round to repair a
+   * typo in a flag. The runs of the head are `actions/runs?head_sha=`, ALL workflows, so the
+   * door held the discriminating fact in its hand while printing the wrong cure.
+   */
+  it("(в') NAMES the workflows that DID run when the asked name is not among them (197)", () => {
+    const outcome = guard(
+      orphan({
+        state: "read",
+        workflow: "Claude Review",
+        runs: [
+          run({ name: "Claude PR Review", headSha: PUSHED_HEAD }),
+          run({ id: 32534201969, name: "checks", headSha: PUSHED_HEAD }),
+          // The same workflow twice: a name is a name, not a run counter.
+          run({ id: 32534201970, name: "checks", headSha: PUSHED_HEAD }),
+        ],
+      }),
+      1,
+    );
+
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("no round of 'Claude Review' is reported for e738643");
+    // What the caller has to see to tell (б) from (а): the names the head actually carries…
+    expect(outcome?.detail).toContain("'Claude PR Review', 'checks'");
+    expect(outcome?.detail.match(/'checks'/g)).toHaveLength(1);
+    // …and which of the two things to fix — the flag, before spending a round.
+    expect(outcome?.detail).toContain("CHECK THE VALUE of --review-workflow");
+    expect(outcome?.detail).not.toContain("NO workflow at all");
+  });
+
+  /**
+   * THE THIRD INPUT OF THE SAME BRANCH, and the one the statement of work did not name —
+   * the finding of the round of 2026-09-13 on #410 (thread 197). `actions/runs` answered
+   * with runs, and not one of them carries a `name`: the head is NOT empty, so the empty
+   * text would be a lie, and there is no list to print, so the naming text would invent
+   * one. The door says which of the two it is and sends the reader to the head by hand —
+   * a second round is the one thing that cannot be prescribed from this payload.
+   */
+  it("(в'') says runs ARE there but nameless, inventing neither an empty head nor a name (197)", () => {
+    const outcome = guard(
+      orphan({
+        state: "read",
+        workflow: REVIEW,
+        runs: [
+          run({ name: undefined, headSha: PUSHED_HEAD }),
+          run({ id: 32534201971, name: undefined, headSha: PUSHED_HEAD }),
+        ],
+      }),
+      1,
+    );
+
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("no round of 'Claude PR Review' is reported for e738643");
+    expect(outcome?.detail).toContain(
+      "2 run(s) ARE reported on it, none of them carrying a workflow name",
+    );
+    expect(outcome?.detail).toContain("read by hand");
+    // Neither of the other two texts of the branch: the head is not empty, and there is
+    // no name to check the flag against.
+    expect(outcome?.detail).not.toContain("NO workflow at all");
+    expect(outcome?.detail).not.toContain("CHECK THE VALUE");
   });
 
   it("(г) an Actions resource the token cannot read is by-hand with GitHub's own words", () => {
