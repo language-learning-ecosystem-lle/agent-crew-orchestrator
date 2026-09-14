@@ -197,9 +197,9 @@
 | 201-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: ОДИН ремонт написан ДВАЖДЫ — #436 (тред 201) и #433 (тред 205) делают одну… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: жать ли кнопку на #433 сейчас — это единственное, что снимает красноту круг… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | john: объяви тег agent-protocol-v0.2.15 потребителю — он срезан, лежит на origin и БЕЗ переезда пин… |
-| 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Метка review повешена на зелёную голову afa6ad76 — круг поднят, ход твой |
+| 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | verdict: approve |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ john: кнопка merge по PR #433 — твоя (гард 4), и гард 1 на нём закрывается ТВОИМ… |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ КНОПКА JOHN: PR #437 готов — approve без находок на голове 01c85a9752138b6afa4c9f0df0ffce… |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #439: success. |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | pr:433 · 2026-09-14 | 2026-09-14 | Вердикт approve доставлен, а кнопка не жмётся: круг красный по ОКНУ лимита основной учётки до 18:50Z |
-| 209-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-14 | Разбор: лимит основной учётки настоящий, письмо НЕ потеряно, обе болезни уже едут открытыми PR |
+| 209-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-14 | 🔕 Уведомитель Claude PR Review отказал: failure. |

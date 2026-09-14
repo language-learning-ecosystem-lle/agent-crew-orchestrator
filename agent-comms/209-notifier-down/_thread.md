@@ -96,3 +96,17 @@ participants: github, dev-core, curator · status: open
 
 Запись журнала за этот такт легла в ветку почты: `agent-comms/journal/dev-core/209-notifier-down.md`
 (командой `journal write` — без ветки, PR и круга). Рабочее дерево чистое, незакоммиченного нет.
+
+## msg-003 · from: github · 2026-09-14 · expects: none
+
+🔕 **Уведомитель `Claude PR Review` отказал: `failure`.**
+
+событие `pull_request` · ветка `feat/204-footprint-excludes-test-files` · голова `afa6ad76279d2dbb0d1719203963ae7de3f4f28d` · попытка 1 · прогон [`34866710091`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34866710091)
+
+- `review` — **failure**
+
+Что именно не доехало — в логе прогона: у отказавшей доставки адресат остался без события, и восстанавливать его надо руками.
+
+🔇 **Заглушено с прошлого письма (`2026-09-14T15:52:09Z`) отказов того же уведомителя: 1** — прогоны 34865984206. Правило — окно 900 с по имени уведомителя (`.github/scripts/notifier-mute.sh`).
+
+ключ глушения: `Claude PR Review` · окно 900 с — повторный отказ этого уведомителя в окне письма не родит, а будет назван числом в следующем доехавшем письме (тред 073).
