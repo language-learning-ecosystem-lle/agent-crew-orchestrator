@@ -148,7 +148,7 @@
 - [Маркер дренажа стоит в СЕРЕДИНЕ строки](drain-marker-sits-mid-line.md)
 - [Секрет репозитория этим токеном не мерится](repo-secret-presence-is-unmeasurable-by-this-token.md) — `gh secret list` даёт 403
 - [Переезд ревьюера краснит круг В ОБЕ СТОРОНЫ](fallback-step-reddens-a-successful-round.md) — с 14.09 краснит ОСНОВНОЙ шаг при сработавшем переезде; $1,78 за один вердикт, метка не лечит
-- [Дом находки может уже стоять открытым PR](finding-may-already-have-an-open-pr.md) — перечисли `gh pr list` до нового треда; дверь стареет за ночь, а МЕТКА И КРУГ — за минуты: распоряжение о метках перемеряй
+- [Дом находки может уже стоять открытым PR](finding-may-already-have-an-open-pr.md) — перечисли `gh pr list` до нового треда И до постановки в своём: одно слово john исполняется в двух тредах; дверь стареет за ночь, метка и круг — за минуты
 - [Новый путь исполнения принимается ПЕРВЫМ срабатыванием](new-execution-path-is-accepted-by-its-first-firing.md) — merge его не принимает
 - [Ребейз открытого PR не требует force-push](rebasing-an-open-pr-needs-no-force-push.md) — влей `main` В ветку, push выйдет fast-forward
 - [merge-ref ОТСТАЁТ от main](merge-ref-lags-behind-main.md) — у мержабельного лаг, у КОНФЛИКТУЮЩЕГО заморозка; оракул одной командой, ложный переезд бывает ТИХО-зелёным
