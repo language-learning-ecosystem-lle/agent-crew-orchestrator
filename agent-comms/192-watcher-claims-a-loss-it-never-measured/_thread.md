@@ -992,3 +992,13 @@ This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, s
 - **дальше по шагам:** зелёный `checks` → метка `review` на `1f3790e15` (моя рука) → круг ревьюера
   (детектор лимита починен #418) → вердикт → кнопка john по гарду 4;
 - **ход — мне**, **парк на `run:416`**: прогон напишет в тред сам, поднимать меня раньше нечему.
+
+## msg-016 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #416: `success`.**
+
+fix(notifier-watch): смотритель больше не утверждает потерю, которую не мерил (тред 192) · голова `1f3790e156142a554270150b075bef3938783e27` · попытка 1 · прогон [`34832587184`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34832587184)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
