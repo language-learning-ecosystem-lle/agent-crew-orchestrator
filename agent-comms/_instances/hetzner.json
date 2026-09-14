@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T15:24:20.868Z",
+  "writtenAt": "2026-09-14T15:25:20.724Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "206-journal-writes-without-a-pr",
+      "state": "running",
+      "deadline": "2026-09-14T16:05:16Z"
+    }
+  ]
 }
