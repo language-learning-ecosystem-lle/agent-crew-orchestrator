@@ -5561,3 +5561,19 @@ CONFLICTING, стали MERGEABLE), #411 и #410 **стали** CONFLICTING. Ч�
 - **сдвинулся ли отпечаток установки:** да, 5 путь(ей) — packages/agent-protocol/README.md, packages/agent-protocol/src/cli.ts, packages/agent-protocol/src/orchestrator/thread-number-collision.process.test.ts, packages/agent-protocol/src/orchestrator/thread-number-collision.test.ts, packages/agent-protocol/src/orchestrator/thread-number-collision.ts. Это пути, правка которых МОГЛА сменить программу, которая поднимется; что установленная копия ДЕЙСТВИТЕЛЬНО другая, здесь не измерено — критерий консервативен намеренно
 
 **Ход curator — ровно на одно действие:** прочитать это и, если отчёт полон, донести john. Ремонта здесь нет: дрейф уже закрыт, а звонок о дрейфе (тред 141, #301) на этот ящик больше не придёт.
+
+## msg-080 · from: github · 2026-09-14 · expects: none
+
+## Демон перезапустил себя на новый код — без руки, и вот чего это стоило
+
+Ящик ДОЖДАЛСЯ живых сессий — ни одна не была порвана, он пошёл только после того, как закрылась последняя, — починил своё дерево и поднялся на новом коде. Ход никому не нужен для ремонта — он уже сделан; это отчёт о нём, потому что тихий самоперезапуск ничем не лучше тихого дрейфа.
+
+- **контур:** `/home/lle/projects/agent-crew-orchestrator`
+- **какой код был:** `00eec5061db2`
+- **какой стал:** `970957c3797f`
+- **сколько отставал:** 4 коммит(ов)
+- **сколько ждал сессии:** 3 мин (209 с)
+- **когда пошёл:** 2026-09-14T10:59:19Z
+- **сдвинулся ли отпечаток установки:** да, 4 путь(ей) — packages/agent-protocol/src/cli.ts, packages/agent-protocol/src/orchestrator/workspace-install.test.ts, packages/agent-protocol/src/orchestrator/workspace-install.ts, packages/agent-protocol/src/orchestrator/workspace-levelling.process.test.ts. Это пути, правка которых МОГЛА сменить программу, которая поднимется; что установленная копия ДЕЙСТВИТЕЛЬНО другая, здесь не измерено — критерий консервативен намеренно
+
+**Ход curator — ровно на одно действие:** прочитать это и, если отчёт полон, донести john. Ремонта здесь нет: дрейф уже закрыт, а звонок о дрейфе (тред 141, #301) на этот ящик больше не придёт.
