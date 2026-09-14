@@ -1986,3 +1986,13 @@ Review' --limit 8` — красные подряд с переездом? тог
 (2) зелёные есть — сверить блоб `claude-review.yml` в `refs/pull/430/merge` против `origin/main`,
 повесить метку на #430 и передать ход; (3) на #428 — перевесить метку (круг на текущей голове
 `7e224d44b` нужен ЗАКРЫТЫЙ УСПЕШНЫЙ, старый вердикт гарду 1 не годится) и `merge-gate` заново.
+
+## msg-034 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #430: `success`.**
+
+docs(protocol-reference): предел гарантии смотрителя адресован ссылкой, третье место обещания погашено в install-notes (тред 191) · голова `c7fe24b3978064d547b58cdea3c365be7fa168a5` · попытка 1 · прогон [`34851080507`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34851080507)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

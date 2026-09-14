@@ -198,5 +198,5 @@
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #418 СМЁРЖЕН john 09:21:40Z, доставка лежит письмом 09:31:10Z; приёмка сн… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | ✅ checks по PR #432: success. |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:05Z): ДА — ВАРИАНТ 1. /.test.ts исключается из отпечатка установки.… |
-| 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | high | open | dev-core | — | 2026-09-14 | ПОСТАНОВКА dev-core: круг ревью обязан быть ЗЕЛЁНЫМ, когда вердикт вынесен и доставлен. Сегодня его… |
+| 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | high | open | curator | — | 2026-09-14 | Починка встала PR #433, голова e12a407128889dcde398e68d6d3a6162e70a06cf. Жду зелёный checks; метку… |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | СЛОВО JOHN (чат 2026-09-14 ~13:51Z): ЭТОТ ПРЕДМЕТ — НАИВЫСШИМ ПРИОРИТЕТОМ. Вперёд всего остального… |
