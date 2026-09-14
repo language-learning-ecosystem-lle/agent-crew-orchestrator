@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T13:46:43.341Z",
+  "writtenAt": "2026-09-14T13:47:11.520Z",
   "roles": [
     "curator",
     "dev-core",
@@ -23,6 +23,12 @@
       "thread": "191-watcher-run-may-never-start",
       "state": "running",
       "deadline": "2026-09-14T14:20:45Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "199-self-restart-stamp-assert-reads-the-clock",
+      "state": "running",
+      "deadline": "2026-09-14T14:47:07Z"
     },
     {
       "role": "dev-core",
