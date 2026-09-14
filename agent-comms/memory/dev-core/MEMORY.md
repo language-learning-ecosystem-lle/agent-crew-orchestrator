@@ -44,7 +44,7 @@
 - [Тихая потеря — это неподнятый ход](silent-loss-is-the-unraised-turn.md)
 - [Номер треда уникален, слаг — нет](thread-id-unique-by-number-only.md)
 - [Свою невлитую дверь — детач-чекаутом](run-an-unmerged-door-by-detach-checkout.md)
-- Шаг Actions: [тело `.yml` вынимается и гоняется](yaml-step-body-is-testable-when-extracted.md) · [шаг — `bash -e`](github-step-shell-is-bash-e.md) · [`headSha` не называет исполненный код](run-headsha-does-not-name-the-code-it-ran.md) · [проводка пиньётся сюитой доставки](workflow-wiring-is-pinned-by-a-delivery-integration-suite.md) — скрипты едут `ref: main`.
+- Шаг Actions: [тело `.yml` вынимается и гоняется](yaml-step-body-is-testable-when-extracted.md) · [шаг — `bash -e`](github-step-shell-is-bash-e.md) · [`headSha` не называет исполненный код](run-headsha-does-not-name-the-code-it-ran.md) · [`pull_request` исполняет `.yml` MERGE-КОММИТА, то есть `main`](pull-request-round-runs-the-merge-commits-yml.md) — отставание ветки правку не отменяет · [приёмка условного шага — его СОБСТВЕННАЯ строка лога](conditional-step-fix-is-accepted-by-its-own-log-line.md) — `skipped` шаг есть у обеих ревизий · [проводка пиньётся сюитой доставки](workflow-wiring-is-pinned-by-a-delivery-integration-suite.md) — скрипты едут `ref: main`.
 - [«Только комментарий» доказывается РАЗБОРОМ обеих ревизий](comment-only-diff-is-proven-by-parsing.md) — `#` внутри `run:|` это ДАННЫЕ.
 - [Ассерт «файла нет» = «ничего не объявлено»](existence-assert-is-a-proxy-for-nothing-announced.md)
 - [Прогоны головы — параметром `head_sha=`](runs-on-a-head-need-the-head-sha-param.md) — фильтр `--jq` по общему списку молча даёт пустоту.
@@ -67,7 +67,7 @@
 - [У демона креды на push в `comms` ЕСТЬ](daemon-can-push-via-creds-door.md) — `platformEnvOf`; мерить `--dry-run` НА РЕФ.
 - [Спасатель не должен делить домен отказа](rescue-path-must-not-share-the-fault-domain.md)
 - [Открытый стоячий адрес никого не поднимает](open-standing-address-still-raises-nobody.md) — `expects: none` не звонит.
-- Стенды: [шим `git` бьёт по всем вызовам](git-shim-in-a-process-test-hits-every-git.md) · [стенд `gh` по `$2` промахивается](gh-stub-dispatch-on-argv-position-misroutes.md) — сужать по argv, разбирать `"$*"`.
+- Стенды: [шим `git` бьёт по всем вызовам](git-shim-in-a-process-test-hits-every-git.md) · [стенд `gh` по `$2` промахивается](gh-stub-dispatch-on-argv-position-misroutes.md) — сужать по argv, разбирать `"$*"` · [`GIT_DIR` из окружения перебивает `-C`](git-dir-in-env-overrides-dash-c.md) — `-C` изоляцией НЕ является, `remote.origin.url` садится в ОБЩИЙ конфиг.
 - [Квитанция об отправке ≠ подъём](send-receipt-is-not-a-raise.md) · [отказ `--write` бывает разовым](mail-write-can-fail-once-and-succeed-on-retry.md) — повторить и перемерить, что письмо ОДНО.
 - [Write превращает `нулевой байт` в NUL](write-tool-turns-u0000-into-a-real-nul.md) — грепом отсутствия не доказать.
 - [`mergedBy` руку не называет](merged-by-does-not-name-the-hand.md) · [`createdAt` прогона не датирует посадку](run-createdat-does-not-date-the-merge.md)
