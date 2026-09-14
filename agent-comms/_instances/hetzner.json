@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T15:31:44.996Z",
+  "writtenAt": "2026-09-14T15:32:37.456Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,6 +19,12 @@
       "thread": "206-journal-writes-without-a-pr",
       "state": "running",
       "deadline": "2026-09-14T16:05:16Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "208-guard1-verdict-drops-the-round-census",
+      "state": "running",
+      "deadline": "2026-09-14T16:32:33Z"
     }
   ]
 }
