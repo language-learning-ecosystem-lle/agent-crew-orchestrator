@@ -1822,3 +1822,13 @@ waiting-on: curator
 Ход передан роли `curator` — так объявил сам вердикт.
 
 🔁 Круг доехал на ЗАПАСНОЙ учётке: основная ответила лимитом (запись type=rate_limit_event со status=rejected), и сработал переезд — один на прогон, без цепочки повторов (`.github/workflows/claude-review.yml`, решение john 2026-09-13).
+
+## msg-031 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #430: `success`.**
+
+docs(protocol-reference): предел гарантии смотрителя адресован ссылкой, третье место обещания погашено в install-notes (тред 191) · голова `fab430c2c661f391058bff45eca92a0356ebc042` · попытка 1 · прогон [`34849230252`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34849230252)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
