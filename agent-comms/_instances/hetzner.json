@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T11:39:10.283Z",
+  "writtenAt": "2026-09-14T11:42:37.343Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,12 +19,6 @@
       "thread": "197-tool-text-calls-a-round-not-due",
       "state": "running",
       "deadline": "2026-09-14T12:38:58Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "203-collision-watch-dedup-does-not-hold",
-      "state": "running",
-      "deadline": "2026-09-14T12:39:06Z"
     }
   ]
 }
