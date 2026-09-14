@@ -132,3 +132,4 @@
 - [Кнопка merge не передаётся письмом](directive-letter-cannot-hand-over-the-button.md) — исполнитель обязан отступить; глагол «мёржи» не пишется не-curator
 - [Запись журнала едет КОМАНДОЙ, а не PR](journal-entry-rides-a-command-not-a-pr.md) — `journal write` в ветку почты с 14.09, цена дома находки = ноль; ТЕКСТ нормы — в открытом #437, карточка пока называет `docs/journal/`
 - [Дерево роли перечекаучивается на каждом подъёме](role-worktree-is-rechecked-out-at-every-raise.md) — свежий `main` в detached HEAD; ветка PR и ручной чекаут такт не переживают
+- [Чистый `merge-tree` у стопки ничего не доказывает](clean-merge-tree-on-a-stacked-pair-proves-nothing.md) — сверяй `merge-base` с ОБЕИМИ головами; класс, представленный только вырожденной парой, НЕ измерен
