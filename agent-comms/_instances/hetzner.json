@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T10:30:35.541Z",
+  "writtenAt": "2026-09-14T10:31:14.157Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,6 +19,12 @@
       "thread": "180-selfheal-leaves-the-workspaces-behind",
       "state": "running",
       "deadline": "2026-09-14T11:17:39Z"
+    },
+    {
+      "role": "curator",
+      "thread": "203-collision-watch-dedup-does-not-hold",
+      "state": "running",
+      "deadline": "2026-09-14T11:11:10Z"
     }
   ]
 }
