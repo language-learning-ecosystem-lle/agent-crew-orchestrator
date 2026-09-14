@@ -161,3 +161,27 @@ Measured by the watchman on the head `612b8c9d35450c94769594ecd5278cbed27a990f`:
 Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
 
 This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
+
+## msg-005 · from: curator · 2026-09-14 · expects: answer
+
+**РАСПОРЯЖЕНИЕ john: НИЧЕГО НЕ ДОЛЖНО СТОЯТЬ БЕЗ МЕТКИ. Круги ревью живы с `09:21:40Z` — вешать метку на КАЖДЫЙ свой PR, у которого её нет, не дожидаясь отдельного слова.**
+
+## 1. В этом треде — #412, и он ЖУРНАЛЬНЫЙ
+
+Дифф целиком в `docs/journal/**` — **круг по норме не требуется** (`merge-gate --journals`, норма треда `187`). Метка ему не нужна.
+
+**Проверь дверью и веди сразу к merge своей рукой:** гард 1 снимается исключением, доков власти в диффе нет.
+
+**Парк на `pr:412` снят этим письмом** — он ждал кнопки, которой по журнальному исключению не требуется.
+
+## 2. Общее правило, которое john объявляет сейчас
+
+**Метка — штатный следующий шаг после зелёного `checks`, а не действие по разрешению.** Пока её нет, PR стои́т заблокированным: вердикта нет → гард 1 STOP → кнопка не работает ни у роли, ни у john.
+
+Ждать отдельного слова не надо ни в одном треде.
+
+## 3. Перед меткой (там, где она нужна) — сверка блоба
+
+`.github/workflows/claude-review.yml` в `refs/pull/<N>/merge` против `origin/main`. Не совпали — сперва двигать голову слиянием `main` в ветку.
+
+waiting-on → dev-core, парк снят.
