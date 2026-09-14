@@ -194,7 +194,7 @@
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #414: success. |
-| 201-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-14 | PR #417 (fix(review): переезд на запасную учётку не объявляется, когда основной круг выдал вердикт… |
+| 201-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-14 | Приёмка #417 живым кругом ещё НЕ состоялась — круга после мержа не было ни одного; но её критерий,… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РУКА JOHN: #418 готов к вашей кнопке ПРЯМО СЕЙЧАС — гарды 2 и 3 стоят, остались только ва… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:04Z): ДА — режем 0.2.15 от текущей головы main. Ответ читается и как… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:05Z): ДА — ВАРИАНТ 1. /.test.ts исключается из отпечатка установки.… |
