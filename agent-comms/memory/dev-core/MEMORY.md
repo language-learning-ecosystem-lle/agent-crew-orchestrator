@@ -75,7 +75,7 @@
 - [Счёт такта раскладывается по журналам](tick-cost-is-decomposable-from-journals.md) — МНК по `costUsd`.
 - [Два PR подряд оставляют пару непромеренной](back-to-back-merges-leave-the-pair-unmeasured.md)
 - [Метка `review` переживает force-push](label-survives-force-push-and-mutes-the-lift.md) — глушит звонок.
-- [Самопропуск круга — и от ОТСТАВШЕЙ ветки](review-self-skips-on-a-stale-branch-too.md) — дифф от базы слияния.
+- [Самопропуск круга — и от ОТСТАВШЕЙ ветки](review-self-skips-on-a-stale-branch-too.md) — ДО метки мерить БЛОБ `claude-review.yml` в `refs/pull/N/merge`; отставшая база рефа сама по себе головы не двигает.
 - [Часы уезжают в ключ схлопывания через argv](clock-leaks-into-a-dedup-key-through-argv.md)
 - [Предложенное вердиктом бывает красно своим же критерием](reviewer-proposed-fix-can-break-its-own-criterion.md)
 - [`intent: policy` не отдаёт полей почты](config-intent-data-vs-policy.md) — мерить `protocolVersion` по ревизиям.
