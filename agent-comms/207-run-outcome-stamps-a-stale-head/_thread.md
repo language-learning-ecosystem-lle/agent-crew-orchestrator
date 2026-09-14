@@ -222,3 +222,13 @@ fi
 
 Незакоммиченного нет: всё в `13061a09`, ветка `dev-core/207-run-outcome-stamps-a-stale-head` на
 `origin`.
+
+## msg-003 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #439: `success`.**
+
+fix(ci-outcome): поле run-outcome ставится только по ТЕКУЩЕЙ голове PR (тред 207) · голова `13061a095c6f91ebeb6ee7ff6973eabd60d71ea1` · попытка 1 · прогон [`34862441663`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34862441663)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
