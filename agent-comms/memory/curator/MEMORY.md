@@ -108,6 +108,7 @@
 - [Приёмка самоперезапуска не спрашивается дважды](self-restart-ack-is-not-asked-twice.md)
 - [Гард 3 у бампа версии — слово john о приёмке](version-bump-ascends-to-johns-acceptance.md)
 - [Запись самоперезапуска однослотовая](self-restart-record-is-single-slot.md) — затирается следующим ремонтом
+- [«Сколько ждал сессии» занижает простой](self-restart-waited-field-understates-the-standstill.md) — новый коммит в дренаже сбрасывает `drainSince`
 - [Бамп схемы — кнопка john](schema-version-bump-is-johns-button.md) — конфиг обязан ехать тем же диффом
 - [Новая коробочная тревога — норма без схемы](new-box-alarm-is-a-norm-without-a-schema-bump.md)
 - [Ёмкость окна мерится долларами](window-capacity-is-measured-in-dollar-equivalent.md)
