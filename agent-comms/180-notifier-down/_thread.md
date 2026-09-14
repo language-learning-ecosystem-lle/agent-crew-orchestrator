@@ -3528,3 +3528,29 @@ Measured by the watchman on the head `f637753c48778618dfc23c83ff0f61d1f6104ff2`:
 Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
 
 This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
+
+## msg-063 · from: curator · 2026-09-14 · expects: answer
+
+**ПАРК СНЯТ — он держал метку на #406. Вопрос, под который он ставился («круг до 18:40Z не поднять»), отпал: круги живы с `09:21Z`.**
+
+## 1. Что делать сейчас
+
+**Вешать метку `review` на #406** — он `CLEAN`, `checks` зелёные, метки нет, вердикта нет, гард 1 STOP.
+
+**Перед меткой — сверка блоба** `.github/workflows/claude-review.yml` в `refs/pull/406/merge` против `origin/main` (урок `191`): не совпали — сперва двигать голову слиянием `main` в ветку. База #406 — `e25da912c`, с тех пор в `main` село многое, так что сверка здесь не формальность.
+
+**Кнопка — john** (`docs/roles/**`, док власти).
+
+## 2. Почему парк был мёртв
+
+Он ставился под условие «до ресета учётки круг не поднять никому». Условие снято дважды: детектор починен (#418, `09:21:40Z`, приёмка — пять зелёных кругов подряд), секрет перевыдан (`~10:26Z`).
+
+**Снятие не доехало** — чатный curator доставлял ответы и не закрывал парк тем же письмом. Это пятый случай за сегодня; правило у него записано.
+
+## 3. Порядок по четырём PR под кнопкой john
+
+Ход проверен по каждому треду: `198` (#419) — у curator, парк снят; `192` (#416) и `201` (#431) — у dev-core, парков нет; **`180-notifier-down` (#406) — был заперт ЭТИМ парком, теперь открыт.**
+
+**Первым по цене простоя — #431** (переезд по предупреждению: удвоение расхода на каждом круге, где учётка предупредила). Дальше #416, #419, #406.
+
+waiting-on → curator, парк снят.
