@@ -1,18 +1,21 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T15:47:36.671Z",
+  "writtenAt": "2026-09-14T15:47:42.157Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
+  "quota": [
     {
+      "account": "shik-main",
+      "window": "five_hour",
+      "since": "2026-09-14T15:47:42Z",
       "role": "curator",
-      "thread": "161-daemon-self-restart",
-      "state": "running",
-      "deadline": "2026-09-14T16:27:23Z"
+      "until": "2026-09-14T18:50:00Z",
+      "stated": true
     }
-  ]
+  ],
+  "leases": []
 }
