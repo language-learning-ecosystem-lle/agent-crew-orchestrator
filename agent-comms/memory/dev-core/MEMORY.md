@@ -30,7 +30,7 @@
 - [Залогинен ли `gh` — меряется](bare-gh-in-a-session-has-no-login.md) — старый `. secrets.aco.env` рвёт `&&`.
 - [Письмо себе — только `--expects none`](note-to-self-needs-expects-none.md)
 - [`new-message` тред не заводит](new-message-does-not-create-a-thread.md) — только `--ensure-thread <slug>`, номер выдаёт ОН.
-- Круг ревью: [класс упавшего — в артефакте](failed-review-round-class-lives-in-the-artifact.md) · [парк под кругом умирает с кругом](park-under-a-round-dies-with-the-round.md) — и морозит НАЗВАННЫЙ ход собеседника — `claude-execution-output.json`, файлов ДВА и класс в них разный; 429 ресетом ждать своей сессией. КРАСНЫЙ круг бывает с доставленным вердиктом — **детектор починен #418 (14.09), запрет «метку в это окно не вешать» СНЯТ**; запасная учётка отвечает `401`, ротация за john.
+- Круг ревью: [класс упавшего — в артефакте](failed-review-round-class-lives-in-the-artifact.md) — `claude-execution-output.json`, файлов ДВА · [парк под кругом умирает с кругом](park-under-a-round-dies-with-the-round.md). КРАСНЫЙ круг бывает с доставленным вердиктом — детектор починен #418 (14.09), запрет «метку в это окно не вешать» СНЯТ.
 - [Приёмка признака — состояние ЕГО ветки, не цвет прогона](acceptance-of-a-gate-is-the-state-of-its-branch.md) — шаг `skipped` доказывает.
 - [Переезд на запасную учётку доказывается тождеством ПРОМПТА](fallback-account-migration-is-proven-by-prompt-identity.md) — `sha256` обоих шагов, не строка «ПЕРЕЕЗД».
 - [Круг ревью читает СНИМОК почты](review-round-reads-a-snapshot-of-the-mail.md)
@@ -44,7 +44,7 @@
 - [Тихая потеря — это неподнятый ход](silent-loss-is-the-unraised-turn.md)
 - [Номер треда уникален, слаг — нет](thread-id-unique-by-number-only.md)
 - [Свою невлитую дверь — детач-чекаутом](run-an-unmerged-door-by-detach-checkout.md)
-- Шаг Actions: [тело `.yml` вынимается и гоняется](yaml-step-body-is-testable-when-extracted.md) · [шаг — `bash -e`](github-step-shell-is-bash-e.md) · [`headSha` не называет исполненный код](run-headsha-does-not-name-the-code-it-ran.md) · [`pull_request` исполняет `.yml` MERGE-РЕФА PR](pull-request-round-runs-the-merge-commits-yml.md) — отставание ДЕРЕВА головы правку не отменяет, отставание САМОГО РЕФА отменяет: движением базы он не пересчитывается, мерить базового родителя ДО приёмки · [приёмка условного шага — его СОБСТВЕННАЯ строка лога](conditional-step-fix-is-accepted-by-its-own-log-line.md) — `skipped` шаг есть у обеих ревизий · [проводка пиньётся сюитой доставки](workflow-wiring-is-pinned-by-a-delivery-integration-suite.md) — скрипты едут `ref: main`.
+- Шаг Actions: [тело `.yml` вынимается и гоняется](yaml-step-body-is-testable-when-extracted.md) · [шаг — `bash -e`](github-step-shell-is-bash-e.md) · [`headSha` не называет исполненный код](run-headsha-does-not-name-the-code-it-ran.md) · [`pull_request` исполняет `.yml` MERGE-РЕФА PR](pull-request-round-runs-the-merge-commits-yml.md) — мерить базового родителя ДО приёмки · [приёмка условного шага — его СОБСТВЕННАЯ строка лога](conditional-step-fix-is-accepted-by-its-own-log-line.md) · [проводка пиньётся сюитой доставки](workflow-wiring-is-pinned-by-a-delivery-integration-suite.md) — скрипты едут `ref: main`.
 - [«Только комментарий» доказывается РАЗБОРОМ обеих ревизий](comment-only-diff-is-proven-by-parsing.md) — `#` внутри `run:|` это ДАННЫЕ.
 - [Ассерт «файла нет» = «ничего не объявлено»](existence-assert-is-a-proxy-for-nothing-announced.md)
 - [Прогоны головы — параметром `head_sha=`](runs-on-a-head-need-the-head-sha-param.md) — фильтр `--jq` по общему списку молча даёт пустоту.
