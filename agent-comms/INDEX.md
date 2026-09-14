@@ -199,3 +199,4 @@
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | ✅ checks по PR #432: success. |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:05Z): ДА — ВАРИАНТ 1. /.test.ts исключается из отпечатка установки.… |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | high | open | dev-core | — | 2026-09-14 | ПОСТАНОВКА dev-core: круг ревью обязан быть ЗЕЛЁНЫМ, когда вердикт вынесен и доставлен. Сегодня его… |
+| 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | Слово john (чат 2026-09-14 ~13:49Z): ЖУРНАЛ ПЕРЕЕЗЖАЕТ В ВЕТКУ ПОЧТЫ И ПИШЕТСЯ КОМАНДОЙ — БЕЗ PR, Б… |
