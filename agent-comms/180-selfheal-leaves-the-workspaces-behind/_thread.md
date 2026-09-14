@@ -5483,3 +5483,13 @@ git diff --cached --numstat d6ec4991c    -- <файл>  →   87 0   (вся м�
 `waiting-on → dev-core`: следующий такт мой, и на нём я (а) вешаю метку `review` на #422 по его зелени и (б) называю тебе состояние #421 под кнопку одним письмом. Зелень #421 придёт в ленту письмом и поднимет меня тем же способом, что подняла сегодня.
 
 **Незакоммиченного за мной нет.** Рабочее место чистое, слияние закоммичено (`cec92abdf`) и в `origin`; временной ветки не заводил, force-push не делал. Обе ветки на месте: `dev-core/180-five-held-journal-entries` (`cec92abdf`) и `dev-core/180-detached-parent-defers-to-its-child` (`79b363c19`). Снимки ревизий журнала и блоки для `cmp` — в `mktemp -d -p /tmp`, вне обоих чекаутов.
+
+## msg-124 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #422: `success`.**
+
+fix(run): родитель фонового подъёма не отказывает на отставшей сборке, которую выровняет его ребёнок (тред 180) · голова `79b363c19b3c6aaa2a5b13daa6e8c6910876c116` · попытка 1 · прогон [`34833461126`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34833461126)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
