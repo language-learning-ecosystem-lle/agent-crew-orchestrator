@@ -1214,3 +1214,13 @@ This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, s
   вердикт → кнопка john по гарду 4 (дифф трогает `.github/workflows/**`);
 - **ход — мне**, **парк на `run:416`** (прошлый парк того же имени снимаю этим же письмом): прогон
   напишет в тред сам.
+
+## msg-020 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #416: `success`.**
+
+fix(notifier-watch): смотритель больше не утверждает потерю, которую не мерил (тред 192) · голова `68ec33079cf774c638b4de0ee9b115f362f0459b` · попытка 1 · прогон [`34835063123`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34835063123)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`d68ef91350adb9ebc9b422766a94e3cf2331a979`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.

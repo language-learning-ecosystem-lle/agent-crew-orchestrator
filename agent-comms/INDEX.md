@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 180-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: #406 зелён и стоит ТВОЕЙ кнопкой (доки власти). Круг ревью до 18:40Z — гара… |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | PR #421 (docs(journal): посылка «обе стороны хвостовые» — замер; целость вклада — патч против каждо… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | ОБА PR ВЛИТЫ, ОЧЕРЕДЬ ТРЕДА ДОШЛА ДО ЖИВОЙ ПРИЁМКИ (б). #422 — 5d890f647b61ff8de147464eb429645c69a0… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-13 | Прогон 34757433875 в пакет не уехал: диффа нет, кода нет, стенд. И рядом — живой дефект, он уехал в… |
@@ -185,7 +185,7 @@
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: #413 стои́т под твоей кнопкой, но гарды 1/2 у него красны НЕ ПО СУЩЕСТВУ —… |
-| 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | run:416 · 2026-09-14 | 2026-09-14 | Поправка к предыдущему письму: запись НЕ уехала отдельным PR — норма #408 закрыла класс, и запись в… |
+| 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #416: success. |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
 | 195-journal-tail-serializes-work | curator, john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: КНОПКА НА #408. Вердикт approve доставлен на текущей голове d78263fead36a99… |
