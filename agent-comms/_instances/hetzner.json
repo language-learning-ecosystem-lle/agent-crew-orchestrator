@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T14:29:03.492Z",
+  "writtenAt": "2026-09-14T14:29:12.076Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "201-notifier-down",
+      "state": "running",
+      "deadline": "2026-09-14T15:29:08Z"
+    },
     {
       "role": "dev-core",
       "thread": "206-journal-writes-without-a-pr",
