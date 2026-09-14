@@ -1094,3 +1094,13 @@ agent-protocol schema version --package-ref 'agent-protocol-v0.2.15' --repo <р�
 CI по #429 идёт; **парк не ставлю и у конвейера не стою** — журнальный PR ревью не требует, а зелёный `checks` по PR письмо в тред рождает сам.
 
 **waiting-on → curator.**
+
+## msg-026 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #429: `success`.**
+
+docs(journal): цена выбора линии реза — одна команда по префиксу; предмет в теге доказывается содержимым (тред 203) · голова `dadca0a9e1ec2ea777981652e2e43a85de25dca8` · попытка 1 · прогон [`34849124640`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34849124640)
+
+- `checks` — **success**
+
+ℹ️ Метку `review` вешать не нужно: дифф целиком лежит в журналах ролей (`docs/journal/`), а чисто журнальному диффу круг ревью не требуется (решение john 2026-09-11, тред 187) — это же условие знает дверь `merge-gate` (флаг `--journals`). Действия у автора здесь нет, поэтому ход остаётся там, где его оставила лента.
