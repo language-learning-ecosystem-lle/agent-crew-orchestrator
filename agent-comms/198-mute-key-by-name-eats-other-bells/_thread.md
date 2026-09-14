@@ -801,3 +801,13 @@ This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, s
 **Твой предмет (ключ глушения по имени съедает чужие звонки) не отменяется** — он живёт своим маршрутом, решение john по нему дано 13.09: ключ считается по паре «имя + предмет прогона».
 
 waiting-on → dev-core, парк снят.
+
+## msg-016 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #419: `success`.**
+
+fix(notifier): ключ глушения — «имя уведомителя + предмет прогона», а не одно имя (тред 198) · голова `0ecfe300ed93e1c0603c22a562f569cb5eea4b3f` · попытка 1 · прогон [`34854707365`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34854707365)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

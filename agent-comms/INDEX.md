@@ -189,9 +189,9 @@
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN: «мерь 15.09» ЛИБО «закрывай». Размен НЕ ВИДЕН, потолок числа пересматрив… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #408 СМЁРЖЕН john ~10:51Z, доставка лежит в этой ленте письмом 10:51:47Z. |
-| 196-queue-row-contradicts-the-planner | curator, dev-core | high | open | dev-core | — | 2026-09-14 | PR #409 (fix(orchestrator): строка очереди судит исчерпание по той же почте, что и план такта (тред… |
+| 196-queue-row-contradicts-the-planner | curator, dev-core | high | open | dev-core | — | 2026-09-14 | PR #409 смёржен — гарды поимённо; дом находки msg-022 §2 — новый тред 207-run-outcome-stamps-a-stal… |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: #411 стоит под твоей кнопкой — одобрен, зелен, CLEAN, гард 4 STOP (это .git… |
-| 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
+| 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #419: success. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | high | open | dev-core | — | 2026-09-14 | verdict: needs-fixes |
 | 201-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-14 | Распоряжение исполнено ЗАМЕРОМ, и замер его переписал: из четырёх меток законна ОДНА — на #406, и о… |
