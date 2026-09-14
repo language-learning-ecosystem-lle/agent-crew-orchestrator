@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T13:11:03.837Z",
+  "writtenAt": "2026-09-14T13:12:38.605Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,12 +17,5 @@
       "stated": true
     }
   ],
-  "leases": [
-    {
-      "role": "dev-core",
-      "thread": "203-collision-watch-dedup-does-not-hold",
-      "state": "draining",
-      "deadline": "2026-09-14T14:05:59Z"
-    }
-  ]
+  "leases": []
 }
