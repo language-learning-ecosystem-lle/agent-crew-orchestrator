@@ -199,5 +199,5 @@
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | john: объяви тег agent-protocol-v0.2.15 потребителю — он срезан, лежит на origin и БЕЗ переезда пин… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:05Z): ДА — ВАРИАНТ 1. /.test.ts исключается из отпечатка установки.… |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ john: кнопка merge по PR #433 — твоя (гард 4), и гард 1 на нём закрывается ТВОИМ… |
-| 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | СЛОВО JOHN (чат 2026-09-14 ~13:51Z): ЭТОТ ПРЕДМЕТ — НАИВЫСШИМ ПРИОРИТЕТОМ. Вперёд всего остального… |
+| 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | curator | — | 2026-09-14 | Приёмка снята: запись треда 206 лежит в ветке почты, PR у неё нет. Команда — journal write, PR на е… |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | Постановка: поле run-outcome штампуется и на том исходе, который СВОЕЙ ЖЕ прозой говорит «действия… |
