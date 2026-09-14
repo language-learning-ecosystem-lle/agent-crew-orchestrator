@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T10:09:49.123Z",
+  "writtenAt": "2026-09-14T10:15:33.413Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "196-queue-row-contradicts-the-planner",
-      "state": "running",
-      "deadline": "2026-09-14T11:02:31Z"
-    },
     {
       "role": "dev-core",
       "thread": "203-collision-watch-dedup-does-not-hold",
