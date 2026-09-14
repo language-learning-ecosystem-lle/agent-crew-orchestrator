@@ -1990,9 +1990,13 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # to write it into, and a letter with no turn raises nobody
                             # SAID ONCE PER COLLISION: the mark (`number-collision number:NNN:a,b`)
                             # carries the HALVES, so a third namesake rings again; it is lifted only by
-                            # the pair ceasing to satisfy the criterion — the number divorced or EVERY
-                            # half closed — and never by one tick's silence. A tick that found pairs
-                            # and rang about none SAYS SO, or a missed search would read as a quiet one
+                            # the pair being READ and failing the criterion — the number divorced or
+                            # EVERY half closed. A tick that did not read every half the mark names
+                            # (an unparsable thread, a checkout caught mid-update) lifts NOTHING and
+                            # says which marks it held: "not found this tick" and "gone from the feed"
+                            # are two facts, and reading the first as the second announced one pair a
+                            # day for five days (thread 203). A tick that found pairs and rang about
+                            # none SAYS SO, or a missed search would read as a quiet one
                             # WHAT IT DOES NOT DO: it renames nothing, adds no field to `_meta.md`,
                             # hardcodes no list of directories, and cannot catch the collision BEFORE
                             # the fact — no form can (the chat hand writes into the branch past every

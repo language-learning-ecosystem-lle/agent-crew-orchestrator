@@ -128,4 +128,21 @@ describe("what a PLAN says where the real launch would have levelled (john 2026-
     expect(line).toContain(at.path);
     expect(line).toContain("dev-core");
   });
+
+  /**
+   * HALF (б): the parent of a background launch is not a plan. The levelling is not skipped
+   * for it — it is done by its child — so the two sentences must not be one, or the parent's
+   * terminal would carry a false statement about a tree that is about to be levelled.
+   */
+  it("the parent of a BACKGROUND launch is told apart: the child levels, and it is not called a plan", () => {
+    const line = describePlannedWorkspaceInstall({ ...at, background: true });
+
+    expect(line).toContain("this run only forks");
+    expect(line).toContain("the child of this background launch levels");
+    expect(line).toContain("under its own lock");
+    expect(line).toContain(at.path);
+    // The plan's own words are absent: they would say nobody is going to touch that tree.
+    expect(line).not.toContain("this is a plan");
+    expect(line).not.toContain("a real launch would level");
+  });
 });
