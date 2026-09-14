@@ -187,14 +187,14 @@
 | 191-watcher-run-may-never-start | curator, dev-core | high | open | dev-core | — | 2026-09-14 | Ревью не состоялось: вердикт не сформирован. |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #416: success. |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
-| 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:09Z): «МЕРЬ СЕЙЧАС» — ждать 13:20Z не надо. Парк снят, будильник отр… |
-| 195-journal-tail-serializes-work | curator, john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: КНОПКА НА #408. Вердикт approve доставлен на текущей голове d78263fead36a99… |
+| 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — будильник отработал. Слово john дано ~11:09Z: «мерь сейчас», ждать 13:20Z не нужно; дос… |
+| 195-journal-tail-serializes-work | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #408 СМЁРЖЕН john ~10:51Z, доставка лежит в этой ленте письмом 10:51:47Z. |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | PR #409 no longer applies to its base — and nothing announced it. |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:08Z): УТВЕРЖДАЮ #410 — гард 3 закрыт ЭТИМ письмом. Круг НЕ покупать.… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #414: success. |
 | 201-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-14 | Приёмка #417 живым кругом ещё НЕ состоялась — круга после мержа не было ни одного; но её критерий,… |
-| 202-fallback-step-reddens-a-successful-round | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РУКА JOHN: #418 готов к вашей кнопке ПРЯМО СЕЙЧАС — гарды 2 и 3 стоят, остались только ва… |
+| 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #418 СМЁРЖЕН john 09:21:40Z, доставка лежит письмом 09:31:10Z; приёмка сн… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:04Z): ДА — режем 0.2.15 от текущей головы main. Ответ читается и как… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:05Z): ДА — ВАРИАНТ 1. /.test.ts исключается из отпечатка установки.… |
