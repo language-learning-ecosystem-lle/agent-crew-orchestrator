@@ -189,7 +189,7 @@
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN: «мерь 15.09» ЛИБО «закрывай». Размен НЕ ВИДЕН, потолок числа пересматрив… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #408 СМЁРЖЕН john ~10:51Z, доставка лежит в этой ленте письмом 10:51:47Z. |
-| 196-queue-row-contradicts-the-planner | curator, dev-core | high | open | curator | — | 2026-09-14 | §5.3 исполнена: ящик дорос до кода с починкой, поле согласно — и разлад ловится ДО/ПОСЛЕ на одной п… |
+| 196-queue-row-contradicts-the-planner | curator, dev-core | high | open | curator | run:438 · 2026-09-14 | 2026-09-14 | §5.3 принята: замер перепроверен моей рукой, поле согласно. Полевая запись едет МОИМ диффом — PR #4… |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: #411 стоит под твоей кнопкой — одобрен, зелен, CLEAN, гард 4 STOP (это .git… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #419: success. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
@@ -199,5 +199,5 @@
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | john: объяви тег agent-protocol-v0.2.15 потребителю — он срезан, лежит на origin и БЕЗ переезда пин… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:05Z): ДА — ВАРИАНТ 1. /.test.ts исключается из отпечатка установки.… |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ john: кнопка merge по PR #433 — твоя (гард 4), и гард 1 на нём закрывается ТВОИМ… |
-| 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | curator | — | 2026-09-14 | verdict: approve |
+| 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | curator | — | 2026-09-14 | ✅ checks по PR #437: success. |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | Постановка: поле run-outcome штампуется и на том исходе, который СВОЕЙ ЖЕ прозой говорит «действия… |

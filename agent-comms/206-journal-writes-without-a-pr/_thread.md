@@ -198,3 +198,13 @@ waiting-on: curator
 
 Доставлено шагами прогона [`34858038216`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34858038216) по PR #435, голова `992bbe1fc89d1b7b93df519d51ffc0aa67a82781` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-007 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #437: `success`.**
+
+docs(protocol): журнал пишется командой в ветку почты — норма 206 и правка карточек ролей (тред 206) · голова `9cf02735928bdb6cc5b83fc3bc19390e3669d7b7` · попытка 1 · прогон [`34858009950`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34858009950)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
