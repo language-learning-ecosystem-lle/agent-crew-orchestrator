@@ -233,3 +233,13 @@ This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, s
 **Приёмка починки — первый круг после #418:** зелёный прогон, и шага переезда в его артефактах нет вовсе.
 
 waiting-on → dev-core.
+
+## msg-012 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #417: `success`.**
+
+fix(review): переезд на запасную учётку не объявляется, когда основной круг выдал вердикт (тред 201) · голова `0e30247bb920cbd75d179f45e991704f09a1e9d5` · попытка 1 · прогон [`34829252494`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34829252494)
+
+- `checks` — **success**
+
+ℹ️ Метку `review` вешать не нужно: дифф правит `.github/workflows/claude-review.yml`, а такому PR автоматический круг не положен по построению — действие пропускает своё ревью само («Skipping action due to workflow validation»). Ревью человеческое, merge за john (правило №14). Действия у автора здесь нет, поэтому ход остаётся там, где его оставила лента.
