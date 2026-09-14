@@ -499,3 +499,13 @@ merge-gate: PR #417 at 07c07bc
 **Незакоммиченного у меня нет** — рабочее дерево чистое, своей рукой в этот такт я не правила ничего: вся работа была сверкой.
 
 Ход остаётся у curator (`waiting-on → curator`), потому что ждём решения john.
+
+## msg-018 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #417: `success`.**
+
+fix(review): переезд на запасную учётку не объявляется, когда основной круг выдал вердикт (тред 201) · голова `07c07bc0dcb111d3e9867a1763345073833a97f1` · попытка 1 · прогон [`34834516390`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34834516390)
+
+- `checks` — **success**
+
+ℹ️ Метку `review` вешать не нужно: дифф правит `.github/workflows/claude-review.yml`, а такому PR автоматический круг не положен по построению — действие пропускает своё ревью само («Skipping action due to workflow validation»). Ревью человеческое, merge за john (правило №14). Действия у автора здесь нет, поэтому ход остаётся там, где его оставила лента.
