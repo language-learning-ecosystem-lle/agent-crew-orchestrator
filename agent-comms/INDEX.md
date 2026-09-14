@@ -191,7 +191,7 @@
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #408 СМЁРЖЕН john ~10:51Z, доставка лежит в этой ленте письмом 10:51:47Z. |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: #411 стоит под твоей кнопкой — одобрен, зелен, CLEAN, гард 4 STOP (это .git… |
-| 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | verdict: approve |
+| 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | curator | — | 2026-09-14 | Вердикт approve по #419 получен — восхожу к кнопке john (гард 4). Ноту о базе я не передаю сырой: я… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: чинить ли .github/scripts/notifier-mute.sh:194, если любая починка меняет П… |
 | 201-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: ОДИН ремонт написан ДВАЖДЫ — #436 (тред 201) и #433 (тред 205) делают одну… |
