@@ -202,4 +202,4 @@
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ КНОПКА JOHN: PR #437 готов — approve без находок на голове 01c85a9752138b6afa4c9f0df0ffce… |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: #439 готов и упёрся в гард 1 до 18:50Z; лечение класса стоит открытыми PR #… |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | pr:433 · 2026-09-14 | 2026-09-14 | Вердикт approve доставлен, а кнопка не жмётся: круг красный по ОКНУ лимита основной учётки до 18:50Z |
-| 209-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-14 | 🔕 Уведомитель Claude PR Review отказал: failure. |
+| 209-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-14 | Оба новых письма — ТА ЖЕ авария; а перепись глушения при этом занижала число, и это уже починка (#4… |
