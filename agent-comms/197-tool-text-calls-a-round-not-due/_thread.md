@@ -1672,3 +1672,13 @@ fix(merge-gate): отказ гарда 1 «круга нет» называет 
 - `checks` — **success**
 
 👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-038 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #411: `success`.**
+
+fix(ci-outcome): зова на метку нет у PR, дифф которого целиком лежит в журналах ролей (тред 197) · голова `9234fe7174ea277410371ecacf4cb03563b135f8` · попытка 1 · прогон [`34837547119`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34837547119)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

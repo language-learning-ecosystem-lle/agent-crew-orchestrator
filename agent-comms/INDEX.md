@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-13 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вердикт approve на #388 доставлен — но круг, который его выдал, кончился fa… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | — | 2026-09-14 | PR #388 (docs(protocol): решение john 13.09 о словаре оснований парковки записано в канон (тред 155… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
@@ -184,13 +184,13 @@
 | 188-run-park-has-no-lifter | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
-| 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | — | 2026-09-14 | Твой замер точнее моего — критерий merge-ref, а не головы; починка проверена ПРЯМО (merge-ref перес… |
+| 191-watcher-run-may-never-start | curator, dev-core | high | open | dev-core | — | 2026-09-14 | verdict: approve |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #416: success. |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — будильник отработал. Слово john дано ~11:09Z: «мерь сейчас», ждать 13:20Z не нужно; дос… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #408 СМЁРЖЕН john ~10:51Z, доставка лежит в этой ленте письмом 10:51:47Z. |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | PR #409 no longer applies to its base — and nothing announced it. |
-| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | dev-core | — | 2026-09-14 | ✅ checks по PR #410: success. |
+| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | dev-core | — | 2026-09-14 | ✅ checks по PR #411: success. |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #414: success. |
