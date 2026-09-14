@@ -785,6 +785,48 @@ describe("guard 1 — the round of review behind the approve (thread 027)", () =
     expect(outcome?.detail).toContain("inside the round 32535411165");
   });
 
+  /**
+   * A ROUND WITH NO `conclusion` MUST NOT VANISH FROM THE CENSUS (thread 200) — `status` is
+   * weighed beside `conclusion`, and the negative control is half the test (john, thread 191):
+   * the SAME list with the unfinished round and without it may not read the same.
+   *
+   * The field case this is cut from: two runs of `Notifier Watch` sat `status: queued`,
+   * `conclusion: null`, zero jobs, for over an hour on 2026-09-13 (34748694408, 34748763680).
+   * They were in no pile — not `success`, not `skipped`, not red — and the census that was
+   * measuring the notifier's health called that silence health.
+   *
+   * WHAT IS NOT CHANGED, and it is locked here on purpose: the state stays `anchored`. A run
+   * that has not answered anchors nothing, and refusing on one would be a change of the norm.
+   */
+  it("(а') names a round of the same workflow on this head that has NOT answered — beside the anchor", () => {
+    const queued = run({
+      id: 34748694408,
+      headSha: PUSHED_HEAD,
+      status: "queued",
+      conclusion: undefined,
+      createdAt: "2026-08-21T22:56:08Z",
+      updatedAt: "2026-08-21T22:56:08Z",
+    });
+    const anchor = run({ id: 32535411165, headSha: PUSHED_HEAD });
+
+    const withQueued = guard(
+      orphan({ state: "read", workflow: REVIEW, runs: [anchor, queued] }),
+      1,
+    );
+    // THE NEGATIVE CONTROL — the same census minus the record with no `conclusion`.
+    const without = guard(orphan({ state: "read", workflow: REVIEW, runs: [anchor] }), 1);
+
+    // The verdict does not move: this clause only speaks.
+    expect(withQueued?.state).toBe("pass");
+    expect(without?.state).toBe("pass");
+    // ...and the two readings DIFFER, which is the whole of what was missing.
+    expect(withQueued?.detail).not.toBe(without?.detail);
+    expect(withQueued?.detail).toContain("34748694408");
+    expect(withQueued?.detail).toContain("queued");
+    expect(withQueued?.detail).toContain("have not answered yet");
+    expect(without?.detail).not.toContain("have not answered yet");
+  });
+
   it("(б) STOPS the recorded orphan of #347 — the round read 3471645, the verdict hangs on e738643", () => {
     const outcome = guard(orphan({ state: "read", workflow: REVIEW, runs: [run()] }), 1);
 
