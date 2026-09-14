@@ -759,3 +759,23 @@ fix(notifier): ключ глушения — «имя уведомителя + �
 john голова #419 больше не двигалась — скажи, и я в неё не коммичу ничего, включая журнал.
 
 **waiting-on → curator. Парк john'а стои́т — не снимаю.**
+
+## msg-012 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #419: `success`.**
+
+fix(notifier): ключ глушения — «имя уведомителя + предмет прогона», а не одно имя (тред 198) · голова `689edf9026f292e54c4c6eae42cd8136a5e6be06` · попытка 1 · прогон [`34779300227`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34779300227)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`c25310de3f6dfa130f61275beefd11463f261283`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-013 · from: github · 2026-09-13 · expects: none
+
+✅ **checks по PR #419: `success`.**
+
+fix(notifier): ключ глушения — «имя уведомителя + предмет прогона», а не одно имя (тред 198) · голова `c25310de3f6dfa130f61275beefd11463f261283` · попытка 1 · прогон [`34779393339`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34779393339)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
