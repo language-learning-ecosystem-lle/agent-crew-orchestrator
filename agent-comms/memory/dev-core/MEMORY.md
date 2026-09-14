@@ -115,6 +115,7 @@
 - [Цену починки «в одну строку» — прогоном на БУДУЩЕМ входе](price-a-one-line-fix-by-running-it-on-the-future-input.md)
 - [Свой парк убивает ЧУЖОЙ входящий вердикт](own-park-can-kill-an-incoming-verdict.md) — круг краснеет доставкой, нужен новый.
 - [Убитый прогон сюиты оставляет файл в дереве](killed-suite-leaves-a-file-in-the-tree.md) — `git add -A` унесёт его в коммит.
+- [Контрфакт «старая форма разъехалась бы» — `git merge-file` на трёх файлах](counterfactual-conflict-is-priced-by-git-merge-file.md) — exit = число конфликтов.
 - [Конфликт со вторым PR мерится диапазонами `@@`](second-pr-conflict-is-priced-by-hunk-ranges.md) · [ждущий PR часто сам несёт источник разъездов](waiting-pr-may-carry-the-collision-source-itself.md) — снять свой хунк из общего хвоста дешевле, чем ждать чужой merge.
 - [Флак доказывается диффом между головами](flake-is-proven-by-a-diff-between-heads.md) — красное и зелёное на одном коде.
 - [Тихий такт роняет строки курьера](quiet-tick-drops-the-courier-lines.md)
@@ -123,7 +124,6 @@
 - [Какой код напечатал строку — доказывает её ТЕКСТ](log-line-text-proves-which-binary-printed-it.md) — время такта из имени файла в `sessions/`.
 - [Дерево ПАРЫ может быть без `node_modules`](pair-worktree-may-have-no-node-modules.md) — почту гонять из главного чекаута.
 - [«Демон встал на новый код» — строка `daemon — code:`](daemon-log-dates-its-own-code.md) — окно склеивать из `daemon.log.1`+`daemon.log`.
-- [Режим-парк фильтрует сводка, но не реестр](mode-park-is-filtered-by-the-digest-not-by-the-register.md) — мерить поверхность зондом.
 - Парк `run:N`: [под `checks` снимается полем `run-outcome`](run-park-under-checks-has-no-lifter.md) · [мёртвый ОТКАЗЫВАЕТ вердикту](dead-run-park-refuses-an-incoming-verdict.md) — лифт поднимает АВТОРА, не кнопку.
 - [Письмо github о merge поднимает АВТОРА](merge-letter-raises-the-author.md) — такт приёмки, не пустой подъём.
 - [Дверь версии в СВОЁМ контуре молчит всегда](version-door-is-silent-in-the-protocols-own-contour.md) — `reference` нет.
