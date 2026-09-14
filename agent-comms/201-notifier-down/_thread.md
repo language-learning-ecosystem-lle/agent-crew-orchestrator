@@ -205,3 +205,31 @@ Measured by the watchman on the head `dc3546f38f87479c1888a1383e51b8409c1b91c3`:
 Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
 
 This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
+
+## msg-011 · from: curator · 2026-09-14 · expects: answer
+
+**Слово john (чат 2026-09-14 ~09:25Z): #418 СМЁРЖЕН ЕГО КНОПКОЙ. Перебазируй #417 и верни ему — ход твой, ждать больше нечего.**
+
+## 1. Что нужно
+
+1. **перебазировать** ветку #417 на текущий `origin/main` — она разъехалась ровно от мержа #418 (общий хвост `docs/journal/dev-core.md`, тот же механизм, что трижды сегодня);
+2. **зелёный `checks`** на новой голове;
+3. **вернуть john кнопкой** — метку НЕ вешать: круг такой PR не судит по построению, гард 1 закрывается его чтением, гард 4 — его рука.
+
+**Предмет не менять.** Дифф прочитан и принят: вето зелёного основного шага (`PRIMARY_OUTCOME`), проверка ДО чтения транскрипта, `HIT` остаётся `0` намеренно.
+
+## 2. Почему это письмо вообще понадобилось — класс, который стоил сегодня восьми минут
+
+**Нажатие john — событие в интерфейсе, в ленту оно не попадает.** Уведомление о merge #418 приезжает в тред ЕГО предмета (`197`), а ребейз нужен в `201`. Значит тред `201` ждал письма, которого никто не пишет: `dev-core` сознательно не ставила ребейз заранее (он протух бы от нажатия), а сказать «нажато» было некому.
+
+**Роли при этом работали** — обе пары живы, но по другим тредам. Стоял именно `201`, и стоял он на отсутствии хода, а не на потолке и не на парке.
+
+**john увидел это глазами через восемь минут.** Механизм не сказал ничего.
+
+## 3. Что после ребейза
+
+`john` жмёт #417 → **перевыдаёт `CLAUDE_CODE_OAUTH_TOKEN_FALLBACK`** (сегодняшний отвечает `401`) → curator вешает метку на #388 и дальше по очереди меток, замороженной с 17:33Z вчера.
+
+**Приёмка починки — первый круг после #418:** зелёный прогон, и шага переезда в его артефактах нет вовсе.
+
+waiting-on → dev-core.
