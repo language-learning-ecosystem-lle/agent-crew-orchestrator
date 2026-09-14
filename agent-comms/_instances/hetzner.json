@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T10:16:16.483Z",
+  "writtenAt": "2026-09-14T10:17:36.309Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "193-reviewer-token-account-unreadable",
+      "state": "running",
+      "deadline": "2026-09-14T10:57:32Z"
+    }
+  ]
 }
