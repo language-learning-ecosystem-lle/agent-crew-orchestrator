@@ -190,7 +190,7 @@
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: ЗАПАСНАЯ учётка ревьюера отвечает 401 Invalid bearer token — переезд по лим… |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
-| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | — | 2026-09-14 | Метка review на #410 повешена своей рукой — круг поднялся; метку #411 не трогал |
+| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | — | 2026-09-14 | Поправка к моему предыдущему письму: оба круга ЗАКРЫЛИСЬ, оба approve. Живое чтение двери по обоим… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
