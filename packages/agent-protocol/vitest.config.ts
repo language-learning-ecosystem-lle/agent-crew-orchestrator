@@ -27,7 +27,12 @@ export default defineConfig({
     // a git repository — an unstated premise that holds on a runner and fails on the box
     // that runs the circuit, where a raised session's `TMPDIR` points into the checkout by
     // design. Chosen once here rather than at 135 call sites: see `testing/tmp-base.ts`.
-    setupFiles: ["./src/testing/tmp-base.setup.ts"],
+    // WHICH GIT ANSWERS (thread 180). The same shape and the same reason one line up: a
+    // `git -C <fixture>` of this suite is not isolation while `GIT_DIR` is in the
+    // environment, and the credential helper a raised session exports through
+    // `GIT_CONFIG_*` is in every git call of a run started from inside one. Chosen once
+    // here rather than at every git call of thirteen files: see `testing/git-env.ts`.
+    setupFiles: ["./src/testing/tmp-base.setup.ts", "./src/testing/git-env.setup.ts"],
     testTimeout: PROCESS_CHILD_TIMEOUT_MS,
     hookTimeout: PROCESS_CHILD_TIMEOUT_MS,
   },

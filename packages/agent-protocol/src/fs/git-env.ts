@@ -20,14 +20,23 @@
  * like the repository root — the
  * guard concluded "not a role workspace" and stood aside, silently, in exactly the
  * situation it exists for.
+ *
+ * THE NAMES ARE A VALUE and not four bindings of a destructuring, because this package has
+ * a SECOND reader of the same list since thread 180: the suite scrubs its own environment
+ * before a test module is loaded (`testing/git-env.ts`), and two hand-copied lists drifting
+ * apart is the failure mode this door is itself about — a copy stays right until the day a
+ * name is added to one of them. The suite's list is WIDER on purpose and says why at its
+ * own definition; what it must never be is NARROWER, and a test holds that.
  */
+export const GIT_HOOK_ENV_KEYS = [
+  "GIT_DIR",
+  "GIT_INDEX_FILE",
+  "GIT_WORK_TREE",
+  "GIT_PREFIX",
+] as const;
+
 export const gitEnvOutsideHook = (): NodeJS.ProcessEnv => {
-  const {
-    GIT_DIR: _dir,
-    GIT_INDEX_FILE: _index,
-    GIT_WORK_TREE: _tree,
-    GIT_PREFIX: _prefix,
-    ...rest
-  } = process.env;
+  const rest = { ...process.env };
+  for (const name of GIT_HOOK_ENV_KEYS) delete rest[name];
   return rest;
 };
