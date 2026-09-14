@@ -884,3 +884,13 @@ fix(merge-gate): отказ гарда 1 «круга нет» называет 
 - `checks` — **success**
 
 ⚠️ Голова PR уже сдвинулась (`20c46a2a67e2108349e314d13fa76aab331602f5`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-023 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #411: `success`.**
+
+fix(ci-outcome): зова на метку нет у PR, дифф которого целиком лежит в журналах ролей (тред 197) · голова `791f73fff89bd68471dad3c3e8c4101ecc06d151` · попытка 1 · прогон [`34829117367`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34829117367)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
