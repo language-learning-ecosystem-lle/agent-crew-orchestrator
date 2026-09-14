@@ -189,7 +189,7 @@
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN: «мерь 15.09» ЛИБО «закрывай». Размен НЕ ВИДЕН, потолок числа пересматрив… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #408 СМЁРЖЕН john ~10:51Z, доставка лежит в этой ленте письмом 10:51:47Z. |
-| 196-queue-row-contradicts-the-planner | curator, dev-core | high | open | curator | — | 2026-09-14 | ✅ checks по PR #438: success. |
+| 196-queue-row-contradicts-the-planner | curator, dev-core | high | open | curator | — | 2026-09-14 | PR #438 (docs(journal): полевая приёмка #409 — оракул эпохи демона, проворот журнала ящика и контро… |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: #411 стоит под твоей кнопкой — одобрен, зелен, CLEAN, гард 4 STOP (это .git… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | verdict: approve |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
