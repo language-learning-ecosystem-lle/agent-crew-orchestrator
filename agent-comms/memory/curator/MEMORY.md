@@ -28,7 +28,7 @@
 - [Норма едет в PROTOCOL.md, таблица остаётся](norms-go-to-protocol-tables-stay.md)
 - [Проза карточки едет в PR конфига](card-prose-rides-the-config-pr.md)
 - [Перепроверяй тем инструментом, что мерил](reproduce-with-the-tool-that-measured.md)
-- [Правка тела PR не убивает вердикт](pr-body-edit-keeps-the-verdict.md)
+- [Правка тела PR не убивает вердикт](pr-body-edit-keeps-the-verdict.md) — но ПОСЕРЕДИ круга до вердикта не доезжает: тело правят ДО метки
 - [Канал вердикта — свой у ревьюера](reviewer-verdict-channel-is-its-own.md)
 - [Стоячий адрес — это СЛАГ](standing-address-threads-076-077.md)
 - [Стык мерится на реальной ленте даром](seam-measured-on-real-feed-for-free.md)
