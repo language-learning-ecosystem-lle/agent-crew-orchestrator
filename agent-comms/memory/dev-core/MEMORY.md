@@ -40,7 +40,7 @@
 - [Ручной конфликт доказывается нулём удалений](manual-conflict-fix-needs-zero-deletions-proof.md) — `--numstat` против КАЖДОГО РОДИТЕЛЯ · [«хвостовая» сторона может нести хунк в СЕРЕДИНЕ](tail-append-side-may-carry-a-mid-file-hunk.md) — арифметика пропажу середины не ловит.
 - [Целость вклада после влития базы — ПАТЧЕМ вклада, не диффом деревьев](contribution-patch-not-tree-diff-proves-a-merge.md)
 - [Коммутативность merge — не доказательство целости](commutative-merge-is-not-proof-nothing-was-eaten.md) — блоки побайтово.
-- [Влил `main`, трогавший ТОТ ЖЕ шаг `.yml` — гоняй пин ЧУЖОГО PR](merging-main-into-a-branch-editing-the-same-step-needs-the-other-prs-pin.md) — разведка до слияния `merge-tree --write-tree`.
+- [Влил `main`, трогавший ТОТ ЖЕ шаг `.yml` — гоняй пин ЧУЖОГО PR](merging-main-into-a-branch-editing-the-same-step-needs-the-other-prs-pin.md) — разведка до слияния `merge-tree --write-tree`; условия приёмки мерить на ЕГО дереве, голову не двигая.
 - [Тихая потеря — это неподнятый ход](silent-loss-is-the-unraised-turn.md)
 - [Номер треда уникален, слаг — нет](thread-id-unique-by-number-only.md)
 - [Свою невлитую дверь — детач-чекаутом](run-an-unmerged-door-by-detach-checkout.md)
