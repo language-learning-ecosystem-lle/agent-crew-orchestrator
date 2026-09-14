@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T11:53:33.815Z",
+  "writtenAt": "2026-09-14T11:56:11.298Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,12 +19,6 @@
       "thread": "203-collision-watch-dedup-does-not-hold",
       "state": "running",
       "deadline": "2026-09-14T12:53:29Z"
-    },
-    {
-      "role": "curator",
-      "thread": "194-parallelism-remeasure-after-a-day",
-      "state": "running",
-      "deadline": "2026-09-14T12:30:18Z"
     }
   ]
 }
