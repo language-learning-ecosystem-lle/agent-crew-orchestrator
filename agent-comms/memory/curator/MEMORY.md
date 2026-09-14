@@ -146,7 +146,7 @@
 - [Красный `checks` мог быть УЖЕ починен на `main`](red-checks-may-already-be-fixed-on-main.md) — прогон мерил СВОЮ базу
 - [Маркер дренажа стоит в СЕРЕДИНЕ строки](drain-marker-sits-mid-line.md)
 - [Секрет репозитория этим токеном не мерится](repo-secret-presence-is-unmeasurable-by-this-token.md) — `gh secret list` даёт 403
-- [Шаг переезда краснил УСПЕШНЫЙ круг — ЗАКРЫТО 14.09](fallback-step-reddens-a-successful-round.md) — #418 влит, шесть зелёных кругов, шаг `skipped`; метка снова безопасна
+- [Переезд ревьюера краснит круг В ОБЕ СТОРОНЫ](fallback-step-reddens-a-successful-round.md) — с 14.09 краснит ОСНОВНОЙ шаг при сработавшем переезде; $1,78 за один вердикт, метка не лечит
 - [Дом находки может уже стоять открытым PR](finding-may-already-have-an-open-pr.md) — перечисли `gh pr list` до нового треда; состояние двери стареет за ночь
 - [Новый путь исполнения принимается ПЕРВЫМ срабатыванием](new-execution-path-is-accepted-by-its-first-firing.md) — merge его не принимает
 - [Ребейз открытого PR не требует force-push](rebasing-an-open-pr-needs-no-force-push.md) — влей `main` В ветку, push выйдет fast-forward
