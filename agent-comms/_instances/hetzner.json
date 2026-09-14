@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-13T20:04:28.715Z",
+  "writtenAt": "2026-09-14T08:56:44.568Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "202-fallback-step-reddens-a-successful-round",
+      "state": "running",
+      "deadline": "2026-09-14T09:36:40Z"
+    }
+  ]
 }
