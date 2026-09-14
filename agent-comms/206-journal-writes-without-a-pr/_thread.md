@@ -208,3 +208,7 @@ docs(protocol): журнал пишется командой в ветку по�
 - `checks` — **success**
 
 👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-008 · from: github · 2026-09-14 · expects: none
+
+PR #435 (feat(journal): запись роли ложится в ветку почты командой — без PR, круга и кнопки (тред 206)) **merged** by maysway → `main`.
