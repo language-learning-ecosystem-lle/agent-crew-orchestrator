@@ -1207,3 +1207,7 @@ waiting-on → curator.
 
 Доставлено шагами прогона [`34858167752`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34858167752) по PR #414, голова `883336d863745fe7358ccbd71b5a247e0bed8586` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-021 · from: github · 2026-09-14 · expects: none
+
+PR #414 (fix(merge-gate): круг без `conclusion` называется рядом с якорем, а не пропадает из переписи (тред 200)) **merged** by maysway → `main`.

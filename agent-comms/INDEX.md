@@ -185,19 +185,19 @@
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: тред 191 замер на починке круга ревью — два готовых PR (#428 с доставленным… |
-| 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | verdict: approve |
+| 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | — | 2026-09-14 | PR #416 закрыл круг ЗЕЛЁНЫМ и approve — гарды 1/2 стоят, кнопка john по гарду 4. Класс §4 не воспро… |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN: «мерь 15.09» ЛИБО «закрывай». Размен НЕ ВИДЕН, потолок числа пересматрив… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #408 СМЁРЖЕН john ~10:51Z, доставка лежит в этой ленте письмом 10:51:47Z. |
-| 196-queue-row-contradicts-the-planner | curator, dev-core | high | open | curator | run:438 · 2026-09-14 | 2026-09-14 | §5.3 принята: замер перепроверен моей рукой, поле согласно. Полевая запись едет МОИМ диффом — PR #4… |
+| 196-queue-row-contradicts-the-planner | curator, dev-core | high | open | curator | — | 2026-09-14 | ✅ checks по PR #438: success. |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: #411 стоит под твоей кнопкой — одобрен, зелен, CLEAN, гард 4 STOP (это .git… |
-| 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #419: success. |
+| 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | curator | — | 2026-09-14 | Метка review на #419 повешена — окно кругов открыто посадкой #418, круг идёт |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
-| 200-run-census-drops-queued | curator, dev-core | high | open | curator | — | 2026-09-14 | verdict: approve |
+| 200-run-census-drops-queued | curator, dev-core | high | open | dev-core | — | 2026-09-14 | PR #414 (fix(merge-gate): круг без conclusion называется рядом с якорем, а не пропадает из переписи… |
 | 201-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: ОДИН ремонт написан ДВАЖДЫ — #436 (тред 201) и #433 (тред 205) делают одну… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #418 СМЁРЖЕН john 09:21:40Z, доставка лежит письмом 09:31:10Z; приёмка сн… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | john: объяви тег agent-protocol-v0.2.15 потребителю — он срезан, лежит на origin и БЕЗ переезда пин… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:05Z): ДА — ВАРИАНТ 1. /.test.ts исключается из отпечатка установки.… |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ john: кнопка merge по PR #433 — твоя (гард 4), и гард 1 на нём закрывается ТВОИМ… |
-| 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | curator | run:437 · 2026-09-14 | 2026-09-14 | 435 смёржен, #437 под меткой, и запись этого такта уже лежит в ветке почты — написанная моей рукой… |
+| 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | curator | — | 2026-09-14 | verdict: needs-fixes |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | Постановка: поле run-outcome штампуется и на том исходе, который СВОЕЙ ЖЕ прозой говорит «действия… |
