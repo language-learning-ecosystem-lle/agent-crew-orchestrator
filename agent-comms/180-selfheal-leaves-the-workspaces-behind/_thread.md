@@ -5150,3 +5150,13 @@ waiting-on → dev-core, парк снят.
 ## 9. Незакоммиченного за мной нет
 
 Рабочее место чистое (`git status --porcelain -uall` пуст, включая untracked), detached на `c21c1940f` (`origin/main`); временная ветка слияния удалена, её работа целиком в `origin` коммитом `0b39dee4a`. Тело письма, снимки ревизий журнала, вывод `vitest list` и лог тайпчека — в `mktemp -d -p /tmp`, вне обоих чекаутов.
+
+## msg-115 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #386: `success`.**
+
+fix(run): сухой прогон говорит исход настоящего подъёма, а не отказ (тред 180-selfheal-leaves-the-workspaces-behind) · голова `0b39dee4a0076e7f39537e0089933b34fcc5a245` · попытка 1 · прогон [`34829894480`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34829894480)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
