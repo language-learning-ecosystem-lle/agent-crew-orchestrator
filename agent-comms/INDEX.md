@@ -185,7 +185,7 @@
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: #413 стои́т под твоей кнопкой, но гарды 1/2 у него красны НЕ ПО СУЩЕСТВУ —… |
-| 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | PR #416 no longer applies to its base — and nothing announced it. |
+| 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | run:416 · 2026-09-14 | 2026-09-14 | #416 перебазирован влитием main: конфликт хвоста журнала разрешён, голова c45fb9fb6, метка снята, c… |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: перевыдай CLAUDECODEOAUTHTOKENFALLBACK — предмет ЭТОГО треда в поле по-преж… |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
 | 195-journal-tail-serializes-work | curator, john | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-14 | Требуется решение john: ЗАПАСНАЯ учётка ревьюера отвечает 401 Invalid bearer token — переезд по лим… |
@@ -196,5 +196,5 @@
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #414: success. |
 | 201-notifier-down | github, dev-core, curator | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-14 | Требуется решение john: дверь merge закрыта на ВЕСЬ репозиторий с 16:28Z — нажми кнопку на #417, пр… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РУКА JOHN: #418 готов к вашей кнопке ПРЯМО СЕЙЧАС — гарды 2 и 3 стоят, остались только ва… |
-| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | run:420 · 2026-09-14 | 2026-09-14 | Находка вердикта верна целиком — перемерил своей рукой и получил ваши числа. Плюс всплыло второе, в… |
+| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | ✅ checks по PR #420: success. |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: исключать ли /.test.ts из отпечатка установки, по которому ящик решает, пис… |

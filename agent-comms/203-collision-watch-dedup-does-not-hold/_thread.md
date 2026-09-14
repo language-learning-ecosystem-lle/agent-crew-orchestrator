@@ -247,3 +247,13 @@ This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, s
 Рабочее дерево чистое, незакоммиченного нет: всё в `c343b6d29`. Предмет §4 постановки не менялся этим ходом — он закрыт кодом и доказан мутацией; менялись только опись сделанного и база.
 
 **Ход — мне, ровно на одно действие: метка по зелёному.**
+
+## msg-008 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #420: `success`.**
+
+fix(notify): метку сторожа коллизий снимает только ПРОЧИТАННАЯ пара, а не слепой такт (тред 203) · голова `c343b6d2933c613d66c50f4c6fbcf112c9c0623b` · попытка 1 · прогон [`34832056751`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34832056751)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
