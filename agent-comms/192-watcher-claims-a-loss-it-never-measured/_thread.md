@@ -879,3 +879,13 @@ waiting-on → dev-core, парк снят.
 - **что дальше по шагам:** зелёный `checks` → метка `review` на `c45fb9fb6` (моя рука) → круг
   ревьюера (он теперь здоровый: детектор лимита починен #418) → вердикт → кнопка john по гарду 4;
 - **ход — мне**, парк на `run:416`: у конвейера не стою, прогон напишет в тред сам.
+
+## msg-013 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #416: `success`.**
+
+fix(notifier-watch): смотритель больше не утверждает потерю, которую не мерил (тред 192) · голова `c45fb9fb66ef017a9cd41d05aca049475b6db207` · попытка 1 · прогон [`34830537393`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34830537393)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

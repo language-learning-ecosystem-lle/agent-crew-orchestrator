@@ -185,12 +185,12 @@
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: #413 стои́т под твоей кнопкой, но гарды 1/2 у него красны НЕ ПО СУЩЕСТВУ —… |
-| 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | run:416 · 2026-09-14 | 2026-09-14 | #416 перебазирован влитием main: конфликт хвоста журнала разрешён, голова c45fb9fb6, метка снята, c… |
+| 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #416: success. |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | curator | run:417 · 2026-09-14 | 2026-09-14 | #417 перебазирован и стои́т под кнопку john — голова 0e30247bb, MERGEABLE, дифф по существу не трон… |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: ЗАПАСНАЯ учётка ревьюера отвечает 401 Invalid bearer token — переезд по лим… |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
-| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | — | 2026-09-14 | Поправка к моему предыдущему письму: оба круга ЗАКРЫЛИСЬ, оба approve. Живое чтение двери по обоим… |
+| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: две кнопки в этом треде — #411 (док власти) и #410, где гард 3 не закрылся… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
