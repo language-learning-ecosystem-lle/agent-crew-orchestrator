@@ -115,7 +115,7 @@
 - [Цену починки «в одну строку» — прогоном на БУДУЩЕМ входе](price-a-one-line-fix-by-running-it-on-the-future-input.md)
 - [Свой парк убивает ЧУЖОЙ входящий вердикт](own-park-can-kill-an-incoming-verdict.md) — круг краснеет доставкой, нужен новый.
 - [Убитый прогон сюиты оставляет файл в дереве](killed-suite-leaves-a-file-in-the-tree.md) — `git add -A` унесёт его в коммит.
-- [Конфликт со вторым PR мерится диапазонами `@@`](second-pr-conflict-is-priced-by-hunk-ranges.md)
+- [Конфликт со вторым PR мерится диапазонами `@@`](second-pr-conflict-is-priced-by-hunk-ranges.md) · [ждущий PR часто сам несёт источник разъездов](waiting-pr-may-carry-the-collision-source-itself.md) — снять свой хунк из общего хвоста дешевле, чем ждать чужой merge.
 - [Флак доказывается диффом между головами](flake-is-proven-by-a-diff-between-heads.md) — красное и зелёное на одном коде.
 - [Тихий такт роняет строки курьера](quiet-tick-drops-the-courier-lines.md)
 - [У `notify.state` нет частичной записи](notify-state-has-no-partial-write.md) — класс без имени в ветке ею удаляется.
