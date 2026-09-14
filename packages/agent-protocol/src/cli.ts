@@ -660,6 +660,7 @@ import {
   type WorkspaceDependenciesVerdict,
 } from "./orchestrator/workspace-dependencies.js";
 import {
+  describePlannedWorkspaceInstall,
   describeWorkspaceInstall,
   planWorkspaceInstall,
   type WorkspaceInstallOutcome,
@@ -12072,6 +12073,18 @@ const settleRun = (input: {
    * effects on disk.
    */
   readonly write: boolean;
+  /**
+   * THIS RUN IS THE PARENT OF A BACKGROUND LAUNCH (thread 180, john's decision of
+   * 2026-09-13) — and it is asked because `write` is false in TWO different situations,
+   * which is the fact that used to make one of them invisible. A dry run is a PLAN: nobody
+   * is going to touch that tree, and what it owes the reader is the outcome the real launch
+   * would have. The parent of `--detach` writes nothing either, but the launch it is part
+   * of does — its child repeats this whole command and prepares the tree under its own
+   * lock. Told apart here, the two can be repaired one at a time: half (а) is the plan's
+   * speech, half (б) is the parent's refusal, and until (б) lands the parent keeps the
+   * behaviour it has today, whole and by name.
+   */
+  readonly background?: boolean;
 }): RunSetup => {
   const { argv, role, thread, repo, mailRoot, events } = input;
   // ONE READ OF THE CONFIG SERVES BOTH THE PLACE AND ITS KEY (thread 177): the directory
@@ -12177,33 +12190,28 @@ const settleRun = (input: {
       facts: workspacePackageFacts({ repo, path }),
     });
     if (!build.ok) {
-      // WHAT A PLAN SAYS ABOUT THE LEVELLING, AND WHICH HALF OF IT IS SILENT (thread 180,
-      // curator's statement of 2026-09-12 §4). `mayLevel` is asked here even when nothing
-      // will be written, and that is deliberate: the three borders are read off the state
-      // the launch ALREADY measured, so a refusal whose reason is john's border rather than
-      // this run's mode is true of the REAL launch too — and whoever is deciding whether to
-      // repair that tree by hand is exactly the reader of `run` without `--write`.
+      // WHAT A PLAN SAYS ABOUT THE LEVELLING (thread 180, john's decision of 2026-09-13).
+      // `mayLevel` is asked here even when nothing will be written, and that is deliberate:
+      // the three borders are read off the state the launch ALREADY measured, so a refusal
+      // whose reason is john's border rather than this run's mode is true of the REAL launch
+      // too — and whoever is deciding whether to repair that tree by hand is exactly the
+      // reader of `run` without `--write`.
       //
-      // THE ASYMMETRY IS NAMED HERE RATHER THAN LEFT TO BE REDISCOVERED. On a tree the
-      // borders COVER, this plan says nothing at all about levelling: the only text the site
-      // owns is `planWorkspaceInstall`'s `why`, and that function is not told what `--write`
-      // is, so there is no sentence in which to say "the real launch would have levelled
-      // this and carried on". Measured 2026-09-12, and both halves are held by
-      // `workspace-levelling.process.test.ts`: out of the borders the plan prints
-      // `levelling — stands aside: …`, inside them it prints the stale build's refusal and
-      // not one word more. Saying the second half would change what the box prints about a
-      // tree INSIDE john's grant, which curator put back to john (§4.4) — it is not a
-      // tidy-up to be done in passing here.
+      // AND THE BORDERS ARE THE WHOLE OF THE REFUSAL NOW. Until 2026-09-13 this line also
+      // refused every tree the borders COVER whenever nothing was to be written, which made
+      // a plan say "unusable" about a tree the real launch levels on its way in — the class
+      // john closed: a plan in report-only mode owes the OUTCOME the real launch would have,
+      // not a refusal the real launch never sees. The tree is still named as behind and the
+      // levelling is still not done here; both are said a screen below, where the launch
+      // that does write does its levelling, so there is one site that decides and one site
+      // that speaks.
       //
-      // AND `input.write` IS FALSE IN TWO DIFFERENT SITUATIONS, which is a fact about this
-      // line and not about the dry run: the caller hands in `write && !detach`, so the
-      // parent of a background launch reaches this refusal too. Measured the same day:
-      // `run --write --detach` over a levellable stale tree exits 2 and never forks the
-      // child, so the grant does not reach a background launch at all. That is a defect of
-      // behaviour and not of speech; it is named in thread 180 and its home is not decided
-      // here.
+      // THE SECOND SITUATION IS DECLINED BY NAME AND NOT BY `write` (half (б), not this
+      // diff): the parent of a background launch writes nothing either, and for it the
+      // stale build is still the end of the run, exactly as it was — `input.background` is
+      // what tells the two apart, because `write` cannot.
       const levelling = mayLevel(true);
-      if (!input.write || !levelling.install) {
+      if (input.background === true || !levelling.install) {
         if (levelling.install === false && levelling.why !== undefined)
           lines.push(`levelling — stands aside: ${levelling.why}`);
         return { ok: false, reason: build.reason, lines };
@@ -12433,7 +12441,22 @@ const settleRun = (input: {
   // checkout's (thread 085) are different measurements with different texts, and the one
   // line that repairs both is the one the doors have been printing for a hand since 085.
   const levelling = mayLevel(staleBuild !== undefined || !dependencies.installed);
-  if (levelling.install) {
+  if (levelling.install && !input.write) {
+    // A PLAN SAYS THE OUTCOME AND WRITES NOTHING (thread 180, john's decision of
+    // 2026-09-13, half (а)) — and the two lines are in this order because that is the order
+    // the reader needs them in: what is wrong with the tree, then what the circuit does
+    // about it. The fault keeps the DOOR'S OWN words, the ones it used when this was a
+    // refusal, so nothing a hand used to act on has become quieter; what changed is that it
+    // is no longer the end of the plan.
+    //
+    // THE GUARD IS HERE AND NOT AT THE DECISION. `runWorkspaceInstall` below is the one
+    // line in this function that starts a package manager, and a dry run that reached it
+    // would be a real install in a run that promised to touch nothing — so the mode is
+    // asked immediately above it, where the reader of the install can see it, rather than
+    // a screen away where the borders are read.
+    if (staleBuild !== undefined) lines.push(`package — ${staleBuild}`);
+    lines.push(`levelling — ${describePlannedWorkspaceInstall({ role: role.id, path })}`);
+  } else if (levelling.install) {
     lines.push(`levelling — ${levelling.note}`);
     const outcome = runWorkspaceInstall({ path, repo });
     lines.push(`levelling — ${describeWorkspaceInstall({ role: role.id, path, outcome })}`);
@@ -12761,6 +12784,11 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     events,
     ids: registry.ids(),
     write: write && !detach,
+    // AND WHICH OF THE TWO SILENCES THIS IS, SAID OUT LOUD (thread 180, half (а)): `write`
+    // above is false both for a plan and for the parent of a background launch, and the
+    // door behaves differently for them. Handing in the flag the caller already has is the
+    // whole of the distinction — nothing here is re-derived from the tree.
+    background: detach,
   });
   for (const line of setup.lines) out(`agent-protocol: ${line}`);
   if (!setup.ok) {
