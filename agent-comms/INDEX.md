@@ -188,7 +188,7 @@
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | PR #416 no longer applies to its base — and nothing announced it. |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
-| 195-journal-tail-serializes-work | curator, john | high | open | curator | — | 2026-09-14 | verdict: approve |
+| 195-journal-tail-serializes-work | curator, john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: КНОПКА НА #408. Вердикт approve доставлен на текущей голове d78263fead36a99… |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | PR #409 no longer applies to its base — and nothing announced it. |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | dev-core | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: две кнопки в этом треде — #411 (док власти) и #410, где гард 3 не закрылся… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
