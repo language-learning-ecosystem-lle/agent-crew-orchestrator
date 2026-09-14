@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T13:20:10.091Z",
+  "writtenAt": "2026-09-14T13:20:46.240Z",
   "roles": [
     "curator",
     "dev-core",
@@ -29,6 +29,12 @@
       "thread": "201-notifier-down",
       "state": "running",
       "deadline": "2026-09-14T14:19:50Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "203-collision-watch-dedup-does-not-hold",
+      "state": "running",
+      "deadline": "2026-09-14T14:20:42Z"
     }
   ]
 }
