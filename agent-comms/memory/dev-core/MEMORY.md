@@ -1,139 +1,50 @@
-- Парк: [`pr:N`/`run:N` — N ВСЕГДА номер PR](park-pr-vs-run-choice.md) · [не на зелёный прогон](do-not-park-on-a-green-ci-run.md) · [не на конфликтующий PR](park-door-refuses-a-conflicting-pr.md) — отказ двери = оракул «ветка разошлась с main».
+- Парк: [`pr:N`/`run:N` — N ВСЕГДА номер PR](park-pr-vs-run-choice.md) · [не на зелёный прогон](do-not-park-on-a-green-ci-run.md) · [не на конфликтующий PR](park-door-refuses-a-conflicting-pr.md) · [стоячий адрес не паркуют](do-not-park-a-standing-address.md) · [`--park-ground` — три машинных формы](park-ground-takes-three-machine-forms-only.md) — иначе письмо НЕ уходит.
 - Мерить парк: [сухим `new-message`](measure-a-standing-park-with-a-dry-new-message.md) · [пустая строка ≠ тишина](missing-park-row-does-not-prove-silence.md) — и ПОСЛЕ `--park-lifted`.
-- [`--park-ground` — три машинных формы, не проза](park-ground-takes-three-machine-forms-only.md) — иначе письмо НЕ уходит.
-- [Стоячий адрес не паркуют](do-not-park-a-standing-address.md) — закрывать `--waiting-on '—'`.
-- [Письмо «зелено» ≠ «ещё мержабельно»](green-letter-does-not-mean-still-mergeable.md)
-- [Вердикт про текст голову не двигает](verdict-about-text-does-not-move-the-head.md) — правка тела + переве́шивание метки.
+- Парк `run:N`: [под `checks` снимается полем `run-outcome`](run-park-under-checks-has-no-lifter.md) · [мёртвый ОТКАЗЫВАЕТ вердикту](dead-run-park-refuses-an-incoming-verdict.md) · [свой парк убивает ЧУЖОЙ вердикт](own-park-can-kill-an-incoming-verdict.md) · [перенос вперёд НЕ заводит потолок заново](carrying-a-park-forward-does-not-restart-its-ceiling.md) — перезаводит снятие ПО ИМЕНИ.
+- [Письмо «зелено» ≠ «ещё мержабельно»](green-letter-does-not-mean-still-mergeable.md) · [вердикт про текст голову не двигает](verdict-about-text-does-not-move-the-head.md) — правка тела + переве́шивание метки.
 - Нота о базе: [гасится замером](label-follows-base-note-not-clean.md) · [перебазировка делает написанное о базе ложным](rebase-falsifies-measurements-about-the-base.md) · [гаснет, пока голова ещё двинется](base-move-note-dissolves-only-if-the-head-still-moves.md)
-- Часы в тестах: [ассерт не читает стенные](assert-must-not-read-the-wall-clock.md) · [подмена часов процессному](clock-shift-for-process-tests.md) — `--import` через NODE_OPTIONS.
-- [Номер тега реза не говорит, что в нём](release-tag-number-does-not-say-what-it-carries.md)
-- Сюита: [`TMPDIR=/tmp`, `--root packages/agent-protocol`](local-suite-needs-short-tmpdir.md) · [потерять прогон до первого теста](vitest-run-invocation-traps.md) — репортёра `basic` в vitest 4 НЕТ.
-- [Красный `checks` на main — часто не тесты](red-main-checks-may-be-comms-sync.md)
-- [Пин в LLE из сессии aco не переехать](aco-session-cannot-reach-lle-repo.md)
-- [Перепрогон CI — только сдвигом головы](token-cannot-rerun-ci.md)
-- [Почву двери контура из `mktemp -d` не проверить](contour-ground-check-needs-tmp.md)
-- [«Зелено» зависит от того, ГДЕ чекаут](green-depends-on-where-the-checkout-lives.md)
-- Дверь merge: [гард 1 — имя воркфлоу](merge-gate-guard1-needs-review-workflow-name.md) · [гард 2 — КРУГ](merge-gate-guard2-reports-the-review-round.md) · [`BLOCKED` — часто идущий круг](blocked-merge-state-may-be-just-the-open-round.md) — `--review-workflow 'Claude PR Review'`.
-- [Ветка может опережать тред](branch-may-be-ahead-of-thread.md)
-- [Чужой дом мерится путями, не именами ролей](foreign-home-measured-by-paths-not-role-names.md) — `LLE` без `\b` ловит `CALLED`.
-- [Счёт по `daemon.log` — только с якорем](daemon-log-grep-needs-an-anchor.md) — ноль строк = «наблюдений нет», не «аварий нет» · [СНАЧАЛА подозревай свой греп](session-grep-is-blind-to-a-log-with-a-nul-byte.md) — лечит `grep -a`.
-- Смотритель: [пачка = одна причина](notifier-letters-collapse-to-one-cause.md) · [одинаковые = две аварии](identical-red-letters-may-be-two-incidents.md) · [окно — серией красных](price-an-open-window-by-the-red-streak.md) · [покрытие доказывается](notifier-watch-runs-count-the-window.md) · [`queued` теряет звонок](queued-watcher-run-loses-the-alarm.md)
-- [Лежалый PR может быть перекрыт](stale-pr-may-be-superseded.md) — `add/add` = предмет уже сел.
-- [`git stash` на чистом дереве достаёт чужой](stash-on-clean-tree-pops-a-foreign-stash.md)
-- [Дефекты двери прячутся в процессных тестах](door-defects-hide-in-process-tests.md)
-- [Сначала приземляй вызываемое](thin-copy-needs-callee-landed-first.md)
-- [Проза ход не снимает](prose-does-not-release-the-turn.md)
-- [Письма расходятся — чужой штамп меряется](letters-cross-measure-the-other-stamp.md)
-- [Писать в ветку, не чекаутя её](write-a-branch-without-checking-it-out.md)
-- [Группу мерить `id` внутри сессии](group-check-must-run-inside-the-session.md)
+- Часы в тестах: [ассерт не читает стенные](assert-must-not-read-the-wall-clock.md) · [подмена часов процессному](clock-shift-for-process-tests.md) — `--import` через NODE_OPTIONS · [часы уезжают в ключ схлопывания через argv](clock-leaks-into-a-dedup-key-through-argv.md)
+- Сюита: [`TMPDIR=/tmp`, `--root packages/agent-protocol`](local-suite-needs-short-tmpdir.md) · [потерять прогон до первого теста](vitest-run-invocation-traps.md) — репортёра `basic` в vitest 4 НЕТ · [молчит о несуществующем пути фильтра](vitest-ignores-a-nonexistent-path-filter.md) · [наследует среду сессии](suite-inherits-the-session-env.md) — `AGENT_PROTOCOL_WORKER` судит наоборот.
 - Число тестов: [перемеряется](test-counts-must-be-remeasured.md) · [дельту объясняет `vitest list`](attribute-a-test-count-delta-with-vitest-list.md) · [предсказанное доказывает ребейз](predicted-test-count-proves-a-rebase.md) — число назвать ДО прогона.
-- [Залогинен ли `gh` — меряется](bare-gh-in-a-session-has-no-login.md) — старый `. secrets.aco.env` рвёт `&&`.
-- [Письмо себе — только `--expects none`](note-to-self-needs-expects-none.md)
-- [`new-message` тред не заводит](new-message-does-not-create-a-thread.md) — только `--ensure-thread <slug>`, номер выдаёт ОН.
-- Круг ревью: [класс упавшего — в артефакте](failed-review-round-class-lives-in-the-artifact.md) — `claude-execution-output.json`, файлов ДВА · [парк под кругом умирает с кругом](park-under-a-round-dies-with-the-round.md). КРАСНЫЙ круг бывает с доставленным вердиктом — детектор починен #418 (14.09), запрет «метку в это окно не вешать» СНЯТ.
-- [Приёмка признака — состояние ЕГО ветки, не цвет прогона](acceptance-of-a-gate-is-the-state-of-its-branch.md) — шаг `skipped` доказывает.
-- [Переезд на запасную учётку доказывается тождеством ПРОМПТА](fallback-account-migration-is-proven-by-prompt-identity.md) — `sha256` обоих шагов, не строка «ПЕРЕЕЗД».
-- [Круг ревью читает СНИМОК почты](review-round-reads-a-snapshot-of-the-mail.md)
-- [Нетронутое тело PR — доказательство](unedited-pr-body-can-be-the-proof.md)
-- [Повод заметки — не тред рождения](note-cause-is-not-the-birth-thread.md) — нет → `thread:` не писать.
-- [Письмо в стоячий парк обязано назвать парк](letter-into-a-standing-park-must-name-it.md) — МАШИННОГО писателя дверь пропускает нотой.
-- [Ручной конфликт доказывается нулём удалений](manual-conflict-fix-needs-zero-deletions-proof.md) — `--numstat` против КАЖДОГО РОДИТЕЛЯ · [«хвостовая» сторона может нести хунк в СЕРЕДИНЕ](tail-append-side-may-carry-a-mid-file-hunk.md) — арифметика пропажу середины не ловит.
-- [Целость вклада после влития базы — ПАТЧЕМ вклада, не диффом деревьев](contribution-patch-not-tree-diff-proves-a-merge.md)
-- [Коммутативность merge — не доказательство целости](commutative-merge-is-not-proof-nothing-was-eaten.md) — блоки побайтово.
-- [Влил `main`, трогавший ТОТ ЖЕ шаг `.yml` — гоняй пин ЧУЖОГО PR](merging-main-into-a-branch-editing-the-same-step-needs-the-other-prs-pin.md) — разведка до слияния `merge-tree --write-tree`; условия приёмки мерить на ЕГО дереве, голову не двигая.
-- [Тихая потеря — это неподнятый ход](silent-loss-is-the-unraised-turn.md)
-- [Номер треда уникален, слаг — нет](thread-id-unique-by-number-only.md)
-- [Свою невлитую дверь — детач-чекаутом](run-an-unmerged-door-by-detach-checkout.md)
-- Шаг Actions: [тело `.yml` вынимается и гоняется](yaml-step-body-is-testable-when-extracted.md) · [шаг — `bash -e`](github-step-shell-is-bash-e.md) · [`headSha` не называет исполненный код](run-headsha-does-not-name-the-code-it-ran.md) · [`pull_request` исполняет `.yml` MERGE-РЕФА PR](pull-request-round-runs-the-merge-commits-yml.md) — мерить базового родителя ДО приёмки · [приёмка условного шага — его СОБСТВЕННАЯ строка лога](conditional-step-fix-is-accepted-by-its-own-log-line.md) · [проводка пиньётся сюитой доставки](workflow-wiring-is-pinned-by-a-delivery-integration-suite.md) — скрипты едут `ref: main`.
-- [«Только комментарий» доказывается РАЗБОРОМ обеих ревизий](comment-only-diff-is-proven-by-parsing.md) — `#` внутри `run:|` это ДАННЫЕ.
-- [Ассерт «файла нет» = «ничего не объявлено»](existence-assert-is-a-proxy-for-nothing-announced.md)
-- [Прогоны головы — параметром `head_sha=`](runs-on-a-head-need-the-head-sha-param.md) — фильтр `--jq` по общему списку молча даёт пустоту.
-- [Отказ `gh --jq` рядится в отказ API](gh-jq-failure-masquerades-as-api-refusal.md) · [это gojq](gh-jq-runs-gojq-not-jq.md) — `|| VAR='?'` печатает свой дефект.
+- Прогон сюиты: [фоновый хранит только сводку](background-suite-run-keeps-only-its-summary.md) — свой `> /tmp/лог`; `exit code` харнесса врёт · [убитый оставляет файл в дереве](killed-suite-leaves-a-file-in-the-tree.md) · [временная копия теста портит полный прогон](probe-copy-pollutes-the-full-suite.md)
+- [Новый тест доказывается мутацией](new-test-must-be-proven-by-mutation.md) · [мутацию снимают не `git checkout --`](mutation-probe-must-not-be-undone-by-checkout.md) · [тест, пересказывающий чужой литерал, пиньит свою копию](test-that-restates-a-literal-pins-only-its-own-copy.md) — фразу вынимать регэкспом ИЗ yml.
+- [Красный `checks` на main — часто не тесты](red-main-checks-may-be-comms-sync.md) · [красный CI называет только ПЕРВЫЙ упавший шаг](red-ci-names-only-the-first-failing-step.md) · [флак доказывается диффом между головами](flake-is-proven-by-a-diff-between-heads.md)
+- [Перепрогон CI — только сдвигом головы](token-cannot-rerun-ci.md) · [«зелено» зависит от того, ГДЕ чекаут](green-depends-on-where-the-checkout-lives.md) · [зелено рукой — может стоять на токене ящика](green-on-the-box-may-lean-on-the-box-token.md) — гонять `env -u GH_TOKEN`.
+- [Пин в LLE из сессии aco не переехать](aco-session-cannot-reach-lle-repo.md) · [почву двери контура из `mktemp -d` не проверить](contour-ground-check-needs-tmp.md) · [чужой дом мерится путями, не именами ролей](foreign-home-measured-by-paths-not-role-names.md).
+- Дверь merge: [гард 1 — имя воркфлоу](merge-gate-guard1-needs-review-workflow-name.md) · [гард 2 — КРУГ](merge-gate-guard2-reports-the-review-round.md) · [`BLOCKED` — часто идущий круг](blocked-merge-state-may-be-just-the-open-round.md) — `--review-workflow 'Claude PR Review'`.
+- [Счёт по `daemon.log` — только с якорем](daemon-log-grep-needs-an-anchor.md) — ноль строк = «наблюдений нет» · [СНАЧАЛА подозревай свой греп](session-grep-is-blind-to-a-log-with-a-nul-byte.md) — лечит `grep -a` · [«демон встал на новый код» — строка `daemon — code:`](daemon-log-dates-its-own-code.md).
+- Смотритель: [пачка = одна причина](notifier-letters-collapse-to-one-cause.md) · [одинаковые = две аварии](identical-red-letters-may-be-two-incidents.md) · [окно — серией красных](price-an-open-window-by-the-red-streak.md) · [покрытие доказывается](notifier-watch-runs-count-the-window.md) · [`queued` теряет звонок](queued-watcher-run-loses-the-alarm.md)
+- Уведомитель: [цену выкатки — сухим прогоном](price-a-notifier-rollout-with-a-dry-run.md) — `notify` без `--write` · [красный прогон не доказывает потери письма](red-notifier-run-does-not-prove-lost-mail.md) — мерить лентой АДРЕСАТА · [ключ глушения — ИМЯ уведомителя](mute-key-is-the-notifier-name-not-the-subject.md) · [у `notify.state` нет частичной записи](notify-state-has-no-partial-write.md) · [«не звонит ничто» — в `notify.state`](silence-claim-is-checked-in-notify-state.md)
+- [Лежалый PR может быть перекрыт](stale-pr-may-be-superseded.md) · [ветка может опережать тред](branch-may-be-ahead-of-thread.md) · [заказанное мог исполнить ДРУГОЙ тред](order-may-be-executed-by-another-thread.md)
+- Git рукой: [`git stash` на чистом дереве достаёт чужой](stash-on-clean-tree-pops-a-foreign-stash.md) · [писать в ветку, не чекаутя её](write-a-branch-without-checking-it-out.md) · [свою невлитую дверь — детач-чекаутом](run-an-unmerged-door-by-detach-checkout.md) · [`cd <главный чекаут>` пишет в дерево ДЕМОНА](cd-prefix-in-bash-writes-into-the-daemon-checkout.md)
+- [Дефекты двери прячутся в процессных тестах](door-defects-hide-in-process-tests.md) · [сначала приземляй вызываемое](thin-copy-needs-callee-landed-first.md) · [дверь, опознающая дерево по ФОРМЕ пути, отказывает наружу](guard-that-infers-identity-from-a-path-fails-open.md)
+- Почта: [проза ход не снимает](prose-does-not-release-the-turn.md) · [письма расходятся — чужой штамп меряется](letters-cross-measure-the-other-stamp.md) · [письмо себе — только `--expects none`](note-to-self-needs-expects-none.md) · [`new-message` тред не заводит](new-message-does-not-create-a-thread.md) — только `--ensure-thread <slug>` · [`mail` судит по чекауту, не по `--ref`](mail-reads-the-checkout-not-the-ref.md) · [квитанция об отправке ≠ подъём](send-receipt-is-not-a-raise.md) · [отказ `--write` бывает разовым](mail-write-can-fail-once-and-succeed-on-retry.md)
+- Подъёмы: [тихая потеря — это неподнятый ход](silent-loss-is-the-unraised-turn.md) · [открытый стоячий адрес никого не поднимает](open-standing-address-still-raises-nobody.md) · [письмо github о merge поднимает АВТОРА](merge-letter-raises-the-author.md) · [письмо в стоячий парк обязано назвать парк](letter-into-a-standing-park-must-name-it.md) · [тихий такт роняет строки курьера](quiet-tick-drops-the-courier-lines.md)
+- [Группу мерить `id` внутри сессии](group-check-must-run-inside-the-session.md) · [залогинен ли `gh` — меряется](bare-gh-in-a-session-has-no-login.md) · [на какой учётке живёт сессия](which-account-a-session-runs-on.md) · [учётка тратится, только если кред ЧИТАЕМ](account-is-spendable-only-if-credentials-are-readable.md)
+- Круг ревью: [класс упавшего — в артефакте](failed-review-round-class-lives-in-the-artifact.md) — `claude-execution-output.json`, файлов ДВА · [парк под кругом умирает с кругом](park-under-a-round-dies-with-the-round.md) · [читает СНИМОК почты](review-round-reads-a-snapshot-of-the-mail.md) · [круги на PR даёт `metrics`](metrics-review-section-ignores-since.md) · [предложенное вердиктом бывает красно своим же критерием](reviewer-proposed-fix-can-break-its-own-criterion.md)
+- Метка: [`review` переживает force-push](label-survives-force-push-and-mutes-the-lift.md) — глушит звонок · [самопропуск круга — и от ОТСТАВШЕЙ ветки](review-self-skips-on-a-stale-branch-too.md) — ДО метки мерить БЛОБ `claude-review.yml` в `refs/pull/N/merge` · [потерянная квитанция делает вердикт сиротой](lost-delivery-receipt-orphans-the-verdict.md) — лечит переве́шивание.
+- [Приёмка признака — состояние ЕГО ветки, не цвет прогона](acceptance-of-a-gate-is-the-state-of-its-branch.md) — шаг `skipped` доказывает · [нетронутое тело PR — доказательство](unedited-pr-body-can-be-the-proof.md) · [переезд на запасную учётку — тождеством ПРОМПТА](fallback-account-migration-is-proven-by-prompt-identity.md)
+- [Повод заметки — не тред рождения](note-cause-is-not-the-birth-thread.md) — нет → `thread:` не писать · [номер треда уникален, слаг — нет](thread-id-unique-by-number-only.md) · [своё последнее письмо может быть про ЧУЖОЙ тред](own-last-letter-may-be-about-another-thread.md) · [дом предмета может переехать посреди прогона](predmet-can-change-threads-mid-run.md)
+- Слияние и целость: [ручной конфликт доказывается нулём удалений](manual-conflict-fix-needs-zero-deletions-proof.md) — `--numstat` против КАЖДОГО РОДИТЕЛЯ · [«хвостовая» сторона может нести хунк в СЕРЕДИНЕ](tail-append-side-may-carry-a-mid-file-hunk.md) · [целость вклада — ПАТЧЕМ вклада](contribution-patch-not-tree-diff-proves-a-merge.md) · [коммутативность — не доказательство](commutative-merge-is-not-proof-nothing-was-eaten.md) · [`origin/main` уезжает посреди такта](origin-main-can-advance-mid-tick.md)
+- Конфликты наперёд: [контрфакт — `git merge-file` на трёх файлах](counterfactual-conflict-is-priced-by-git-merge-file.md) · [со вторым PR мерится диапазонами `@@`](second-pr-conflict-is-priced-by-hunk-ranges.md) · [ждущий PR часто сам несёт источник разъездов](waiting-pr-may-carry-the-collision-source-itself.md) · [влил `main`, трогавший ТОТ ЖЕ шаг `.yml` — гоняй пин ЧУЖОГО PR](merging-main-into-a-branch-editing-the-same-step-needs-the-other-prs-pin.md).
+- Перебазировка: [чистая тоже рождает стык](clean-rebase-can-still-create-a-seam.md) · [без force-push](rebase-without-a-force-push.md) — влить `main` в ветку, ff-push, номер цел · [док власти со стороны `main` гард 4 не краснит](main-side-power-doc-does-not-trip-guard4.md).
+- Шаг Actions: [тело `.yml` вынимается и гоняется](yaml-step-body-is-testable-when-extracted.md) · [шаг — `bash -e`](github-step-shell-is-bash-e.md) · [`headSha` не называет исполненный код](run-headsha-does-not-name-the-code-it-ran.md) · [`pull_request` исполняет `.yml` MERGE-РЕФА PR](pull-request-round-runs-the-merge-commits-yml.md) · [приёмка условного шага — его СОБСТВЕННАЯ строка лога](conditional-step-fix-is-accepted-by-its-own-log-line.md) · [проводка пиньётся сюитой доставки](workflow-wiring-is-pinned-by-a-delivery-integration-suite.md).
+- Доказательства по тексту: [«только комментарий» — РАЗБОРОМ обеих ревизий](comment-only-diff-is-proven-by-parsing.md) — `#` внутри `run:|` это ДАННЫЕ · [снятая фраза грепается в две кучи](changed-sentence-must-be-grepped-into-two-piles.md) · [ревизию файла опознают по СОДЕРЖИМОМУ](file-revision-in-a-tree-is-identified-by-content.md) — `git log -- path` соврёт · [греп по имени считает комментарии за вызовы](name-grep-counts-comments-as-callers.md) · [ссылка комментария на покрытие — грепом](coverage-claims-in-comments-must-be-grepped.md) · [Write превращает `нулевой байт` в NUL](write-tool-turns-u0000-into-a-real-nul.md)
+- [Ассерт «файла нет» = «ничего не объявлено»](existence-assert-is-a-proxy-for-nothing-announced.md) · [ноль хунков у потребителя не значит «цел»](zero-hunk-consumer-can-still-break.md) · [класс «полевой дефект» требует фразы АВТОРА о границе нормы](field-defect-class-needs-the-authors-own-boundary-sentence.md)
+- `gh`: [прогоны головы — параметром `head_sha=`](runs-on-a-head-need-the-head-sha-param.md) · [отказ `--jq` рядится в отказ API](gh-jq-failure-masquerades-as-api-refusal.md) · [это gojq](gh-jq-runs-gojq-not-jq.md) — `|| VAR='?'` печатает свой дефект · [`mergedBy` руку не называет](merged-by-does-not-name-the-hand.md) · [`createdAt` прогона не датирует посадку](run-createdat-does-not-date-the-merge.md)
 - `/tmp`: [`TMPDIR` сессии ВНУТРИ чекаута](session-tmpdir-lives-inside-the-checkout.md) · [бэкап в голый `/tmp` вернёт ЧУЖОЙ файл](backup-to-a-bare-tmp-path-restores-a-foreign-file.md) · [глоб `/tmp/tmp.*` поднимает чужое](tmp-glob-picks-a-foreign-roles-file.md) — `mktemp -d -p /tmp`.
-- Перебазировка: [чистая тоже рождает стык](clean-rebase-can-still-create-a-seam.md) · [без force-push](rebase-without-a-force-push.md) — влить `main` в ветку, ff-push, номер цел · [док власти со стороны `main` гард 4 не краснит](main-side-power-doc-does-not-trip-guard4.md) — дифф PR трёхточечный.
-- [`rate_limit` не меряет расход сессии](rate-limit-counter-does-not-meter-the-session.md)
-- [Потерянная квитанция делает вердикт сиротой](lost-delivery-receipt-orphans-the-verdict.md) — лечит переве́шивание метки.
 - [Тождество деревьев переносит зелень](squash-tree-identity-transfers-the-suite.md) · [цвет сюиты решает дверь ЕЁ БАЗЫ](suite-color-depends-on-the-door-of-its-base.md) — `merge-tree` от ФАКТИЧЕСКОГО `<squash>^`.
-- [Срок аренды — только по `date -u`](lease-clock-only-from-date-u.md)
-- [Ссылка комментария на покрытие — грепом](coverage-claims-in-comments-must-be-grepped.md)
-- [Зелёный push на `main` письма не рождает](green-push-run-on-main-writes-no-letter.md) · [зелёный `checks` ПО PR — рождает](green-pr-checks-writes-a-letter.md) — первое читать рукой В СВОЁМ такте.
-- [На какой учётке живёт сессия](which-account-a-session-runs-on.md)
-- [Греп по имени считает комментарии за вызовы](name-grep-counts-comments-as-callers.md)
-- [Новый тест доказывается мутацией](new-test-must-be-proven-by-mutation.md) · [мутацию снимают не `git checkout --`](mutation-probe-must-not-be-undone-by-checkout.md)
-- [Временная копия теста портит полный прогон](probe-copy-pollutes-the-full-suite.md)
-- [Цену выкатки уведомителя — сухим прогоном](price-a-notifier-rollout-with-a-dry-run.md) — `notify` без `--write`.
-- [Красный CI называет только ПЕРВЫЙ упавший шаг](red-ci-names-only-the-first-failing-step.md)
-- [Зелено рукой — может стоять на токене ящика](green-on-the-box-may-lean-on-the-box-token.md) — гонять `env -u GH_TOKEN`.
-- [У демона креды на push в `comms` ЕСТЬ](daemon-can-push-via-creds-door.md) — `platformEnvOf`; мерить `--dry-run` НА РЕФ.
-- [Спасатель не должен делить домен отказа](rescue-path-must-not-share-the-fault-domain.md)
-- [Открытый стоячий адрес никого не поднимает](open-standing-address-still-raises-nobody.md) — `expects: none` не звонит.
-- Стенды: [шим `git` бьёт по всем вызовам](git-shim-in-a-process-test-hits-every-git.md) · [стенд `gh` по `$2` промахивается](gh-stub-dispatch-on-argv-position-misroutes.md) — сужать по argv, разбирать `"$*"` · [`GIT_DIR` из окружения перебивает `-C`](git-dir-in-env-overrides-dash-c.md) — `-C` изоляцией НЕ является, `remote.origin.url` садится в ОБЩИЙ конфиг.
-- [Квитанция об отправке ≠ подъём](send-receipt-is-not-a-raise.md) · [отказ `--write` бывает разовым](mail-write-can-fail-once-and-succeed-on-retry.md) — повторить и перемерить, что письмо ОДНО.
-- [Write превращает `нулевой байт` в NUL](write-tool-turns-u0000-into-a-real-nul.md) — грепом отсутствия не доказать.
-- [`mergedBy` руку не называет](merged-by-does-not-name-the-hand.md) · [`createdAt` прогона не датирует посадку](run-createdat-does-not-date-the-merge.md)
-- [vitest молчит о несуществующем пути фильтра](vitest-ignores-a-nonexistent-path-filter.md)
-- [Счёт такта раскладывается по журналам](tick-cost-is-decomposable-from-journals.md) — МНК по `costUsd`.
-- [Два PR подряд оставляют пару непромеренной](back-to-back-merges-leave-the-pair-unmeasured.md)
-- [Метка `review` переживает force-push](label-survives-force-push-and-mutes-the-lift.md) — глушит звонок.
-- [Самопропуск круга — и от ОТСТАВШЕЙ ветки](review-self-skips-on-a-stale-branch-too.md) — ДО метки мерить БЛОБ `claude-review.yml` в `refs/pull/N/merge`; отставшая база рефа сама по себе головы не двигает.
-- [Часы уезжают в ключ схлопывания через argv](clock-leaks-into-a-dedup-key-through-argv.md)
-- [Предложенное вердиктом бывает красно своим же критерием](reviewer-proposed-fix-can-break-its-own-criterion.md)
-- [`intent: policy` не отдаёт полей почты](config-intent-data-vs-policy.md) — мерить `protocolVersion` по ревизиям.
-- [«Не звонит ничто» — в `notify.state`](silence-claim-is-checked-in-notify-state.md) — `daemon.log` не доказывает.
-- [`mail` судит по чекауту, не по `--ref`](mail-reads-the-checkout-not-the-ref.md)
-- [Импортёр вне CI невидим любой зелени](out-of-ci-importer-is-invisible-to-every-green.md)
-- Команды рукой: [из рабочего места роли](documented-command-must-run-from-the-role-workplace.md) · [заголовок `pr open` — ПЕРВЫЕ две строки](pr-open-body-header-is-two-first-lines.md) · [`pr open` требует `--ref`, `--repo` — ПУТЬ](pr-open-needs-ref-and-repo-is-a-path.md)
-- [Токен не переезжает через `sudo -u`](token-does-not-cross-the-sudo-switch.md) — роль с `systemUser` не видит `secrets.env`.
-- [Дом предмета может переехать посреди прогона](predmet-can-change-threads-mid-run.md) — тело squash из КОММИТА.
-- [Снятая фраза грепается в две кучи](changed-sentence-must-be-grepped-into-two-piles.md) — фикстуры прошлой версии НЕТ.
-- [Ревизию файла опознают по СОДЕРЖИМОМУ](file-revision-in-a-tree-is-identified-by-content.md) — `git log -- path` соврёт.
-- [Сюита наследует среду поднятой сессии](suite-inherits-the-session-env.md) — `AGENT_PROTOCOL_WORKER` судит наоборот.
-- [Опциональный флаг проверяется вызовом БЕЗ него](optional-flag-must-be-run-without-it.md)
-- [Потерянную квитанцию push'а воспроизводит `receive-pack`](lost-push-receipt-is-reproducible-by-receive-pack.md) — без сети, ключ по URL.
-- [`pull --ff-only` отказывает только над путями, что ЗАПИШЕТ](pull-ff-only-refuses-only-over-paths-it-would-write.md) — `--porcelain` без `-uall` прячет.
-- [Бамп схемы ломает свои же команды с ветки](schema-bump-breaks-own-cli-from-the-branch.md)
-- [Множество из чужого модуля — его же ключом](set-from-another-module-needs-its-own-key.md) — два `pairKey` в пакете.
-- Зонд: [ненулевой код = «сверка не состоялась»](nonzero-probe-exit-means-check-did-not-happen.md) · [схлопывает это в «правило нарушено»](probe-collapses-two-outcomes-into-rule-broken.md) — три исхода, here-string.
-- Тайпчек не видит: [`npx tsc` гоняет чужой пакет](npx-tsc-runs-a-foreign-package-and-exits-zero.md) · [цикл импорта ЗНАЧЕНИЙ](value-import-cycle-is-invisible-to-tsc.md) — чинится ПЕРЕЕЗДОМ функции.
-- [Своё последнее письмо может быть про ЧУЖОЙ тред](own-last-letter-may-be-about-another-thread.md)
-- [Отсутствие тега в перечне ничего не доказывает](tag-suspect-list-is-measured-by-tree.md)
-- [Перенос парка вперёд НЕ заводит потолок заново](carrying-a-park-forward-does-not-restart-its-ceiling.md) — перезаводится снятием ПО ИМЕНИ.
-- [Общие факты — не общий вызов](shared-facts-have-more-than-one-consumer.md)
-- [Фоновый прогон сюиты хранит только сводку](background-suite-run-keeps-only-its-summary.md) — свой `> /tmp/лог` в той же команде; `exit code` харнесса врёт.
-- [Тест, пересказывающий чужой литерал, пиньит свою копию](test-that-restates-a-literal-pins-only-its-own-copy.md) — фразу вынимать регэкспом ИЗ yml.
-- Тег реза: [`is-ancestor` отказывает ВСЕГДА](is-ancestor-against-a-split-tag-always-fails.md) — лестница «дерево префикса → блобы → маркеры грепом» · [цену выбора линии даёт `git log -- <префикс>`](split-tag-line-choice-is-priced-by-prefix-touching-commits.md) — докоммиты в срезе следа не оставляют.
-- [Ноль хунков у потребителя не значит «цел»](zero-hunk-consumer-can-still-break.md)
-- [Заказанное мог исполнить ДРУГОЙ тред](order-may-be-executed-by-another-thread.md)
+- Деньги и время: [`rate_limit` не меряет расход сессии](rate-limit-counter-does-not-meter-the-session.md) · [счёт такта раскладывается по журналам](tick-cost-is-decomposable-from-journals.md) · [срок аренды — только по `date -u`](lease-clock-only-from-date-u.md) · [прошлый такт читается транскриптом](previous-tick-transcript-is-readable.md) · [цену починки «в одну строку» — прогоном на БУДУЩЕМ входе](price-a-one-line-fix-by-running-it-on-the-future-input.md) · [`du -sh a b` дедуплицирует жёсткие ссылки](du-across-worktrees-dedups-hardlinks.md)
+- [Зелёный push на `main` письма не рождает](green-push-run-on-main-writes-no-letter.md) · [зелёный `checks` ПО PR — рождает](green-pr-checks-writes-a-letter.md) — первое читать рукой В СВОЁМ такте · [два PR подряд оставляют пару непромеренной](back-to-back-merges-leave-the-pair-unmeasured.md)
+- [У демона креды на push в `comms` ЕСТЬ](daemon-can-push-via-creds-door.md) — `platformEnvOf`; мерить `--dry-run` НА РЕФ · [потерянную квитанцию push'а воспроизводит `receive-pack`](lost-push-receipt-is-reproducible-by-receive-pack.md) · [спасатель не должен делить домен отказа](rescue-path-must-not-share-the-fault-domain.md)
+- Стенды: [шим `git` бьёт по всем вызовам](git-shim-in-a-process-test-hits-every-git.md) · [стенд `gh` по `$2` промахивается](gh-stub-dispatch-on-argv-position-misroutes.md) · [`GIT_DIR` из окружения перебивает `-C`](git-dir-in-env-overrides-dash-c.md) — `-C` изоляцией НЕ является.
+- Команды рукой: [из рабочего места роли](documented-command-must-run-from-the-role-workplace.md) · [заголовок `pr open` — ПЕРВЫЕ две строки](pr-open-body-header-is-two-first-lines.md) · [`pr open` требует `--ref`, `--repo` — ПУТЬ](pr-open-needs-ref-and-repo-is-a-path.md) · [опциональный флаг проверяется вызовом БЕЗ него](optional-flag-must-be-run-without-it.md) · [`pull --ff-only` отказывает только над путями, что ЗАПИШЕТ](pull-ff-only-refuses-only-over-paths-it-would-write.md).
+- Конфиг и версия: [`intent: policy` не отдаёт полей почты](config-intent-data-vs-policy.md) · [бамп схемы ломает свои же команды с ветки](schema-bump-breaks-own-cli-from-the-branch.md) · [бамп версии до коммита краснит два процессных теста](version-bump-reddens-two-process-tests-until-committed.md) · [дверь версии в СВОЁМ контуре молчит всегда](version-door-is-silent-in-the-protocols-own-contour.md)
+- [Токен не переезжает через `sudo -u`](token-does-not-cross-the-sudo-switch.md) · [`doctor` печатает «Not logged in» и на нечитаемом каталоге](doctor-token-probe-reports-eacces-as-not-logged-in.md) · [импортёр вне CI невидим любой зелени](out-of-ci-importer-is-invisible-to-every-green.md)
+- Код: [множество из чужого модуля — его же ключом](set-from-another-module-needs-its-own-key.md) · [общие факты — не общий вызов](shared-facts-have-more-than-one-consumer.md) · [один флаг, два читателя — перечнем ВЫЗОВОВ](one-flag-two-readers-is-proven-by-the-call-list.md) · [снятую посылку ищут по КЛЮЧУ СХЛОПЫВАНИЯ](removed-premise-is-found-by-the-collapse-key.md)
+- Зонд: [ненулевой код = «сверка не состоялась»](nonzero-probe-exit-means-check-did-not-happen.md) · [схлопывает это в «правило нарушено»](probe-collapses-two-outcomes-into-rule-broken.md).
+- Тайпчек не видит: [`npx tsc` гоняет чужой пакет](npx-tsc-runs-a-foreign-package-and-exits-zero.md) · [цикл импорта ЗНАЧЕНИЙ](value-import-cycle-is-invisible-to-tsc.md).
+- Тег реза: [номер не говорит, что в нём](release-tag-number-does-not-say-what-it-carries.md) · [отсутствие в перечне ничего не доказывает](tag-suspect-list-is-measured-by-tree.md) · [`is-ancestor` отказывает ВСЕГДА](is-ancestor-against-a-split-tag-always-fails.md) · [цену выбора линии даёт `git log -- <префикс>`](split-tag-line-choice-is-priced-by-prefix-touching-commits.md)
+- Оркестратор: [`status` читает конфиг ИЗ REF](orchestrator-status-reads-the-ref-not-the-tree.md) · [сухой `run` — по потолкам](dry-run-is-a-free-oracle-on-the-ceilings.md) · [живую пару мерить фолдом аренд](worktree-lock-and-lease-fold-are-two-instants.md) · [изнутри пары рукой поднимается `потолок − 1`](hand-raise-from-inside-a-pair-is-ceiling-minus-one.md) · [дерево ПАРЫ может быть без `node_modules`](pair-worktree-may-have-no-node-modules.md) · [какой код напечатал строку — доказывает её ТЕКСТ](log-line-text-proves-which-binary-printed-it.md)
 - [Имя wip-ветки — тред ПРОГОНА, не предмета](wip-branch-name-is-the-run-thread-not-the-subject.md) — дом брать из диффа.
-- [`du -sh a b` дедуплицирует жёсткие ссылки](du-across-worktrees-dedups-hardlinks.md) — цену ВТОРОГО дерева мерить приростом.
-- [Дверь, опознающая дерево по ФОРМЕ пути, отказывает наружу](guard-that-infers-identity-from-a-path-fails-open.md)
-- [Учётка тратится, только если кред ЧИТАЕМ](account-is-spendable-only-if-credentials-are-readable.md) — `existsSync` зелен на непригодной.
-- [Круги ревью на PR даёт `metrics`](metrics-review-section-ignores-since.md) — `--since` секцию `review` не окном.
-- [Прошлый такт читается транскриптом](previous-tick-transcript-is-readable.md) — `.jsonl` в `sessions/`.
-- [Бамп версии до коммита краснит два процессных теста](version-bump-reddens-two-process-tests-until-committed.md) — дверь читает конфиг на `HEAD`.
-- [`doctor` печатает «Not logged in» и на нечитаемом каталоге](doctor-token-probe-reports-eacces-as-not-logged-in.md)
-- [Цену починки «в одну строку» — прогоном на БУДУЩЕМ входе](price-a-one-line-fix-by-running-it-on-the-future-input.md)
-- [Свой парк убивает ЧУЖОЙ входящий вердикт](own-park-can-kill-an-incoming-verdict.md) — круг краснеет доставкой, нужен новый.
-- [Убитый прогон сюиты оставляет файл в дереве](killed-suite-leaves-a-file-in-the-tree.md) — `git add -A` унесёт его в коммит.
-- [Контрфакт «старая форма разъехалась бы» — `git merge-file` на трёх файлах](counterfactual-conflict-is-priced-by-git-merge-file.md) — exit = число конфликтов.
-- [Конфликт со вторым PR мерится диапазонами `@@`](second-pr-conflict-is-priced-by-hunk-ranges.md) · [ждущий PR часто сам несёт источник разъездов](waiting-pr-may-carry-the-collision-source-itself.md) — снять свой хунк из общего хвоста дешевле, чем ждать чужой merge.
-- [Флак доказывается диффом между головами](flake-is-proven-by-a-diff-between-heads.md) — красное и зелёное на одном коде.
-- [Тихий такт роняет строки курьера](quiet-tick-drops-the-courier-lines.md)
-- [У `notify.state` нет частичной записи](notify-state-has-no-partial-write.md) — класс без имени в ветке ею удаляется.
-- [Класс «полевой дефект» требует фразы АВТОРА о границе нормы](field-defect-class-needs-the-authors-own-boundary-sentence.md) — гард 4 её не заменяет.
-- [Какой код напечатал строку — доказывает её ТЕКСТ](log-line-text-proves-which-binary-printed-it.md) — время такта из имени файла в `sessions/`.
-- [Дерево ПАРЫ может быть без `node_modules`](pair-worktree-may-have-no-node-modules.md) — почту гонять из главного чекаута.
-- [«Демон встал на новый код» — строка `daemon — code:`](daemon-log-dates-its-own-code.md) — окно склеивать из `daemon.log.1`+`daemon.log`.
-- Парк `run:N`: [под `checks` снимается полем `run-outcome`](run-park-under-checks-has-no-lifter.md) · [мёртвый ОТКАЗЫВАЕТ вердикту](dead-run-park-refuses-an-incoming-verdict.md) — лифт поднимает АВТОРА, не кнопку.
-- [Письмо github о merge поднимает АВТОРА](merge-letter-raises-the-author.md) — такт приёмки, не пустой подъём.
-- [Дверь версии в СВОЁМ контуре молчит всегда](version-door-is-silent-in-the-protocols-own-contour.md) — `reference` нет.
-- Даровые оракулы: [`orchestrator status` читает конфиг ИЗ REF](orchestrator-status-reads-the-ref-not-the-tree.md) · [сухой `run` — по потолкам](dry-run-is-a-free-oracle-on-the-ceilings.md) — два вызова с разными `--ref`.
-- [Живую пару мерить фолдом аренд, а не локом дерева](worktree-lock-and-lease-fold-are-two-instants.md)
-- [Изнутри пары рукой поднимается `потолок − 1`](hand-raise-from-inside-a-pair-is-ceiling-minus-one.md)
-- [`cd <главный чекаут>` пишет в дерево ДЕМОНА](cd-prefix-in-bash-writes-into-the-daemon-checkout.md) — грязь там рвёт самоперезапуск.
-- [Снятую посылку ищут по КЛЮЧУ СХЛОПЫВАНИЯ](removed-premise-is-found-by-the-collapse-key.md) — затирающий `set(role, …)`.
-- [`origin/main` уезжает посреди такта](origin-main-can-advance-mid-tick.md) — ревизии склейки по `MERGE_HEAD`/SHA; `cmp` блоков удалений не видит → перемеряй БАЗУ.
-- [Красный прогон уведомителя не доказывает потери письма](red-notifier-run-does-not-prove-lost-mail.md) — мерить лентой АДРЕСАТА.
-- [Ключ глушения — ИМЯ уведомителя](mute-key-is-the-notifier-name-not-the-subject.md) — окно 900 с ест звонки о ДРУГИХ PR; номера разрешать `gh run view`.
-- Журнал и PR: запись кладётся ФАЙЛОМ, НАЗВАННЫМ ТРЕДОМ — `docs/journal/<role>/<NNN-slug>.md`, общий хвост с 14.09 архив (#408); [этим закрыт класс «PR с записью голодает против журнальных»](journal-carrying-pr-starves-against-journal-only-prs.md) · [попутная запись уступает голове под меткой](journal-entry-yields-to-a-head-under-a-label.md) — гард 1 снимает `--journals` · [конфликт лежалого журнального PR идёт РОВНО по хвосту](journal-tail-conflict-is-cured-by-moving-the-entry.md) — лечит переезд записи, не разрешение конфликта.
-- [Один флаг, два читателя — доказывается перечнем ВЫЗОВОВ](one-flag-two-readers-is-proven-by-the-call-list.md) — аргумент с дефолтом даёт ДРУГОЙ ответ.
+- Журнал и PR: запись кладётся ФАЙЛОМ, НАЗВАННЫМ ТРЕДОМ — `docs/journal/<role>/<NNN-slug>.md`, общий хвост с 14.09 архив (#408); [этим закрыт класс «PR с записью голодает»](journal-carrying-pr-starves-against-journal-only-prs.md) · [попутная запись уступает голове под меткой](journal-entry-yields-to-a-head-under-a-label.md) — гард 1 снимает `--journals` · [конфликт лежалого журнального PR идёт РОВНО по хвосту](journal-tail-conflict-is-cured-by-moving-the-entry.md) — лечит переезд записи.
