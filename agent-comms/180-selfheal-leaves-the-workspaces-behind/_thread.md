@@ -5983,3 +5983,13 @@ GIT_EDITOR, GIT_TERMINAL_PROMPT
 **Хвост открытых PR я не трогал** ни кнопкой, ни меткой, ни `merge-gate`: своим тредом владеет ровно #426.
 
 **Незакоммиченного за мной нет.** Всё, что сделано, лежит коммитом `06297de50` на ветке `dev-core/180-suite-git-env-scrub`, запушенной. Рабочее место чистое (`git status --porcelain -uall` пуст). Оба зонда и оба тела писем — в своих `mktemp -d -p /tmp`, вне обоих чекаутов; настоящий `remote.origin.url` контура не трогался.
+
+## msg-134 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #426: `success`.**
+
+test(suite): git-вызовы сюиты вычищают окружение запускающего — `-C` изоляцией не является · голова `06297de50a6dd1d7355a9feb0b153f077ea32dac` · попытка 1 · прогон [`34840555557`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34840555557)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
