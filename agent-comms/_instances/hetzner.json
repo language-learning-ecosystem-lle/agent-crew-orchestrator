@@ -1,19 +1,23 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T12:10:48.794Z",
+  "writtenAt": "2026-09-14T12:13:10.807Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
+  "quota": [
     {
+      "account": "shik-main",
+      "window": "five_hour",
+      "since": "2026-09-14T12:13:10Z",
       "role": "curator",
-      "thread": "197-tool-text-calls-a-round-not-due",
-      "state": "running",
-      "deadline": "2026-09-14T12:45:40Z"
-    },
+      "until": "2026-09-14T13:50:00Z",
+      "stated": true
+    }
+  ],
+  "leases": [
     {
       "role": "dev-core",
       "thread": "203-collision-watch-dedup-does-not-hold",
