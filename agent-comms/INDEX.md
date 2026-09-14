@@ -184,7 +184,7 @@
 | 188-run-park-has-no-lifter | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
-| 191-watcher-run-may-never-start | curator, dev-core | high | open | dev-core | — | 2026-09-14 | PR #413 (docs(notifier-watch): предел гарантии — «отказ → письмо, ЕСЛИ GitHub поставил прогон смотр… |
+| 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | — | 2026-09-14 | Приёмка #413: сел чисто и живой смотритель его принял — но предел записан был в ОДНОМ из трёх мест,… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #416: success. |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN: «мерь 15.09» ЛИБО «закрывай». Размен НЕ ВИДЕН, потолок числа пересматрив… |
