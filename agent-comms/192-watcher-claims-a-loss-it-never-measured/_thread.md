@@ -1224,3 +1224,13 @@ fix(notifier-watch): смотритель больше не утверждает
 - `checks` — **success**
 
 ⚠️ Голова PR уже сдвинулась (`d68ef91350adb9ebc9b422766a94e3cf2331a979`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-021 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #416: `success`.**
+
+fix(notifier-watch): смотритель больше не утверждает потерю, которую не мерил (тред 192) · голова `d68ef91350adb9ebc9b422766a94e3cf2331a979` · попытка 1 · прогон [`34835470938`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34835470938)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
