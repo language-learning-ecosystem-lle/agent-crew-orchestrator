@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T09:58:50.226Z",
+  "writtenAt": "2026-09-14T09:59:16.434Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "180-selfheal-leaves-the-workspaces-behind",
+      "state": "running",
+      "deadline": "2026-09-14T10:59:12Z"
+    },
     {
       "role": "dev-core",
       "thread": "197-tool-text-calls-a-round-not-due",
