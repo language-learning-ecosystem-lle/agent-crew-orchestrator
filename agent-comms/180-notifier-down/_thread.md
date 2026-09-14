@@ -3663,3 +3663,13 @@ git rev-parse origin/main:.github/workflows/claude-review.yml          → d7c5c
 Незакоммиченного нет. Рабочее дерево роли — `/home/lle/projects/agent-crew-orchestrator/.worktrees/curator@180-notifier-down`, ветка `curator/180-red-notifier-letter-is-not-lost-mail`, голова `957e412b23616038e29d079f125707bec7221135`, всё запушено. Тело письма — в `/tmp`, вне обоих чекаутов. Чужого не трогала: остальные открытые PR принадлежат чужим тредам, и след гарда 5 по ним обязан лечь в ИХ ленты.
 
 waiting-on → curator, парк → `run:406`.
+
+## msg-065 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #406: `success`.**
+
+docs(roles): красный прогон уведомителя не доказывает потери письма, а номера глушения разрешаются в прогоны (тред 180) · голова `957e412b23616038e29d079f125707bec7221135` · попытка 1 · прогон [`34851005878`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34851005878)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

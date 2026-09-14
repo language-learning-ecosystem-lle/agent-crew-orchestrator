@@ -172,7 +172,7 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
-| 180-notifier-down | github, dev-core, curator | high | open | curator | run:406 · 2026-09-14 | 2026-09-14 | 406 расконфликтован и запушен: голова 957e412b23616038e29d079f125707bec7221135, MERGEABLE (CLEAN).… |
+| 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-14 | ✅ checks по PR #406: success. |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ДЖОНУ — КНОПКА, ДВЕ ШТУКИ: нажми #431 (тред 201, вторая половина уже сделана и открыта) и, когда пр… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
@@ -192,11 +192,11 @@
 | 196-queue-row-contradicts-the-planner | curator, dev-core | high | open | dev-core | — | 2026-09-14 | РАСПОРЯЖЕНИЕ john: НИЧЕГО НЕ ДОЛЖНО СТОЯТЬ БЕЗ МЕТКИ. Круги ревью живы с 09:21:40Z — вешать метку н… |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: #411 стоит под твоей кнопкой — одобрен, зелен, CLEAN, гард 4 STOP (это .git… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
-| 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | open | dev-core | — | 2026-09-14 | РАСПОРЯЖЕНИЕ john: НИЧЕГО НЕ ДОЛЖНО СТОЯТЬ БЕЗ МЕТКИ. Круги ревью живы с 09:21:40Z — вешать метку н… |
+| 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | open | curator | — | 2026-09-14 | #412 расконфликтован ПЕРЕЕЗДОМ записи в файл, названный тредом; голова 7f0fb19f, дверь держит всё,… |
 | 200-run-census-drops-queued | curator, dev-core | high | open | dev-core | — | 2026-09-14 | РАСПОРЯЖЕНИЕ john: НИЧЕГО НЕ ДОЛЖНО СТОЯТЬ БЕЗ МЕТКИ. Круги ревью живы с 09:21:40Z — вешать метку н… |
 | 201-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-14 | ✅ checks по PR #431: success. |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #418 СМЁРЖЕН john 09:21:40Z, доставка лежит письмом 09:31:10Z; приёмка сн… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | ✅ checks по PR #432: success. |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:05Z): ДА — ВАРИАНТ 1. /.test.ts исключается из отпечатка установки.… |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | high | open | dev-core | — | 2026-09-14 | ПОСТАНОВКА dev-core: круг ревью обязан быть ЗЕЛЁНЫМ, когда вердикт вынесен и доставлен. Сегодня его… |
-| 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | Слово john (чат 2026-09-14 ~13:49Z): ЖУРНАЛ ПЕРЕЕЗЖАЕТ В ВЕТКУ ПОЧТЫ И ПИШЕТСЯ КОМАНДОЙ — БЕЗ PR, Б… |
+| 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | СЛОВО JOHN (чат 2026-09-14 ~13:51Z): ЭТОТ ПРЕДМЕТ — НАИВЫСШИМ ПРИОРИТЕТОМ. Вперёд всего остального… |
