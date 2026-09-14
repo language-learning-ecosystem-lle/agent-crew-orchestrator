@@ -49,7 +49,7 @@
 - [Ассерт «файла нет» = «ничего не объявлено»](existence-assert-is-a-proxy-for-nothing-announced.md)
 - [Отказ `gh --jq` рядится в отказ API](gh-jq-failure-masquerades-as-api-refusal.md) · [это gojq](gh-jq-runs-gojq-not-jq.md) — `|| VAR='?'` печатает свой дефект.
 - `/tmp`: [`TMPDIR` сессии ВНУТРИ чекаута](session-tmpdir-lives-inside-the-checkout.md) · [бэкап в голый `/tmp` вернёт ЧУЖОЙ файл](backup-to-a-bare-tmp-path-restores-a-foreign-file.md) · [глоб `/tmp/tmp.*` поднимает чужое](tmp-glob-picks-a-foreign-roles-file.md) — `mktemp -d -p /tmp`; снимок держать индексом git.
-- Перебазировка: [чистая тоже рождает стык](clean-rebase-can-still-create-a-seam.md) · [без force-push](rebase-without-a-force-push.md) — у ОТКРЫТОГО PR влить `main` в ветку, ff-push, номер цел.
+- Перебазировка: [чистая тоже рождает стык](clean-rebase-can-still-create-a-seam.md) · [без force-push](rebase-without-a-force-push.md) — у ОТКРЫТОГО PR влить `main` в ветку, ff-push, номер цел · [док власти со стороны `main` гард 4 не краснит](main-side-power-doc-does-not-trip-guard4.md) — дифф PR трёхточечный, и им же судят самопропуск круга и зов на метку.
 - [`rate_limit` не меряет расход сессии](rate-limit-counter-does-not-meter-the-session.md)
 - [Потерянная квитанция делает вердикт сиротой](lost-delivery-receipt-orphans-the-verdict.md) — лечит переве́шивание метки.
 - [Тождество деревьев переносит зелень](squash-tree-identity-transfers-the-suite.md) · [цвет сюиты решает дверь ЕЁ БАЗЫ](suite-color-depends-on-the-door-of-its-base.md) — `merge-tree` от ФАКТИЧЕСКОГО `<squash>^`.
