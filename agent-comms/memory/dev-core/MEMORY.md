@@ -13,10 +13,10 @@
 - [Перепрогон CI — только сдвигом головы](token-cannot-rerun-ci.md)
 - [Почву двери контура из `mktemp -d` не проверить](contour-ground-check-needs-tmp.md)
 - [«Зелено» зависит от того, ГДЕ чекаут](green-depends-on-where-the-checkout-lives.md)
-- Дверь merge: [гард 1 — имя воркфлоу](merge-gate-guard1-needs-review-workflow-name.md) · [гард 2 — КРУГ](merge-gate-guard2-reports-the-review-round.md) · [`BLOCKED` — часто идущий круг](blocked-merge-state-may-be-just-the-open-round.md) — `--review-workflow 'Claude PR Review'`; промах по имени рядится в «круга не было» и толкает сжечь круг.
+- Дверь merge: [гард 1 — имя воркфлоу](merge-gate-guard1-needs-review-workflow-name.md) · [гард 2 — КРУГ](merge-gate-guard2-reports-the-review-round.md) · [`BLOCKED` — часто идущий круг](blocked-merge-state-may-be-just-the-open-round.md) — `--review-workflow 'Claude PR Review'`; промах по имени рядится в «круга не было».
 - [Ветка может опережать тред](branch-may-be-ahead-of-thread.md)
 - [Чужой дом мерится путями, не именами ролей](foreign-home-measured-by-paths-not-role-names.md) — `LLE` без `\b` ловит `CALLED`.
-- [Счёт по `daemon.log` — только с якорем](daemon-log-grep-needs-an-anchor.md) — и якорь бывает НУЛЕВОЙ: ноль строк демона = «наблюдений нет», не «аварий нет» · [но СНАЧАЛА подозревай свой греп](session-grep-is-blind-to-a-log-with-a-nul-byte.md) — шим сессии с `-I` пропускает файл с NUL целиком: `-c` печатает ПУСТО вместо `0`, лечит `grep -a`.
+- [Счёт по `daemon.log` — только с якорем](daemon-log-grep-needs-an-anchor.md) — ноль строк демона = «наблюдений нет», не «аварий нет» · [СНАЧАЛА подозревай свой греп](session-grep-is-blind-to-a-log-with-a-nul-byte.md) — шим с `-I` глотает файл с NUL: `-c` печатает ПУСТО, лечит `grep -a`.
 - Смотритель: [пачка = одна причина](notifier-letters-collapse-to-one-cause.md) · [одинаковые = две аварии](identical-red-letters-may-be-two-incidents.md) · [окно — серией красных](price-an-open-window-by-the-red-streak.md) · [покрытие доказывается](notifier-watch-runs-count-the-window.md) · [`queued` теряет звонок](queued-watcher-run-loses-the-alarm.md) — мерить `.[-1].createdAt`/`status`, не `conclusion`.
 - [Лежалый PR может быть перекрыт](stale-pr-may-be-superseded.md) — `add/add` = предмет уже сел.
 - [`git stash` на чистом дереве достаёт чужой](stash-on-clean-tree-pops-a-foreign-stash.md)
@@ -30,16 +30,17 @@
 - [Залогинен ли `gh` — меряется](bare-gh-in-a-session-has-no-login.md) — старый `. secrets.aco.env` рвёт `&&`.
 - [Письмо себе — только `--expects none`](note-to-self-needs-expects-none.md)
 - [`new-message` тред не заводит](new-message-does-not-create-a-thread.md) — только `--ensure-thread <slug>`, и номер выдаёт ОН (угадал 194, вышло 199).
-- Круг ревью: [класс упавшего — в артефакте](failed-review-round-class-lives-in-the-artifact.md) · [парк под кругом умирает с кругом](park-under-a-round-dies-with-the-round.md) — `claude-execution-output.json`; 429 повторяется, ресет ждать своей сессией — и сухо У ВСЕХ PR, часами; с 13.09 файлов ДВА, и класс в них разный, а КРАСНЫЙ круг бывает с доставленным вердиктом — красит запасная учётка при успешной основной: детектор лимита считал штатный `rate_limit_event` со `status: allowed` и красил ВСЕ круги подряд — **починено #418 (влит 14.09 09:21:40Z), запрет «метку в это окно не вешать» СНЯТ**. Запасная отвечает `401`: секрет ЗАВЕДЁН (доказывает маска `***` против пустых соседей без маски), а `401` ресетом не лечится — ротация за john, и нужна она для НАСТОЯЩЕГО лимита.
+- Круг ревью: [класс упавшего — в артефакте](failed-review-round-class-lives-in-the-artifact.md) · [парк под кругом умирает с кругом](park-under-a-round-dies-with-the-round.md) — `claude-execution-output.json`, с 13.09 файлов ДВА и класс в них разный; 429 повторяется, ресет ждать своей сессией — сухо У ВСЕХ PR, часами. КРАСНЫЙ круг бывает с доставленным вердиктом (красит запасная учётка при успешной основной) — **детектор починен #418 (14.09), запрет «метку в это окно не вешать» СНЯТ**. Запасная отвечает `401`, ресетом не лечится — ротация за john.
 - [Приёмка признака — состояние ЕГО ветки, не цвет прогона](acceptance-of-a-gate-is-the-state-of-its-branch.md) — шаг `skipped` доказывает, зелёный прогон смешивает исходы.
 - [Переезд на запасную учётку доказывается тождеством ПРОМПТА](fallback-account-migration-is-proven-by-prompt-identity.md) — `sha256` обоих шагов из лога прогона, а не строки «ПЕРЕЕЗД».
 - [Круг ревью читает СНИМОК почты](review-round-reads-a-snapshot-of-the-mail.md)
 - [Нетронутое тело PR — доказательство](unedited-pr-body-can-be-the-proof.md)
 - [Повод заметки — не тред рождения](note-cause-is-not-the-birth-thread.md) — нет → `thread:` не писать.
 - [Письмо в стоячий парк обязано назвать парк](letter-into-a-standing-park-must-name-it.md) — МАШИННОГО писателя дверь пропускает нотой.
-- [Ручной конфликт доказывается нулём удалений](manual-conflict-fix-needs-zero-deletions-proof.md) — `--numstat` против КАЖДОГО РОДИТЕЛЯ; обе стороны в конец → арифметика ДО сборки · [но «хвостовая» сторона может нести хунк в СЕРЕДИНЕ](tail-append-side-may-carry-a-mid-file-hunk.md) — считать `^@@`, собирать из ЦЕЛОГО файла чужой стороны; арифметика пропажу середины не ловит.
+- [Ручной конфликт доказывается нулём удалений](manual-conflict-fix-needs-zero-deletions-proof.md) — `--numstat` против КАЖДОГО РОДИТЕЛЯ · [«хвостовая» сторона может нести хунк в СЕРЕДИНЕ](tail-append-side-may-carry-a-mid-file-hunk.md) — считать `^@@`, собирать из ЦЕЛОГО файла чужой стороны: арифметика пропажу середины не ловит.
 - [Целость вклада после влития базы — ПАТЧЕМ вклада, не диффом деревьев](contribution-patch-not-tree-diff-proves-a-merge.md) — «дифф старой головы с новой пуст» негоден там, где база трогала те же пути.
 - [Коммутативность merge — не доказательство целости](commutative-merge-is-not-proof-nothing-was-eaten.md) — блоки побайтово.
+- [Влил `main`, трогавший ТОТ ЖЕ шаг `.yml` — гоняй пин ЧУЖОГО PR](merging-main-into-a-branch-editing-the-same-step-needs-the-other-prs-pin.md) — свой пин зелен на дереве, где чужая правка съедена; разведка до слияния — `merge-tree --write-tree`.
 - [Тихая потеря — это неподнятый ход](silent-loss-is-the-unraised-turn.md)
 - [Номер треда уникален, слаг — нет](thread-id-unique-by-number-only.md)
 - [Свою невлитую дверь — детач-чекаутом](run-an-unmerged-door-by-detach-checkout.md)
@@ -133,5 +134,5 @@
 - [`origin/main` уезжает посреди такта](origin-main-can-advance-mid-tick.md) — ревизии склейки по `MERGE_HEAD`/SHA; `numstat` видит удаления, `cmp` блоков — нет → перемеряй БАЗУ.
 - [Красный прогон уведомителя не доказывает потери письма](red-notifier-run-does-not-prove-lost-mail.md) — мерить лентой АДРЕСАТА.
 - [Ключ глушения — ИМЯ уведомителя](mute-key-is-the-notifier-name-not-the-subject.md) — окно 900 с ест звонки о ДРУГИХ PR, а хвост выезжает прицепом к чужой аварии часы спустя: номера из строки глушения разрешать `gh run view`.
-- Журнал и PR: [PR с записью голодает против журнальных](journal-carrying-pr-starves-against-journal-only-prs.md) · [попутная запись уступает голове под меткой](journal-entry-yields-to-a-head-under-a-label.md) — решает ТОТ ЖЕ файл, ломает и СВОЙ журнал из другого треда; окно 28–42 мин; гард 1 снимает `--journals`.
+- Журнал и PR: [PR с записью голодает против журнальных](journal-carrying-pr-starves-against-journal-only-prs.md) · [попутная запись уступает голове под меткой](journal-entry-yields-to-a-head-under-a-label.md) — решает ТОТ ЖЕ файл, окно 28–42 мин; гард 1 снимает `--journals`.
 - [Один флаг, два читателя — доказывается перечнем ВЫЗОВОВ](one-flag-two-readers-is-proven-by-the-call-list.md) — необязательный аргумент с дефолтом даёт ДРУГОЙ ответ, не «меньше подробностей».
