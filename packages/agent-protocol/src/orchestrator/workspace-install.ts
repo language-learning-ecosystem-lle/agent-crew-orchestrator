@@ -119,6 +119,25 @@ export const planWorkspaceInstall = (input: {
   };
 };
 
+/**
+ * WHAT A PLAN SAYS WHERE A REAL LAUNCH WOULD HAVE LEVELLED (thread 180, john's decision of
+ * 2026-09-13, half (а)) — the sentence this module did not have, and whose absence was the
+ * whole of the first half's defect: a `run` without `--write` over a tree the borders cover
+ * used to refuse in silence, where the real launch levels the tree and carries on.
+ *
+ * IT IS AN INTENTION AND IT SAYS SO. The other two texts above are said AFTER something was
+ * done to a disk; this one is said instead of doing it, so it names both facts the reader
+ * needs — that nothing was written here, and what the launch that does write would do. The
+ * borders are not re-derived: whoever prints this line has already been told `install: true`
+ * by the decision above, and a plan that disagreed with the launch about the borders would
+ * be exactly the defect it is written against.
+ */
+export const describePlannedWorkspaceInstall = (input: {
+  readonly role: string;
+  readonly path: string;
+}): string =>
+  `not run — this is a plan: a real launch would level the workspace of '${input.role}' onto the build the circuit runs (installing into '${input.path}') and carry on`;
+
 /** What actually happened, as the caller measured it — the text is the journal's line. */
 export type WorkspaceInstallOutcome =
   | { readonly ok: true }
