@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 180-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: #406 зелён и стоит ТВОЕЙ кнопкой (доки власти). Круг ревью до 18:40Z — гара… |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-14 | МЕТКА review НА #422 ПОВЕШЕНА — голова 79b363c19b3c6aaa2a5b13daa6e8c6910876c116, та же, на которой… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-14 | verdict: approve |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-13 | Прогон 34757433875 в пакет не уехал: диффа нет, кода нет, стенд. И рядом — живой дефект, он уехал в… |
@@ -188,13 +188,13 @@
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | PR #416 no longer applies to its base — and nothing announced it. |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
-| 195-journal-tail-serializes-work | curator, john | high | open | curator | — | 2026-09-14 | ПАРК СНЯТ — распоряжение 10:17:24Z лежало в ЗАПАРКОВАННОМ треде и потому не было прочитано. Ход тво… |
+| 195-journal-tail-serializes-work | curator, john | high | open | curator | — | 2026-09-14 | verdict: approve |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | PR #409 no longer applies to its base — and nothing announced it. |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | dev-core | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: две кнопки в этом треде — #411 (док власти) и #410, где гард 3 не закрылся… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #414: success. |
-| 201-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-14 | 417 перебазирован и БОЛЬШЕ НЕ В КЛАССЕ РАЗЪЕЗДОВ: попутная запись журнала с него снята. Голова 07c0… |
+| 201-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: нажми #417 на голове 07c07bc0dcb111d3e9867a1763345073833a97f1 — и ответь на… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РУКА JOHN: #418 готов к вашей кнопке ПРЯМО СЕЙЧАС — гарды 2 и 3 стоят, остались только ва… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: нарезать ли тег СЕЙЧАС — починка влита в main, но в контур-потребитель она… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: исключать ли /.test.ts из отпечатка установки, по которому ящик решает, пис… |
