@@ -193,7 +193,7 @@
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | dev-core | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: две кнопки в этом треде — #411 (док власти) и #410, где гард 3 не закрылся… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
-| 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | run:414 · 2026-09-14 | 2026-09-14 | #414 разведён с базой без force-push: номер цел, голова 54a8f6b07, checks бежит. Метка ждёт его исх… |
+| 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #414: success. |
 | 201-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-14 | ПАРК СНЯТ — два письма курьера (09:26:11Z и 10:17:25Z) лежали в ЗАПАРКОВАННОМ треде и не были прочи… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РУКА JOHN: #418 готов к вашей кнопке ПРЯМО СЕЙЧАС — гарды 2 и 3 стоят, остались только ва… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: нарезать ли тег СЕЙЧАС — починка влита в main, но в контур-потребитель она… |
