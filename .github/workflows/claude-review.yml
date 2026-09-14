@@ -481,13 +481,28 @@ jobs:
       # ПРИЗНАК ЛИМИТА — МАШИННЫЕ ПОЛЯ ТРАНСКРИПТА, И ТОЛЬКО ОНИ (требование john №1:
       # чужой сбой запасную учётку жечь не должен). Читается `execution_file` основного
       # шага — тот самый файл, что уезжает артефактом `reviewer-execution-<pr>-<run>`:
-      #   · запись `type: rate_limit_event` где угодно в транскрипте;
+      #   · запись `type: rate_limit_event`, чей `rate_limit_info.status` ОТКАЗ, то есть
+      #     присутствует и не равен `allowed` (в поле видели `rejected`);
       #   · `api_error_status: 429` последней записи (класс `limit` функции
       #     `review_failure_cause`, тред 118);
       #   · последняя запись с `is_error: true`, чей `result` несёт текст лимита.
       # ТРЕТИЙ ПУНКТ ЗАВЕДЁН ФАКТОМ, А НЕ ПРО ЗАПАС: сегодняшняя смерть 429 не несла
       # вовсе (`subtype: success`, `is_error: true`, текст про session limit) — по двум
       # первым признакам переезда бы не случилось.
+      #
+      # ПЕРВЫЙ ПУНКТ ЧИТАЕТ `status`, А НЕ НАЛИЧИЕ ЗАПИСИ, И ЭТО ПОЛЕВАЯ ПОЧИНКА (тред
+      # 197, замерено 13.09 на трёх прогонах подряд — 34775379733, 34775456728,
+      # 34776552737). `rate_limit_event` — запись РУТИННАЯ: УДАВШИЙСЯ круг по #416
+      # (`is_error: false`, `terminal_reason: completed`, вердикт доставлен) нёс её ТРИ
+      # раза со `status: "allowed"` и утилизацией пятичасового окна 0.14. Прежнее условие
+      # считало её существование, поэтому переезд объявлялся на ЖИВОЙ основной учётке:
+      # запасной шаг запускался зря, падал, и красил гардам 1 и 2 круг, у которого вердикт
+      # УЖЕ был доставлен — дверь merge отказывала PR, про который ревьюер всё сказал.
+      # Ровно это и запрещает требование john №1 выше: чужой сбой (здесь — вовсе не сбой)
+      # запасную учётку жечь не должен.
+      # НЕИЗВЕСТНАЯ ФОРМА ЗАПИСИ — НЕ ОТКАЗ: нет `rate_limit_info.status` — переезда по
+      # этому пункту нет. Промах в эту сторону стои́т круга, умершего как до #399; промах
+      # в другую — второй учётки на каждом зелёном круге и закрытой двери merge.
       # КРАСНЫЙ ШАГ ПРИЗНАКОМ НЕ ЯВЛЯЕТСЯ: обрыв по ходам, дефект H2 и отказ сети дают
       # его так же, и переезд по ним платил бы второй учёткой за чужой отказ.
       #
@@ -527,7 +542,11 @@ jobs:
               (if type == "array" then . else [.] end) as $rs
               | (($rs | last) // {}) as $r
               | (($r.result // "") | tostring) as $res
-              | if ([$rs[] | select((.type? // "") == "rate_limit_event")] | length) > 0 then "запись type=rate_limit_event"
+              | ([$rs[]
+                  | select((.type? // "") == "rate_limit_event")
+                  | (.rate_limit_info.status? // null)
+                  | select(. != null and . != "allowed")] | first) as $refusal
+              | if $refusal != null then "запись type=rate_limit_event со status=" + ($refusal | tostring)
                 elif (($r.api_error_status // null) | tostring) == "429" then "api_error_status=429 последней записи"
                 elif ($r.is_error == true) and ($res | ascii_downcase | test("session limit|usage limit|rate limit|limit reached")) then "result последней записи несёт текст лимита"
                 else "" end' "$EXECUTION_FILE" 2>/dev/null) || EVIDENCE=""
