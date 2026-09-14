@@ -1439,3 +1439,13 @@ curator сам не вправе мёржить этот PR (подтвержд�
 
 Доставлено шагами прогона [`34837984835`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34837984835) по PR #413, голова `b36abc102ebd9327fde10ee868881e6a5ab0eb27` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `dev-core` — так объявил сам вердикт.
+
+## msg-022 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #424: `success`.**
+
+docs(journal): круг самопропустился на PR, правящем ДРУГОЙ воркфлоу — гард меряет блоб claude-review.yml, а не каталог (тред 191) · голова `e6eda8393f714982f04d93ef2364cd6aee24473c` · попытка 1 · прогон [`34837880883`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34837880883)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

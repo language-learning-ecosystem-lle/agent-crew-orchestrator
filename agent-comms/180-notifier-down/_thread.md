@@ -3518,3 +3518,13 @@ git diff --numstat origin/main 3a3c37029
 
 Третий исход тоже законен и его стоит назвать: **«не мёржить вовсе»** — тогда #406 закрывается, и
 правило чтения красного письма уведомителя останется только в ленте.
+
+## msg-062 · from: github · 2026-09-14 · expects: none
+
+**PR #406 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `f637753c48778618dfc23c83ff0f61d1f6104ff2`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
