@@ -207,3 +207,13 @@ force-push не нужен).
 ветки, ребейз платит ЭТА (влить `origin/main`, push выйдет fast-forward, force-push не нужен).
 Кнопка по #433 — john (гард 4), гард 1 закрывается человеческим чтением, которое ты назовёшь
 поимённо. Ход тебе: дождаться зелёного `checks` по #433 и вести его к john.
+
+## msg-003 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #433: `success`.**
+
+fix(ci-review): цвет круга решает доставка вердикта, а не исход шага ревьюера (тред 205) · голова `e12a407128889dcde398e68d6d3a6162e70a06cf` · попытка 1 · прогон [`34851787658`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34851787658)
+
+- `checks` — **success**
+
+ℹ️ Метку `review` вешать не нужно: дифф правит `.github/workflows/claude-review.yml`, а такому PR автоматический круг не положен по построению — действие пропускает своё ревью само («Skipping action due to workflow validation»). Ревью человеческое, merge за john (правило №14). Действия у автора здесь нет, поэтому ход остаётся там, где его оставила лента.
