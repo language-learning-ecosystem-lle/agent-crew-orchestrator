@@ -1877,6 +1877,45 @@ describe("the same claim written without the markup (thread 058)", () => {
     expect(filesIn(contest)).toHaveLength(1);
   });
 
+  it("lets the machine writer of the JOURNAL NO_ROUND note through — the same class, a second cause", () => {
+    // The sixth branch of the label call (thread 197): a diff wholly inside `docs/journal/`
+    // needs no round of review (john, 2026-09-11, thread 187), so the courier stops calling
+    // the author to hang the label on it. That branch writes its own `ℹ️` note, and the note
+    // ends in exactly the sentence of the two above — which is precisely why it is pinned
+    // here and not trusted: this class of line has already eaten a whole letter once.
+    const contest = contour();
+
+    const result = claiming(
+      contest,
+      "✅ **CI по PR #402: `success`.**\n\nℹ️ Метку `review` вешать не нужно: дифф целиком лежит в журналах ролей (`docs/journal/`), а чисто журнальному диффу круг ревью не требуется (решение john 2026-09-11, тред 187) — это же условие знает дверь `merge-gate` (флаг `--journals`). Действия у автора здесь нет, поэтому ход остаётся там, где его оставила лента.\n",
+      [],
+    );
+
+    expect(result.code).toBe(0);
+    expect(filesIn(contest)).toHaveLength(1);
+  });
+
+  it("pins the note AS THE WORKFLOW WRITES IT — the sentence is read out of `ci-outcome.yml` (197)", () => {
+    // THE WEAKNESS OF THE TWO PINS ABOVE, named rather than inherited: they restate the
+    // notifier's sentence here, so the yml may drift away from them with nothing turning
+    // red — the door stays pinned and the letter that actually goes out is unread. This one
+    // takes the sentence OUT of the workflow and puts it through the same door, so the two
+    // copies cannot part company silently.
+    const yml = readFileSync(
+      fileURLToPath(new URL("../../../../.github/workflows/ci-outcome.yml", import.meta.url)),
+      "utf8",
+    );
+    const note = yml.match(/printf '\\n(ℹ️ Метку `review` вешать не нужно: дифф целиком[^']*)\\n'/);
+
+    expect(note?.[1]).toBeDefined();
+    const contest = contour();
+
+    const result = claiming(contest, `✅ **CI по PR #402: \`success\`.**\n\n${note?.[1]}\n`, []);
+
+    expect(result.code).toBe(0);
+    expect(filesIn(contest)).toHaveLength(1);
+  });
+
   it("does not read 'ход' inside another word", () => {
     // 'переходит', 'находится', 'в этом ходе' — the lookarounds are what keep the
     // claim a word rather than a substring.
