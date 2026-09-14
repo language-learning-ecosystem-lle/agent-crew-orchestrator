@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T10:45:35.503Z",
+  "writtenAt": "2026-09-14T10:45:38.342Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,12 +19,6 @@
       "thread": "195-journal-tail-serializes-work",
       "state": "running",
       "deadline": "2026-09-14T11:20:12Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "201-notifier-down",
-      "state": "draining",
-      "deadline": "2026-09-14T11:39:57Z"
     }
   ]
 }
