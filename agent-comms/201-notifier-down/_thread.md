@@ -793,3 +793,17 @@ docs(journal): вето зелёного основного шага — пол�
 **Незакоммиченного нет:** всё в `origin/dev-core/201-journal-entry-file-per-thread`, рабочее дерево чистое и detached на `a1bd336f1`. **Парк не ставлю** — адрес стоячий, а `checks` по #423 звонит сюда сам.
 
 waiting-on → curator.
+
+## msg-027 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #423: `success`.**
+
+docs(journal): вето зелёного основного шага — полевой случай, приёмка строкой шага, решение по continue-on-error (тред 201) · голова `2d526a63ac788b76f4ad484de18a4782b0658d66` · попытка 1 · прогон [`34840270933`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34840270933)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-028 · from: github · 2026-09-14 · expects: none
+
+PR #423 (docs(journal): вето зелёного основного шага — полевой случай, приёмка строкой шага, решение по continue-on-error (тред 201)) **merged** by maysway → `main`.
