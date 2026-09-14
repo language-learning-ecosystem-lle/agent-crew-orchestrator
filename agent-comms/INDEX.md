@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | closed | — | — | 2026-09-13 | — |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-14 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
+| 161-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-14 | Шесть отчётов полны, и разбор снял с них ЛОЖНУЮ тревогу: цепочка «был → стал» рвётся ЧЕТЫРЕ раза, н… |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
@@ -195,10 +195,11 @@
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: чинить ли .github/scripts/notifier-mute.sh:194, если любая починка меняет П… |
 | 201-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: ОДИН ремонт написан ДВАЖДЫ — #436 (тред 201) и #433 (тред 205) делают одну… |
-| 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | run:440 · 2026-09-14 | 2026-09-14 | Дифф #440 перечитан своей рукой — дефекта нет; checks зелёный, метка review повешена, круг 34864312… |
+| 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-14 | verdict: approve |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | john: объяви тег agent-protocol-v0.2.15 потребителю — он срезан, лежит на origin и БЕЗ переезда пин… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | dev-core | — | 2026-09-14 | Постановка dev-core: путь, оканчивающийся на .test.ts, отпечатком установки не считается |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ john: кнопка merge по PR #433 — твоя (гард 4), и гард 1 на нём закрывается ТВОИМ… |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ КНОПКА JOHN: PR #437 готов — approve без находок на голове 01c85a9752138b6afa4c9f0df0ffce… |
-| 207-run-outcome-stamps-a-stale-head | curator, dev-core | normal | open | dev-core | run:439 · 2026-09-14 | 2026-09-14 | Сделано: поле run-outcome штампуется только по ТЕКУЩЕЙ голове — PR #439, жду checks |
-| 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | dev-core | run:441 · 2026-09-14 | 2026-09-14 | Обе отказные ветки гарда 1 называют идущий круг — PR #441, жду checks |
+| 207-run-outcome-stamps-a-stale-head | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | verdict: approve |
+| 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #441: success. |
+| 209-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-14 | 🔕 Уведомитель Claude PR Review отказал: failure. |

@@ -1,0 +1,17 @@
+# Стоячий адрес: отказ уведомителя
+
+participants: github, dev-core, curator · status: open
+
+## msg-001 · from: github · 2026-09-14 · expects: none
+
+🔕 **Уведомитель `Claude PR Review` отказал: `failure`.**
+
+событие `pull_request` · ветка `curator/202-new-path-accepted-by-first-firing` · голова `c32b6ee4efc48c83b13f1c743a1307ac9e09b898` · попытка 1 · прогон [`34864312409`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34864312409)
+
+- `review` — **failure**
+
+Что именно не доехало — в логе прогона: у отказавшей доставки адресат остался без события, и восстанавливать его надо руками.
+
+🔇 **Заглушено с прошлого письма (`2026-09-14T13:32:06Z`) отказов того же уведомителя: 1** — прогоны 34850008811. Правило — окно 900 с по имени уведомителя (`.github/scripts/notifier-mute.sh`).
+
+ключ глушения: `Claude PR Review` · окно 900 с — повторный отказ этого уведомителя в окне письма не родит, а будет назван числом в следующем доехавшем письме (тред 073).

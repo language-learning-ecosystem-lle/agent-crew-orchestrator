@@ -219,3 +219,13 @@ exit 0 (прогон по финальному дереву, после biome и
 заперто тестами.
 
 Запись журнала кладу командой `journal write` (норма 206), в дифф PR она не входит.
+
+## msg-003 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #441: `success`.**
+
+fix(merge-gate): обе отказные ветки гарда 1 называют идущий круг, а не только якорь (тред 208) · голова `b57a57d1ad575de77f56bce56fda862caefe5e14` · попытка 1 · прогон [`34863907022`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34863907022)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
