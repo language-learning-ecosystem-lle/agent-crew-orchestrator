@@ -137,7 +137,7 @@
 - [Курьер зовёт метку и на журнальном PR](courier-calls-for-a-label-on-a-journal-only-pr.md)
 - [Гард 3 у журнального PR — стоячие нормы 143+187](journal-pr-guard3-rests-on-standing-norms.md)
 - [Ход под живым `checks`: парк решает наличие своей работы на минуты](no-park-beats-run-park-under-live-checks.md) — с 13.09 парк дешёв
-- [Отложенная работа держится только парком на человеке](deferred-work-has-only-a-person-park.md) — таймера нет
+- [Отложенная работа держится только парком на человеке](deferred-work-has-only-a-person-park.md) — таймера нет; при ЗАКРЫТИИ носитель — строка канона
 - [Оба токена ревьюера — учётки ролей](reviewer-token-is-the-second-account.md) — основной `shik-main` (окно `curator`), запасной с 14.09 `lle-main` (окно `dev-core`); переезд в поле не проверен
 - [Под кругом РЕВЬЮ парк `run:<pr>` правилен](park-run-under-a-review-round-lifts-on-the-verdict.md) — его снимает само письмо вердикта
 - [Строка очереди может лгать про «не поднимет»](queue-row-promise-of-no-launch-can-be-false.md)
