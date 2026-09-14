@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { parseNotifyState, renderNotifyState } from "../notify/notify.js";
 import {
+  type CollisionHalf,
+  collisionKeyHalves,
   collisionRings,
   collisionSaidKey,
+  describeHeldNumberCollisions,
   describeQuietNumberCollisions,
   findNumberCollisions,
   NUMBER_COLLISION_SLUG,
@@ -19,6 +22,18 @@ const half = (id: string, open: boolean): { readonly id: string; readonly open: 
   open,
 });
 
+/**
+ * ONE TICK OVER A FEED THE COURIER READ WHOLE — the shape every call of the plan has in the
+ * command: the finding and the read list are folds over THE SAME threads. The tests that tell
+ * a blind tick apart from a divorced pair pass the two apart on purpose, and they are the
+ * only ones that do.
+ */
+const tick = (
+  threads: readonly CollisionHalf[],
+  said: readonly string[],
+): ReturnType<typeof planNumberCollisionWatch> =>
+  planNumberCollisionWatch({ found: findNumberCollisions(threads), threads, said });
+
 describe("the criterion of the watchman", () => {
   it("rings on a pair one half of which is open", () => {
     const found = findNumberCollisions([
@@ -31,16 +46,17 @@ describe("the criterion of the watchman", () => {
   });
 
   it("is silent on a pair both halves of which are closed — and the pair IS found", () => {
-    const found = findNumberCollisions([
+    const threads = [
       half("048-box-privileges-today", false),
       half("048-session-privileges", false),
-    ]);
+    ];
+    const found = findNumberCollisions(threads);
     // The two halves of the field acceptance: the pair is found by the search, and it is
     // rejected by the criterion. A search that missed it would look identical in the plan.
     expect(found).toHaveLength(1);
     expect(found[0]?.halves).toHaveLength(2);
     expect(collisionRings(found[0] as never)).toBe(false);
-    expect(planNumberCollisionWatch({ found, said: [] }).letters).toEqual([]);
+    expect(tick(threads, []).letters).toEqual([]);
     expect(describeQuietNumberCollisions({ found, ringing: [] })).toContain("048");
     expect(describeQuietNumberCollisions({ found, ringing: [] })).toContain("every half closed");
   });
@@ -142,47 +158,54 @@ describe("the lock on the repeat", () => {
   const live = [half("159-a", true), half("159-b", false)];
 
   it("says a standing collision ONCE, however many ticks it stands", () => {
-    const found = findNumberCollisions(live);
-    const first = planNumberCollisionWatch({ found, said: [] });
+    const first = tick(live, []);
     expect(first.letters).toHaveLength(1);
-    const second = planNumberCollisionWatch({ found, said: first.said });
+    const second = tick(live, first.said);
     expect(second.letters).toEqual([]);
     expect(second.said).toEqual(first.said);
     // And a third tick changes nothing either — silence is not a state of the feed.
-    expect(planNumberCollisionWatch({ found, said: second.said }).letters).toEqual([]);
+    expect(tick(live, second.said).letters).toEqual([]);
   });
 
+  /**
+   * THE DIVORCE THE CIRCUIT ACTUALLY PERFORMS, and this test used to model another one. The
+   * letter's own instruction is "mark the address that is invalid and name the real one in
+   * both feeds; the circuit does not rename, the history of a feed is not edited" — so a
+   * divorced pair is one whose invalid half is CLOSED, not one whose directory left the feed.
+   *
+   * The old model (`159-b` becoming `161-b` between two ticks) is a directory disappearing,
+   * and that is indistinguishable from a tick that could not read it — which is the whole
+   * defect of thread 203. Its price is named by the test below rather than hidden here.
+   */
   it("lifts the mark when the number is divorced — and rings again if it comes back", () => {
-    const said = planNumberCollisionWatch({ found: findNumberCollisions(live), said: [] }).said;
-    const divorced = planNumberCollisionWatch({
-      found: findNumberCollisions([half("159-a", true), half("161-b", false)]),
-      said,
-    });
+    const said = tick(live, []).said;
+    const divorced = tick([half("159-a", false), half("159-b", false)], said);
     expect(divorced.said).toEqual([]);
-    expect(
-      planNumberCollisionWatch({ found: findNumberCollisions(live), said: divorced.said }).letters,
-    ).toHaveLength(1);
+    expect(tick(live, divorced.said).letters).toHaveLength(1);
+  });
+
+  it("holds the mark of a pair whose half LEFT the feed — the named price of the lock", () => {
+    // Nothing in this protocol deletes or renames a thread directory, so this is theory; and
+    // in theory the cost is silence about a pair that no longer exists, which is the direction
+    // every lock in this package fails in. A letter too few here, never a letter too many.
+    const said = tick(live, []).said;
+    const gone = tick([half("159-a", true), half("161-b", false)], said);
+    expect(gone.letters).toEqual([]);
+    expect(gone.said).toEqual(said);
+    expect(gone.held.map((mark) => mark.unread)).toEqual([["159-b"]]);
   });
 
   it("lifts the mark when every half closes — and rings again on a reopening", () => {
-    const said = planNumberCollisionWatch({ found: findNumberCollisions(live), said: [] }).said;
-    const quiet = planNumberCollisionWatch({
-      found: findNumberCollisions([half("159-a", false), half("159-b", false)]),
-      said,
-    });
+    const said = tick(live, []).said;
+    const quiet = tick([half("159-a", false), half("159-b", false)], said);
     expect(quiet.letters).toEqual([]);
     expect(quiet.said).toEqual([]);
-    expect(
-      planNumberCollisionWatch({ found: findNumberCollisions(live), said: quiet.said }).letters,
-    ).toHaveLength(1);
+    expect(tick(live, quiet.said).letters).toHaveLength(1);
   });
 
   it("rings again when a THIRD thread appears under a number already announced", () => {
-    const said = planNumberCollisionWatch({ found: findNumberCollisions(live), said: [] }).said;
-    const grown = planNumberCollisionWatch({
-      found: findNumberCollisions([...live, half("159-c", true)]),
-      said,
-    });
+    const said = tick(live, []).said;
+    const grown = tick([...live, half("159-c", true)], said);
     expect(grown.letters).toHaveLength(1);
     expect(grown.letters[0]?.collision.halves).toHaveLength(3);
     // The old key is gone with the state it described: the pair of two no longer exists.
@@ -210,53 +233,112 @@ describe("the lock on the repeat", () => {
       ).numberCollisions ?? [];
 
     it("the SECOND tick over the same live pair, through the file, writes nothing", () => {
-      const found = findNumberCollisions(live);
-      const first = planNumberCollisionWatch({ found, said: [] });
+      const first = tick(live, []);
       expect(first.letters).toHaveLength(1);
       // The key comes back from the file byte for byte — the validator accepts what the
       // producer makes. This is the assert the two literals are bound by.
       expect(stateOf(first.said)).toEqual(first.said);
-      expect(planNumberCollisionWatch({ found, said: stateOf(first.said) }).letters).toEqual([]);
+      expect(tick(live, stateOf(first.said)).letters).toEqual([]);
     });
 
     it("a mark LIFTED through the file rings again when the pair comes back", () => {
-      const said = stateOf(
-        planNumberCollisionWatch({ found: findNumberCollisions(live), said: [] }).said,
-      );
-      // The number is divorced: the mark leaves the plan, and the file it is written into
-      // then carries nothing at all.
-      const divorced = planNumberCollisionWatch({
-        found: findNumberCollisions([half("159-a", true), half("161-b", false)]),
-        said,
-      });
+      const said = stateOf(tick(live, []).said);
+      // The number is divorced — both halves read, both closed: the mark leaves the plan, and
+      // the file it is written into then carries nothing at all.
+      const divorced = tick([half("159-a", false), half("159-b", false)], said);
       expect(stateOf(divorced.said)).toEqual([]);
-      expect(
-        planNumberCollisionWatch({
-          found: findNumberCollisions(live),
-          said: stateOf(divorced.said),
-        }).letters,
-      ).toHaveLength(1);
+      expect(tick(live, stateOf(divorced.said)).letters).toHaveLength(1);
     });
 
     it("a THREE-half key crosses the file too — the growth is not swallowed by the validator", () => {
       // The widest key this watchman makes: three ids joined by commas. A validator that
       // accepted only the two-half shape would drop it and say the same collision for ever.
-      const grown = planNumberCollisionWatch({
-        found: findNumberCollisions([...live, half("159-c", true)]),
-        said: [],
-      });
+      const grown = tick([...live, half("159-c", true)], []);
       expect(stateOf(grown.said)).toEqual(grown.said);
       expect(grown.said[0]).toBe("number:159:159-a,159-b,159-c");
     });
   });
 
   it("does NOT re-ring when one half of a live pair merely closes", () => {
-    const said = planNumberCollisionWatch({ found: findNumberCollisions(live), said: [] }).said;
+    const said = tick(live, []).said;
     // `159-a` stays open, `159-b` was closed already: the same pair, the same statement.
-    const next = planNumberCollisionWatch({
-      found: findNumberCollisions([half("159-a", true), half("159-b", false)]),
-      said,
-    });
+    const next = tick([half("159-a", true), half("159-b", false)], said);
     expect(next.letters).toEqual([]);
+  });
+});
+
+/**
+ * THE TICK THAT COULD NOT LOOK — thread 203, and the road by which the repeat came back after
+ * the writer of `notify.state` was fixed on 2026-09-09. `found` is a fold over the threads the
+ * courier MANAGED TO READ (`loadThreads` isolates an unparsable thread into `failures` and
+ * returns the rest, and a checkout caught mid-update simply yields a shorter list), so "the
+ * pair is not among the findings" carried two different facts under one name: the pair stopped
+ * qualifying, and the tick never saw it.
+ *
+ * The field shape is a pair announced once a day for days — a blind tick is rare, and every
+ * one of them costs a letter into a standing address whose turn RAISES A ROLE.
+ */
+describe("a mark is lifted only by a pair the tick READ", () => {
+  const live = [half("077-maestro-input-precondition", false), half("077-web-catches-up", true)];
+
+  it("holds the mark when ONE half was unreadable — and says so", () => {
+    const said = tick(live, []).said;
+    expect(said).toEqual(["number:077:077-maestro-input-precondition,077-web-catches-up"]);
+    // The tick reads everything but the closed half: under the old lock the pair was no longer
+    // carried twice, the mark was dropped, and the next whole tick wrote a SECOND letter.
+    const blind = tick([half("077-web-catches-up", true), half("159-other", true)], said);
+    expect(blind.letters).toEqual([]);
+    expect(blind.said).toEqual(said);
+    expect(blind.held.map((mark) => mark.unread)).toEqual([["077-maestro-input-precondition"]]);
+    // And the tick that reads the feed whole again is silent: this is the assert the defect
+    // failed on — it is the SECOND letter about one pair that the field paid for.
+    expect(tick(live, blind.said).letters).toEqual([]);
+  });
+
+  it("holds every mark when the tick read NOTHING at all", () => {
+    const said = tick(live, []).said;
+    const blind = tick([], said);
+    expect(blind.said).toEqual(said);
+    expect(blind.held).toHaveLength(1);
+    expect(describeHeldNumberCollisions(blind.held)).toContain("077-web-catches-up");
+    expect(describeHeldNumberCollisions(blind.held)).toContain("unread:");
+  });
+
+  it("still lifts the mark when BOTH halves were read and stopped qualifying", () => {
+    // The disproof this lock accepts: the halves are in front of the tick and the criterion
+    // rejects them. Nothing about this case changed, and that is the point of the pair of tests.
+    const said = tick(live, []).said;
+    const closed = tick(
+      [half("077-maestro-input-precondition", false), half("077-web-catches-up", false)],
+      said,
+    );
+    expect(closed.said).toEqual([]);
+    expect(closed.held).toEqual([]);
+  });
+
+  it("drops a superseded key when every half of it was read", () => {
+    // A third namesake appears: the two-half key is not live any more, and its halves ARE in
+    // front of the tick — so it goes, and the three-half key is what stands.
+    const said = tick(live, []).said;
+    const grown = tick([...live, half("077-third", true)], said);
+    expect(grown.letters).toHaveLength(1);
+    expect(grown.said).toEqual([
+      "number:077:077-maestro-input-precondition,077-third,077-web-catches-up",
+    ]);
+    expect(grown.held).toEqual([]);
+  });
+
+  it("drops a line that is not a key of this watchman at all", () => {
+    // It names no halves, so no tick could ever disprove it — held for ever, it would be a
+    // suppression nothing can lift. The direction of dropping it is a letter too many.
+    const kept = tick(live, ["number:077", "pr:12", ""]).said;
+    expect(kept).toEqual(["number:077:077-maestro-input-precondition,077-web-catches-up"]);
+  });
+
+  it("reads the halves back out of a key, and refuses what is not one", () => {
+    expect(collisionKeyHalves("number:077:077-a,077-b")).toEqual(["077-a", "077-b"]);
+    expect(collisionKeyHalves("number:077:")).toBeUndefined();
+    expect(collisionKeyHalves("number:77:077-a,077-b")).toBeUndefined();
+    expect(collisionKeyHalves("pr:12")).toBeUndefined();
   });
 });

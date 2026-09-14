@@ -571,6 +571,7 @@ import {
 import {
   collisionRings,
   collisionSaidKey,
+  describeHeldNumberCollisions,
   describeNumberCollisionLetter,
   describeQuietNumberCollisions,
   describeUndeliveredNumberCollision,
@@ -5207,10 +5208,16 @@ const watchThreadNumbers = (input: {
   readonly said: readonly string[];
   readonly say: (line: string) => void;
 }): readonly string[] => {
-  const found = findNumberCollisions(
-    input.threads.map((thread) => ({ id: thread.id, open: thread.meta.status === "open" })),
-  );
-  const plan = planNumberCollisionWatch({ found, said: input.said });
+  const halves = input.threads.map((thread) => ({
+    id: thread.id,
+    open: thread.meta.status === "open",
+  }));
+  const found = findNumberCollisions(halves);
+  // THE WHOLE READ LIST GOES IN BESIDE THE FINDING (thread 203): the lock lifts a mark only on
+  // a pair it has SEEN stop qualifying, and this is the evidence it judges that on. A tick that
+  // read a short list — an unparsable thread, a checkout caught mid-update — lifts nothing.
+  const plan = planNumberCollisionWatch({ found, threads: halves, said: input.said });
+  if (plan.held.length > 0) input.say(describeHeldNumberCollisions(plan.held));
   // THE SILENCE, SAID OUT LOUD — AND WHICH OF THE TWO SILENCES IT IS. A tick that found
   // pairs and rang about none of them is indistinguishable in a log from a tick whose search
   // found nothing, and the whole field acceptance of this watchman is that the known pairs
