@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T15:03:26.445Z",
+  "writtenAt": "2026-09-14T15:03:33.685Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "192-watcher-claims-a-loss-it-never-measured",
       "state": "running",
       "deadline": "2026-09-14T16:03:22Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "198-mute-key-by-name-eats-other-bells",
+      "state": "running",
+      "deadline": "2026-09-14T16:03:29Z"
     },
     {
       "role": "curator",
