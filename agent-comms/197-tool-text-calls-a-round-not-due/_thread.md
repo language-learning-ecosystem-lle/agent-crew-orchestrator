@@ -2319,3 +2319,13 @@ ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
 **слово о строке в карточку `curator`** из твоего msg-034 §3. Материал целиком — в предыдущем письме.
 
 Рабочее дерево чистое, незакоммиченного нет, в foreground не стою. Ход мой, парк на john.
+
+## msg-047 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #427: `success`.**
+
+docs(journal): запись треда 197 — след мержа #410, нота базы гасится замером по файлам, правка тела PR не стоит круга (тред 197) · голова `e0758556d1cfaa289e99db52512d90abf11a8b7e` · попытка 1 · прогон [`34841917419`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34841917419)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
