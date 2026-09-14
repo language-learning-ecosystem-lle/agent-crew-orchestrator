@@ -119,6 +119,45 @@ const installed = (tree: string, version: string): void => {
   );
 };
 
+/** The build a tree is standing on, read off the disk — `undefined` when nothing is installed. */
+const versionIn = (tree: string): string | undefined => {
+  const path = join(tree, "node_modules", "agent-protocol", "package.json");
+  return existsSync(path)
+    ? (JSON.parse(readFileSync(path, "utf8")) as { version: string }).version
+    : undefined;
+};
+
+/**
+ * THE THIRD BORDER, AS A FIXTURE: a journal with one run of this pair broken from the
+ * outside, which is what makes the next launch a RESUME. The world is recorded as it is
+ * right now (the continuation asks whether it stood still), and the role has said nothing
+ * in the thread yet — the empty mark is a fact, not an absence.
+ */
+const resumable = (repo: string): void => {
+  const base = { ts: "2026-07-25T10:00:00Z", role: "dev-core", thread: "012-x" };
+  const lines = [
+    { kind: "lease-acquired", ...base, deadline: "2026-07-25T11:00:00Z" },
+    {
+      kind: "launch",
+      ...base,
+      mode: "fresh",
+      world: { base: git(repo, "rev-parse", "origin/main").trim(), mine: "" },
+    },
+    {
+      kind: "lease-released",
+      ...base,
+      reason: "supervisor-gone",
+      session: "8f3a2b1c-0d4e-4f56-9a7b-1c2d3e4f5a6b",
+      steps: 12,
+    },
+  ];
+  mkdirSync(join(repo, ".orchestrator"), { recursive: true });
+  writeFileSync(
+    join(repo, ".orchestrator", "journal.jsonl"),
+    `${lines.map((line) => JSON.stringify(line)).join("\n")}\n`,
+  );
+};
+
 const workspace = (repo: string): string => join(repo, ".worktrees", "dev-core");
 
 /** The tree exactly as the orchestrator issues it — detached at the base — but behind. */
@@ -293,25 +332,112 @@ describe("the box levels the workspace it issued (thread 180, john 2026-09-12)",
     expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
   });
 
-  it("a DRY run over a tree the borders COVER → the refusal is unchanged, and about levelling it says NOTHING", () => {
+  it("a DRY run over a tree OUT of the borders: DIRT → the border is said by name, and nothing is run", () => {
     const repo = contour();
-    staleWorkspace(repo);
+    const tree = staleWorkspace(repo);
+    writeFileSync(join(tree, "CARD.md"), "a session was writing here\n");
 
     const result = run(repo, pnpmShim(repo, true), []);
 
-    // THE SECOND HALF, NAMED EXPLICITLY: not one word about the levelling — neither the
-    // border (none of the three fired) nor the repair the real launch would have run. The
-    // assertion is the guard that keeps a dry run from ever REACHING the install: the same
-    // line that is missing here is the one that would be printed a screen further down,
-    // where `runWorkspaceInstall` actually starts a package manager.
-    expect(result.out).not.toContain("levelling");
+    expect(result.out).toContain(
+      "levelling — stands aside: the workspace of 'dev-core' has uncommitted changes",
+    );
     expect(pnpmCalls(repo)).toEqual([]);
-    // And the refusal is the stale build's own, unchanged by any of the above.
     expect(result.code).toBe(2);
     expect(result.out).toContain(
       "is not usable: the workspace of 'dev-core' runs 'agent-protocol'",
     );
     expect(result.out).toContain("DIFFERENT BUILD");
+    expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
+  });
+
+  it("a DRY run over a tree OUT of the borders: a RESUME → the border is said by name, and nothing is run", () => {
+    const repo = contour();
+    staleWorkspace(repo);
+    resumable(repo);
+
+    const result = run(repo, pnpmShim(repo, true), []);
+
+    expect(result.out).toContain("levelling — stands aside: the run resumes a session already in");
+    expect(pnpmCalls(repo)).toEqual([]);
+    expect(result.code).toBe(2);
+    expect(result.out).toContain(
+      "is not usable: the workspace of 'dev-core' runs 'agent-protocol'",
+    );
+    expect(result.out).toContain("DIFFERENT BUILD");
+    expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
+  });
+
+  /**
+   * THE HALF THAT USED TO BE SILENT, NOW THE OUTCOME (thread 180, john's decision of
+   * 2026-09-13) — the same tree and the same fault as the three cases above, told apart by
+   * one thing: john's borders cover it. What the plan owes here is what the REAL launch
+   * would do, and a refusal is not it: the real launch levels this tree and carries on.
+   */
+  it("a DRY run over a tree the borders COVER → it says the real launch would level it, and does NOT refuse", () => {
+    const repo = contour();
+    const tree = staleWorkspace(repo);
+
+    const result = run(repo, pnpmShim(repo, true), []);
+
+    // A1: the outcome of the real launch, in one line, and the plan goes on to print the
+    // launch it planned instead of stopping at this tree.
+    expect(result.out).toContain(
+      `levelling — not run — this is a plan: a real launch would level the workspace of 'dev-core' onto the build the circuit runs (installing into '${tree}') and carry on`,
+    );
+    expect(result.code).toBe(0);
+    // The plan did not stop at this tree: what follows is the launch it planned, which is
+    // the same text a dry run prints over a healthy tree.
+    expect(result.out).toContain("--write performs it");
+    expect(result.out).not.toContain("is not usable");
+    // A4: the stale build is still NAMED, in the door's own words — whoever is deciding
+    // whether to repair that tree by hand loses nothing by the refusal going away.
+    expect(result.out).toContain("DIFFERENT BUILD");
+    // A3, and it is measured on the DISK rather than in the output: a dry run writes
+    // nothing anywhere, so the tree is exactly as behind as it was.
+    expect(pnpmCalls(repo)).toEqual([]);
+    expect(versionIn(tree)).toBe(BEHIND);
+    expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
+  });
+
+  it("a DRY run over a tree with NO install at all → still nothing written, and no plan of one", () => {
+    const repo = contour();
+    const tree = workspace(repo);
+    git(repo, "worktree", "add", "-q", "--detach", tree, "HEAD");
+
+    const result = run(repo, pnpmShim(repo, true), []);
+
+    // The other of the two faults one line repairs (thread 161): out of a dry run it is
+    // not even measured, because the measurement would be of a tree this run deliberately
+    // did not prepare. What matters here is the disk: `node_modules` did not appear.
+    expect(pnpmCalls(repo)).toEqual([]);
+    expect(existsSync(join(tree, "node_modules"))).toBe(false);
+    expect(result.code).toBe(0);
+  });
+
+  /**
+   * THE BORDER OF THIS DIFF, HELD BY A TEST SO THAT IT CANNOT MOVE BY ACCIDENT (thread 180,
+   * half (б) is a separate PR with a LIVE acceptance john asked for). `write` is false for
+   * the parent of a background launch too, and if the plan's repair were keyed on `write`
+   * the parent would have been repaired here, silently and unreviewed. It is keyed on which
+   * situation it is instead, and this case is what says so: the parent's behaviour today is
+   * unchanged, refusal and all. Half (б) changes THIS case on purpose.
+   */
+  it("the PARENT of a background launch is NOT the dry run — it still refuses (half (б) is not this diff)", () => {
+    const repo = contour();
+    const tree = staleWorkspace(repo);
+
+    const result = run(repo, pnpmShim(repo, true), ["--write", "--detach"]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain(
+      "is not usable: the workspace of 'dev-core' runs 'agent-protocol'",
+    );
+    // Not a word of the plan's new sentence, and no child: this is the defect half (б)
+    // repairs, and it is still here.
+    expect(result.out).not.toContain("a real launch would level");
+    expect(pnpmCalls(repo)).toEqual([]);
+    expect(versionIn(tree)).toBe(BEHIND);
     expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
   });
 
