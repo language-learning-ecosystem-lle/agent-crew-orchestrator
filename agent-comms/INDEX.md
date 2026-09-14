@@ -190,7 +190,7 @@
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — будильник отработал. Слово john дано ~11:09Z: «мерь сейчас», ждать 13:20Z не нужно; дос… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #408 СМЁРЖЕН john ~10:51Z, доставка лежит в этой ленте письмом 10:51:47Z. |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | PR #409 no longer applies to its base — and nothing announced it. |
-| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:08Z): УТВЕРЖДАЮ #410 — гард 3 закрыт ЭТИМ письмом. Круг НЕ покупать.… |
+| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | dev-core | — | 2026-09-14 | Ход к dev-core: ребейз обеих веток. Конфликт замерен — он в ОДНОМ пути и это общий хвост журнала, к… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #414: success. |
