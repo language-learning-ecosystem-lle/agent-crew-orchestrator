@@ -134,7 +134,7 @@
 - [Исход `checks` на PR звонит в тред](pr-checks-outcome-rings-into-the-thread.md)
 - [Ожидание хода: письмо `waiting-on:` против `launch`](turn-wait-is-mail-letter-joined-with-launch.md)
 - [Красный шаг доставки ≠ недоставленное письмо](delivery-step-failure-is-not-undelivered-mail.md)
-- [Курьер зовёт метку и на журнальном PR](courier-calls-for-a-label-on-a-journal-only-pr.md)
+- [Зов метки на журнальном PR ПОЧИНЕН 14.09](courier-calls-for-a-label-on-a-journal-only-pr.md) — #411, первое срабатывание замерено
 - [Гард 3 у журнального PR — стоячие нормы 143+187](journal-pr-guard3-rests-on-standing-norms.md)
 - [Ход под живым `checks`: парк решает наличие своей работы на минуты](no-park-beats-run-park-under-live-checks.md) — с 13.09 парк дешёв
 - [Отложенная работа держится только парком на человеке](deferred-work-has-only-a-person-park.md) — таймера нет; при ЗАКРЫТИИ носитель — строка канона
