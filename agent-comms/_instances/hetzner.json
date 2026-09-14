@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T09:51:28.083Z",
+  "writtenAt": "2026-09-14T09:52:07.640Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "180-selfheal-leaves-the-workspaces-behind",
       "state": "running",
       "deadline": "2026-09-14T10:45:45Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "197-tool-text-calls-a-round-not-due",
+      "state": "running",
+      "deadline": "2026-09-14T10:52:03Z"
     }
   ]
 }
