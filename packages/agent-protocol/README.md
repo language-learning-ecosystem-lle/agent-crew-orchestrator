@@ -2524,8 +2524,10 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # role for the very action that body denies. Measured 2026-09-14 on PR #409:
                             # three stamps in nine minutes, two of them about a head already gone, the
                             # first of those two raising the pair 26 minutes before its park's ceiling.
-                            # An UNKNOWN head (the PR lookup refused) still stamps: not knowing must not
-                            # take from a `run:N` park the only lifter it has
+                            # An UNKNOWN head still stamps: not knowing must not take from a `run:N` park
+                            # the only lifter it has. That branch is a guard for the future, NOT a live
+                            # case — today the pair «PR known, head unknown» is unreachable, because both
+                            # are read out of the same lookup and its refusal empties both at once
                             # WHY IT EXISTS: a `run:N` park had ONE address — the verdict pair — and the
                             # round most such parks are taken on is `checks`, which declares no verdict.
                             # So a park on `checks` had no lifter at all and waited out the 30-minute
