@@ -795,3 +795,11 @@ fix(orchestrator): строка очереди судит исчерпание �
 - `checks` — **success**
 
 ⚠️ Голова PR уже сдвинулась (`15afa1ca5fa8ed434587260421a319271b3d2503`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-021 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #409: `success`.**
+
+fix(orchestrator): строка очереди судит исчерпание по той же почте, что и план такта (тред 196) · голова `15afa1ca5fa8ed434587260421a319271b3d2503` · попытка 1 · прогон [`34853159748`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34853159748)
+
+- `checks` — **success**
