@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T13:52:17.284Z",
+  "writtenAt": "2026-09-14T13:52:56.245Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "180-notifier-down",
+      "state": "running",
+      "deadline": "2026-09-14T14:32:52Z"
+    },
     {
       "role": "dev-core",
       "thread": "199-self-restart-stamp-assert-reads-the-clock",
