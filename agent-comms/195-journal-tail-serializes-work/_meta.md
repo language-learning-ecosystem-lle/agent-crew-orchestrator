@@ -1,5 +1,5 @@
 ---
 title: Хвост общего файла журнала сериализует работу: шестое столкновение за сутки сожгло вердикт ревьюера
 participants: curator, john
-status: open
+status: closed
 ---
