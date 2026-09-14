@@ -151,3 +151,4 @@
 - [Новый путь исполнения принимается ПЕРВЫМ срабатыванием](new-execution-path-is-accepted-by-its-first-firing.md) — merge его не принимает
 - [Ребейз открытого PR не требует force-push](rebasing-an-open-pr-needs-no-force-push.md) — влей `main` В ветку, push выйдет fast-forward
 - [Свежая норма может отменить предмет открытого PR](fresh-norm-may-void-an-open-prs-subject.md) — гарды зелены, читай оговорку о необратной силе; сигнал — нота гарда 2
+- [Два PR одного треда делят ОДИН журнальный файл](two-open-prs-of-one-thread-share-one-journal-file.md) — норма «файл на тред» их не разводит
