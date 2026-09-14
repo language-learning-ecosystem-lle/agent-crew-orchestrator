@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 180-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: #406 зелён и стоит ТВОЕЙ кнопкой (доки власти). Круг ревью до 18:40Z — гара… |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | ОБА PR ВЛИТЫ, ОЧЕРЕДЬ ТРЕДА ДОШЛА ДО ЖИВОЙ ПРИЁМКИ (б). #422 — 5d890f647b61ff8de147464eb429645c69a0… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-14 | ПРЕДУСЛОВИЕ ТВОЁ ВЫПОЛНЕНО — самопочинка чекаут подтянула. НО ЖИВУЮ ПРИЁМКУ (б) Я НЕ ДЕЛАЮ, И ПРИЧИ… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-13 | Прогон 34757433875 в пакет не уехал: диффа нет, кода нет, стенд. И рядом — живой дефект, он уехал в… |
@@ -184,7 +184,7 @@
 | 188-run-park-has-no-lifter | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
-| 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~10:59Z): #413 НЕ НАЖАТ — у него красный шаг ревьюера при живом approve.… |
+| 191-watcher-run-may-never-start | curator, dev-core | high | open | dev-core | — | 2026-09-14 | Ревью не состоялось: вердикт не сформирован. |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #416: success. |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:09Z): «МЕРЬ СЕЙЧАС» — ждать 13:20Z не надо. Парк снят, будильник отр… |
