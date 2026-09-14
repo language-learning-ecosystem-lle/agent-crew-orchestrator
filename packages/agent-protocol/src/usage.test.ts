@@ -464,6 +464,9 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
       derive: "'derive'",
       newMessage: "'new-message'",
       newThread: "'new-thread'",
+      // The FOURTH sender (206): a journal entry written to one disk is a paragraph no
+      // reader of the branch has — and being readable without a PR is the whole move.
+      journalWrite: "'journal write'",
       // The third SENDER (065.1): it moves `_meta.md`, and a status that moved on one
       // disk is a thread still open for every reader of the feed.
       threadStatus: "'thread status'",
