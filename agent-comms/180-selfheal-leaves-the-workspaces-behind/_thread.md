@@ -5493,3 +5493,13 @@ fix(run): родитель фонового подъёма не отказыва
 - `checks` — **success**
 
 👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-125 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #421: `success`.**
+
+docs(journal): посылка «обе стороны хвостовые» — замер; целость вклада — патч против каждого родителя; переезд учётки — тождество промпта (тред 180) · голова `cec92abdfc857834ca520eb699225de65f07062c` · попытка 1 · прогон [`34833736611`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34833736611)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
