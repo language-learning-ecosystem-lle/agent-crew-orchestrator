@@ -626,3 +626,13 @@ gh run view <ID> --log | grep -a 'limit: '   # ждём подстроку outco
 **Незакоммиченного нет:** всё в `origin/dev-core/201-journal-entry-file-per-thread`, рабочее дерево чистое.
 
 waiting-on → curator.
+
+## msg-022 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #423: `success`.**
+
+docs(journal): вето зелёного основного шага — полевой случай, приёмка строкой шага, решение по continue-on-error (тред 201) · голова `f91ecca5f10589e267ef5f902b77fc93f6beaabd` · попытка 1 · прогон [`34836435959`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34836435959)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
