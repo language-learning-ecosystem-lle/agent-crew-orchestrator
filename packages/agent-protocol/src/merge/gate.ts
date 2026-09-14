@@ -919,6 +919,53 @@ const workflowsOnHead = (runs: readonly ReviewRunFact[]): string => {
 const describeRun = (run: ReviewRunFact): string =>
   `run ${run.id ?? "?"} (${run.event ?? "?"}, head ${(run.headSha ?? "?").slice(0, 7)}, ${run.status ?? "?"}/${run.conclusion ?? "?"}, ${run.createdAt ?? "?"}…${run.updatedAt ?? "?"})`;
 
+/**
+ * THE ROUNDS OF THIS WORKFLOW ON THIS HEAD THAT HAVE NOT ANSWERED — the one census, read
+ * from one place by everything that speaks about the state of review (thread 208). A round
+ * that is `queued`/`in_progress` and carries no `conclusion` falls out of every pile built
+ * on `conclusion` alone; counting it here is what keeps it from vanishing.
+ *
+ * Nothing is invented where nothing was asked: a reading that is not `read` has no census
+ * at all, and an empty list is the honest answer then.
+ */
+const unfinishedRoundsOnHead = (
+  reading: ReviewRunReading | undefined,
+  headSha: string,
+): readonly ReviewRunFact[] =>
+  reading === undefined || reading.state !== "read"
+    ? []
+    : reading.runs.filter(
+        (run) =>
+          run.name === reading.workflow &&
+          run.headSha === headSha &&
+          run.event === "pull_request" &&
+          run.status !== "completed" &&
+          run.conclusion === undefined,
+      );
+
+/**
+ * THE SAME CENSUS, SAID TO A READER WHO IS BEING REFUSED (thread 208). The clause beside an
+ * anchored verdict warns that the credited answer may be replaced; the clause beside a STOP
+ * has a different reader and a different danger: both refusing branches of guard 1 prescribe
+ * a new round — "changes were requested … a new round, not a merge" and "re-label, or 'gh pr
+ * update-branch'" — and a re-label under a round that is still running opens a SECOND round
+ * on the same head. Measured 2026-09-14 on PR #414: round 34858167752 was `in_progress` on
+ * head 883336d and the STOP said nothing about it.
+ *
+ * IT ONLY SPEAKS. The state of the guard and the exit code are the same with the clause and
+ * without it — refusing on an unanswered round would be a change of the norm, which is
+ * john's. Locked by the negative control in the suite.
+ */
+const roundsInFlightClause = (reading: ReviewRunReading | undefined, headSha: string): string => {
+  const unfinished = unfinishedRoundsOnHead(reading, headSha);
+  if (unfinished.length === 0 || reading?.state !== "read") return "";
+  return ` — AND ${unfinished.length} round(s) of '${reading.workflow}' on this head HAVE NOT ANSWERED YET (${unfinished
+    .map(describeRun)
+    .join(
+      "; ",
+    )}): the round this line asks for may already be under way, and a re-label sent under a running round opens a SECOND round on the same head. Read the answer of the one in flight before a new one is spent`;
+};
+
 export const reviewRunAnchor = (input: {
   readonly reading: ReviewRunReading | undefined;
   readonly headSha: string;
@@ -964,13 +1011,7 @@ export const reviewRunAnchor = (input: {
   // with an unfinished round beside the anchor and without one (locked by test). A round that
   // has not answered cannot anchor anything, and turning it into a refusal would be a change
   // of the norm, which is john's. Naming it costs one clause and ends the silence.
-  const unfinished = named.filter(
-    (run) =>
-      run.headSha === head &&
-      run.event === "pull_request" &&
-      run.status !== "completed" &&
-      run.conclusion === undefined,
-  );
+  const unfinished = unfinishedRoundsOnHead(input.reading, head);
   const besideUnfinished =
     unfinished.length === 0
       ? ""
@@ -1278,6 +1319,13 @@ export const verdictAndChecks = (
   const staleApprovals = pr.reviews.filter(
     (review) => review.state === "APPROVED" && review.commitSha !== head,
   );
+  // THE CENSUS REACHES THE REFUSALS TOO (thread 208). `reviewRunAnchor` names an unanswered
+  // round beside an anchored verdict, but the two branches below stand BEFORE it in this
+  // ternary and never read its answer — they ignore the list of runs, already counted, and
+  // prescribe a round that may be running as they print. The anchor's own clause cannot be
+  // borrowed here: with no approve to credit there is nothing for a "BESIDE it" to stand
+  // beside, so the census is one function and the sentence is the reader's.
+  const roundInFlight = roundsInFlightClause(pr.reviewRuns, head);
 
   const verdict: GateOutcome =
     changesRequested.length > 0
@@ -1287,7 +1335,7 @@ export const verdictAndChecks = (
           state: "fail",
           detail: `changes were requested on ${head.slice(0, 7)} (${changesRequested
             .map((review) => review.author ?? "?")
-            .join(", ")}) — a new round, not a merge`,
+            .join(", ")}) — a new round, not a merge${roundInFlight}`,
         }
       : unanchoredVerdicts.length > 0
         ? {
@@ -1301,7 +1349,7 @@ export const verdictAndChecks = (
               )
               .join(
                 ", ",
-              )}; ${head.slice(0, 7)} committed ${present(pr.headCommittedAt) ?? "?"}): a review submitted with no commit of its own is shown against whatever head the PR has now — it is not an answer about ${head.slice(0, 7)}. What is missing is a review run on the 'pull_request' event (re-label, or 'gh pr update-branch'), not a new round of review`,
+              )}; ${head.slice(0, 7)} committed ${present(pr.headCommittedAt) ?? "?"}): a review submitted with no commit of its own is shown against whatever head the PR has now — it is not an answer about ${head.slice(0, 7)}. What is missing is a review run on the 'pull_request' event (re-label, or 'gh pr update-branch'), not a new round of review${roundInFlight}`,
           }
         : approvals.length > 0
           ? {
