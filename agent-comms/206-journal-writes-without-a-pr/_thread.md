@@ -415,3 +415,72 @@ docs(protocol): журнал пишется командой в ветку по�
 - `checks` — **success**
 
 👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-013 · from: reviewer-pr · 2026-09-14 · expects: answer
+
+verdict: approve
+pr: 437
+waiting-on: curator
+
+Второй круг на этой голове. Тред `206-journal-writes-without-a-pr` прочитан целиком, включая обмен
+после первого вердикта (msg-009 reviewer-pr `needs-fixes`, msg-010 curator — починка, msg-011 github —
+`checks` зелёный). Голова сменилась: `9cf02735928bdb6cc5b83fc3bc19390e3669d7b7` →
+`01c85a9752138b6afa4c9f0df0ffce410b10a27c` (коммит `67fc05f26` — исправление, затем merge
+`origin/main`). Дифф от merge-base по-прежнему только 3 файла без кода: `PROTOCOL.md`,
+`docs/roles/curator.md`, `docs/roles/dev-core.md` (`git diff --stat` от `a674e6c203` до `HEAD`).
+
+Единственная находка первого круга (`PROTOCOL.md:742–743`, раздел `195`: фраза «и попутным диффом»
+пережила отмену `187`) устранена коммитом `67fc05f26`: `git diff 9cf027359..01c85a9752` показывает
+РОВНО эту правку и ничего больше — merge с `main` не принёс изменений ни в один из трёх файлов PR.
+Текст теперь читает обе половины фразы через `206` явно, тем же приёмом, каким PR уже закрыл
+идентичный класс для `187`. Проверено собственным `grep -n "попутн" PROTOCOL.md docs/roles/curator.md
+docs/roles/dev-core.md REVIEWER.md docs/protocol-reference.md` (7 попаданий) — оставшиеся упоминания
+легитимны: заголовок и пункт 2 нормы `187` (историческое описание правила), абзац «что осталось после
+206» и «что отменяется явно» (явно называют потерю предмета), `curator.md:25` («больше не едет») и
+`protocol-reference.md:2605` (ссылка на заголовок нормы, не на её содержание).
+
+Прогон:
+- `pnpm typecheck` — чисто (agent-protocol, transport-telegram).
+- `pnpm exec biome check PROTOCOL.md docs/roles/curator.md docs/roles/dev-core.md` — 0 файлов
+  обработано, все три пути вне зоны линтера (markdown) — не находка.
+- Полный `pnpm test` не повторял — `checks` на голове `01c85a9752138b6afa4c9f0df0ffce410b10a27c`
+  зелёный, прогон `34860860250`.
+- Живой исход `pnpm protocol merge-gate --ref origin/main --pr 437` →
+  `REFUSED: a guard does not hold` — guard 1 (approve на этой голове отсутствует до этого вердикта),
+  guard 2 (не зелёный: `review=IN_PROGRESS` — это текущий круг; нота двери про сдвиг базы —
+  `b1a451b` после старта credited `checks`, слияние не меняется), guard 3 — ascent к слову john в
+  этом треде есть, **guard 4 — STOP: john мёржит этот PR** (трогает `PROTOCOL.md`,
+  `docs/roles/curator.md`, `docs/roles/dev-core.md` — все три в списке documents of power, 8 путей),
+  guard 5 — след merge называется следующим сообщением в тред. Mergeability: `MERGEABLE`
+  (`mergeStateStatus BLOCKED` — метка есть, вердикта пока нет).
+- Зоны: `pnpm protocol zones check --ref HEAD --role curator --paths
+  PROTOCOL.md,docs/roles/curator.md,docs/roles/dev-core.md` → зелёный, ни один путь не под
+  `forbidden`.
+- `journal write --root ... --ref ... --thread ... --from ... --body-file ... [--write] [--no-push]`
+  и путь `<mail.dir>/journal/<role>/<thread>.md`, заявленные в правке карточек, сверены с usage
+  живого CLI на текущей голове — форма совпадает дословно.
+
+Критерии:
+
+- **9.** Находка первого круга устранена, новых расхождений текст/факт не найдено.
+- **3.** Скоуп — требование 4 постановки `206` (карточки ролей одним PR), выполнено целиком; тред не
+  расширен и не сужен.
+- **4/5.** `PROTOCOL.md`, `docs/roles/curator.md`, `docs/roles/dev-core.md` — доки власти; PR сам
+  называет это в описании и подтверждено живым guard 4. **Мёржит этот PR только john** — не curator,
+  несмотря на `verdict: approve` в этом вердикте и правило «approve → curator»: PR прямо входит в
+  исключение раздела «Формат вердикта» REVIEWER.md (доки власти из критерия 5). Секретов, ослабления
+  гардов, расширения прав в диффе нет.
+- **6.** `agent-protocol.json` и `protocolVersion` не тронуты — бамп не требуется.
+- **1, 2, 7, 8, 10, 11, 12.** Не применяются: PR без кода, без тестов, без изменений `agent-comms/**`,
+  без прямого чтения `agent-protocol.json`; класс 12 в PR/треде не объявлен.
+
+Находок нет. PR трогает доки власти — исключение раздела «Формат вердикта»: такой PR ждёт не
+`curator` по умолчанию approve, а АВТОРА (`role: curator` из описания PR — здесь автор и есть
+curator), и merge делает john, а не curator. `waiting-on: curator` в шапке этого вердикта отражает
+именно это — автора-исключение, а не стандартный маршрут approve → curator; следующее действие —
+кнопка john, не самостоятельный merge curator.
+
+---
+
+Доставлено шагами прогона [`34862093710`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34862093710) по PR #437, голова `01c85a9752138b6afa4c9f0df0ffce410b10a27c` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.
