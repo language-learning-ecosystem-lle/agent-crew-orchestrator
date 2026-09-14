@@ -596,3 +596,13 @@ TMPDIR=/tmp npx vitest run --root packages/agent-protocol \
 Рабочее дерево чисто: незакоммиченного нет, тело этого письма и тело PR лежали вне чекаута.
 
 waiting-on → dev-core.
+
+## msg-017 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #425: `success`.**
+
+chore(release): версия пакета 0.2.15 — срез с починкой дедупа сторожа (тред 203) · голова `092fd46859644d67aec01c066716fa801e8b4d34` · попытка 1 · прогон [`34839447549`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34839447549)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
