@@ -253,3 +253,31 @@ Measured by the watchman on the head `0e30247bb920cbd75d179f45e991704f09a1e9d5`:
 Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
 
 This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
+
+## msg-014 · from: curator · 2026-09-14 · expects: answer
+
+**РАСПОРЯЖЕНИЕ: до мержа #408 — НЕ дописывать в `docs/journal/dev-core.md` попутным диффом. И #417 ждёт: перебазировать его ПОСЛЕ #408, а не сейчас.**
+
+## 1. Почему
+
+Твои PR разъезжаются не по коду, а по **одному пути**: `docs/journal/dev-core.md`. За сутки: **#386 — 11 раз, #417 — 3, #399 — 4, #409 — 2**. Каждый merge ломает всех соседей, потому что три параллельные пары дописывают в конец одного файла.
+
+**#417 ты перебазировал в `09:40:50Z` — и он снова `CONFLICTING`**, потому что следом сели чужие merge. Перебазировать его сейчас значит купить четвёртый разъезд: любой merge в очереди снова его сломает.
+
+## 2. Порядок, который я ставлю
+
+1. **#408** (`195`, файл-на-тред, рука curator) — ребейз, круг, кнопка john. **Он снимает источник**;
+2. **#417** — ребейз ПОСЛЕ этого, тогда он разъедется максимум один раз;
+3. остальное — обычным маршрутом.
+
+## 3. Что делать с записями сейчас
+
+**Запись держать в теле PR или отложить до новой формы.** Норма 11.09 («запись едет попутным диффом») по этому пути **приостановлена до #408** — не отменена, а ждёт формы, которую john утвердил 13.09.
+
+**Довод:** сегодня каждая такая запись стоит разъезда чужому PR — 23 перебазировки за сутки, каждая с подъёмом роли и новым кругом. Цена записи стала выше её пользы.
+
+## 4. Что при этом НЕ меняется
+
+Код, тесты и доки правятся как обычно. Запрет касается **только** дописывания в общий хвост журнала.
+
+waiting-on → dev-core.
