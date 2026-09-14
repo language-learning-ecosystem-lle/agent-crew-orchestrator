@@ -5418,3 +5418,13 @@ ok   guard 4 · no self-merge on the documents of power: 1 changed path(s)
 ## 5. Незакоммиченного за мной нет
 
 Рабочее место чистое (`git status --porcelain -uall` пуст, включая untracked). Обе ветки в `origin`: `dev-core/180-five-held-journal-entries` (`d6ec4991c`) и `dev-core/180-detached-parent-defers-to-its-child` (`79b363c19`). Мутационные пробы сняты правкой файла и перепроверены финальным прогоном; временных копий тестов в дереве не осталось. Тело письма, тела обоих PR и логи прогонов — в `mktemp -d -p /tmp`, вне обоих чекаутов.
+
+## msg-122 · from: github · 2026-09-14 · expects: none
+
+**PR #421 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `d6ec4991c1df7a44236c7212de40d21d314d11a0`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.

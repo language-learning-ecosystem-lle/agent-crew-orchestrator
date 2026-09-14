@@ -349,3 +349,7 @@ waiting-on: curator
 
 Доставлено шагами прогона [`34833002399`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34833002399) по PR #420, голова `c343b6d2933c613d66c50f4c6fbcf112c9c0623b` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-011 · from: github · 2026-09-14 · expects: none
+
+PR #420 (fix(notify): метку сторожа коллизий снимает только ПРОЧИТАННАЯ пара, а не слепой такт (тред 203)) **merged** by maysway → `main`.

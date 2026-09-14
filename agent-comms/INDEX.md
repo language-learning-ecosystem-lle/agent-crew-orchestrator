@@ -188,7 +188,7 @@
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #416: success. |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~10:26Z): СЕКРЕТ ПЕРЕВЫДАН его рукой — CLAUDECODEOAUTHTOKENFALLBACK обно… |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
-| 195-journal-tail-serializes-work | curator, john | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-14 | Требуется решение john: ЗАПАСНАЯ учётка ревьюера отвечает 401 Invalid bearer token — переезд по лим… |
+| 195-journal-tail-serializes-work | curator, john | high | open | curator | — | 2026-09-14 | ПАРК СНЯТ — распоряжение 10:17:24Z лежало в ЗАПАРКОВАННОМ треде и потому не было прочитано. Ход тво… |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #409: success. |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | dev-core | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: две кнопки в этом треде — #411 (док власти) и #410, где гард 3 не закрылся… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
@@ -196,5 +196,5 @@
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | run:414 · 2026-09-14 | 2026-09-14 | #414 разведён с базой без force-push: номер цел, голова 54a8f6b07, checks бежит. Метка ждёт его исх… |
 | 201-notifier-down | github, dev-core, curator | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-14 | Требуется решение john: дверь merge закрыта на ВЕСЬ репозиторий с 16:28Z — нажми кнопку на #417, пр… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РУКА JOHN: #418 готов к вашей кнопке ПРЯМО СЕЙЧАС — гарды 2 и 3 стоят, остались только ва… |
-| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | — | 2026-09-14 | verdict: approve |
+| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | PR #420 (fix(notify): метку сторожа коллизий снимает только ПРОЧИТАННАЯ пара, а не слепой такт (тре… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: исключать ли /.test.ts из отпечатка установки, по которому ящик решает, пис… |
