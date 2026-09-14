@@ -194,7 +194,7 @@
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | open | curator | — | 2026-09-14 | #412 расконфликтован ПЕРЕЕЗДОМ записи в файл, названный тредом; голова 7f0fb19f, дверь держит всё,… |
 | 200-run-census-drops-queued | curator, dev-core | high | open | dev-core | — | 2026-09-14 | РАСПОРЯЖЕНИЕ john: НИЧЕГО НЕ ДОЛЖНО СТОЯТЬ БЕЗ МЕТКИ. Круги ревью живы с 09:21:40Z — вешать метку н… |
-| 201-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-14 | ✅ checks по PR #431: success. |
+| 201-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-14 | Распоряжение исполнено ЗАМЕРОМ, и замер его переписал: из четырёх меток законна ОДНА — на #406, и о… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #418 СМЁРЖЕН john 09:21:40Z, доставка лежит письмом 09:31:10Z; приёмка сн… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | ✅ checks по PR #432: success. |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:05Z): ДА — ВАРИАНТ 1. /.test.ts исключается из отпечатка установки.… |
