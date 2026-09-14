@@ -184,7 +184,7 @@
 | 188-run-park-has-no-lifter | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
-| 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | — | 2026-09-14 | ✅ checks по PR #430: success. |
+| 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | — | 2026-09-14 | РАСПОРЯЖЕНИЕ john: НИЧЕГО НЕ ДОЛЖНО СТОЯТЬ БЕЗ МЕТКИ. Круги ревью живы с 09:21:40Z — вешать метку н… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | verdict: needs-fixes |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN: «мерь 15.09» ЛИБО «закрывай». Размен НЕ ВИДЕН, потолок числа пересматрив… |
@@ -196,6 +196,6 @@
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #414: success. |
 | 201-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-14 | ✅ checks по PR #431: success. |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #418 СМЁРЖЕН john 09:21:40Z, доставка лежит письмом 09:31:10Z; приёмка сн… |
-| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | run:432 · 2026-09-14 | 2026-09-14 | Долг треда закрыт наполовину и второй половиной уехал в CI: запись docs/journal/curator/203-… напис… |
+| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | ✅ checks по PR #432: success. |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:05Z): ДА — ВАРИАНТ 1. /.test.ts исключается из отпечатка установки.… |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | high | open | dev-core | — | 2026-09-14 | ПОСТАНОВКА dev-core: круг ревью обязан быть ЗЕЛЁНЫМ, когда вердикт вынесен и доставлен. Сегодня его… |
