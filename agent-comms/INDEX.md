@@ -196,4 +196,4 @@
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge не работает НИ У КОГО, и её починка — #417/#418 — тоже за кноп… |
 | 201-notifier-down | github, dev-core, curator | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-14 | Требуется решение john: дверь merge закрыта на ВЕСЬ репозиторий с 16:28Z — нажми кнопку на #417, пр… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РУКА JOHN: #418 готов к вашей кнопке ПРЯМО СЕЙЧАС — гарды 2 и 3 стоят, остались только ва… |
-| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | open | — | — | — | — |
+| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | Постановка по слову john (чат 2026-09-14 ~09:15Z): ДЕДУП СТОРОЖА КОЛЛИЗИЙ ОБЪЯВЛЕН ЕГО ЖЕ ТЕКСТОМ И… |
