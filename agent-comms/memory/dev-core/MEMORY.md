@@ -101,7 +101,7 @@
 - [Общие факты — не общий вызов](shared-facts-have-more-than-one-consumer.md)
 - [Фоновый прогон сюиты хранит только сводку](background-suite-run-keeps-only-its-summary.md) — свой `> /tmp/лог` в той же команде; `exit code` харнесса врёт.
 - [Тест, пересказывающий чужой литерал, пиньит свою копию](test-that-restates-a-literal-pins-only-its-own-copy.md) — фразу вынимать регэкспом ИЗ yml.
-- [`is-ancestor` против тега реза отказывает ВСЕГДА](is-ancestor-against-a-split-tag-always-fails.md) — мерить тождеством дерева.
+- Тег реза: [`is-ancestor` отказывает ВСЕГДА](is-ancestor-against-a-split-tag-always-fails.md) — лестница «дерево префикса → блобы → маркеры грепом» · [цену выбора линии даёт `git log -- <префикс>`](split-tag-line-choice-is-priced-by-prefix-touching-commits.md) — докоммиты в срезе следа не оставляют.
 - [Ноль хунков у потребителя не значит «цел»](zero-hunk-consumer-can-still-break.md)
 - [Заказанное мог исполнить ДРУГОЙ тред](order-may-be-executed-by-another-thread.md)
 - [Имя wip-ветки — тред ПРОГОНА, не предмета](wip-branch-name-is-the-run-thread-not-the-subject.md) — дом брать из диффа.

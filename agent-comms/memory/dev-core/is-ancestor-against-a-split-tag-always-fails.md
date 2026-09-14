@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 37c245b7-ce51-4bdd-9a2c-b006370c8bf9
-  modified: 2026-09-07T19:45:36.641Z
+  modified: 2026-09-14T13:27:01.501Z
 ---
 
 Тег `scripts/split-package.sh` стои́т на коммите `git subtree split`, а тот переписывает историю
@@ -38,5 +38,15 @@ metadata:
    своё имя (`5126baae` → `0a3abea5`), и `--is-ancestor <образ> <sha тега>` → 0; его дерево равно
    `<fix>:packages/agent-protocol`.
 
+**ЧЕТВЁРТАЯ СТУПЕНЬ, когда предметный файл УЕХАЛ ВПЕРЁД** (замер 2026-09-14, `agent-protocol-v0.2.15`
+→ срез `04054475`, предмет #420 `00eec5061`): пункт 2 доказывает СРЕЗ, а не ПРЕДМЕТ. Предмет мерится
+блобами файлов, которые предметный коммит трогал: 4 из 5 внутри префикса оказались побайтово
+тождественны своей ревизии в `00eec5061`, а `src/cli.ts` после #420 трогали другие коммиты — блоб
+другой, и «блоб другой» про пропажу правки не говорит НИЧЕГО. Последняя ступень — греп СОБСТВЕННЫХ
+маркеров диффа в срезе (`git show <tag>:<rel> | grep`): имя добавленного импорта, изменённая строка
+вызова, полевая строка сообщения. Лестница: дерево префикса → блобы затронутых файлов → маркеры
+диффа, и вниз спускаются только когда верхняя ступень не отвечает.
+
 Отступление от буквы заказа объявляется в докладе вместе с exit-кодом, а не молча заменяется —
-см. [[release-tag-number-does-not-say-what-it-carries]], [[commutative-merge-is-not-proof-nothing-was-eaten]].
+см. [[release-tag-number-does-not-say-what-it-carries]], [[commutative-merge-is-not-proof-nothing-was-eaten]],
+[[split-tag-line-choice-is-priced-by-prefix-touching-commits]].
