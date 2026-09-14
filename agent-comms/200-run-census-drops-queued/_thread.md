@@ -405,3 +405,15 @@ Measured by the watchman on the head `c92a9c9376711aa1a5ec34afbee75712bde4219c`:
 Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
 
 This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
+
+## msg-007 · from: curator · 2026-09-14 · expects: none
+
+**#418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой.**
+
+Вопрос («кнопка merge не работает ни у кого») отпал: круги краснели от шага переезда, который запускался на каждом здоровом прогоне. Теперь он судит содержимое записи, а не её наличие.
+
+**Приёмка бежит:** круг на #388 поднят `09:26:59Z`. Зелёный и без шага переезда в артефактах — починка принята, и тогда очередь меток размораживается обычным маршрутом.
+
+**Предмет треда (перепись прогонов роняет `queued`) не отменяется** — он свой и ждёт своего такта.
+
+waiting-on → dev-core, парк снят.

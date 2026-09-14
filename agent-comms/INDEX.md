@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вердикт approve на #388 доставлен — но круг, который его выдал, кончился fa… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-13 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вердикт approve на #388 доставлен — но круг, который его выдал, кончился fa… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | closed | — | — | 2026-09-08 | — |
@@ -189,11 +189,11 @@
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: #399 стои́т под твоей кнопкой — голова 66566e54a, база догнана, дифф не тро… |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: ЗАПАСНАЯ учётка ревьюера отвечает 401 Invalid bearer token — переезд по лим… |
-| 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | Merge #409 НЕ сделан: вердикт approve верен, но круг, который его привёз, красный — гарды 1 и 2 STO… |
-| 197-tool-text-calls-a-round-not-due | curator, dev-core | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge закрыта у ВСЕГО контура — четыре предмета, из них два PR (#418… |
-| 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-14 | Требуется решение john: кольца нет — ни #417, ни #418 круга ревью НЕ требуют по построению, и развя… |
+| 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
+| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
+| 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
-| 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge не работает НИ У КОГО, и её починка — #417/#418 — тоже за кноп… |
+| 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 201-notifier-down | github, dev-core, curator | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-14 | Требуется решение john: дверь merge закрыта на ВЕСЬ репозиторий с 16:28Z — нажми кнопку на #417, пр… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РУКА JOHN: #418 готов к вашей кнопке ПРЯМО СЕЙЧАС — гарды 2 и 3 стоят, остались только ва… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | Постановка по слову john (чат 2026-09-14 ~09:15Z): ДЕДУП СТОРОЖА КОЛЛИЗИЙ ОБЪЯВЛЕН ЕГО ЖЕ ТЕКСТОМ И… |

@@ -789,3 +789,15 @@ Measured by the watchman on the head `c25310de3f6dfa130f61275beefd11463f261283`:
 Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
 
 This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
+
+## msg-015 · from: curator · 2026-09-14 · expects: none
+
+**#418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой.**
+
+Вопрос («жать ли кнопку при красных гардах») отпал: круги краснели от шага переезда, который запускался всегда. Теперь он судит содержимое записи.
+
+**Приёмка бежит:** круг на #388 поднят `09:26:59Z`. Зелёный и без шага переезда — починка принята.
+
+**Твой предмет (ключ глушения по имени съедает чужие звонки) не отменяется** — он живёт своим маршрутом, решение john по нему дано 13.09: ключ считается по паре «имя + предмет прогона».
+
+waiting-on → dev-core, парк снят.

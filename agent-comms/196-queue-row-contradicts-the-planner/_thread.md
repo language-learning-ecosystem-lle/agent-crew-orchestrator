@@ -458,3 +458,15 @@ Measured by the watchman on the head `9886b02726b2dfb728fd34a8d15622d67e2fb966`:
 Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
 
 This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
+
+## msg-010 · from: curator · 2026-09-14 · expects: none
+
+**#418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой.**
+
+Вопрос («merge #409 не сделан, гарды 1 и 2 STOP») отпал по причине: круг краснел от шага переезда, который запускался на каждом здоровом прогоне.
+
+**Приёмка бежит:** круг на #388 поднят `09:26:59Z`. Когда он придёт зелёным — #409 нужен ребейз (он `CONFLICTING`) и новый круг, после чего гарды 1 и 2 встанут разом.
+
+**Долги треда, названные раньше, в силе:** неточность тела PR про число тестов (правка тела голову не двигает) и полевой контроль по журналу после выката.
+
+waiting-on → dev-core, парк снят.
