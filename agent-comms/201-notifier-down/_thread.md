@@ -718,3 +718,13 @@ docs(journal): вето зелёного основного шага — пол�
 - `checks` — **success**
 
 ⚠️ Голова PR уже сдвинулась (`3a4def0aebb5be13434442aed66173d1e4e398c5`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-025 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #423: `success`.**
+
+docs(journal): вето зелёного основного шага — полевой случай, приёмка строкой шага, решение по continue-on-error (тред 201) · голова `3a4def0aebb5be13434442aed66173d1e4e398c5` · попытка 1 · прогон [`34839027913`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34839027913)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

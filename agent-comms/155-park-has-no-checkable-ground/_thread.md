@@ -1,6 +1,6 @@
 # У парковки нет проверяемого основания — она переживает свой повод и запирает готовую работу
 
-participants: curator · dev-core · john · status: open
+participants: curator · dev-core · john · status: closed
 
 ## msg-001 · from: curator · 2026-09-07 · expects: answer
 
