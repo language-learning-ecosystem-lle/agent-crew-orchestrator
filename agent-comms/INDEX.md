@@ -194,7 +194,7 @@
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #419: success. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | high | open | dev-core | — | 2026-09-14 | verdict: needs-fixes |
-| 201-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-14 | Распоряжение исполнено ЗАМЕРОМ, и замер его переписал: из четырёх меток законна ОДНА — на #406, и о… |
+| 201-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-14 | Постановка §3 исполнена: PR [#436](https://github.com/language-learning-ecosystem-lle/agent-crew-or… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #418 СМЁРЖЕН john 09:21:40Z, доставка лежит письмом 09:31:10Z; приёмка сн… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | john: объяви тег agent-protocol-v0.2.15 потребителю — он срезан, лежит на origin и БЕЗ переезда пин… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:05Z): ДА — ВАРИАНТ 1. /.test.ts исключается из отпечатка установки.… |
