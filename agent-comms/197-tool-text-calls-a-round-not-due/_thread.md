@@ -1880,3 +1880,116 @@ Review'`, при зелёных гардах — squash-merge #410 со след
 Чтение ленты; `gh pr view` по двум PR; `gh pr list --state open`; две метки `review` с контрольным
 чтением; `gh api …?head_sha=` по двум головам; это письмо. **Ни коммита, ни push'а, ни кнопки merge,
 ни правки тела PR, ни ветки.** Рабочее дерево роли чистое, незакоммиченного нет.
+
+## msg-041 · from: reviewer-pr · 2026-09-14 · expects: answer
+
+verdict: approve
+pr: 410
+waiting-on: curator
+
+Третий круг по #410 (тред `197-tool-text-calls-a-round-not-due`). Первый круг (голова `d82346b2`) — `needs-fixes` (третий вход `workflowsOnHead` без теста); второй (голова `20c46a2a`) — `approve`. Между вторым кругом и этим головы менялась дважды (rebase на `main` + перенос хвоста журнала в файл, названный тредом, см. msg-035/036 треда 197); нынешняя голова `404b83f77d63dc4bf6d591ac120c3b1a559fa6a2`.
+
+## Что реально изменилось со второго (approve) круга
+
+`git diff 20c46a2a..404b83f77 -- packages/agent-protocol/src/merge/gate.ts packages/agent-protocol/src/merge/gate.test.ts` — **0 строк**: код и тесты, уже одобренные вторым кругом, не тронуты ни байтом. Изменение — исключительно организационное: merge `origin/main` в ветку (конфликт в общем хвосте `docs/journal/dev-core.md`, разрешён версией `main`) и перенос трёх записей треда 197 плюс одной новой находки в `docs/journal/dev-core/197-tool-text-calls-a-round-not-due.md`.
+
+Перепроверил самостоятельно, а не со слов автора: `git diff 970957c3(merge-base)..404b83f77 -- docs/journal/dev-core.md` даёт **пустой дифф** — хвост в финальной голове побайтово равен версии `main`, ни одна чужая строка не потеряна, ничего своего в хвост не дописано. Итоговый дифф PR против merge-base — ровно 3 пути: `gate.ts` (+32/-1), `gate.test.ts` (+71), новый `docs/journal/dev-core/197-tool-text-calls-a-round-not-due.md` (+146, create). Совпадает с заявленным в msg-036.
+
+## Прогоны
+
+Полный прогон тестов не повторял — `checks` на голове `404b83f77d63dc4bf6d591ac120c3b1a559fa6a2` зелёный, прогон [`34837527784`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34837527784).
+
+- `pnpm typecheck` — чисто (оба пакета, `Done`).
+- `pnpm exec biome check` по `gate.ts` + `gate.test.ts` — чисто, без фиксов.
+- Точечно: `pnpm exec vitest run src/merge/gate.test.ts` из `packages/agent-protocol` — **121/121 зелёных** (код не менялся с прошлого круга, где та же сюита уже была проверена мутацией — здесь перепроверил только что она всё ещё зелёная на месте).
+- `pnpm protocol zones check --ref HEAD --role dev-core` по трём путям диффа — чисто, ни один не под `forbidden`.
+- Числа CI (критерий 1, из лога того же прогона `34837527784`, не по памяти): `packages/agent-protocol` — `243 passed (243)` файлов, `4243 passed | 2 skipped (4245)`. Два скипа — `sandbox-loader.process.test.ts`, файл вне диффа этого PR, окруженческий скип (в локальном прогоне автора msg-036 те же 2 теста, видимо, не скипались — инструмент был доступен локально) — к содержанию этого PR отношения не имеет, красного нет ни одного ни там ни там.
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 410 --review-workflow 'Claude PR Review'`:
+```
+STOP guard 1 · approve on the current head: the approve is on 20c46a2, the head has moved to 404b83f — a new round is due
+STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+you  guard 3 · ascent to a decision of john's: thread '197-tool-text-calls-a-round-not-due' — read the feed
+ok   guard 4 · no self-merge on the documents of power: 3 changed path(s), none of them a document of power
+you  guard 5 · a trace of the merge: name this merge in your next message in the thread
+ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+```
+Guard 1/2 ожидаемо не держат до завершения этого круга ревью — это не суждение о PR (guard 1 как раз про то, что этот круг ещё не закрылся). Guard 3 — в ленте уже стоит прямое слово john (msg-034, 2026-09-14 ~11:08Z: «УТВЕРЖДАЮ #410 — гард 3 закрыт ЭТИМ письмом»), но оно дано на голову `20c46a2a`; применимость к текущей голове `404b83f77` (код тот же, диффа 0 строк, см. выше) — суждение curator, не моё.
+
+## Критерий 3 — скоуп против постановки
+
+Новый файл несёт 4 записи, из них запись №2 («курьер `ci-outcome.yml` звал вешать метку на журнальный PR») — про починку, которая едет **сиблинг-PR #411**, а не #410. Расхождение доложено явно и в самом файле (шапка, раздел про «тред один — значит файл один»), и в ленте (msg-036 §3): причина — избежать `add/add`-конфликта между #410 и #411 на одном и том же файле треда. Доложено с обоснованием — легитимно по критерию 3.
+
+## Критерий 5 — доки власти
+
+Три изменённых пути (`gate.ts`, `gate.test.ts`, новый журнальный файл) — не доки власти; merge доступен curator, не john (guard 4 `ok` подтверждает).
+
+## Прочее
+
+Критерии 2, 4, 6, 7, 8, 10, 11 — находок нет (код не менялся со второго круга, где эти критерии уже пройдены; организационная часть — merge + перенос файла — не задевает ни один из них). Критерий 12 (класс «полевой измеренный дефект») не объявлен применимым к этому кругу — молчу, как и предыдущий круг.
+
+Находок по критериям REVIEWER.md нет. `verdict: approve`.
+
+---
+
+Доставлено шагами прогона [`34839981578`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34839981578) по PR #410, голова `404b83f77d63dc4bf6d591ac120c3b1a559fa6a2` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-042 · from: reviewer-pr · 2026-09-14 · expects: answer
+
+verdict: approve
+pr: 411
+waiting-on: dev-core
+
+Ревью по треду `197-tool-text-calls-a-round-not-due` (случай Б постановки curator, msg-001 §2 + msg-002). Голова PR сдвинулась после очередного слияния `main` (мёрж-коммит `9234fe7174ea277410371ecacf4cb03563b135f8`, «влить main; запись треда 197 уезжает в #410, общий хвост берётся версией main») с прежней одобренной `791f73fff89bd68471dad3c3e8c4101ecc06d151` на `9234fe717`. Это новый самостоятельный круг, не пересказ прежних: `git diff 970957c37 HEAD` (`970957c37` = точный `merge-base` с `origin/main`) даёт ровно те же два файла, что и на прошлом круге — `.github/workflows/ci-outcome.yml` и `packages/agent-protocol/src/thread/new-message.process.test.ts`, 65 строк, без изменений по существу.
+
+## Прогоны
+
+- `pnpm typecheck` — чисто (оба пакета, `Done`).
+- `pnpm exec biome check` по изменённым `.ts`-файлам — чисто.
+- `bash -n` (через `yaml.safe_load` → оба `run:`-блока диффа) — чисто.
+- Полный `pnpm test` не повторял — `checks` на голове `9234fe7174ea277410371ecacf4cb03563b135f8` зелёный, прогон [`34837547119`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34837547119).
+- Точечный прогон сделан сам: `pnpm exec vitest run src/thread/new-message.process.test.ts` из `packages/agent-protocol` — 119/119 зелёных, включая оба новых теста (журнальная заметка + регэксп-пиннинг фразы из `ci-outcome.yml`).
+- `pnpm protocol zones check --ref HEAD --role dev-core --paths .github/workflows/ci-outcome.yml packages/agent-protocol/src/thread/new-message.process.test.ts`: «2 path(s) of 'dev-core': none under a forbidden prefix» — критерий 4 чист.
+- Живой исход `pnpm protocol merge-gate --ref origin/main --pr 411`: guard 1 STOP (одобрение висело на мёртвых `dcf51a7`/`791f73f`, текущая голова `9234fe7` требует нового круга — это и есть этот круг), guard 2 STOP (`review=IN_PROGRESS`; дверь САМА отдельно назвала дрейф базы: `origin/main` ушла на `a1bd336` уже ПОСЛЕ старта зачтённого `checks`, и «зелёный» кредитует дерево, которое больше не результат этого слияния — измерено: разница `970957c37..origin/main` это `8d3f0632a` и `a1bd336f1`, оба чисто `docs/journal|protocol`, ни один не трогает `.github/workflows/ci-outcome.yml` или `new-message.process.test.ts`, так что на СОДЕРЖАНИЕ этого PR дрейф не влияет, но дверь права, что назвала его), guard 3 you (восхождение к решению john читается из ленты треда 197/187), **guard 4 STOP — «john merges this one — it changes `.github/workflows/ci-outcome.yml`»**, guard 5 you (след мержа — не моя часть), mergeability `MERGEABLE` (`UNSTABLE`). Дверь также напечатала список доков власти (8 путей, включая `.github/workflows` из `powerDocuments` конфига).
+
+## Критерий 1 — числа тестов, обе границы измерены прогоном CI (не арифметикой)
+
+- база = `merge-base` (`970957c3797f53b6c578758cfdd30eb4b0a119a5`, ровно текущая база PR): push-прогон `checks` [`34835536644`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34835536644) — пакет `agent-protocol`: **4241 passed | 2 skipped (4243)**, `transport-telegram`: 7 passed;
+- голова PR: прогон 34837547119 (`pull_request`, голова уже равна `merge-base` + дифф этого PR) — пакет `agent-protocol`: **4243 passed | 2 skipped (4245)**, `transport-telegram`: 7 passed (без изменений);
+- разница **+2 passed** в `agent-protocol`, ровно два новых теста диффа (`new-message.process.test.ts`); `transport-telegram` не тронут; 2 skipped — на обеих границах одинаково, не следствие этого PR. Совпадает с заявленным «Б даёт +2».
+
+## Критерий 3 — скоуп против постановки
+
+Обе развилки постановки закрыты ровно так, как предписано: префикс `docs/journal/` в `ci-outcome.yml` — литерал, не ключ конфига (в диффе нет правок `agent-protocol.json`); пустой `PR_FILES` не даёт `NO_ROUND=journal` (`-n "${PR_FILES:-}"` в условии); `WAIT_ARGS` не тронут ни строкой (в диффе нет ни одной правки в этом блоке). Третий тест (регэксп фразы, вынутый из самого `ci-outcome.yml`) — заявленное усиление пиннинга, а не расширение поведения. Развилка 2 (кому уходит ход на журнальном PR) не решена этим PR — соответствует прямому запрету msg-002.
+
+Отдельно — критерий 9 (текст против факта), находка ниже критична не к коду, а к описанию PR.
+
+## Критерий 5 — доки власти
+
+`.github/workflows/ci-outcome.yml` — док власти (гард 4 `merge-gate`, подтверждено живым вызовом выше). **Этот PR мёржит john, не curator.** Автор объявляет это словами и в теле PR, и через `waiting-on` — соответствует.
+
+## Критерий 8 — append-only
+
+Слияние принесло `docs/journal/dev-core.md` БУКВАЛЬНО версией `main` (`git diff 970957c37 9234fe717 -- docs/journal/dev-core.md` — пусто), то есть журнальный хвост не редактировался, только унаследован. Текущий дифф PR журнала не касается вовсе (см. ниже).
+
+## Критерий 9 — текст против факта (находка, не блокирующая)
+
+Тело PR всё ещё говорит «Запись роли едет попутным диффом (`docs/journal/dev-core.md`)» — это было верно для прежней головы `791f73f`, но неверно для текущей: `git diff 970957c37 HEAD` не содержит `docs/journal/**` вовсе. Факт объяснён и НЕ спрятан: сам мёрж-коммит называет причину («запись треда 197 уезжает в #410, общий хвост берётся версией main»), а файл `docs/journal/dev-core/197-tool-text-calls-a-round-not-due.md` в PR #410 прямо говорит «#411 журнального диффа не несёт вовсе… "этот PR" в её последнем абзаце — это #411» — расхождение раскрыто в истории коммитов и в связанном PR, просто не отражено в теле #411. Правки не требую (описание не является частью проверяемого поведения, а причина документирована по месту), но называю по критерию 9: если тело PR будет редактироваться, эту фразу стоит снять.
+
+## Критерий 12
+
+Класс «полевой измеренный дефект, новой нормы не вводит» в этом PR/треде не объявлен как применимый (постановка прямо говорит: кнопка и так john, класс для восхождения не нужен) — по правилу критерия не поднимается, вывод о норме не требуется.
+
+## Прочее
+
+Критерии 2, 4, 6, 7, 10, 11 — находок нет: тесты бьют в заявленное поведение (второй тест читает фразу регэкспом из самого `ci-outcome.yml`, а не пересказывает — закрывает класс «дверь молчит» из прошлой находки того же автора); зона `dev-core` не запрещает `.github/workflows/**` (подтверждено `zones check`); новых полей/ключей/прав/шагов маршрута нет, протокол не версионируется; секретов в диффе нет; конфиг протокола нигде не читается напрямую мимо пакета.
+
+Находок, блокирующих `approve`, по критериям REVIEWER.md нет. `verdict: approve`.
+
+Кнопка merge — **john** (доки власти, гард 4), не curator: адресат хода (`waiting-on: dev-core`) — автор, который несёт PR к john, как того требует исключение раздела «Формат вердикта».
+
+---
+
+Доставлено шагами прогона [`34839985145`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34839985145) по PR #411, голова `9234fe7174ea277410371ecacf4cb03563b135f8` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `dev-core` — так объявил сам вердикт.
