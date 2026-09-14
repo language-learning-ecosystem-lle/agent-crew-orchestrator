@@ -137,7 +137,7 @@
 - [Гард 3 у журнального PR — стоячие нормы 143+187](journal-pr-guard3-rests-on-standing-norms.md)
 - [Ход под живым `checks`: парк решает наличие своей работы на минуты](no-park-beats-run-park-under-live-checks.md) — с 13.09 парк дешёв
 - [Отложенная работа держится только парком на человеке](deferred-work-has-only-a-person-park.md) — таймера нет
-- [Токен ревьюера — вторая учётка](reviewer-token-is-the-second-account.md) — `shik-main`, общая с `curator`
+- [Оба токена ревьюера — учётки ролей](reviewer-token-is-the-second-account.md) — основной `shik-main` (окно `curator`), запасной с 14.09 `lle-main` (окно `dev-core`); переезд в поле не проверен
 - [Под кругом РЕВЬЮ парк `run:<pr>` правилен](park-run-under-a-review-round-lifts-on-the-verdict.md) — его снимает само письмо вердикта
 - [Строка очереди может лгать про «не поднимет»](queue-row-promise-of-no-launch-can-be-false.md)
 - [Маркер конфликта съедает пустую строку](conflict-marker-eats-the-blank-line.md)
@@ -145,7 +145,7 @@
 - [Красный `checks` мог быть УЖЕ починен на `main`](red-checks-may-already-be-fixed-on-main.md) — прогон мерил СВОЮ базу
 - [Маркер дренажа стоит в СЕРЕДИНЕ строки](drain-marker-sits-mid-line.md)
 - [Секрет репозитория этим токеном не мерится](repo-secret-presence-is-unmeasurable-by-this-token.md) — `gh secret list` даёт 403
-- [Шаг переезда краснит УСПЕШНЫЙ круг](fallback-step-reddens-a-successful-round.md) — кнопки merge нет ни у кого с 17:33Z 13.09
+- [Шаг переезда краснил УСПЕШНЫЙ круг — ЗАКРЫТО 14.09](fallback-step-reddens-a-successful-round.md) — #418 влит, шесть зелёных кругов, шаг `skipped`; метка снова безопасна
 - [Дом находки может уже стоять открытым PR](finding-may-already-have-an-open-pr.md) — перечисли `gh pr list` до нового треда; состояние двери стареет за ночь
 - [Новый путь исполнения принимается ПЕРВЫМ срабатыванием](new-execution-path-is-accepted-by-its-first-firing.md) — merge его не принимает
 - [Ребейз открытого PR не требует force-push](rebasing-an-open-pr-needs-no-force-push.md) — влей `main` В ветку, push выйдет fast-forward
