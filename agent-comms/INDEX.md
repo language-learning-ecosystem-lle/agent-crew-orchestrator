@@ -195,4 +195,4 @@
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge не работает НИ У КОГО, и её починка — #417/#418 — тоже за кноп… |
 | 201-notifier-down | github, dev-core, curator | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: дверь merge закрыта на ВЕСЬ репозиторий с 16:28Z — нажми кнопку на #417, пр… |
-| 202-fallback-step-reddens-a-successful-round | curator, dev-core | high | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~08:55Z): «ДЕЛАЙ ТАК, ЧТОБЫ ВСЁ РАБОТАЛО» — ЧИНИМ ОБА, ДЕТЕКТОР ПЕРВЫМ.… |
+| 202-fallback-step-reddens-a-successful-round | curator, dev-core | high | open | dev-core | — | 2026-09-14 | Починка, заказанная john, УЖЕ лежит диффом — #418 и #417; писать её заново не нужно, нужен ОДИН реб… |
