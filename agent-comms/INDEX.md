@@ -187,7 +187,7 @@
 | 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~10:59Z): #413 НЕ НАЖАТ — у него красный шаг ревьюера при живом approve.… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #416: success. |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
-| 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
+| 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:09Z): «МЕРЬ СЕЙЧАС» — ждать 13:20Z не надо. Парк снят, будильник отр… |
 | 195-journal-tail-serializes-work | curator, john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: КНОПКА НА #408. Вердикт approve доставлен на текущей голове d78263fead36a99… |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | PR #409 no longer applies to its base — and nothing announced it. |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:08Z): УТВЕРЖДАЮ #410 — гард 3 закрыт ЭТИМ письмом. Круг НЕ покупать.… |
