@@ -885,6 +885,36 @@ export type RunAnchor = {
 const anchorByHand = (head: string): string =>
   `check it by hand: \`gh api "repos/{owner}/{repo}/actions/runs?head_sha=${head}"\` — a CLOSED round of the reviewer's workflow (event 'pull_request', conclusion 'success') must exist on this head, and the verdict must lie inside its 'created_at'…'updated_at'`;
 
+/**
+ * THE OTHER HALF OF "NO ROUND OF '<X>'" — the workflows that DID run on this head (thread 197).
+ *
+ * `reading.runs` is `actions/runs?head_sha=<head>`: EVERY workflow of this head, not only the
+ * one the caller named. So when nothing carries the asked name, the door is holding, in its own
+ * hand, the fact that tells the two causes of that branch apart — and used to throw it away:
+ *
+ * - (а) this head really has had no round → re-label, or push;
+ * - (б) `--review-workflow` carries the wrong VALUE (measured 2026-09-13: `Claude Review` asked,
+ *   `Claude PR Review` standing on the head, green) → the round is right there, and the medicine
+ *   of (а) burns a second one for nothing.
+ *
+ * An EMPTY list is an answer too, and it says so out loud: "nothing ran here" is a measurement,
+ * and a refusal that stays silent about it reads as if the door never looked. Names are printed
+ * as reported and de-duplicated — one workflow that ran four times is one name, not four. A run
+ * that reports no name at all is counted but not invented: the head is not called empty then.
+ */
+const workflowsOnHead = (runs: readonly ReviewRunFact[]): string => {
+  if (runs.length === 0)
+    return "and NO workflow at all reports a run on this head, so the name asked for is not what is wrong here: what is missing is a round of review ON THIS HEAD (re-label, or a push)";
+  const names = [
+    ...new Set(
+      runs.map((run) => present(run.name)).filter((name): name is string => name !== undefined),
+    ),
+  ];
+  if (names.length === 0)
+    return `while ${runs.length} run(s) ARE reported on it, none of them carrying a workflow name — so whether the value of --review-workflow is the wrong one cannot be told from this payload, and the head has to be read by hand before a second round is spent on it`;
+  return `while these DID run on it: ${names.map((name) => `'${name}'`).join(", ")} — the name asked for is not among them, so CHECK THE VALUE of --review-workflow against the 'name:' of the reviewer's workflow before re-labelling: a closed round may be standing right there under a name this door was never asked about. If the value is right, what is missing is a round on this head (re-label, or a push)`;
+};
+
 /** A run said in one line — what it read and how it ended, so a STOP can be acted on. */
 const describeRun = (run: ReviewRunFact): string =>
   `run ${run.id ?? "?"} (${run.event ?? "?"}, head ${(run.headSha ?? "?").slice(0, 7)}, ${run.status ?? "?"}/${run.conclusion ?? "?"}, ${run.createdAt ?? "?"}…${run.updatedAt ?? "?"})`;
@@ -925,7 +955,7 @@ export const reviewRunAnchor = (input: {
       state: "orphan",
       detail:
         named.length === 0
-          ? `no round of '${reading.workflow}' is reported for ${head.slice(0, 7)} at all — an approve shown against this head with no round behind it is not an answer about it. What is missing is a round of review ON THIS HEAD (re-label, or a push), not a merge`
+          ? `no round of '${reading.workflow}' is reported for ${head.slice(0, 7)} at all — ${workflowsOnHead(reading.runs)}. An approve shown against this head with no round behind it is not an answer about it: fix the NAME or fix the HEAD, not the merge`
           : `no CLOSED round of '${reading.workflow}' on ${head.slice(0, 7)}: ${named.map(describeRun).join("; ")} — a round that read another head, or on another event, or that has not finished, does not anchor a verdict about this head`,
     };
 
