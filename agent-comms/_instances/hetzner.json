@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T15:29:43.245Z",
+  "writtenAt": "2026-09-14T15:30:10.157Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "198-mute-key-by-name-eats-other-bells",
+      "state": "running",
+      "deadline": "2026-09-14T16:10:06Z"
+    },
     {
       "role": "curator",
       "thread": "206-journal-writes-without-a-pr",
