@@ -14347,11 +14347,20 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
     const events = existsSync(journalPath)
       ? parseJournal(readFile(journalPath, "orchestrator journal"))
       : [];
+    // AND THE MAIL THE FOLD IS JUDGED WITH, BUILT ONCE FOR BOTH READERS (thread 196). The journal
+    // alone does not say whether a run delivered: a turn that stayed on the role is written down
+    // as `exited-without-handoff` and only the mail tells it apart from a break (`isSelfTurnDelivery`,
+    // threads 021/023). The tick has always been given this set; the queue row below was folding
+    // without it, and the two readings of ONE flag disagreed in the field — measured on
+    // `.orchestrator/daemon.log` 2026-09-13T14:49…15:18Z, where the row of `curator×190-…` promised
+    // `⛔ OUT OF ATTEMPTS — 9 of 3` in the very tick whose plan raised that pair. One value, handed
+    // to both, is what makes that shape unwritable rather than merely fixed.
+    const marks = deliveryMarks(threads);
     // THE PAIRS THIS BOX HAS STOPPED RAISING, ON THEIR OWN QUEUE ROWS (thread 140). Read from
-    // the very journal the tick below plans on, so the row and the skip line cannot disagree
-    // about which pairs are spent. Without it the row of a pair frozen three days ago is
-    // character for character the row of one that is next in line.
-    const outOfAttempts = spentCeilings(foldLeases(events, now, gates.maxAttempts.value));
+    // the very journal the tick below plans on, WITH THE SAME MAIL and the same ceiling, so the
+    // row and the skip line cannot disagree about which pairs are spent. Without it the row of a
+    // pair frozen three days ago is character for character the row of one that is next in line.
+    const outOfAttempts = spentCeilings(foldLeases(events, now, gates.maxAttempts.value, marks));
     // THE SECOND FORM IS ANSWERED OUT OF THE VERY SAME SCAN (thread 155): `no-delivers-since:X`
     // asks whether thread X has grown a letter carrying `delivers:` SINCE THE PARK WAS DECLARED,
     // and `threads` is that mail, already read this tick. The window is the park's own stamp and
@@ -14446,11 +14455,17 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
       // WHAT THIS PROCESS HAS ALREADY SAID ABOUT ACCOUNTS (thread 179) — see the declaration
       // above. Without it every tick is the first tick and every state is news.
       announced: announcedAccounts,
-      now: new Date(),
+      // THE INSTANT OF THE QUEUE ABOVE, not a second one taken here (thread 196): the two folds
+      // are only "provably equal on the same inputs" while the inputs are the same three values,
+      // and a backoff whose thaw falls between the two readings is exactly the pair the row and
+      // the plan would then disagree about.
+      now,
       // The mail is already parsed for the queue above — the set of sessions that
       // wrote is what keeps a run that delivered into its own turn out of the
-      // failed attempts (thread 023).
-      deliveryMarks: deliveryMarks(threads),
+      // failed attempts (thread 023). THE VERY VALUE THE ROW WAS PRINTED WITH (thread 196):
+      // two builds of this set off one `threads` are equal, but nothing kept them so, and the
+      // row folded without it at all until the field defect of 2026-09-13.
+      deliveryMarks: marks,
       maxConsecutive: gates.maxConsecutive.value,
       maxAttempts: gates.maxAttempts.value,
       parked,
