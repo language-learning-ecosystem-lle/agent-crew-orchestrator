@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T15:57:19.577Z",
+  "writtenAt": "2026-09-14T15:58:32.018Z",
   "roles": [
     "curator",
     "dev-core",
@@ -18,12 +18,6 @@
     }
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "202-fallback-step-reddens-a-successful-round",
-      "state": "running",
-      "deadline": "2026-09-14T16:32:32Z"
-    },
     {
       "role": "dev-core",
       "thread": "207-run-outcome-stamps-a-stale-head",
