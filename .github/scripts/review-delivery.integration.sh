@@ -511,8 +511,11 @@ exec_fixture() { # <имя> <json последней записи>
 F_LIMIT="$(exec_fixture limit "$(printf '{"type":"result","subtype":"success","is_error":true,"api_error_status":429,"terminal_reason":"api_error","result":"%s"}' "$LIMIT_RESULT")")"
 F_TURNS="$(exec_fixture turns '{"type":"result","is_error":true,"api_error_status":null,"terminal_reason":"max_turns","result":"Reached maximum turns"}')"
 
-letter_case() { # <номер> <что за состояние> <файл транскрипта|пусто> <самопропуск: 0|1>
-  local n="$1" what="$2" exec_file="${3:-}" self_skip="${4:-0}"
+letter_case() { # <номер> <что за состояние> <файл транскрипта|пусто> <самопропуск: 0|1> [исход основного шага] [переезд: 0|1]
+  # ДВА ПОСЛЕДНИХ АРГУМЕНТА НЕОБЯЗАТЕЛЬНЫ И ПО УМОЛЧАНИЮ ПУСТЫ — состояния (10)–(13)
+  # подают их ровно так же, как подавали до появления (27): шаг обязан пережить пустой
+  # `PRIMARY_OUTCOME` («об исходе судить не по чему»), и это тоже сверка, а не умолчание.
+  local n="$1" what="$2" exec_file="${3:-}" self_skip="${4:-0}" primary="${5:-}" moved="${6:-0}"
   note_state "$n"
   echo "== ($n) ${what}"
   local arena="$WORK/letter-$n" bin
@@ -540,8 +543,10 @@ STUB
     GITHUB_WORKSPACE="$arena" GH_TOKEN="$FAKE_TOKEN" \
     PR="$PR" RUN_ID=33762234440 RUN_URL="https://example.invalid/runs/33762234440" \
     SELF_SKIP="$self_skip" EXECUTION_FILE="$exec_file" \
+    PRIMARY_OUTCOME="$primary" REVIEW_MOVED="$moved" \
       bash "$STEP_SH"
   ) > "$arena/step.log" 2>&1
+  STEP_LOG="$arena/step.log"
   if [ ! -s "$arena/letter.md" ]; then
     fail "письмо не составлено вовсе"; sed 's/^/    /' "$arena/step.log"; return 0
   fi
@@ -940,6 +945,123 @@ check "переезда нет — вторая учётка за чужой о�
 check "лимит не объявлен" "0" "$(out_of hit)"
 check "причина названа отсутствием признака" "да" \
   "$(file_probe -F 'признака лимита нет' "$LIMIT_OUT")"
+
+# --- (25)–(26) ЦВЕТ ДЖОБЫ СУДИТ ДОСТАВКА, А НЕ ЖИЗНЬ ОСНОВНОГО ШАГА -------------------
+#
+# ЗАЧЕМ ЗДЕСЬ. Решение john 2026-09-14 `13:27Z` (вторая половина к переезду): красное в
+# круге ревью значит «вердикт не доехал», а не «шаг ревьюера умер». Судья цвета теперь
+# один — шаг «Итог доставок» и его `exit "$FINAL_CODE"`, — и ровно поэтому логика цвета
+# покрывается целиком ЗДЕСЬ, а не живым кругом: живой круг стоит учётки, а `429` по
+# заказу не воспроизводится вовсе.
+#
+# ЧТО ПОДЛОЖНОЕ И ЧТО НАСТОЯЩЕЕ. Подложные — ИСХОДЫ шагов (их даёт сценарий состояния).
+# Настоящие обе половины правила: (а) кто из шагов вправе красить джобу — берётся ИЗ
+# `.yml` разбором, а не переписывается сюда литералом (иначе сюита пиньила бы свою
+# копию, а не файл); (б) код выхода шага итога — вызовом продового `delivery_exit_code`
+# из `review-delivery.sh`, того самого, что стои́т в теле шага.
+#
+# МУТАЦИОННАЯ ПРОБА ПРАВКИ: сними `continue-on-error: true` с шага `id: reviewer` в
+# `.yml` — и краснеет (25), не тронув (26).
+python3 - "${CODE_DIR}/.github/workflows/claude-review.yml" "$WORK/step-colour.tsv" <<'PY'
+import sys, yaml
+wf = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+steps = [s for job in wf["jobs"].values() for s in job.get("steps", [])]
+rows = []
+for i, s in enumerate(steps):
+    key = s.get("id") or s.get("name") or ("шаг-%d" % (i + 1))
+    coe = s.get("continue-on-error", False)
+    judges = "нет" if (coe is True or str(coe).strip().lower() == "true") else "да"
+    rows.append("%s\t%s" % (key, judges))
+open(sys.argv[2], "w", encoding="utf-8").write("\n".join(rows) + "\n")
+PY
+CURRENT_STATE="25-26"
+[ -s "$WORK/step-colour.tsv" ] || fail 'шаги воркфлоу не разобраны из yaml (нужен python3 с PyYAML)'
+
+SUMMARY_STEP="Итог доставок — что доехало и что нет"
+# «Судит ли этот шаг цвет джобы» — ОДИН вопрос к разобранному `.yml`. Имя, которого в
+# файле нет, — не «не судит», а ОТКАЗ ПО ИМЕНИ: молчаливое «нет» тут означало бы, что
+# переименованный шаг проходит сюиту зелёным.
+judges_colour() { # <id или имя шага>
+  local row
+  row="$(awk -F'\t' -v k="$1" '$1 == k { print $2; found = 1 } END { if (!found) print "ШАГА НЕТ" }' \
+    "$WORK/step-colour.tsv")"
+  printf '%s' "$row"
+}
+# Цвет джобы — СВЁРТКА исходов по правилу Actions: джоба красна, если красен хоть один
+# шаг, которому не сказано `continue-on-error: true`.
+job_colour() { # <шаг=исход> …
+  local pair id outcome colour=зелёная
+  for pair in "$@"; do
+    id="${pair%%=*}"
+    outcome="${pair#*=}"
+    [ "$outcome" = "failure" ] || continue
+    [ "$(judges_colour "$id")" = "да" ] || continue
+    colour=красная
+  done
+  printf '%s' "$colour"
+}
+
+echo '== (25-26) цвет джобы: судит доставка вердикта, а не жизнь основного шага'
+check "основной шаг ревьюера цвет джобы НЕ судит" "нет" "$(judges_colour reviewer)"
+check "шаг итога доставок цвет джобы судит" "да" "$(judges_colour "$SUMMARY_STEP")"
+# Граница постановки названа сверкой, а не комментарием: смерть ПОСЛЕДНЕЙ учётки,
+# которой круг ещё мог что-то решить, красит джобу сама.
+check "запасной шаг ревьюера цвет джобы судит" "да" "$(judges_colour reviewer_fallback)"
+
+# (25) ТО, РАДИ ЧЕГО ПРАВКА: полевые входы #426 (`12:18Z`) и #416 (`13:33Z`) 2026-09-14.
+# Основная умерла настоящим лимитом, переезд состоялся, вердикт доехал всеми тремя
+# каналами — джоба обязана быть ЗЕЛЁНОЙ. До правки она была красной, и `merge-gate`
+# запирал готовый вердикт гардами 1 и 2.
+note_state 25
+echo "== (25) основной шаг умер лимитом, переезд состоялся, вердикт доставлен: джоба ЗЕЛЁНАЯ"
+DELIVERED_CODE="$(delivery_exit_code 0 1 ok ok ok)"
+check "шаг итога на доставленном вердикте выходит нулём" "0" "$DELIVERED_CODE"
+SUMMARY_OUTCOME=failure; [ "$DELIVERED_CODE" = "0" ] && SUMMARY_OUTCOME=success
+check "джоба зелёная" "зелёная" \
+  "$(job_colour reviewer=failure limit=success reviewer_fallback=success \
+      reviewer_out=success guard=success "$SUMMARY_STEP=$SUMMARY_OUTCOME")"
+
+# (26) ПАРНОЕ К НЕМУ, И ОНО ДЕРЖИТ ДОВОД JOHN «красное должно значить настоящую
+# поломку»: вердикта нет ни по одному каналу — цвет обязан остаться КРАСНЫМ, и красит
+# его теперь шаг итога, а не мёртвый ревьюер.
+note_state 26
+echo "== (26) основной шаг умер, вердикта нет ни по одному каналу: джоба КРАСНАЯ"
+LOST_CODE="$(delivery_exit_code 0 0 none none none)"
+check "шаг итога на недоставленном вердикте выходит единицей" "1" "$LOST_CODE"
+SUMMARY_OUTCOME=failure; [ "$LOST_CODE" = "0" ] && SUMMARY_OUTCOME=success
+check "джоба красная" "красная" \
+  "$(job_colour reviewer=failure limit=success reviewer_fallback=skipped \
+      reviewer_out=success guard=success "$SUMMARY_STEP=$SUMMARY_OUTCOME")"
+# Самопропуск действия остаётся ЗЕЛЁНЫМ (класс треда 046 правкой не тронут): вердикта
+# нет и здесь, но причина его отсутствия — штатный гард, и `delivery_exit_code` это
+# различает сам.
+check "самопропуск действия джобу не красит" "0" "$(delivery_exit_code 1 0 none none none)"
+
+# (27) ВТОРАЯ ПОЛОВИНА ПЕРЕНОСА: смерть основного шага молча не съедается. Шаг, который
+# больше не красит джобу, — это шаг, о смерти которого никто не узнает, если её не
+# СКАЗАТЬ словом. Гоняется тело шага итога из `.yml` целиком, как состояния (10)–(13),
+# только с исходом основного шага в среде.
+#
+# МУТАЦИОННАЯ ПРОБА: убери строку `PRIMARY_OUTCOME` из `env:` шага итога в `.yml` — и
+# краснеет ровно (27), обе его сверки.
+python3 - "${CODE_DIR}/.github/workflows/claude-review.yml" "$WORK/summary.env" <<'PY'
+import sys, yaml
+NAME = "Итог доставок — что доехало и что нет"
+wf = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+steps = [s for job in wf["jobs"].values() for s in job.get("steps", [])]
+found = [s for s in steps if s.get("name") == NAME]
+if len(found) != 1:
+    sys.exit("шаг итога найден %d раз(а) — вынуть переменные нечем" % len(found))
+open(sys.argv[2], "w", encoding="utf-8").write(str((found[0].get("env") or {}).get("PRIMARY_OUTCOME", "")))
+PY
+letter_case 27 "основной шаг умер лимитом, круг доработала запасная: смерть НАЗВАНА вслух" \
+  "$F_LIMIT" 0 failure 1
+check "шаг получает исход ОСНОВНОГО шага" \
+  '${{ steps.reviewer.outcome }}' "$(cat "$WORK/summary.env")"
+check "исход основного шага напечатан" "да" \
+  "$(file_probe -F 'основной шаг ревьюера: failure' "$STEP_LOG")"
+check "и сказано, что круг доработала запасная учётка" "да" \
+  "$(file_probe -F 'круг доработала ЗАПАСНАЯ учётка' "$STEP_LOG")"
 
 if [ "$FAILED" = "0" ]; then
   echo "интеграционный прогон доставки: ВСЕ СОСТОЯНИЯ ПРОШЛИ — $(printf '%s' "$STATES" | wc -w) шт."
