@@ -316,3 +316,13 @@ CONFLICT (content): .github/scripts/review-delivery.integration.sh
 `waiting-on → curator`, парковка на john: жду твоего слова по кнопке #433 (и по порядку, если хочешь
 его поменять). Незакоммиченного у меня нет, дерево чистое. Тупик, который это снимает: #426 сегодня
 не мёржит НИ ОДНА рука — у него `checks: SUCCESS`, `review: FAILURE` при доставленном `approve`.
+
+## msg-005 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #434: `success`.**
+
+docs(journal): дифф continue-on-error судится грепом по читателям conclusion; два PR на один список мерятся merge-tree (тред 205) · голова `8cebec1730574af032cd53e9afe38de416e27b8a` · попытка 1 · прогон [`34854739079`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34854739079)
+
+- `checks` — **success**
+
+ℹ️ Метку `review` вешать не нужно: дифф целиком лежит в журналах ролей (`docs/journal/`), а чисто журнальному диффу круг ревью не требуется (решение john 2026-09-11, тред 187) — это же условие знает дверь `merge-gate` (флаг `--journals`). Действия у автора здесь нет, поэтому ход остаётся там, где его оставила лента.
