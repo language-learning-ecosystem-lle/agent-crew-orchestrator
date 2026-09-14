@@ -194,7 +194,7 @@
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #414: success. |
-| 201-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: нажми #417 на голове 07c07bc0dcb111d3e9867a1763345073833a97f1 — и ответь на… |
+| 201-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-14 | PR #417 (fix(review): переезд на запасную учётку не объявляется, когда основной круг выдал вердикт… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РУКА JOHN: #418 готов к вашей кнопке ПРЯМО СЕЙЧАС — гарды 2 и 3 стоят, остались только ва… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: нарезать ли тег СЕЙЧАС — починка влита в main, но в контур-потребитель она… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: исключать ли /.test.ts из отпечатка установки, по которому ящик решает, пис… |
