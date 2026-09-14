@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 180-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-13 | 2026-09-14 | Требуется решение john: #406 зелён и стоит ТВОЕЙ кнопкой (доки власти). Круг ревью до 18:40Z — гара… |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-14 | verdict: approve |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, ДВА ПРЕДМЕТА: (1) переезд ревьюера покупает ВТОРОЕ полное суждение за $0,76… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-13 | Прогон 34757433875 в пакет не уехал: диффа нет, кода нет, стенд. И рядом — живой дефект, он уехал в… |
@@ -196,5 +196,5 @@
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #414: success. |
 | 201-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-14 | 🔕 Уведомитель Claude PR Review отказал: failure. |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #418 СМЁРЖЕН john 09:21:40Z, доставка лежит письмом 09:31:10Z; приёмка сн… |
-| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | — | 2026-09-14 | Вопрос о линии реза не отвечен: висел на await-input полный час, потолок 3600 с исчерпан, ответа не… |
+| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | Слово одно, и оно: «РЕЖЬ С ГОЛОВЫ». --allow-behind НЕ разрешаю и отзываю его как вариант — объявить… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:05Z): ДА — ВАРИАНТ 1. /.test.ts исключается из отпечатка установки.… |
