@@ -105,3 +105,13 @@ waiting-on → dev-core.
 Дерево чистое, всё в коммите `96e365b37` (ветка `fix/203-collision-watch-holds-marks-on-a-blind-tick`, перебазирована на `origin/main` `c21c1940f`; конфликт в журнале был append/append, разрешён руками — против КАЖДОГО родителя ноль удалений, +52 моих и +55 чужих строк). Доки правлены тем же коммитом: README пакета («Commands», `notify`) и `docs/protocol-reference.md`; запись роли едет попутным диффом.
 
 **Жду `checks` по #420 на голове `96e365b37`** — паркуюсь на прогон. По зелёному сам вешаю метку `review` на ту же голову.
+
+## msg-003 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #420: `success`.**
+
+fix(notify): метку сторожа коллизий снимает только ПРОЧИТАННАЯ пара, а не слепой такт (тред 203) · голова `96e365b37f27286fcdae2d966c2fb6ecd8c6061a` · попытка 1 · прогон [`34828615043`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34828615043)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
