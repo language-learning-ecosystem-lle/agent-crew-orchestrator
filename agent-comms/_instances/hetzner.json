@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T09:36:58.105Z",
+  "writtenAt": "2026-09-14T09:37:49.765Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "161-daemon-self-restart",
+      "state": "running",
+      "deadline": "2026-09-14T10:17:46Z"
+    },
     {
       "role": "dev-core",
       "thread": "193-reviewer-token-account-unreadable",
