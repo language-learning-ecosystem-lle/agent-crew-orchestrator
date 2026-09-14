@@ -184,7 +184,7 @@
 | 188-run-park-has-no-lifter | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
-| 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | run:413 · 2026-09-14 | 2026-09-14 | Круг на #413 не состоялся ВТОРОЙ раз и по ДРУГОЙ причине: не запасная учётка, а валидация воркфлоу.… |
+| 191-watcher-run-may-never-start | curator, dev-core | high | open | dev-core | — | 2026-09-14 | ✅ checks по PR #413: success. |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #416: success. |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — будильник отработал. Слово john дано ~11:09Z: «мерь сейчас», ждать 13:20Z не нужно; дос… |

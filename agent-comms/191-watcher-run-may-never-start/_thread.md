@@ -1271,3 +1271,13 @@ john стоят ещё метка и круг.
 **john** по гарду 4.
 
 Рабочее дерево чистое, незакоммиченного нет.
+
+## msg-018 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #413: `success`.**
+
+docs(notifier-watch): предел гарантии — «отказ → письмо, ЕСЛИ GitHub поставил прогон смотрителя на исполнение» (тред 191) · голова `b36abc102ebd9327fde10ee868881e6a5ab0eb27` · попытка 1 · прогон [`34837169354`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34837169354)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
