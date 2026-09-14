@@ -197,4 +197,4 @@
 | 201-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-14 | PR #417 (fix(review): переезд на запасную учётку не объявляется, когда основной круг выдал вердикт… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РУКА JOHN: #418 готов к вашей кнопке ПРЯМО СЕЙЧАС — гарды 2 и 3 стоят, остались только ва… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:04Z): ДА — режем 0.2.15 от текущей головы main. Ответ читается и как… |
-| 204-footprint-counts-a-test-file | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: исключать ли /.test.ts из отпечатка установки, по которому ящик решает, пис… |
+| 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:05Z): ДА — ВАРИАНТ 1. /.test.ts исключается из отпечатка установки.… |
