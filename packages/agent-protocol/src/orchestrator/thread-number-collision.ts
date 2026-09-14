@@ -157,6 +157,32 @@ export const collisionRings = (collision: NumberCollision): boolean =>
 export const collisionSaidKey = (collision: NumberCollision): string =>
   `number:${collision.number}:${collision.halves.map((half) => half.id).join(",")}`;
 
+/**
+ * THE HALVES BACK OUT OF A MARK — the reader of {@link collisionSaidKey}, and it exists because
+ * lifting a mark is a statement ABOUT THOSE DIRECTORIES and cannot be made without naming them
+ * (thread 203). `undefined` is a line that is not this watchman's key at all.
+ *
+ * The number is not returned: it is the first three characters of every half by construction,
+ * and a second way of asking for it is a second literal to drift (thread 086).
+ */
+export const collisionKeyHalves = (key: string): readonly string[] | undefined => {
+  const match = /^number:(\d{3}):(\S+)$/.exec(key);
+  if (match === null) return undefined;
+  const halves = (match[2] as string).split(",").filter((id) => id !== "");
+  return halves.length === 0 ? undefined : halves;
+};
+
+/**
+ * A MARK THIS TICK COULD NOT JUDGE — the key and the halves that were not in front of it.
+ * It is a fact worth a line of its own, not an internal detail: a mark kept is a letter NOT
+ * written, and this watchman's one rule is that its silences are said out loud.
+ */
+export type HeldCollisionMark = {
+  readonly key: string;
+  /** The halves the tick did not read, by id, ascending. One is enough to hold the mark. */
+  readonly unread: readonly string[];
+};
+
 /** A letter this watchman owes: one number, all of its halves. */
 export type NumberCollisionLetter = {
   readonly collision: NumberCollision;
@@ -171,6 +197,8 @@ export type NumberCollisionLetter = {
 export type NumberCollisionPlan = {
   readonly letters: readonly NumberCollisionLetter[];
   readonly said: readonly string[];
+  /** Marks carried over a tick that could not see their halves — see {@link HeldCollisionMark}. */
+  readonly held: readonly HeldCollisionMark[];
 };
 
 /**
@@ -238,11 +266,35 @@ export const numberCollisionArgv = (input: {
  * is written here and nowhere else: a mark survives only while the pair it belongs to still
  * satisfies the criterion. A pair divorced (the number is no longer carried twice) or gone
  * quiet (every half closed) drops out of the live set and its mark with it — so if it ever
- * comes back, it rings again. One tick's silence lifts nothing, because silence is not a
- * state of the feed.
+ * comes back, it rings again.
+ *
+ * AND "THE PAIR STOPPED SATISFYING THE CRITERION" IS A STATEMENT ABOUT THE FEED, WHICH THIS
+ * TICK MAY NOT BE IN A POSITION TO MAKE — thread 203, and the defect the `threads` argument
+ * exists against. Until it, the lock read a mark as lifted whenever the pair was not among
+ * `found`, and `found` is a fold over THE THREADS THIS TICK MANAGED TO READ, not over the
+ * feed: `loadThreads` isolates a thread it could not parse into `failures` and returns the
+ * rest, and a courier whose mail checkout was mid-update reads a short list without ever
+ * saying so. So one blind tick — one unreadable `_meta.md`, one half-written message file,
+ * one checkout caught between `git fetch` and `git reset` — dropped the mark, the next tick
+ * read the feed whole again and announced the pair as new. That is EXACTLY the repeat this
+ * lock exists against, arriving by the one road its own comment declared impossible ("one
+ * tick's silence lifts nothing, because silence is not a state of the feed") — and the field
+ * shape of it is a pair announced once a day for days, because a blind tick is rare.
+ *
+ * SO A MARK IS LIFTED ONLY BY A POSITIVE DISPROOF, and a tick that did not read every half
+ * the mark names has not got one: the mark is HELD and said out loud
+ * ({@link describeHeldNumberCollisions}). The direction of the remaining error is the one
+ * this package always fails in: a pair whose directory really did vanish holds a mark that
+ * suppresses a letter about a pair that no longer exists, which is silence about nothing.
+ *
+ * `threads` is EVERY thread the tick read, not only the colliding ones: the question asked of
+ * it is "was this half in front of me", and the halves of a divorced pair are not a collision
+ * any more — which is the very state that has to be told apart from "I could not see it".
  */
 export const planNumberCollisionWatch = (input: {
   readonly found: readonly NumberCollision[];
+  /** Every thread THIS TICK read — the evidence a mark may be lifted on. */
+  readonly threads: readonly CollisionHalf[];
   readonly said: readonly string[];
 }): NumberCollisionPlan => {
   const ringing = input.found.filter(collisionRings);
@@ -255,9 +307,23 @@ export const planNumberCollisionWatch = (input: {
     said.add(key);
     letters.push({ collision, body: renderNumberCollisionLetter(collision) });
   }
+  const read = new Set(input.threads.map((thread) => thread.id));
+  const held: HeldCollisionMark[] = [];
+  for (const key of said) {
+    if (live.has(key)) continue;
+    const halves = collisionKeyHalves(key);
+    // A line that is not this watchman's key is dropped rather than carried for ever: it
+    // names no halves, so no tick could ever disprove it, and the direction of dropping it
+    // is a letter too many rather than a collision nobody hears about.
+    if (halves === undefined) continue;
+    const unread = halves.filter((id) => !read.has(id)).sort();
+    if (unread.length > 0) held.push({ key, unread });
+  }
+  const kept = new Set([...live, ...held.map((mark) => mark.key)]);
   return {
     letters,
-    said: [...said].filter((key) => live.has(key)).sort(),
+    said: [...said].filter((key) => kept.has(key)).sort(),
+    held: held.sort((left, right) => left.key.localeCompare(right.key)),
   };
 };
 
@@ -297,6 +363,22 @@ export const describeUndeliveredNumberCollision = (input: {
  * So the cause is measured rather than assumed: the pairs that PASS the criterion are named
  * separately, and silence over them is the LOCK, not the criterion.
  */
+/**
+ * WHAT A TICK THAT COULD NOT SEE A PAIR IT HAS ALREADY TOLD ABOUT SAYS (thread 203). The mark
+ * is kept, and keeping it is a decision to write NO letter — which is precisely the class of
+ * decision this watchman is obliged to say out loud rather than make quietly.
+ *
+ * It is also the only line that names the blind tick at all: `loadThreads` reports the thread
+ * it failed to parse, but a courier that simply read a short list reports nothing, and without
+ * this line the two are indistinguishable in `daemon.log`.
+ */
+export const describeHeldNumberCollisions = (held: readonly HeldCollisionMark[]): string =>
+  `number-collision — ${held.length} mark(s) held over a tick that did not read every half: ${held
+    .map((mark) => `${mark.key} (unread: ${mark.unread.join(", ")})`)
+    .join(
+      "; ",
+    )}; a mark is lifted only by the pair being READ and failing the criterion, never by a tick that could not look`;
+
 export const describeQuietNumberCollisions = (input: {
   readonly found: readonly NumberCollision[];
   readonly ringing: readonly NumberCollision[];

@@ -7,7 +7,11 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { describeWorkspaceInstall, planWorkspaceInstall } from "./workspace-install.js";
+import {
+  describePlannedWorkspaceInstall,
+  describeWorkspaceInstall,
+  planWorkspaceInstall,
+} from "./workspace-install.js";
 
 const at = {
   role: "dev-core",
@@ -109,5 +113,36 @@ describe("what is printed AFTER the install says the outcome, not the intention"
     expect(line).toContain("FAILED");
     expect(line).toContain("ERR_PNPM_OUTDATED_LOCKFILE");
     expect(line).toContain("still behind");
+  });
+});
+
+describe("what a PLAN says where the real launch would have levelled (john 2026-09-13)", () => {
+  it("names both facts: that nothing was written, and what the launch that writes would do", () => {
+    const line = describePlannedWorkspaceInstall(at);
+
+    // The class john closed is a plan that says a refusal the real launch never sees, so
+    // the sentence is asserted on both halves: the mode and the outcome.
+    expect(line).toContain("this is a plan");
+    expect(line).toContain("a real launch would level");
+    expect(line).toContain("carry on");
+    expect(line).toContain(at.path);
+    expect(line).toContain("dev-core");
+  });
+
+  /**
+   * HALF (б): the parent of a background launch is not a plan. The levelling is not skipped
+   * for it — it is done by its child — so the two sentences must not be one, or the parent's
+   * terminal would carry a false statement about a tree that is about to be levelled.
+   */
+  it("the parent of a BACKGROUND launch is told apart: the child levels, and it is not called a plan", () => {
+    const line = describePlannedWorkspaceInstall({ ...at, background: true });
+
+    expect(line).toContain("this run only forks");
+    expect(line).toContain("the child of this background launch levels");
+    expect(line).toContain("under its own lock");
+    expect(line).toContain(at.path);
+    // The plan's own words are absent: they would say nobody is going to touch that tree.
+    expect(line).not.toContain("this is a plan");
+    expect(line).not.toContain("a real launch would level");
   });
 });

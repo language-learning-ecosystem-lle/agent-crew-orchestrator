@@ -414,4 +414,58 @@ describe("the watchman of thread numbers, end to end", () => {
     expect(second.out).toContain("1 still open (159)");
     expect(second.out).not.toContain("every half closed");
   });
+
+  /**
+   * THE SECOND ROAD THE REPEAT CAME BACK BY (thread 203) — and it is a test of the COURIER'S
+   * INPUT rather than of its writers: after the digest stopped eating the mark, the pair `077`
+   * of the consumer contour went on being announced, about once a day, for five days.
+   *
+   * WHAT THE TICK ACTUALLY HANDS THE LOCK. `found` is a fold over the threads `loadThreads`
+   * MANAGED TO PARSE — one it could not goes into `failures` and the rest are returned — so a
+   * half that is unreadable for one tick makes the pair vanish from the finding, which the
+   * lock read as "the pair stopped satisfying the criterion" and lifted the mark on. The next
+   * whole tick then announced the pair as new. Neither of the three cases above can see it:
+   * every one of them feeds a mail that parses.
+   *
+   * A `_meta.md` the loader refuses is the cheapest true instance of the class; the field one
+   * is a mail checkout read between `git fetch` and `git reset`, which no test can stage.
+   */
+  it("a tick that could not READ one half holds the mark — no second letter", () => {
+    const contest = contour();
+    contest.feed({ "159-a-thread-that-was-first": "closed", "159-a-namesake": "open" });
+    tick(contest);
+    expect(lettersIn(contest)).toBe(1);
+    const mark = "number:159:159-a-namesake,159-a-thread-that-was-first";
+    expect(marksIn(contest)).toEqual([mark]);
+
+    const metaPath = join(contest.mail, "agent-comms", "159-a-thread-that-was-first", "_meta.md");
+    const whole = readFileSync(metaPath, "utf8");
+    const push = (): void => {
+      git(contest.mail, "add", "agent-comms");
+      git(contest.mail, "commit", "-qm", "half");
+      git(contest.mail, "push", "-q", "origin", "comms");
+    };
+    writeFileSync(metaPath, "---\ntitle: T\nparticipants: dev-core\nstatus: bogus\n---\n");
+    push();
+
+    const blind = tick(contest);
+    expect(blind.code).toBe(0);
+    // THE HALF WAS TRULY UNREAD — asserted through the courier's own report of it, so that
+    // the case cannot quietly degenerate into "the feed parsed after all".
+    expect(blind.out).toContain("159-a-thread-that-was-first");
+    // No second letter, and the mark is still standing: silence here is the LOCK, and the
+    // tick says which silence it is rather than leaving the reader to guess.
+    expect(lettersIn(contest)).toBe(1);
+    expect(marksIn(contest)).toEqual([mark]);
+    expect(blind.out).toContain("mark(s) held over a tick that did not read every half");
+
+    // AND THE TICK THAT READS THE FEED WHOLE AGAIN IS SILENT. This is the assert the defect
+    // failed on: on the old lock the mark was gone by now and this tick wrote letter two.
+    writeFileSync(metaPath, whole);
+    push();
+    const back = tick(contest);
+    expect(back.code).toBe(0);
+    expect(lettersIn(contest)).toBe(1);
+    expect(marksIn(contest)).toEqual([mark]);
+  });
 });
