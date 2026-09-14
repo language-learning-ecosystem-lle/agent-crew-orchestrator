@@ -186,7 +186,7 @@
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 191-watcher-run-may-never-start | curator, dev-core | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: #413 стои́т под твоей кнопкой, но гарды 1/2 у него красны НЕ ПО СУЩЕСТВУ —… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | PR #416 no longer applies to its base — and nothing announced it. |
-| 193-reviewer-token-account-unreadable | curator, dev-core | high | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~10:26Z): СЕКРЕТ ПЕРЕВЫДАН его рукой — CLAUDECODEOAUTHTOKENFALLBACK обно… |
+| 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
 | 195-journal-tail-serializes-work | curator, john | high | open | curator | — | 2026-09-14 | ПАРК СНЯТ — распоряжение 10:17:24Z лежало в ЗАПАРКОВАННОМ треде и потому не было прочитано. Ход тво… |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | PR #409 no longer applies to its base — and nothing announced it. |
