@@ -794,6 +794,127 @@ dead_run_park_case() { # <номер состояния> <значение ЧУ�
 dead_run_park_case 14 "run:191" 910-фикстура-парка 911-stand-in-receiver
 escalation_case 15 "pr:191"  912-фикстура-парка 913-second-receiver
 
+# --- (17)–(22) ПЕРЕЕЗД НА ЗАПАСНУЮ УЧЁТКУ — ШАГОМ `limit` ИЗ `.yml` ------------------
+#
+# ЗАЧЕМ ЗДЕСЬ. Решение «основная ответила лимитом» живёт целиком в теле шага
+# `claude-review.yml` (выносить его в `.github/scripts/**` запрещено той же постановкой,
+# что и текст письма выше: вынос снял бы файл с гарда 4). Значит и гонять его можно
+# только ШАГОМ ЦЕЛИКОМ, на подложном транскрипте — иначе цена одной сверки это живой
+# круг ревью и сожжённая квота ВТОРОЙ учётки.
+#
+# ЧТО ИМЕННО ДЕРЖИТСЯ (тред `201-notifier-down`). Шаг приехал в #399 без прогона на
+# теле, и первым же полевым входом (прогон 34775456728) объявил переезд на круге,
+# который ВЫДАЛ вердикт: `rate_limit_event` пишется и в транскрипт пережившей лимит
+# сессии. Состояние (17) — этот вход дословно, и оно же мутационная проба всей правки:
+# снять вето `PRIMARY_OUTCOME` в `.yml` — и краснеет ровно (17).
+#
+# ЧТО ПОДЛОЖНОЕ: транскрипт, промпт, значение секрета и `GITHUB_OUTPUT`. Настоящее:
+# тело шага и `jq`. Сети и токенов состояниям не нужно.
+LIMIT_SH="$WORK/limit-step.sh"
+python3 - "${CODE_DIR}/.github/workflows/claude-review.yml" "$LIMIT_SH" "$WORK/limit.env" <<'PY'
+import sys, yaml
+NAME = "Лимит основной учётки — установить факт"
+wf = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+steps = [s for job in wf["jobs"].values() for s in job.get("steps", [])]
+found = [s for s in steps if s.get("name") == NAME]
+if len(found) != 1:
+    sys.exit(f"шаг '{NAME}' найден {len(found)} раз(а) — вынуть тело нечем")
+open(sys.argv[2], "w", encoding="utf-8").write(found[0]["run"])
+env = found[0].get("env") or {}
+with open(sys.argv[3], "w", encoding="utf-8") as fh:
+    fh.write("%s\n%s\n" % (env.get("PRIMARY_OUTCOME", ""), env.get("EXECUTION_FILE", "")))
+PY
+CURRENT_STATE="17-22"
+# Обратных кавычек в ДВОЙНЫХ кавычках здесь нет намеренно: `bash` исполняет их как
+# подстановку команды, и первая редакция этого блока напечатала «limit: command not
+# found» вместо имени шага — то есть отказ назвал бы не то, что чинят.
+[ -s "$LIMIT_SH" ] || fail 'тело шага `limit` не вынуто из yaml (нужен python3 с PyYAML)'
+
+# ПЕРЕМЕННЫЕ ШАГА — ОТДЕЛЬНОЙ СВЕРКОЙ, тот же класс «забытая строка в `env:`», что у
+# шага итога выше: состояния ниже подают оба значения сами, и без этого пина шаг,
+# потерявший строку `PRIMARY_OUTCOME`, прошёл бы сюиту зелёным, а в проде вето не
+# работало бы вовсе — то есть починка была бы только в сюите.
+echo '== (17-22) переезд на запасную учётку: шаг `limit` на подложном транскрипте'
+check "шаг получает исход ОСНОВНОГО шага" \
+  '${{ steps.reviewer.outcome }}' "$(sed -n 1p "$WORK/limit.env")"
+check "шаг получает транскрипт основного шага" \
+  '${{ steps.reviewer.outputs.execution_file }}' "$(sed -n 2p "$WORK/limit.env")"
+
+# Транскрипты формой из живых артефактов: (а) переживший лимит успешный круг прогона
+# 34775456728 — запись `rate_limit_event` есть, и вердикт выдан; (б) смерть лимитом
+# прогона 34755949970 (#379) — та, ради которой переезд и заводился.
+printf '[{"type":"system","subtype":"init"},{"type":"rate_limit_event","status":"resumed"},{"type":"result","subtype":"success","is_error":false,"result":"verdict: approve"}]\n' > "$WORK/exec-survived.json"
+printf '[{"type":"system","subtype":"init"},{"type":"result","subtype":"success","is_error":true,"result":"You'"'"'ve hit your session limit · resets 1:40pm (UTC)"}]\n' > "$WORK/exec-dead.json"
+printf '[{"type":"system","subtype":"init"},{"type":"result","subtype":"success","is_error":true,"result":"Reached maximum turns"}]\n' > "$WORK/exec-turns.json"
+printf 'РЕВЬЮЕР: промпт основного шага, байт в байт.\n' > "$WORK/claude-prompt.txt"
+
+LIMIT_OUT=""
+limit_case() { # <номер> <что за состояние> <outcome> <транскрипт> <секрет> <промпт>
+  note_state "$1"
+  echo "== ($1) $2"
+  local arena="$WORK/limit-$1"
+  mkdir -p "$arena"
+  LIMIT_OUT="$arena/out.txt"
+  : > "$LIMIT_OUT"
+  (
+    cd "$arena" || exit 3
+    GITHUB_OUTPUT="$LIMIT_OUT" RUNNER_TEMP="$arena" \
+    PRIMARY_OUTCOME="$3" EXECUTION_FILE="$4" FALLBACK_TOKEN="$5" PROMPT_FILE="$6" \
+      bash "$LIMIT_SH"
+  ) > "$arena/step.log" 2>&1
+  # ШАГ НЕ КРАСИТ ПРОГОН НИКОГДА — это его собственное обещание (шапка шага), и оно
+  # проверяется на КАЖДОМ состоянии, а не декларируется в комментарии.
+  check "шаг вышел нулём — прогон он не красит" "0" "$?"
+}
+out_of() { # <ключ выхода>
+  sed -n "s/^$1=//p" "$LIMIT_OUT" | sed -n 1p
+}
+
+# (17) ПОЛЕВОЙ ВХОД 2026-09-13: круг лимит ПЕРЕЖИЛ и выдал вердикт.
+limit_case 17 "основной шаг зелен, а в транскрипте rate_limit_event: переезда НЕТ" \
+  success "$WORK/exec-survived.json" "секрет-есть" "$WORK/claude-prompt.txt"
+check "переезда нет" "0" "$(out_of fallback)"
+check "лимит НЕ объявлен — иначе письмо соврёт про чужую учётку" "0" "$(out_of hit)"
+check "причина названа исходом основного шага" "да" \
+  "$(file_probe -F 'outcome=success' "$LIMIT_OUT")"
+check "промпт в выходы не уехал" "нет" "$(file_probe -F 'prompt<<' "$LIMIT_OUT")"
+
+# (18) ТО, РАДИ ЧЕГО ПЕРЕЕЗД ЗАВОДИЛСЯ: основная умерла лимитом.
+limit_case 18 "основной шаг красен и транскрипт несёт лимит: ПЕРЕЕЗД" \
+  failure "$WORK/exec-dead.json" "секрет-есть" "$WORK/claude-prompt.txt"
+check "переезд объявлен" "1" "$(out_of fallback)"
+check "лимит объявлен" "1" "$(out_of hit)"
+check "признак назван машинным полем" "да" "$(file_probe -F 'evidence=result последней записи несёт текст лимита' "$LIMIT_OUT")"
+check "промпт основного шага уехал выходом" "да" "$(file_probe -F 'РЕВЬЮЕР: промпт основного шага' "$LIMIT_OUT")"
+check "транскрипт основного шага сохранён до запуска запасного" "да" \
+  "$(file_probe -F 'reviewer-execution-primary.json' "$LIMIT_OUT")"
+
+# (19)–(20) ЛИМИТ ЕСТЬ, А ПЕРЕЕХАТЬ НЕ НА ЧТО — оба отказа обязаны быть ПО ИМЕНИ.
+limit_case 19 "лимит есть, секрета запасной учётки нет: переезда нет, причина названа" \
+  failure "$WORK/exec-dead.json" "" "$WORK/claude-prompt.txt"
+check "переезда нет" "0" "$(out_of fallback)"
+check "лимит объявлен — письмо обязано сказать о нём" "1" "$(out_of hit)"
+check "причина называет ИМЯ секрета" "да" \
+  "$(file_probe -F 'CLAUDE_CODE_OAUTH_TOKEN_FALLBACK' "$LIMIT_OUT")"
+
+limit_case 20 "лимит есть, промпта основного шага нет: переезда нет, причина названа" \
+  failure "$WORK/exec-dead.json" "секрет-есть" "$WORK/нет-такого-файла.txt"
+check "переезда нет" "0" "$(out_of fallback)"
+check "причина называет ПУТЬ непрочитанного промпта" "да" \
+  "$(file_probe -F 'нет-такого-файла.txt' "$LIMIT_OUT")"
+
+# (21)–(22) ЧУЖОЙ ОТКАЗ ЗАПАСНУЮ УЧЁТКУ НЕ ЖЖЁТ (требование john №1).
+limit_case 21 "красный шаг без признака лимита (обрыв по ходам): переезда нет" \
+  failure "$WORK/exec-turns.json" "секрет-есть" "$WORK/claude-prompt.txt"
+check "переезда нет" "0" "$(out_of fallback)"
+check "лимит не объявлен" "0" "$(out_of hit)"
+
+limit_case 22 "транскрипта нет вовсе: переезда нет, причина названа" \
+  failure "" "секрет-есть" "$WORK/claude-prompt.txt"
+check "переезда нет" "0" "$(out_of fallback)"
+check "причина названа отсутствием транскрипта" "да" \
+  "$(file_probe -F 'транскрипта основного шага нет' "$LIMIT_OUT")"
+
 if [ "$FAILED" = "0" ]; then
   echo "интеграционный прогон доставки: ВСЕ СОСТОЯНИЯ ПРОШЛИ — $(printf '%s' "$STATES" | wc -w) шт."
 else
