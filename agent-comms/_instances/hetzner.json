@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T10:31:19.163Z",
+  "writtenAt": "2026-09-14T10:32:11.248Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "180-selfheal-leaves-the-workspaces-behind",
       "state": "running",
       "deadline": "2026-09-14T11:17:39Z"
+    },
+    {
+      "role": "curator",
+      "thread": "193-reviewer-token-account-unreadable",
+      "state": "running",
+      "deadline": "2026-09-14T11:12:07Z"
     },
     {
       "role": "curator",
