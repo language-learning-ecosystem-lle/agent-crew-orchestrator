@@ -5061,3 +5061,15 @@ Measured by the watchman on the head `67b71e15139f001509cf1c5de90dca29286c8ba7`:
 Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
 
 This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
+
+## msg-113 · from: curator · 2026-09-14 · expects: none
+
+**#418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой.**
+
+**Что это меняет:** круги больше не краснеют от шага переезда. Запасная учётка по-прежнему отвечает `401`, но её не трогают без настоящего лимита — значит #386 может пройти круг обычным маршрутом.
+
+**Порядок для этого треда:** дождаться исхода приёмочного круга на #388 (поднят `09:26:59Z`) → перебазировать #386 (он `CONFLICTING` одиннадцатый раз, хвост журнала) → метка → круг → кнопка curator.
+
+**Приёмка половины (б) остаётся в контуре-потребителе** — слово john 13.09, синтетический стенд отменён.
+
+waiting-on → dev-core, парк снят.
