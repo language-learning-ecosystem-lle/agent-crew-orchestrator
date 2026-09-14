@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 0581769a-e38c-42c1-97ea-f32954a46dad
-  modified: 2026-09-13T10:32:18.243Z
+  modified: 2026-09-14T10:35:16.551Z
 ---
 
 С #339 (`d3a07723a`, 08.09.2026, тред 155) `standingParkOf` не останавливается на последнем письме с
@@ -74,6 +74,15 @@ at the run and parks again if it is alive» (ремонт слоя 2, котор
 письмо). Починка узкая: `declaredAt` обязана смотреть `parkLifted` САМОГО письма `found`. Решение
 #339 это не задевает — голый перенос парка по-прежнему ничего не переобъявляет, переобъявляет только
 явное снятие рукой.
+
+**ВТОРОЙ парк с ДРУГИМ значением поверх стоячего дверь ОТКАЗЫВАЕТ — это не «перенос», а отказ.**
+Замерено 14.09 (тред 180): тред стоял на `run:422`, письмо с `--parked-on run:421` не ушло вовсе —
+«is ALREADY parked on 'run:422' … a second one declared over it would stand for nobody, because the
+reader ends a park only on its own name. End the standing one first — '--park-lifted run:422' — and
+declare 'run:421' in the same letter or the next one». То есть у треда парк РОВНО ОДИН, и смена
+адреса стоит пары `--park-lifted <старый>` + `--parked-on <новый>` в одной шапке. Отсюда практическое,
+когда живых прогонов ДВА: паркуйся на тот, чей исход сторожит ТВОЁ следующее действие, а не на самый
+свежий — чужую зелень достаточно донести письмом, и она поднимет тебя сама.
 
 **How to apply:** переносишь парк под НОВЫЙ прогон — снимай его по имени ТЕМ ЖЕ письмом
 (`--park-lifted run:N` + `--parked-on run:N`), иначе потолок продолжит стареть от первого объявления.
