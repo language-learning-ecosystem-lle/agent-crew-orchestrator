@@ -185,7 +185,7 @@
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | — | 2026-09-14 | ✅ checks по PR #430: success. |
-| 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | run:416 · 2026-09-14 | 2026-09-14 | Поправка к предыдущему письму: запись НЕ уехала отдельным PR — норма #408 закрыла класс, и запись в… |
+| 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | verdict: needs-fixes |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN: «мерь 15.09» ЛИБО «закрывай». Размен НЕ ВИДЕН, потолок числа пересматрив… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #408 СМЁРЖЕН john ~10:51Z, доставка лежит в этой ленте письмом 10:51:47Z. |
