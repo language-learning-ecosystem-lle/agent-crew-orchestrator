@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T16:13:31.806Z",
+  "writtenAt": "2026-09-14T16:14:30.342Z",
   "roles": [
     "curator",
     "dev-core",
@@ -29,6 +29,12 @@
       "thread": "204-footprint-counts-a-test-file",
       "state": "running",
       "deadline": "2026-09-14T16:51:50Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "209-notifier-down",
+      "state": "running",
+      "deadline": "2026-09-14T17:14:26Z"
     }
   ]
 }
