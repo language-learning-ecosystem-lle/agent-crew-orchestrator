@@ -30,7 +30,7 @@
 - [Системный пользователь не читает чужой аккаунт](system-user-role-cannot-read-shared-account.md)
 - [Решение может предполагать несуществующий механизм](decision-may-presuppose-a-missing-mechanism.md) — сверяй кодом/`usage` В ОБЕ стороны
 - [Расширение предмета внутри PR двери — по двум проверкам](scope-widening-inside-a-door-pr.md) — дверь отказала бы И норм не вводит
-- [Названный случай — образец, а не класс](reported-instance-is-a-sample.md)
+- [Названный случай — образец, а не класс](reported-instance-is-a-sample.md); [решённый класс проверяют во ВСЕХ ветках предиката](decided-class-is-checked-in-every-branch.md) — и в словах, которые код печатает о своей мере
 - [Машинный конфиг — в `$HOME`, не в репозитории](machine-config-is-instance-file.md)
 - [Хвост PR требует своего треда](pr-tail-sweep-needs-the-owning-thread.md)
 - [Переезд шага отменяет объявленное исключение](moved-step-repeals-declared-exception.md) — приёмка читается КОДОМ ВЫХОДА
