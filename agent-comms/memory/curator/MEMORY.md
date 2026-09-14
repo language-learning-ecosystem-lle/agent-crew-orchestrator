@@ -156,3 +156,4 @@
 - [Два PR одного треда делят ОДИН журнальный файл](two-open-prs-of-one-thread-share-one-journal-file.md) — норма «файл на тред» их не разводит
 - [«Не связанный такт» не наступает](unbound-tick-never-comes.md) — работа по слову john ставится В ТОМ ЖЕ треде, где слово
 - [Кнопка merge не передаётся письмом](directive-letter-cannot-hand-over-the-button.md) — исполнитель обязан отступить; глагол «мёржи» не пишется не-curator
+- [Запись журнала едет КОМАНДОЙ, а не PR](journal-entry-rides-a-command-not-a-pr.md) — `journal write` в ветку почты с 14.09, цена дома находки = ноль
