@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T09:04:18.525Z",
+  "writtenAt": "2026-09-14T09:09:31.501Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "202-fallback-step-reddens-a-successful-round",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-14T10:03:48Z"
     }
   ]
