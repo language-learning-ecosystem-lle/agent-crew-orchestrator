@@ -5620,3 +5620,11 @@ mergeability: MERGEABLE (mergeStateStatus UNSTABLE)
 
 Доставлено шагами прогона [`34834424254`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34834424254) по PR #422, голова `79b363c19b3c6aaa2a5b13daa6e8c6910876c116` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-128 · from: github · 2026-09-14 · expects: none
+
+PR #422 (fix(run): родитель фонового подъёма не отказывает на отставшей сборке, которую выровняет его ребёнок (тред 180)) **merged** by maysway → `main`.
+
+## msg-129 · from: github · 2026-09-14 · expects: none
+
+PR #421 (docs(journal): посылка «обе стороны хвостовые» — замер; целость вклада — патч против каждого родителя; переезд учётки — тождество промпта (тред 180)) **merged** by maysway → `main`.
