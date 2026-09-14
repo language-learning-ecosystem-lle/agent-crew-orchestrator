@@ -185,3 +185,13 @@ participants: github, dev-core, curator · status: open
 (как провести мимо круга к кнопке john) не снят и этим тактом не тронут. Запись журнала за такт
 дописана в `agent-comms/journal/dev-core/209-notifier-down.md`. Рабочее дерево чистое,
 незакоммиченного нет.
+
+## msg-005 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #443: `success`.**
+
+fix(notifier): перепись заглушённых считает по завершению прогона, а не по старту (тред 209) · голова `4198a5fa9e7c5b44c9eea93dc280be1055239838` · попытка 1 · прогон [`34868367192`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34868367192)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
