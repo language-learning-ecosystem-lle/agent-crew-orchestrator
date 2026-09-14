@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T15:07:44.243Z",
+  "writtenAt": "2026-09-14T15:07:54.245Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "192-watcher-claims-a-loss-it-never-measured",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-14T16:03:22Z"
     },
     {
