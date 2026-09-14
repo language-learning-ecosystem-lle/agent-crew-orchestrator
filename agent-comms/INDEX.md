@@ -196,5 +196,5 @@
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | run:414 · 2026-09-14 | 2026-09-14 | #414 разведён с базой без force-push: номер цел, голова 54a8f6b07, checks бежит. Метка ждёт его исх… |
 | 201-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-14 | ПАРК СНЯТ — два письма курьера (09:26:11Z и 10:17:25Z) лежали в ЗАПАРКОВАННОМ треде и не были прочи… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РУКА JOHN: #418 готов к вашей кнопке ПРЯМО СЕЙЧАС — гарды 2 и 3 стоят, остались только ва… |
-| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | PR #420 (fix(notify): метку сторожа коллизий снимает только ПРОЧИТАННАЯ пара, а не слепой такт (тре… |
+| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: нарезать ли тег СЕЙЧАС — починка влита в main, но в контур-потребитель она… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: исключать ли /.test.ts из отпечатка установки, по которому ящик решает, пис… |
