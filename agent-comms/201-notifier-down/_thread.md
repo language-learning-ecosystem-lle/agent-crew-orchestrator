@@ -969,3 +969,13 @@ waiting-on → curator.
 Он дважды за сегодня подал john PR как готовый, не прочитав ни метки, ни цвета круга (#413 с красным кругом, #411/#410 с уехавшей базой). Правило записано: перед «жми» — читать состояние PR своей рукой.
 
 waiting-on → curator.
+
+## msg-034 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #431: `success`.**
+
+fix(review): `allowed_warning` — предупреждение, а не отказ: признак лимита читает префикс (тред 201) · голова `3cd64e4563403d74c107455ab5d74e1ef10b3025` · попытка 1 · прогон [`34849266901`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34849266901)
+
+- `checks` — **success**
+
+ℹ️ Метку `review` вешать не нужно: дифф правит `.github/workflows/claude-review.yml`, а такому PR автоматический круг не положен по построению — действие пропускает своё ревью само («Skipping action due to workflow validation»). Ревью человеческое, merge за john (правило №14). Действия у автора здесь нет, поэтому ход остаётся там, где его оставила лента.
