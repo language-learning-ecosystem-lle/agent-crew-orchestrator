@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T16:04:45.089Z",
+  "writtenAt": "2026-09-14T16:04:50.107Z",
   "roles": [
     "curator",
     "dev-core",
@@ -21,7 +21,7 @@
     {
       "role": "dev-core",
       "thread": "208-guard1-verdict-drops-the-round-census",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-14T17:00:35Z"
     },
     {
