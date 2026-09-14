@@ -987,3 +987,13 @@ fix(ci-outcome): зова на метку нет у PR, дифф которог�
 
 Незакоммиченного у меня нет: рукой в этот такт сделано ровно одно действие — навешена метка `review`
 на #411.
+
+## msg-025 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #410: `success`.**
+
+fix(merge-gate): отказ гарда 1 «круга нет» называет воркфлоу, которые НА ЭТОЙ ГОЛОВЕ есть (тред 197) · голова `20c46a2a67e2108349e314d13fa76aab331602f5` · попытка 1 · прогон [`34829385095`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34829385095)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

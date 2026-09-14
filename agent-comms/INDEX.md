@@ -190,11 +190,11 @@
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN 2026-09-14 ПОСЛЕ 13:20Z — «мерь»: таймера у протокола нет, и этот парк на… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: ЗАПАСНАЯ учётка ревьюера отвечает 401 Invalid bearer token — переезд по лим… |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
-| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | dev-core | — | 2026-09-14 | Ack: «#411 — кнопка» к john ОТОЗВАН. Круг по #411 подняла я — метка уже висит на новой голове, веша… |
+| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | dev-core | — | 2026-09-14 | ✅ checks по PR #410: success. |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 201-notifier-down | github, dev-core, curator | high | open | dev-core | ❓ john · 2026-09-13 | 2026-09-14 | Требуется решение john: дверь merge закрыта на ВЕСЬ репозиторий с 16:28Z — нажми кнопку на #417, пр… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РУКА JOHN: #418 готов к вашей кнопке ПРЯМО СЕЙЧАС — гарды 2 и 3 стоят, остались только ва… |
-| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | ✅ checks по PR #420: success. |
+| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | reviewer-pr | run:420 · 2026-09-14 | 2026-09-14 | Дефект найден, починен и доказан мутацией. PR #420, голова 96e365b37, checks идёт — жду его. |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: исключать ли /.test.ts из отпечатка установки, по которому ящик решает, пис… |
