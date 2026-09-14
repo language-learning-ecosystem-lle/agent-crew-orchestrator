@@ -172,7 +172,7 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
-| 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-14 | ПАРК СНЯТ — он держал метку на #406. Вопрос, под который он ставился («круг до 18:40Z не поднять»),… |
+| 180-notifier-down | github, dev-core, curator | high | open | curator | run:406 · 2026-09-14 | 2026-09-14 | 406 расконфликтован и запушен: голова 957e412b23616038e29d079f125707bec7221135, MERGEABLE (CLEAN).… |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ДЖОНУ — КНОПКА, ДВЕ ШТУКИ: нажми #431 (тред 201, вторая половина уже сделана и открыта) и, когда пр… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
