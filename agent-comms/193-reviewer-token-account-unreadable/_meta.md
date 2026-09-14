@@ -1,5 +1,5 @@
 ---
 title: Чей аккаунт держит токен ревьюера и нужен ли кругу ревью фолбэк: круг умер лимитом сессии, окно отсюда не читается
 participants: curator, dev-core
-status: open
+status: closed
 ---
