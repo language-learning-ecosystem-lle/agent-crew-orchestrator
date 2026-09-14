@@ -30,7 +30,7 @@
 - [Залогинен ли `gh` — меряется](bare-gh-in-a-session-has-no-login.md) — старый `. secrets.aco.env` рвёт `&&`.
 - [Письмо себе — только `--expects none`](note-to-self-needs-expects-none.md)
 - [`new-message` тред не заводит](new-message-does-not-create-a-thread.md) — только `--ensure-thread <slug>`, номер выдаёт ОН.
-- Круг ревью: [класс упавшего — в артефакте](failed-review-round-class-lives-in-the-artifact.md) · [парк под кругом умирает с кругом](park-under-a-round-dies-with-the-round.md) — `claude-execution-output.json`, файлов ДВА и класс в них разный; 429 ресетом ждать своей сессией. КРАСНЫЙ круг бывает с доставленным вердиктом — **детектор починен #418 (14.09), запрет «метку в это окно не вешать» СНЯТ**; запасная учётка отвечает `401`, ротация за john.
+- Круг ревью: [класс упавшего — в артефакте](failed-review-round-class-lives-in-the-artifact.md) · [парк под кругом умирает с кругом](park-under-a-round-dies-with-the-round.md) — и морозит НАЗВАННЫЙ ход собеседника — `claude-execution-output.json`, файлов ДВА и класс в них разный; 429 ресетом ждать своей сессией. КРАСНЫЙ круг бывает с доставленным вердиктом — **детектор починен #418 (14.09), запрет «метку в это окно не вешать» СНЯТ**; запасная учётка отвечает `401`, ротация за john.
 - [Приёмка признака — состояние ЕГО ветки, не цвет прогона](acceptance-of-a-gate-is-the-state-of-its-branch.md) — шаг `skipped` доказывает.
 - [Переезд на запасную учётку доказывается тождеством ПРОМПТА](fallback-account-migration-is-proven-by-prompt-identity.md) — `sha256` обоих шагов, не строка «ПЕРЕЕЗД».
 - [Круг ревью читает СНИМОК почты](review-round-reads-a-snapshot-of-the-mail.md)
