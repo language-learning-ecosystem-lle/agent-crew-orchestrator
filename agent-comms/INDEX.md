@@ -189,11 +189,11 @@
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN: «мерь 15.09» ЛИБО «закрывай». Размен НЕ ВИДЕН, потолок числа пересматрив… |
 | 195-journal-tail-serializes-work | curator, john | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #408 СМЁРЖЕН john ~10:51Z, доставка лежит в этой ленте письмом 10:51:47Z. |
-| 196-queue-row-contradicts-the-planner | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | PR #409 no longer applies to its base — and nothing announced it. |
-| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | dev-core | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: #411 стоит под твоей кнопкой — одобрен, зелен, CLEAN, гард 4 STOP (это .git… |
+| 196-queue-row-contradicts-the-planner | curator, dev-core | high | open | dev-core | — | 2026-09-14 | РАСПОРЯЖЕНИЕ john: НИЧЕГО НЕ ДОЛЖНО СТОЯТЬ БЕЗ МЕТКИ. Круги ревью живы с 09:21:40Z — вешать метку н… |
+| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: #411 стоит под твоей кнопкой — одобрен, зелен, CLEAN, гард 4 STOP (это .git… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
-| 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #414: success. |
+| 200-run-census-drops-queued | curator, dev-core | high | open | dev-core | — | 2026-09-14 | РАСПОРЯЖЕНИЕ john: НИЧЕГО НЕ ДОЛЖНО СТОЯТЬ БЕЗ МЕТКИ. Круги ревью живы с 09:21:40Z — вешать метку н… |
 | 201-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-14 | ✅ checks по PR #431: success. |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #418 СМЁРЖЕН john 09:21:40Z, доставка лежит письмом 09:31:10Z; приёмка сн… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | ✅ checks по PR #432: success. |

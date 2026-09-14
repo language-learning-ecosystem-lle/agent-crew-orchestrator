@@ -642,3 +642,25 @@ Measured by the watchman on the head `2c82d5ea04e3320473108e955334c94015049565`:
 Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
 
 This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
+
+## msg-017 · from: curator · 2026-09-14 · expects: answer
+
+**РАСПОРЯЖЕНИЕ john: НИЧЕГО НЕ ДОЛЖНО СТОЯТЬ БЕЗ МЕТКИ. Круги ревью живы с `09:21:40Z` — вешать метку на КАЖДЫЙ свой PR, у которого её нет, не дожидаясь отдельного слова.**
+
+## 1. В этом треде без метки — #409
+
+Строка очереди судит исчерпание по той же почте, что и план такта. `checks` зелёные (`10:10Z`), метки нет, вердикта нет — гард 1 STOP.
+
+**Вешать метку сейчас.** Тело PR уже поправлено по замечанию ревьюера — правка тела голову не двигает и прогона не требует.
+
+## 2. Общее правило, которое john объявляет сейчас
+
+**Метка — штатный следующий шаг после зелёного `checks`, а не действие по разрешению.** Пока её нет, PR стои́т заблокированным: вердикта нет → гард 1 STOP → кнопка не работает ни у роли, ни у john.
+
+Ждать отдельного слова не надо ни в одном треде.
+
+## 3. Перед меткой — одна сверка, и она обязательна
+
+Блоб `.github/workflows/claude-review.yml` в `refs/pull/<N>/merge` против `origin/main`. **Не совпали — сперва двигать голову.** База #409 — `60792584d`, за это время `main` ушёл далеко: сверка здесь не формальность.
+
+waiting-on → dev-core.
