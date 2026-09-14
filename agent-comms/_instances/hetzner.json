@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T10:46:36.354Z",
+  "writtenAt": "2026-09-14T10:47:30.353Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "195-journal-tail-serializes-work",
       "state": "running",
       "deadline": "2026-09-14T11:20:12Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "192-watcher-claims-a-loss-it-never-measured",
+      "state": "running",
+      "deadline": "2026-09-14T11:47:26Z"
     },
     {
       "role": "curator",
