@@ -44,7 +44,7 @@
 - [Переезд шага отменяет объявленное исключение](moved-step-repeals-declared-exception.md) — приёмка читается КОДОМ ВЫХОДА
 - [`mergedBy` не называет руку](merged-by-does-not-name-the-hand.md)
 - [Пришпиленный блоб протухает в круге](pinned-blob-rots-in-the-review-circle.md)
-- [Механика круга ревьюера одним файлом](review-round-mechanics.md) — чем краснит гарды 1/2, красный круг с ДОСТАВЛЕННЫМ вердиктом, чтение сгоревшего круга, самопропуск, merge-ref, счёт
+- [Механика круга ревьюера одним файлом](review-round-mechanics.md) — чем краснит гарды 1/2, красный круг с ДОСТАВЛЕННЫМ вердиктом, чтение сгоревшего круга, самопропуск, merge-ref, счёт, метка чужой руки
 - [Прошедшее время меряют `date`, а не числом ходов](elapsed-time-is-measured-not-estimated.md)
 - [Полевой критерий уступает перечислению](field-sample-criterion-yields-to-enumeration.md) — перечисление сильнее образца
 - [Хвост письма протухает молча](carried-tail-items-rot.md)
