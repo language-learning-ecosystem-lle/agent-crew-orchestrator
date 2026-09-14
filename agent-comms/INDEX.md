@@ -194,5 +194,6 @@
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: кольца нет — ни #417, ни #418 круга ревью НЕ требуют по построению, и развя… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge не работает НИ У КОГО, и её починка — #417/#418 — тоже за кноп… |
-| 201-notifier-down | github, dev-core, curator | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-13 | Требуется решение john: дверь merge закрыта на ВЕСЬ репозиторий с 16:28Z — нажми кнопку на #417, пр… |
+| 201-notifier-down | github, dev-core, curator | normal | open | dev-core | ❓ john · 2026-09-13 | 2026-09-14 | Требуется решение john: дверь merge закрыта на ВЕСЬ репозиторий с 16:28Z — нажми кнопку на #417, пр… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РУКА JOHN: #418 готов к вашей кнопке ПРЯМО СЕЙЧАС — гарды 2 и 3 стоят, остались только ва… |
+| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | open | — | — | — | — |
