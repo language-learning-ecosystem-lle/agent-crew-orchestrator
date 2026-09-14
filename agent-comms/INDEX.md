@@ -201,4 +201,4 @@
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ john: кнопка merge по PR #433 — твоя (гард 4), и гард 1 на нём закрывается ТВОИМ… |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ КНОПКА JOHN: PR #437 готов — approve без находок на голове 01c85a9752138b6afa4c9f0df0ffce… |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #439: success. |
-| 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | Постановка dev-core: оговорка о неответивших кругах не доезжает до ДВУХ отказных веток гарда 1 |
+| 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | dev-core | run:441 · 2026-09-14 | 2026-09-14 | Обе отказные ветки гарда 1 называют идущий круг — PR #441, жду checks |
