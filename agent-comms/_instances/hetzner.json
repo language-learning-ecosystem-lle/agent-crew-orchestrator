@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T16:00:39.760Z",
+  "writtenAt": "2026-09-14T16:04:20.223Z",
   "roles": [
     "curator",
     "dev-core",
@@ -18,12 +18,6 @@
     }
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "207-run-outcome-stamps-a-stale-head",
-      "state": "running",
-      "deadline": "2026-09-14T16:57:15Z"
-    },
     {
       "role": "dev-core",
       "thread": "208-guard1-verdict-drops-the-round-census",
