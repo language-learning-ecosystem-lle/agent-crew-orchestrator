@@ -422,6 +422,34 @@ describe("the successor tells the standing address what the restart cost — thr
   );
 
   it(
+    "a restart that moved ONLY A TEST FILE writes no letter either (thread 204)",
+    () => {
+      // The whole checkout is executable in this fixture, which is the shape the narrowing
+      // could most easily miss: before john's decision (2026-09-14) this diff took the whole
+      // list wholesale and cost a letter and a turn of a role. What the seam adds over the
+      // unit: the tick reads THIS path out of git itself, across the real pair of shas.
+      const { repo, cli } = contour([DEV_CORE, GITHUB, CURATOR, JOHN]);
+      restartAcross(
+        repo,
+        join("src", "moved.test.ts"),
+        "import { it } from 'vitest';\nit('moves nothing the daemon runs', () => {});\n",
+      );
+
+      const said = tick(cli, repo);
+
+      expect(said).toContain("letter — WITHHELD");
+      expect(said).toContain("NOTHING THIS DAEMON EXECUTES");
+      // The reader of the log line learns WHY a test did not count, without the source.
+      expect(said).toContain("'*.test.ts' files excluded");
+      expect(receiverOf(repo)).toBeUndefined();
+      expect(lettersIn(repo)).toBe(0);
+      expect(ledgerOf(repo)).toBeUndefined();
+      expect(turnsOf(repo, "curator")).not.toContain(SELF_RESTART_SLUG);
+    },
+    3 * HANG_CEILING_MS,
+  );
+
+  it(
     "a restart that moved the PACKAGE still writes the letter, and it names what moved",
     () => {
       const { repo, cli } = contour([DEV_CORE, GITHUB, CURATOR, JOHN]);

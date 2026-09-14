@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { type SelfRestartEvent, type SelfRestartMemory, selfRestartEvent } from "./self-restart.js";
+import {
+  INSTALL_INPUTS,
+  type SelfRestartEvent,
+  type SelfRestartMemory,
+  selfRestartEvent,
+} from "./self-restart.js";
 import {
   describeDeliveredSelfRestartLetter,
   describeSuppressedSelfRestartLetter,
@@ -314,6 +319,19 @@ describe("executableFootprint — what the box runs, in both shapes it comes in"
   it("a package root that IS the checkout makes every path of it executable", () => {
     expect(executableFootprint({ checkout: "/srv/aco", packageDir: "/srv/aco" }).whole).toBe(true);
   });
+
+  it("every shape that executes something SAYS the tests are not counted", () => {
+    // A narrowing the reader cannot check is none: `means` is what the withheld line prints,
+    // and after john's decision (thread 204) the old text claimed more than the code measures.
+    // The two shapes that execute NO path of the checkout are silent about it on purpose —
+    // there the footprint is the manifests, and no manifest is a test.
+    for (const footprint of [
+      source,
+      executableFootprint({ checkout: "/srv/aco", packageDir: "/srv/aco" }),
+      executableFootprint({ checkout: "/srv/aco", entry: "/srv/aco/src/cli.ts" }),
+    ])
+      expect(footprint.means, footprint.means).toContain("'*.test.ts' files excluded");
+  });
 });
 
 describe("executableChange — the measure the narrowing stands on", () => {
@@ -348,6 +366,62 @@ describe("executableChange — the measure the narrowing stands on", () => {
     expect(executableChange({ footprint: installed, changed: ["docs/pin.md"] }).kind).toBe(
       "untouched",
     );
+  });
+
+  /**
+   * THE NARROWING JOHN DECIDED (2026-09-14, thread `204-footprint-counts-a-test-file`): a
+   * path ending in `.test.ts` is not the footprint, in ANY shape of it. The field case it
+   * answers cost 841 s of standing queue, one letter and a whole turn of a role for
+   * `reviewer-limit-detector.test.ts` — a file the daemon never loads.
+   */
+  const tests = [
+    "packages/agent-protocol/src/orchestrator/self-restart-letter.test.ts",
+    "packages/agent-protocol/src/roles/reviewer-limit-detector.test.ts",
+  ];
+
+  it("a diff of TESTS ONLY moves nothing this daemon executes", () => {
+    expect(executableChange({ footprint: source, changed: tests })).toEqual({ kind: "untouched" });
+  });
+
+  it("…and that holds where the checkout ITSELF is the package — `whole` narrows too", () => {
+    // The dangerous half of the decision: `whole: true` took the diff wholesale, so a
+    // circuit whose package root IS its checkout would go on paying a letter for a test.
+    const bundled = executableFootprint({ checkout: "/srv/aco", packageDir: "/srv/aco" });
+    expect(bundled.whole).toBe(true);
+    expect(executableChange({ footprint: bundled, changed: ["src/cli.test.ts"] })).toEqual({
+      kind: "untouched",
+    });
+  });
+
+  it("a process test is the same class — one suffix covers both names", () => {
+    expect(
+      executableChange({
+        footprint: source,
+        changed: ["packages/agent-protocol/src/orchestrator/self-restart.process.test.ts"],
+      }),
+    ).toEqual({ kind: "untouched" });
+  });
+
+  it("the narrowing does NOT swallow the source beside the test — and names only the source", () => {
+    const verdict = executableChange({
+      footprint: source,
+      changed: [...tests, "packages/agent-protocol/src/orchestrator/self-restart-letter.ts"],
+    });
+    expect(verdict.kind).toBe("changed");
+    if (verdict.kind === "changed")
+      expect(verdict.paths).toEqual([
+        "packages/agent-protocol/src/orchestrator/self-restart-letter.ts",
+      ]);
+  });
+
+  it("no manifest can fall through the narrowing — pinned over the LIST, not one name", () => {
+    // Safe by construction today, and the assertion is what keeps it safe if a fourth
+    // install input is ever added: the test gate runs BEFORE the manifest question.
+    for (const manifest of INSTALL_INPUTS)
+      expect(
+        executableChange({ footprint: source, changed: [manifest] }),
+        `'${manifest}' stopped counting as a change of the executable`,
+      ).toEqual({ kind: "changed", paths: [manifest] });
   });
 
   it("a diff nobody could read is UNMEASURED and never 'nothing changed'", () => {
