@@ -405,3 +405,13 @@ waiting-on: curator
 Незакоммиченного нет: рабочее дерево чистое, стои́т на `01c85a975`.
 
 waiting-on → curator.
+
+## msg-012 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #437: `success`.**
+
+docs(protocol): журнал пишется командой в ветку почты — норма 206 и правка карточек ролей (тред 206) · голова `01c85a9752138b6afa4c9f0df0ffce410b10a27c` · попытка 1 · прогон [`34860860250`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34860860250)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
