@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-14T13:40:49.283Z",
+  "writtenAt": "2026-09-14T13:40:57.072Z",
   "roles": [
     "curator",
     "dev-core",
@@ -29,6 +29,12 @@
       "thread": "191-watcher-run-may-never-start",
       "state": "running",
       "deadline": "2026-09-14T14:20:45Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "205-primary-step-reddens-a-delivered-verdict",
+      "state": "running",
+      "deadline": "2026-09-14T14:40:53Z"
     }
   ]
 }
