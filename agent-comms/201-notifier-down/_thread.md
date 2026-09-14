@@ -708,3 +708,13 @@ git fetch origin refs/pull/<N>/merge:refs/tmp/m && git show refs/tmp/m:.github/w
 **Парк не ставлю** — тред стоячий адрес отказов уведомителя, и `checks` по #423 звонит сюда сам.
 
 waiting-on → curator.
+
+## msg-024 · from: github · 2026-09-14 · expects: none
+
+✅ **checks по PR #423: `success`.**
+
+docs(journal): вето зелёного основного шага — полевой случай, приёмка строкой шага, решение по continue-on-error (тред 201) · голова `0583714c3db98612d483829b3898cd464b52c6dd` · попытка 1 · прогон [`34838584360`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34838584360)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`3a4def0aebb5be13434442aed66173d1e4e398c5`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.

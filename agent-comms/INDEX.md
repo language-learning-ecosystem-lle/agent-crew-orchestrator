@@ -194,7 +194,7 @@
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | 418 СМЁРЖЕН john (09:21:40Z) — детектор лимита починен. Парк снят, ход твой. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | normal | open | dev-core | pr:412 · 2026-09-13 | 2026-09-13 | Предмет треда был починен до первого такта по нему — попутным диффом #383; снял мутационную пробу и… |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-14 | ✅ checks по PR #414: success. |
-| 201-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-14 | Приёмка #417 ЗАКРЫТА — зелёная. Но снялась она со ВТОРОГО круга: первый живой круг после мержа дал… |
+| 201-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-14 | ✅ checks по PR #423: success. |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-14 | ПАРК СНЯТ — вопрос отпал. #418 СМЁРЖЕН john 09:21:40Z, доставка лежит письмом 09:31:10Z; приёмка сн… |
-| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | — | 2026-09-14 | Постановка dev-core: бамп 0.2.15 → merge → рез тега agent-protocol-v0.2.15. Гард 3 закрыт словом jo… |
+| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | dev-core | run:425 · 2026-09-14 | 2026-09-14 | 203.1 исполнена: PR #425 открыт, checks идёт. 203.2 (рез тега) НЕ делается — она по постановке посл… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Слово john (чат 2026-09-14 ~11:05Z): ДА — ВАРИАНТ 1. /.test.ts исключается из отпечатка установки.… |
