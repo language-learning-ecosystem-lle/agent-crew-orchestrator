@@ -228,6 +228,66 @@ const failedRuns = (
   writeFileSync(join(repo, ".orchestrator", "journal.jsonl"), `${lines.join("\n")}\n`, "utf8");
 };
 
+/**
+ * THE SAME FAILED RUNS, EACH OF WHICH DELIVERED (thread 196) — the journal half of the shape
+ * that broke the queue row in the field.
+ *
+ * Identical to `failedRuns` in everything the journal knows: the release says
+ * `exited-without-handoff`, which is what the observer writes when the thread still awaits the
+ * role. What separates the two is not here at all — it is the `session` id, which only means
+ * anything once the MAIL is read and the run's own letter is found under it
+ * (`isSelfTurnDelivery`, thread 023). A reader given the journal alone cannot tell these
+ * fixtures apart, and that is exactly the point.
+ */
+const deliveringRuns = (
+  repo: string,
+  pair: { readonly role: string; readonly thread: string },
+  attempts: number,
+): void => {
+  mkdirSync(join(repo, ".orchestrator"), { recursive: true });
+  const lines: string[] = [];
+  for (let at = 0; at < attempts; at += 1) {
+    const hour = String(at + 1).padStart(2, "0");
+    lines.push(
+      JSON.stringify({
+        kind: "lease-acquired",
+        ts: `2026-07-25T${hour}:00:00Z`,
+        deadline: `2026-07-25T${hour}:30:00Z`,
+        ...pair,
+      }),
+      JSON.stringify({
+        kind: "lease-released",
+        ts: `2026-07-25T${hour}:20:00Z`,
+        reason: "exited-without-handoff",
+        exitCode: 0,
+        session: `s-${at}`,
+        ...pair,
+      }),
+    );
+  }
+  writeFileSync(join(repo, ".orchestrator", "journal.jsonl"), `${lines.join("\n")}\n`, "utf8");
+};
+
+/**
+ * THE LETTERS THOSE RUNS WROTE — `waiting-on: <the writer itself>`, the one legal shape of "this
+ * needs a person" (scalar `waiting-on`, v13). The turn stays on the role, so the observer records
+ * a break; the pair goes on being a candidate, and the mail is the only witness that each run
+ * did its work. One letter per run, each naming its own session.
+ */
+const selfTurnLetters = (repo: string, thread: string, runs: number): void => {
+  const mail = join(repo, "mailco");
+  for (let at = 0; at < runs; at += 1) {
+    const hour = String(at + 1).padStart(2, "0");
+    writeFileSync(
+      join(mail, "agent-comms", thread, "messages", `2026-07-25T${hour}-10-00Z-dev-core.md`),
+      `---\nfrom: dev-core\ndate: 2026-07-25T${hour}:10:00Z\nexpects: answer\nwaiting-on: dev-core\nworker: claude-code\nsession: s-${at}\n---\n\nThe question this run carries.\n`,
+    );
+  }
+  git(mail, "add", "agent-comms");
+  git(mail, "commit", "-qm", "the letters of those runs");
+  git(mail, "push", "-q", "origin", "comms");
+};
+
 /** The answer landing in the mail the daemon reads — a new message, committed on the mail branch. */
 const deliver = (repo: string, thread: string, message: string): void => {
   const mail = join(repo, "mailco");
@@ -585,6 +645,64 @@ describe("the tick asks the mail whether the PR a park waits on has landed (thre
 
     expect(tick.out).not.toContain("THE GROUND OF THE PARK HAS FALLEN AWAY");
     expect(tick.out).toContain("candidate 'dev-core×016-ground' skipped: the turn is parked");
+  });
+});
+
+/**
+ * THREAD 196 — THE QUEUE ROW MAY NOT CONTRADICT THE PLAN OF ITS OWN TICK.
+ *
+ * The row's `⛔ OUT OF ATTEMPTS` and the tick's `skipped: exhausted` are two renderings of one
+ * `LeaseView.exhausted`, and the row's sentence is absolute: "this row promises no launch;
+ * nothing lifts it by itself and no message into that thread lifts it either". On 2026-09-13
+ * the daemon printed it for a pair the same tick raised — `.orchestrator/daemon.log` of
+ * `aco-hetzner`, lines 4127 and 4154, 27 lines apart.
+ *
+ * The algebra is pinned by a unit (`spent-ceilings-agree-with-the-tick.test.ts`); what only a
+ * process can show is the WIRING, because the defect was never in either reader. The tick was
+ * handed the mail and the row was not, and BOTH LINES COME OUT OF ONE `cli.ts` — a unit can
+ * prove the two functions agree when given the same inputs, and prove nothing at all about
+ * whether the daemon gives them the same inputs. That is the seam, and it is the whole file.
+ */
+describe("a pair whose runs DELIVERED is not called spent on its own queue row (thread 196)", () => {
+  const pair = { role: "dev-core", thread: "190-self-turn" };
+
+  it("the row of a raised pair carries no OUT OF ATTEMPTS — the field case, end to end", () => {
+    const repo = contour([
+      { id: "190-self-turn", message: handoff({ from: "curator", date: "2026-07-01T10:00:00Z" }) },
+    ]);
+    // Nine breaks against a ceiling of three — the numbers of the field case. Every one of them
+    // wrote its letter, so the count the ROW speaks of ("failed since this pair last delivered")
+    // stands at zero for a reader that has the mail.
+    deliveringRuns(repo, pair, 9);
+    selfTurnLetters(repo, "190-self-turn", 9);
+    enable(repo);
+
+    const result = daemon(repo);
+
+    // The plan: the pair is raised, exactly as on line 4154.
+    expect(launched(repo)).toBe("dev-core×190-self-turn");
+    // And its row in the same output does not promise the opposite.
+    expect(result.out).toContain("queue 1/1: dev-core×190-self-turn");
+    expect(result.out).not.toContain("OUT OF ATTEMPTS");
+    // Nor does the skip list, which is the other half of the same flag.
+    expect(result.out).not.toContain("skipped: the attempt ceiling");
+  });
+
+  it("and a pair that truly spent its ceiling still wears the sentence — both lines, one flag", () => {
+    // THE SAME JOURNAL with the letters absent: nobody delivered, the ceiling is honestly closed.
+    // A fix that had merely stopped the row from ever saying the sentence would pass the test
+    // above and fail this one, and the operator would lose the only witness of a dead pair.
+    const repo = contour([
+      { id: "190-self-turn", message: handoff({ from: "curator", date: "2026-07-01T10:00:00Z" }) },
+    ]);
+    deliveringRuns(repo, pair, 9);
+    enable(repo);
+
+    const result = daemon(repo);
+
+    expect(launched(repo)).toBeUndefined();
+    expect(result.out).toContain("OUT OF ATTEMPTS — 9 of 3 failed since this pair last delivered");
+    expect(result.out).toContain("candidate 'dev-core×190-self-turn' skipped");
   });
 });
 
