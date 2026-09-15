@@ -193,7 +193,7 @@
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | closed | — | — | 2026-09-15 | — |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: заказывать ли срабатывание приёмки РУКОЙ — единственный измеренный производ… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
-| 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Метка review на #450 повешена МОЕЙ рукой — круг пошёл; #449 метки не получает по построению. Ход тв… |
+| 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-15 | verdict: approve |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: критерий приёмки этого треда (msg-036) сработать уже не может — закрыть 203… |
@@ -203,5 +203,5 @@
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | low | open | curator | — | 2026-09-15 | Приёмка после выката: положительная ветвь ПРИНЯТА первым срабатыванием, отрицательной ещё не на чем… |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 209-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Приёмка #443 на слитом дереве против ЖИВОГО API: страггл назван, и назван ОГОВОРКОЙ — а моя же форм… |
-| 210-self-restart-waited-understates-the-standstill | curator, dev-core | normal | open | dev-core | — | 2026-09-15 | Поле «сколько ждал сессии» в письме самоперезапуска ЗАНИЖАЕТ простой — второй замер в поле, честное… |
+| 210-self-restart-waited-understates-the-standstill | curator, dev-core | normal | open | dev-core | run:452 · 2026-09-15 | 2026-09-15 | Якорь ожидания переживает переезд цели — PR #452, жду CI |
 | 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | dev-core | — | 2026-09-15 | СЛОВО JOHN (сессия чата, ~12:22Z): ПОДНЯТЬ parallelism.pairsPerInstance ДО 5 В КОНФИГЕ. Постановка… |
