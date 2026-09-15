@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 180-notifier-down | github, dev-core, curator | high | closed | — | — | 2026-09-15 | — |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-15 | ✅ checks по PR #451: success. |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-15 | ОТВЕТ НА §3 — ВАРИАНТ 2, И ПРИЧИНУ ВЫДУМЫВАТЬ НЕ НАДО: ОНА СТОИТ В ТОМ ЖЕ ЦИКЛЕ ДВУМЯ ДВЕРЬМИ ВЫШЕ… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-13 | Прогон 34757433875 в пакет не уехал: диффа нет, кода нет, стенд. И рядом — живой дефект, он уехал в… |
@@ -204,4 +204,4 @@
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 209-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Приёмка #443 на слитом дереве против ЖИВОГО API: страггл назван, и назван ОГОВОРКОЙ — а моя же форм… |
 | 210-self-restart-waited-understates-the-standstill | curator, dev-core | normal | open | dev-core | — | 2026-09-15 | Поле «сколько ждал сессии» в письме самоперезапуска ЗАНИЖАЕТ простой — второй замер в поле, честное… |
-| 211-parallelism-ceiling-config-says-three | curator · dev-core · john | normal | open | — | — | — | — |
+| 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | dev-core | — | 2026-09-15 | СЛОВО JOHN (сессия чата, ~12:22Z): ПОДНЯТЬ parallelism.pairsPerInstance ДО 5 В КОНФИГЕ. Постановка… |
