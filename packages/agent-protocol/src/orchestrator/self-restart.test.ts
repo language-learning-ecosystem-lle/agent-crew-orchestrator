@@ -40,6 +40,7 @@ import {
   describeVersionRepair,
   describeVersionStand,
   describeVersionVerdictMet,
+  drainSinceInProgress,
   expectedBranchOfRef,
   INSTALL_INPUTS,
   installNeeded,
@@ -614,6 +615,156 @@ describe("the record that says WHICH of the two it is", () => {
     });
     expect(stamp?.went).toBeUndefined();
     expect(stamp === undefined ? undefined : selfRestartWent(stamp)).toBe(false);
+  });
+});
+
+/**
+ * A COMMIT LANDING MID-DRAIN IS NOT THE START OF THE WAIT (thread 210) — the field case,
+ * taken from the box on 2026-09-15 (thread `161-daemon-self-restart`, letter msg-011).
+ *
+ * The box was executing `49653f41` and drained toward the head. `daemon.log` of that very
+ * run prints `5 commit(s) behind, drifting for 5m (since 2026-09-15T13:37:50+03:00) —
+ * DRAINING TO RESTART`, so the waiting began at 10:37:50Z; five commits landed between
+ * then and 10:41:20Z (`4ccc9e62`), and the box went at 10:45:59Z. It had therefore stood
+ * still for 489 s — and the letter said 246 s, because the record is keyed by the target
+ * and every one of those commits made it a memory "of another target", re-stamping the
+ * start of a wait that had never stopped. The understatement grows with the merges: the
+ * busier the crew, the smaller the number the letter reports for the standstill it caused.
+ */
+describe("the wait a moving target used to reset", () => {
+  const stuckOn = "49653f41fb7e0000000000000000000000000000";
+  const firstTarget = "4b8402da7000000000000000000000000000000a";
+  const head = "4ccc9e62312f000000000000000000000000000b";
+
+  /** The first drain tick: the drift is one commit old and the sessions are live. */
+  const opened = rememberSelfRestartDrain({
+    memory: undefined,
+    target: firstTarget,
+    from: stuckOn,
+    behind: 1,
+    at: "2026-09-15T10:37:50Z",
+  });
+
+  /** Four commits later the ref has moved, and the box has not stopped waiting for a tick. */
+  const moved = rememberSelfRestartDrain({
+    memory: opened,
+    target: head,
+    from: stuckOn,
+    behind: 5,
+    at: "2026-09-15T10:41:53Z",
+  });
+
+  it("takes the new target and keeps the moment the waiting began", () => {
+    expect(moved).toEqual({
+      target: head,
+      attempts: 0,
+      at: "2026-09-15T10:37:50Z",
+      drainSince: "2026-09-15T10:37:50Z",
+      from: stuckOn,
+      behind: 5,
+    });
+  });
+
+  it("leaves the carried record readable as the open drain it is", () => {
+    // `at` is written from the carried stamp and not from the tick, so the pair stays ONE
+    // moment: a record whose stamps had come apart would read as a go to `selfRestartWent`,
+    // and an interrupted drain would then be reported as a repair that landed.
+    expect(moved === undefined ? undefined : selfRestartWent(moved)).toBe(false);
+    expect(selfRestartEvent({ memory: moved, loaded: head })?.repair).toBe("unrecorded");
+  });
+
+  it("reports the standstill the box actually stood — 489 s, not 246", () => {
+    // What the `go` path writes when the last lease closes: the same anchor, carried by
+    // `drainSinceInProgress`, under a stamp of its own.
+    const went: SelfRestartMemory = {
+      target: head,
+      attempts: 1,
+      at: "2026-09-15T10:45:59Z",
+      ...(drainSinceInProgress(moved, stuckOn) === undefined
+        ? {}
+        : { drainSince: drainSinceInProgress(moved, stuckOn) as string }),
+      from: stuckOn,
+      behind: 5,
+      went: true,
+    };
+    expect(went.drainSince).toBe("2026-09-15T10:37:50Z");
+    expect(selfRestartEvent({ memory: went, loaded: head })?.waitedForSec).toBe(489);
+    // The number the box printed while the defect stood, for the record: 10:41:53 → 10:45:59.
+    expect(
+      selfRestartEvent({
+        memory: { ...went, drainSince: "2026-09-15T10:41:53Z" },
+        loaded: head,
+      })?.waitedForSec,
+    ).toBe(246);
+  });
+
+  it("does not re-stamp while the target holds still — the defence of the first tick stands", () => {
+    expect(
+      rememberSelfRestartDrain({
+        memory: moved,
+        target: head,
+        from: stuckOn,
+        behind: 5,
+        at: "2026-09-15T10:42:23Z",
+      }),
+    ).toBeUndefined();
+  });
+
+  it("refuses the anchor of a box that has since been repaired — the wait ended with the code", () => {
+    // The wait this field measures is THIS box standing still on ITS OWN code. A record
+    // left by the code before the repair belongs to a standstill that is over, and carrying
+    // it into the next drift would overstate by everything in between.
+    expect(drainSinceInProgress(moved, "0123456789abcdef0123456789abcdef01234567")).toBeUndefined();
+    const afterRepair = rememberSelfRestartDrain({
+      memory: moved,
+      target: "f".repeat(40),
+      from: "0123456789abcdef0123456789abcdef01234567",
+      behind: 2,
+      at: "2026-09-15T18:00:00Z",
+    });
+    expect(afterRepair?.drainSince).toBe("2026-09-15T18:00:00Z");
+  });
+
+  it("refuses the anchor of a wait that ENDED in a go, however the target then moves", () => {
+    // A go-written record dates a standstill that finished at its own stamp; a new drain on
+    // the same code is a new wait, and reporting the two as one is thread 210's lie with the
+    // sign turned around.
+    const went: SelfRestartMemory = {
+      target: head,
+      attempts: 1,
+      at: "2026-09-15T10:45:59Z",
+      drainSince: "2026-09-15T10:37:50Z",
+      from: stuckOn,
+      went: true,
+    };
+    expect(drainSinceInProgress(went, stuckOn)).toBeUndefined();
+    expect(
+      rememberSelfRestartDrain({
+        memory: went,
+        target: "e".repeat(40),
+        from: stuckOn,
+        at: "2026-09-15T11:30:00Z",
+      })?.drainSince,
+    ).toBe("2026-09-15T11:30:00Z");
+  });
+
+  it("carries nothing out of a record that never stamped a start", () => {
+    expect(drainSinceInProgress(undefined, stuckOn)).toBeUndefined();
+    expect(
+      drainSinceInProgress({ target: head, attempts: 0, at: "2026-09-15T10:41:53Z" }, stuckOn),
+    ).toBeUndefined();
+    // And a memory written before `from` existed cannot say whose wait it was.
+    expect(
+      drainSinceInProgress(
+        {
+          target: head,
+          attempts: 0,
+          at: "2026-09-15T10:37:50Z",
+          drainSince: "2026-09-15T10:37:50Z",
+        },
+        stuckOn,
+      ),
+    ).toBeUndefined();
   });
 });
 
