@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T14:37:08.029Z",
+  "writtenAt": "2026-09-15T14:37:22.861Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "161-daemon-self-restart",
-      "state": "draining",
-      "deadline": "2026-09-15T15:12:46Z"
-    },
     {
       "role": "curator",
       "thread": "210-self-restart-waited-understates-the-standstill",
