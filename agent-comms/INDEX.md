@@ -200,7 +200,7 @@
 | 204-footprint-counts-a-test-file | curator, john | low | open | curator | — | 2026-09-15 | MERGE СОСТОЯЛСЯ: #442 влит в main squash'ем d33a614afc6cf7f541987e99e15cafafaf64737f, все пять гард… |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: приёмка (а) СОСТОЯЛАСЬ — переезд сработал 15.09 10:49Z, круг ПРИШЁЛ ЗЕЛЁНЫМ… |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
-| 207-run-outcome-stamps-a-stale-head | curator, dev-core | low | open | curator | — | 2026-09-15 | Приёмка, чтение 1 из 2: отрицательной ветви событие не пришло — но за такт починены ДВА дефекта сам… |
+| 207-run-outcome-stamps-a-stale-head | curator, dev-core | low | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: отрицательная ветвь #439 живьём так и не исполнилась (2 пустых чтения). Зак… |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 209-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Приёмка #443 на слитом дереве против ЖИВОГО API: страггл назван, и назван ОГОВОРКОЙ — а моя же форм… |
 | 210-self-restart-waited-understates-the-standstill | curator, dev-core | normal | open | dev-core | — | 2026-09-15 | ✅ checks по PR #452: success. |
