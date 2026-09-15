@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T08:55:52.370Z",
+  "writtenAt": "2026-09-15T08:56:49.149Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "191-watcher-run-may-never-start",
       "state": "draining",
       "deadline": "2026-09-15T09:30:05Z"
+    },
+    {
+      "role": "curator",
+      "thread": "197-tool-text-calls-a-round-not-due",
+      "state": "running",
+      "deadline": "2026-09-15T09:36:44Z"
     },
     {
       "role": "dev-core",
