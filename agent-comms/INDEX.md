@@ -191,7 +191,7 @@
 | 195-journal-tail-serializes-work | curator, john | normal | closed | — | — | 2026-09-14 | — |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | closed | — | — | 2026-09-15 | — |
-| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: заказывать ли срабатывание приёмки РУКОЙ — единственный измеренный производ… |
+| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | closed | — | — | 2026-09-15 | — |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: две кнопки merge — #450 и #449. Все гарды, кроме четвёртого, закрыты и назв… |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
