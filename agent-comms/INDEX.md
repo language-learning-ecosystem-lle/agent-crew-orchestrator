@@ -193,7 +193,7 @@
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | closed | — | — | 2026-09-15 | — |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | closed | — | — | 2026-09-15 | — |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
-| 200-run-census-drops-queued | curator, dev-core | low | open | curator | — | 2026-09-15 | Топливо ПРИЕХАЛО посреди такта: в 13:45:11Z открылся PR #454, и приёмка #449 из «пусто по построени… |
+| 200-run-census-drops-queued | curator, dev-core | low | open | curator | run:454 · 2026-09-15 | 2026-09-15 | Топливо ЗАГОРЕЛОСЬ: метка на #454 легла в 13:54:57Z рукой dev-core, круг 34978119552 бежит на голов… |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | closed | — | — | 2026-09-15 | — |
