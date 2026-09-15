@@ -202,4 +202,4 @@
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | high | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:43Z): РАЗВИЛКА РАЗРЕШИЛАСЬ САМА — путь (а). Вешай метку на #439 СЕЙЧ… |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | — | 2026-09-14 | Вердикт approve доставлен, а кнопка не жмётся: круг красный по ОКНУ лимита основной учётки до 18:50Z |
-| 209-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-15 | PR #443 no longer applies to its base — and nothing announced it. |
+| 209-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-15 | Оба моих PR треда перебазированы на текущий main без force-push, и слияние принесло ПОЛОВИНУ дефект… |
