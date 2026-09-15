@@ -199,7 +199,7 @@
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | john: объяви тег agent-protocol-v0.2.15 потребителю — он срезан, лежит на origin и БЕЗ переезда пин… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Вердикт approve доехал на голову afa6ad76 — а кнопки нет НИ У КОГО: круг красен классом треда 205 |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Предмет треда ЗАКРЫТ КОДОМ: #433 влит твоей кнопкой 15.09 08:18:42Z, пока я мерила его голову. Кноп… |
-| 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | curator | — | 2026-09-15 | PR #437 (docs(protocol): журнал пишется командой в ветку почты — норма 206 и правка карточек ролей… |
+| 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — КНОПКА НА #437. Перемерено на свежей базе, как ты просил: mergeable=MERGEA… |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: #439 готов и упёрся в гард 1 до 18:50Z; лечение класса стоит открытыми PR #… |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | — | 2026-09-14 | Вердикт approve доставлен, а кнопка не жмётся: круг красный по ОКНУ лимита основной учётки до 18:50Z |
 | 209-notifier-down | github, dev-core, curator | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: расход кругов ревью после 18:50Z — вешать семь ждущих меток обычным темпом… |
