@@ -75,6 +75,38 @@ export type SelfRestartLetter = {
 const shortSha = (sha: string): string => (sha.length > 12 ? sha.slice(0, 12) : sha);
 
 /**
+ * THE ONE CLASS OF PATH NO FOOTPRINT HOLDS, whatever shape it came in (decision of john
+ * 2026-09-14, thread `204-footprint-counts-a-test-file`, through curator: «ДА — ВАРИАНТ 1»).
+ * A file ending in `.test.ts` is loaded by the suite and by nothing else — the daemon's
+ * runtime never imports one — so a restart whose diff moves only tests came up running the
+ * same program, and the sentence this module says about itself ("the restart changed NOTHING
+ * THIS DAEMON EXECUTES") does not cover such a file under any reading.
+ *
+ * WHAT COUNTING IT COST, measured (thread 161, curator, episode 2026-09-14T09:36:05Z,
+ * `a6f7b276d864 → c21c1940f6b8` — the only footprint path of that diff was
+ * `reviewer-limit-detector.test.ts`, +159 lines): 841 s of a queue standing in drain, one
+ * letter into the standing address and a WHOLE TURN of a role, for a file the box does not
+ * run. Against it: the narrowing can withhold nothing but a letter about a test, and a test
+ * that moves what this daemon executes does not exist by construction — the runtime holds no
+ * import of one, and such a file imports `node:*` and `vitest`.
+ *
+ * ONE SUFFIX COVERS BOTH NAMES: `*.process.test.ts` ends in `.test.ts` as well, and needs no
+ * rule of its own. AND IT IS THE ONLY CLASS NARROWED — fixtures, `__tests__`, `*.spec.ts`
+ * and test helpers are paths this rule says nothing about; widening it is a decision that
+ * has not been taken, and the conservative direction is the one that keeps the letter.
+ */
+const TEST_FILE_SUFFIX = ".test.ts";
+
+/**
+ * The narrowing IN WORDS, for the {@link ExecutableFootprint.means} the withheld line
+ * prints: a reader who never opens this file still learns that tests were not counted.
+ */
+const TESTS_EXCLUDED = `its '*${TEST_FILE_SUFFIX}' files excluded — this daemon loads none of them`;
+
+/** Is this path one the footprint may hold at all — i.e. anything but a test file. */
+const executableByName = (path: string): boolean => !path.endsWith(TEST_FILE_SUFFIX);
+
+/**
  * WHAT THIS DAEMON ACTUALLY EXECUTES, as paths of the checkout its code was loaded from
  * (thread 161, john 2026-09-07 through curator) — the measure that decides whether the
  * restart is worth a letter at all.
@@ -98,6 +130,7 @@ const shortSha = (sha: string): string => (sha.length > 12 ? sha.slice(0, 12) : 
  *     named ("версия установленного пакета до и после"), reached without a second mechanism.
  * The manifests are in the footprint in BOTH shapes: a lockfile move changes what
  * `node_modules` holds, and that is a change of the executable even when no source moved.
+ * And ONE CLASS OF PATH is outside every shape of it — {@link TEST_FILE_SUFFIX}.
  */
 export type ExecutableFootprint = {
   /** Directory prefixes, relative to the code checkout, whose contents this daemon runs. */
@@ -141,7 +174,7 @@ export const executableFootprint = (input: {
       ? {
           dirs: [],
           whole: true,
-          means: `this daemon runs '${input.entry}', inside '${input.checkout}', and no package boundary was found around it — so every path of that checkout is treated as executable`,
+          means: `this daemon runs '${input.entry}', inside '${input.checkout}', and no package boundary was found around it — so every path of that checkout is treated as executable, ${TESTS_EXCLUDED}`,
         }
       : {
           dirs: [],
@@ -153,7 +186,7 @@ export const executableFootprint = (input: {
     return {
       dirs: [],
       whole: true,
-      means: `the package this daemon runs IS '${input.checkout}' — every path of that checkout is executable`,
+      means: `the package this daemon runs IS '${input.checkout}' — every path of that checkout is executable, ${TESTS_EXCLUDED}`,
     };
   if (rel.startsWith("..") || isAbsolute(rel))
     return {
@@ -164,7 +197,7 @@ export const executableFootprint = (input: {
   return {
     dirs: [rel],
     whole: false,
-    means: `this daemon runs '${rel}' of '${input.checkout}', plus whatever ${manifests} install`,
+    means: `this daemon runs '${rel}' of '${input.checkout}' (${TESTS_EXCLUDED}), plus whatever ${manifests} install`,
   };
 };
 
@@ -201,13 +234,23 @@ export const executableChange = (input: {
       kind: "unmeasured",
       why: input.why ?? "the diff between the two shas could not be read",
     };
-  const hit = input.footprint.whole
-    ? [...input.changed]
-    : input.changed.filter(
-        (path) =>
-          installNeeded([path]) ||
-          input.footprint.dirs.some((dir) => path === dir || path.startsWith(`${dir}/`)),
-      );
+  const hit = input.changed.filter((path) => {
+    // THE NARROWING IS THE OUTER GATE AND IT REACHES EVERY SHAPE, `whole: true` included:
+    // what john decided is a class of PATHS, and a circuit whose package root happens to be
+    // the checkout root would otherwise go on paying a letter and a turn for a test file.
+    //
+    // IT CANNOT EAT A MANIFEST, and that is visible here rather than left to the reader: no
+    // member of INSTALL_INPUTS — `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` —
+    // ends in `.test.ts`, so nothing an install depends on can fall through this gate. The
+    // unit pins it over the LIST itself, not over one copied name, so a fourth manifest
+    // arriving later cannot silently slip past.
+    if (!executableByName(path)) return false;
+    if (input.footprint.whole) return true;
+    return (
+      installNeeded([path]) ||
+      input.footprint.dirs.some((dir) => path === dir || path.startsWith(`${dir}/`))
+    );
+  });
   return hit.length === 0 ? { kind: "untouched" } : { kind: "changed", paths: hit };
 };
 
