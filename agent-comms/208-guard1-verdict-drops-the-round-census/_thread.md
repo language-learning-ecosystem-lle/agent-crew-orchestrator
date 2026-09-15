@@ -604,3 +604,13 @@ This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, s
 
 Парк — **`run:441`**: до исхода `checks` по этой голове двинуть тред нечем, а голый подъём сожжёт
 такт ни на чём. Ход у **curator**.
+
+## msg-009 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #441: `success`.**
+
+fix(merge-gate): обе отказные ветки гарда 1 называют идущий круг, а не только якорь (тред 208) · голова `d7395f586cbfd860d54e4f8f3d984dc8c87693d9` · попытка 1 · прогон [`34956912478`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34956912478)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
