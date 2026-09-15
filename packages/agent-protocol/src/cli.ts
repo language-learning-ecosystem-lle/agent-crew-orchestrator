@@ -557,7 +557,23 @@ import {
   type Stall,
   type StallRefusal,
   stallAlarmDue,
+  standingRefusals,
 } from "./orchestrator/stall.js";
+import {
+  describeDeliveredStandstillLetter,
+  describeDeliveredWorkspaceLetter,
+  parseSaidLetters,
+  planStandstillLetters,
+  planWorkspaceLetters,
+  renderSaidLetters,
+  renderStandstillLetter,
+  renderWorkspaceLetter,
+  STANDSTILL_LETTER_TURN,
+  type StandstillLetter,
+  standstillLetterKey,
+  type WorkspaceRefusal,
+  workspaceLetterKey,
+} from "./orchestrator/standstill-letter.js";
 import { stateWord } from "./orchestrator/state-word.js";
 import {
   daemonAlreadyUpRefusal,
@@ -5489,6 +5505,85 @@ const writeFreezeLetters = (input: {
     }
   }
   return [...kept].sort();
+};
+
+/**
+ * THE TWO LETTERS OF THREAD 180 (john's П-1 and П-2 of 2026-09-15), and the half of them
+ * that touches the world. Written beside `writeFreezeLetters` because it is the same shape
+ * and inherits the same three rules from it: the courier's own role signs it,
+ * `deliverMessage` owns the lock and the push, and A MARK IS SET ONLY FOR A LETTER THAT
+ * LANDED — a refusal to deliver is said out loud and remembered by nobody, so the next tick
+ * writes it again rather than going quiet about a standstill in progress.
+ *
+ * It never throws: a tick that died over one letter would be a worse outage than the one
+ * this rings about, and the whole feature is a bell beside the loop.
+ */
+const writeStandstillLetters = (input: {
+  readonly mailRoot: string;
+  readonly branch: string;
+  readonly registry: RoleRegistry;
+  readonly letters: readonly {
+    readonly key: string;
+    readonly thread: string;
+    readonly role: string;
+    readonly text: string;
+    readonly said: string;
+  }[];
+  readonly say: (line: string) => void;
+}): readonly string[] => {
+  const landed: string[] = [];
+  const checkout = repoOf(input.mailRoot);
+  for (const letter of input.letters) {
+    // THE SAME THREE REFUSALS `writeFreezeLetters` ASKS BY HAND, and for the identical
+    // reason: `planThreadMessage` answers them with `fail()`, and exiting the process
+    // inside the daemon's tick would take the box down over one pair's letter.
+    const cause = !input.registry.isKnown(MERGEABILITY_LETTER_FROM)
+      ? `the sender '${MERGEABILITY_LETTER_FROM}' is not a role of this config, so nothing can be signed with it`
+      : !input.registry.isKnown(STANDSTILL_LETTER_TURN)
+        ? `the turn '${STANDSTILL_LETTER_TURN}' is not a role of this config`
+        : existsSync(join(input.mailRoot, letter.thread))
+          ? undefined
+          : `thread '${letter.thread}' is not in the mail`;
+    if (cause !== undefined) {
+      input.say(
+        `standstill — ${letter.role}×${letter.thread} was NOT told: ${cause}. Nothing is remembered, so this repeats until it is fixed`,
+      );
+      continue;
+    }
+    try {
+      deliverMessage({
+        git: gitIn(checkout),
+        write: writeOut,
+        branch: input.branch,
+        subject: deliverySubject({
+          from: MERGEABILITY_LETTER_FROM,
+          thread: letter.thread,
+          mailDir: relative(checkout, input.mailRoot),
+        }),
+        identity: roleIdentity(MERGEABILITY_LETTER_FROM),
+        stage: () =>
+          planThreadMessage(input.mailRoot, letter.thread, input.registry, {
+            from: MERGEABILITY_LETTER_FROM,
+            expects: "none",
+            waitingOn: STANDSTILL_LETTER_TURN,
+            text: letter.text,
+          }),
+        note: (line) => input.say(line),
+        lock: mailLockFor({
+          checkout,
+          holder: `standstill of ${letter.role}×${letter.thread} → ${letter.thread}`,
+          note: (line) => input.say(line),
+        }),
+      });
+      input.say(letter.said);
+      landed.push(letter.key);
+    } catch (error) {
+      input.say(
+        `standstill — ${letter.role}×${letter.thread} was NOT told: ${(error as Error).message}; nothing is remembered, the next tick writes it again`,
+      );
+    }
+  }
+  return landed;
 };
 
 const runNotify = async (input: {
@@ -14119,6 +14214,15 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
   const doorRefusals: StallRefusal[] = [];
 
   /**
+   * THE PAIRS THIS TICK COULD NOT RAISE BECAUSE OF THEIR TREES (П-1 of thread 180, john's
+   * word of 2026-09-15). A subset of the refusals above and kept apart from them because
+   * the two are due DIFFERENT bells: a workspace refusal rings on the FIRST tick — the pair
+   * is dead to the circuit from that tick, whether or not anything else on the box moves —
+   * while a standstill rings only once the run has crossed its threshold.
+   */
+  const workspaceRefusals: WorkspaceRefusal[] = [];
+
+  /**
    * Start one pair and return immediately. Everything that can throw is inside the
    * promise: an unhandled rejection would take down the daemon, which is the very class
    * of death the resilience half of D-2 has just removed from the config door.
@@ -14164,7 +14268,7 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
     const identity = spawnIdentityFor({ role, exec: agent.exec.value });
     if (!identity.ok) {
       pairErr(candidate, identity.reason);
-      doorRefusals.push({ role: candidate.role, text: identity.reason });
+      doorRefusals.push({ role: candidate.role, thread: candidate.thread, text: identity.reason });
       return;
     }
     // AND THE CREDENTIALS THAT IDENTITY WOULD READ (msg-089 point 2) — said out loud for
@@ -14179,7 +14283,7 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
     });
     if (unreachable !== undefined) {
       pairErr(candidate, unreachable);
-      doorRefusals.push({ role: candidate.role, text: unreachable });
+      doorRefusals.push({ role: candidate.role, thread: candidate.thread, text: unreachable });
       return;
     }
     // The workspace and the continuation are settled PER LAUNCH: both are properties of
@@ -14207,7 +14311,13 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
       pairErr(candidate, `skipped — its workspace is not usable: ${setup.reason}`);
       doorRefusals.push({
         role: candidate.role,
+        thread: candidate.thread,
         text: `its workspace is not usable: ${setup.reason}`,
+      });
+      workspaceRefusals.push({
+        role: candidate.role,
+        thread: candidate.thread,
+        reason: setup.reason,
       });
       return;
     }
@@ -14606,7 +14716,14 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
       // of standstills judges a refusal by its class as well as by its role, and a class
       // recovered by matching the printed sentence would be a second spelling of `SkipReason`
       // in the one place where a forgotten class goes quiet instead of loud.
-      plannerSkips.push({ role: skip.role, text: line, reason: skip.reason });
+      // THE THREAD RIDES WITH IT TOO (П-2 of thread 180): the bell posts into the feed of
+      // the pair it is about, and only the plan knows which feed that is.
+      plannerSkips.push({
+        role: skip.role,
+        text: line,
+        reason: skip.reason,
+        ...(skip.thread === undefined ? {} : { thread: skip.thread }),
+      });
       err(`agent-protocol: ${line}`);
     }
     // THREAD 036, STEP 3 — WHOSE MONEY THIS TICK SPENT, said ABOVE the skips' own reasons
@@ -14878,6 +14995,7 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
     }
     const plan: readonly Candidate[] = handedOverToRepair ? [] : planned;
     doorRefusals.length = 0;
+    workspaceRefusals.length = 0;
     for (const candidate of plan) launch(candidate, events);
     // THE TICK THAT LIFTED NOBODY IS COUNTED (thread 180). Two standstills of half an hour
     // each on 2026-09-09 — one from role worktrees left behind by a self-restart, one from a
@@ -14900,6 +15018,57 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
       writeOut(paths.stall, renderStall(stall));
       if (stall !== undefined && stallAlarmDue(stall))
         err(`agent-protocol: ${describeStall(stall)}`);
+      // AND THE BELL LEAVES THE BOX (thread 180, john's П-1 and П-2 of 2026-09-15). Until
+      // this call both facts above were true, printed and unread: the consumer contour stood
+      // for 209 ticks on one unusable workspace while its feed went on reading as work in
+      // progress, and the standstill was found by a hand in `daemon.log` two hours later.
+      const standing = standingRefusals([...doorRefusals, ...plannerSkips], runningRoles());
+      const saidBefore = existsSync(paths.standstillLetters)
+        ? parseSaidLetters(readFile(paths.standstillLetters, "standstill letter ledger"))
+        : [];
+      const workspacePlan = planWorkspaceLetters({ refusals: workspaceRefusals, said: saidBefore });
+      const stallPlan = planStandstillLetters({
+        due: stall !== undefined && stallAlarmDue(stall),
+        since: stall?.since ?? "",
+        ticks: stall?.ticks ?? 0,
+        candidates: stall?.candidates ?? 0,
+        reasons: stall?.reasons ?? [],
+        standing,
+        said: saidBefore,
+      });
+      const landed = writeStandstillLetters({
+        mailRoot,
+        branch: configFrom(argv, undefined).config.mail.branch,
+        registry,
+        letters: [
+          ...workspacePlan.letters.map((letter) => ({
+            key: workspaceLetterKey(letter),
+            role: letter.role,
+            thread: letter.thread,
+            text: renderWorkspaceLetter(letter),
+            said: describeDeliveredWorkspaceLetter(letter),
+          })),
+          ...stallPlan.letters.map((letter: StandstillLetter) => ({
+            key: standstillLetterKey(letter),
+            role: letter.role,
+            thread: letter.thread,
+            text: renderStandstillLetter(letter),
+            said: describeDeliveredStandstillLetter(letter),
+          })),
+        ],
+        say: (line) => err(`agent-protocol: daemon — ${line}`),
+      });
+      // THE LEDGER IS THE LETTERS STILL OWED PLUS THE ONES THAT LANDED, and never a key
+      // whose fact is gone: a refusal that stopped happening must not keep its mark, or a
+      // tree that breaks a second time in the same way would be met with silence.
+      const owed = new Set([...workspacePlan.said, ...stallPlan.said]);
+      writeOut(
+        paths.standstillLetters,
+        renderSaidLetters([
+          ...[...owed].filter((key) => saidBefore.includes(key) || landed.includes(key)),
+          ...landed.filter((key) => !owed.has(key)),
+        ]),
+      );
     } catch (error) {
       err(`agent-protocol: daemon — the stall state was not written: ${(error as Error).message}`);
     }

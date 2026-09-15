@@ -93,6 +93,14 @@ export type StallRefusal = {
   readonly text: string;
   /** The planner's class of it; absent means a door refused, and a door is always evidence. */
   readonly reason?: SkipReason;
+  /**
+   * WHICH THREAD THE REFUSED CANDIDATE WAS FOR — carried here and nowhere else because the
+   * bell of thread 180 (`standstill-letter.ts`, john's П-2 of 2026-09-15) posts INTO THAT
+   * FEED, and a fact needs the feed it is about. It takes no part in the fold: the
+   * fingerprint is built from the refusals' text, so adding the thread here cannot change
+   * which ticks count or when the run resets.
+   */
+  readonly thread?: string;
 };
 
 /**
@@ -234,6 +242,20 @@ const sameReasons = (previous: readonly string[], reasons: readonly string[]): b
 const standstill = (refusal: StallRefusal, moving: ReadonlySet<string>): boolean =>
   !moving.has(refusal.role) &&
   (refusal.reason === undefined || COUNTS_AS_STANDSTILL[refusal.reason]);
+
+/**
+ * THE EVIDENCE OF ONE TICK, as the fold itself counts it — exported so that the bell which
+ * writes into the feed (`standstill-letter.ts`) names exactly the pairs this file counted
+ * and not a second reading of the same question. Two spellings of "what is standing" is the
+ * defect this module was written against, one level up.
+ */
+export const standingRefusals = (
+  refusals: readonly StallRefusal[],
+  moving: readonly string[],
+): readonly StallRefusal[] => {
+  const live = new Set(moving);
+  return refusals.filter((refusal) => standstill(refusal, live));
+};
 
 /**
  * ONE TICK'S ANSWER → THE RUN. Pure and total: it never throws and never reads anything.

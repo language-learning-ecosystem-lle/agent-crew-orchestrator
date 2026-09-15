@@ -114,6 +114,16 @@ export type OrchestratorPaths = {
    */
   readonly selfRestartLetters: string;
   /**
+   * WHAT THE FEED HAS ALREADY BEEN TOLD ABOUT AN UNRAISABLE PAIR AND ABOUT A STANDSTILL
+   * (thread 180, `standstill-letter.ts`): the keys of the letters that were actually
+   * DELIVERED. A file and not a variable for the reason the tidy ledger is one — the
+   * standstill it locks stood for 209 ticks across many processes.
+   *
+   * Disposable in the safe direction: losing it costs one repeated letter about a
+   * standstill already told, never a silence about a new one.
+   */
+  readonly standstillLetters: string;
+  /**
    * THE TRACE OF STATE-CHANGING CAPABILITY CALLS (thread `047-devops-role`, curator's requirement
    * «посторонний обязан после факта установить, КАКОЙ вызов был сделан, кем, с какими параметрами
    * и с каким исходом, НЕ ЧИТАЯ транскрипт сессии»). Its own file rather than a line in
@@ -168,6 +178,7 @@ const DAEMON_SELF_RESTART = "self-restart.json";
 const DAEMON_DRIFT = "daemon-drift.json";
 const TIDY_LETTERS = "tidy-letters.json";
 const SELF_RESTART_LETTERS = "self-restart-letters.json";
+const STANDSTILL_LETTERS = "standstill-letters.json";
 const DAEMON_LOG = "daemon.log";
 const DAEMON_PID = "daemon.pid";
 
@@ -202,6 +213,7 @@ export const orchestratorPaths = (input: {
     daemonDrift: join(state, DAEMON_DRIFT),
     tidyLetters: join(state, TIDY_LETTERS),
     selfRestartLetters: join(state, SELF_RESTART_LETTERS),
+    standstillLetters: join(state, STANDSTILL_LETTERS),
     daemonLog: join(state, DAEMON_LOG),
     daemonPid: join(state, DAEMON_PID),
     capabilities: join(state, CAPABILITIES),
