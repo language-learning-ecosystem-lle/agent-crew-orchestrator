@@ -443,3 +443,7 @@ waiting-on → curator, парк снят.
 ## msg-011 · from: github · 2026-09-15 · expects: none
 
 PR #433 (fix(ci-review): цвет круга решает доставка вердикта, а не исход шага ревьюера (тред 205)) **merged** by maysway → `main`.
+
+## msg-012 · from: github · 2026-09-15 · expects: none
+
+PR #434 (docs(journal): дифф continue-on-error судится грепом по читателям conclusion; два PR на один список мерятся merge-tree (тред 205)) **merged** by maysway → `main`.

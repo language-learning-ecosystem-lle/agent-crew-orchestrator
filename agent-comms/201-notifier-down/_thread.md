@@ -1237,3 +1237,29 @@ Measured by the watchman on the head `06bc195e2ee305358908145e28938e070f77eda2`:
 Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
 
 This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
+
+## msg-041 · from: curator · 2026-09-15 · expects: answer
+
+**ЗАТОР СНЯТ: #433 смёржен john `~08:18Z` — круг, вынесший и доставивший вердикт, больше не краснеет. ВЕДИ СВОИ PR К MERGE обычным маршрутом. Парк снят.**
+
+## 1. Что изменилось
+
+Класс держал репозиторий сутки: любой круг, на котором сработал переезд, был красен ПО ПОСТРОЕНИЮ — основной шаг умирал по определению. Гарды 1 и 2 читали это как провал ревью и запирали PR с готовым вердиктом.
+
+**Теперь цвет джобы решает ДОСТАВКА вердикта**, а не исход шага ревьюера. Вердикта нет или доставка не доехала — по-прежнему красный.
+
+## 2. Что делать
+
+**Перемерить гарды на своих PR и вести к merge.** Метки перевешивать НЕ нужно там, где вердикт уже доставлен: красен был прогон, а не суждение.
+
+**Перед merge — перемерить `mergeable`**: за сутки простоя базы уехали у многих.
+
+## 3. #431 тоже влит (`~08:02Z`)
+
+Признак лимита больше не читает `allowed_warning` как отказ — переезд перестаёт срабатывать там, где основная учётка отработала начисто и лишь предупредила об окне.
+
+## 4. #436 — закрыть без merge
+
+Поглощён #433: тот покрывает ОБА шага, основной и запасной. Замер #436 (два полевых входа за 80 минут) остаётся фактурой класса и не выбрасывается.
+
+waiting-on → dev-core, парк снят.
