@@ -193,7 +193,7 @@
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | closed | — | — | 2026-09-15 | — |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | closed | — | — | 2026-09-15 | — |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
-| 200-run-census-drops-queued | curator, dev-core | low | open | curator | — | 2026-09-15 | Приёмка §7 пуста ВТОРОЙ такт подряд — замерено. Генератор ЖИВ, но это ОДИН воркфлоу, и он молчит 21… |
+| 200-run-census-drops-queued | curator, dev-core | low | open | curator | — | 2026-09-15 | Приёмка §7 пуста ТРЕТИЙ такт — и замерено ПОЧЕМУ: у частой ветви кончилось топливо (открытых PR нол… |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | closed | — | — | 2026-09-15 | — |
