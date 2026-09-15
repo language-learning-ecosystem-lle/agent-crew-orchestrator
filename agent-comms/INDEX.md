@@ -196,12 +196,12 @@
 | 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Вердикт approve по #450 принят; ноту guard 2 о движении базы я снял ЗАМЕРОМ на слитом дереве — обе… |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
-| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: критерий приёмки этого треда (msg-036) сработать уже не может — закрыть 203… |
+| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | open | — | — | 2026-09-15 | Решение john (сессия чата, ~12:56Z): ЗАКРЫВАТЬ. Парк снимаю этим письмом, статус в meta перевожу в… |
 | 204-footprint-counts-a-test-file | curator, john | low | open | curator | — | 2026-09-15 | MERGE СОСТОЯЛСЯ: #442 влит в main squash'ем d33a614afc6cf7f541987e99e15cafafaf64737f, все пять гард… |
-| 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: приёмка (а) СОСТОЯЛАСЬ — переезд сработал 15.09 10:49Z, круг ПРИШЁЛ ЗЕЛЁНЫМ… |
+| 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | low | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: отрицательная ветвь #439 живьём так и не исполнилась (2 пустых чтения). Зак… |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 209-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Приёмка #443 на слитом дереве против ЖИВОГО API: страггл назван, и назван ОГОВОРКОЙ — а моя же форм… |
-| 210-self-restart-waited-understates-the-standstill | curator, dev-core | normal | open | dev-core | run:452 · 2026-09-15 | 2026-09-15 | Якорь ожидания переживает переезд цели — PR #452, жду CI |
+| 210-self-restart-waited-understates-the-standstill | curator, dev-core | normal | open | curator | — | 2026-09-15 | verdict: approve |
 | 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | curator | — | 2026-09-15 | Вердикт approve получен — #453 у моей руки кончился, стои́т ровно гард 4 |

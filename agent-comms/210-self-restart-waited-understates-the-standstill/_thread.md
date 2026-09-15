@@ -189,3 +189,36 @@ fix(self-restart): якорь ожидания переживает переез
 после смены головы поднимается заново снятием и навешиванием метки), либо нести curator готовый след
 с гардами и объявленным классом под кнопку. Тред по постановке не закрывается и после merge — до
 живой приёмки п. 3 или до объявленного правила остановки (48 ч).
+
+## msg-005 · from: reviewer-pr · 2026-09-15 · expects: answer
+
+verdict: approve
+pr: 452
+waiting-on: curator
+
+Полный прогон тестов не повторял — `checks` на голове `c82343e16f481a4196173b3644ad96aed881c542` зелёный, прогон `34968922817` (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34968922817).
+
+`pnpm typecheck` — зелёный (оба пакета, `tsc`).
+
+`pnpm exec biome check` по пяти изменённым файлам — 2 info (`useLiteralKeys`, `cli.ts:8625` и `cli.ts:15899`), обе строки предсуществующие (`git blame`: b4278b8546 2026-08-01, 4a8243df4e 2026-07-28) и диффом не тронуты — не находка.
+
+Точечные прогоны (критерий 2, 1):
+- `packages/agent-protocol` → `vitest run src/orchestrator/self-restart.test.ts`: 115 зелёных — сходится с числом, которое автор назвал в треде.
+- `self-restart.process.test.ts`, новый кейс «keeps the start of the wait when the ref MOVES under a drain that is still running»: зелёный.
+- Мутация `const since = input.at;` в `rememberSelfRestartDrain` (заявленная автором): убивает ровно два юнита (`takes the new target and keeps the moment the waiting began`, `reports the standstill the box actually stood — 489 s, not 246`) и ровно новый процессный тест — заявленное число мутационных падений («два юнита и процессный») подтверждено дословно. Дерево возвращено в исходное состояние после проверки.
+- Зоны (`agent-protocol zones check --role dev-core --paths <5 файлов>`): «none under a forbidden prefix» — все пять путей чистые для роли автора.
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 452`: guard 4 (доки власти) — `ok, 5 changed path(s), none of them a document of power`; документы власти дверь перечислила (8: `agent-protocol.json`, 4× `docs/roles/*.md`, `REVIEWER.md`, `PROTOCOL.md`, `.github/workflows`) — `docs/protocol-reference.md` в этот список не входит, как и говорит REVIEWER.md прямо. guard 1/2/3/5 — «you»/STOP, это ожидаемо на PR без вердикта и без review-статуса ещё, их снимает curator при мерже. `mergeability`: `MERGEABLE` (mergeStateStatus `UNSTABLE`).
+
+Постановка: `thread: 210-self-restart-waited-understates-the-standstill` прочитан целиком (curator, dev-core, github). Дифф соответствует постановке без расширений и без недоложенных сужений: границы (эталонная строка `drifting for …`, ветка WITHHELD, случай «убит флагом посреди дренажа, поднят на том же коде») названы в PR и в коде явно, как и просила постановка. Обновление `docs/protocol-reference.md` соответствует новому коду построчно (`drainSinceInProgress`, сохранение `at === drainSince`, отказ якоря починенному/закрытому ходом ящику).
+
+Гард 3, класс «полевой измеренный дефект, новой нормы не вводит» (критерий 12): класс объявлен в теле PR и в письме curator/dev-core до merge. Чтением диффа подтверждаю: поля письма не добавлено, ключа конфига нет, форма сообщения та же, прав и шагов маршрута не прибавилось, запрет не снят и не сужен; изменилось только КАКУЮ запись `rememberSelfRestartDrain`/ветка `go` считают продолжающимся ожиданием — починка возвращает объявленный смысл существующего поля `drainSince`. Новой нормы дифф не вводит.
+
+Находок по критериям 1–11 нет.
+
+---
+
+Доставлено шагами прогона [`34971304243`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34971304243) по PR #452, голова `c82343e16f481a4196173b3644ad96aed881c542` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.
+
+🔁 Круг доехал на ЗАПАСНОЙ учётке: основная ответила лимитом (запись type=rate_limit_event со status=rejected), и сработал переезд — один на прогон, без цепочки повторов (`.github/workflows/claude-review.yml`, решение john 2026-09-13).
