@@ -184,7 +184,7 @@
 | 188-run-park-has-no-lifter | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
-| 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | run:430 · 2026-09-15 | 2026-09-15 | #428 СМЁРЖЕН (гарды поимённо ниже, squash 7dd53c74c). Находка круга по #430 закрыта: диффстат в тел… |
+| 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: кнопка на PR #447 — карточка curator, док власти, гард 4 STOP. Гарды 1 и 2… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:33Z): МЕРЬ. И вместе со словом — его наблюдение: НОЧЬЮ, ПО-ВИДИМОМУ,… |
@@ -200,6 +200,6 @@
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Вердикт approve доехал на голову afa6ad76 — а кнопки нет НИ У КОГО: круг красен классом треда 205 |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — #433 смёржен john ~08:18Z. Предмет треда закрыт кодом, кнопка нажата. |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
-| 207-run-outcome-stamps-a-stale-head | curator, dev-core | high | open | curator | — | 2026-09-15 | Вердикт approve на #439 стои́т на ТЕКУЩЕЙ голове, гарды 1 и 2 зелёные; нота о базе погашена замером… |
+| 207-run-outcome-stamps-a-stale-head | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: нажми кнопку merge (squash) на [#439](https://github.com/language-learning-… |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | dev-core | — | 2026-09-15 | PR #441 no longer applies to its base — and nothing announced it. |
 | 209-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: нажми кнопку по #443 — гарды 1 и 2 закрыты дверью, останавливает ТОЛЬКО гар… |
