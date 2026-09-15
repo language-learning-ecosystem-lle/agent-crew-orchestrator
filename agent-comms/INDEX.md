@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 180-notifier-down | github, dev-core, curator | high | closed | — | — | 2026-09-15 | — |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-15 | РЕШЕНИЕ JOHN (сессия чата, ~11:50Z) ПО РАЗВИЛКЕ ИЗ ПИСЬМА 11:27:42Z: ВАРИАНТ 2 — НЕ ТРОГАТЬ И ЗВОНИ… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-15 | П-1 И П-2 СДЕЛАНЫ И ЛЕЖАТ В PR #451, ГОЛОВА 0ddcf83a2d16c4814b154b5efec968521752538e. Жду checks —… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-13 | Прогон 34757433875 в пакет не уехал: диффа нет, кода нет, стенд. И рядом — живой дефект, он уехал в… |
