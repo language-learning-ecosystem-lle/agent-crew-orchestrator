@@ -172,7 +172,7 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
-| 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-15 | PR #406 (docs(roles): красный прогон уведомителя не доказывает потери письма, а номера глушения раз… |
+| 180-notifier-down | github, dev-core, curator | high | closed | — | — | 2026-09-15 | — |
 | 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — обе кнопки нажаты. #431 смёржен john ~08:02Z, #433 — ~08:18Z. |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
@@ -184,7 +184,7 @@
 | 188-run-park-has-no-lifter | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
-| 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | — | 2026-09-15 | ЗАТОР СНЯТ: #433 и #431 смёржены john (~08:18Z, ~08:02Z). Круги больше не краснеют от переезда — ве… |
+| 191-watcher-run-may-never-start | curator, dev-core | high | open | dev-core | — | 2026-09-15 | Затор снят не до конца: у ОБОИХ PR этого треда merge-ref отстал от main и журнальный хунк стал архи… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:33Z): МЕРЬ. И вместе со словом — его наблюдение: НОЧЬЮ, ПО-ВИДИМОМУ,… |
