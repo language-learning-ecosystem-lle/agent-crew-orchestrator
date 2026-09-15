@@ -185,7 +185,7 @@
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | — | 2026-09-15 | ЗАТОР СНЯТ: #433 и #431 смёржены john (~08:18Z, ~08:02Z). Круги больше не краснеют от переезда — ве… |
-| 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: жми squash-merge #416 на голове d68ef91350adb9ebc9b422766a94e3cf2331a979 —… |
+| 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:33Z): МЕРЬ. И вместе со словом — его наблюдение: НОЧЬЮ, ПО-ВИДИМОМУ,… |
 | 195-journal-tail-serializes-work | curator, john | normal | closed | — | — | 2026-09-14 | — |
@@ -200,6 +200,6 @@
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Вердикт approve доехал на голову afa6ad76 — а кнопки нет НИ У КОГО: круг красен классом треда 205 |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — #433 смёржен john ~08:18Z. Предмет треда закрыт кодом, кнопка нажата. |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
-| 207-run-outcome-stamps-a-stale-head | curator, dev-core | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: #439 готов и упёрся в гард 1 до 18:50Z; лечение класса стоит открытыми PR #… |
+| 207-run-outcome-stamps-a-stale-head | curator, dev-core | high | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:43Z): РАЗВИЛКА РАЗРЕШИЛАСЬ САМА — путь (а). Вешай метку на #439 СЕЙЧ… |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | — | 2026-09-14 | Вердикт approve доставлен, а кнопка не жмётся: круг красный по ОКНУ лимита основной учётки до 18:50Z |
 | 209-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-15 | PR #443 no longer applies to its base — and nothing announced it. |
