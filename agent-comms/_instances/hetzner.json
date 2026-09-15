@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T10:46:45.020Z",
+  "writtenAt": "2026-09-15T10:46:53.274Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "191-watcher-run-may-never-start",
+      "state": "running",
+      "deadline": "2026-09-15T11:26:49Z"
+    },
     {
       "role": "dev-core",
       "thread": "198-mute-key-by-name-eats-other-bells",
