@@ -1,11 +1,21 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T13:10:27.027Z",
+  "writtenAt": "2026-09-15T13:14:45.078Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
+  ],
+  "quota": [
+    {
+      "account": "lle-main",
+      "window": "five_hour",
+      "since": "2026-09-15T13:14:45Z",
+      "role": "curator",
+      "until": "2026-09-15T13:40:00Z",
+      "stated": true
+    }
   ],
   "leases": [
     {
@@ -19,12 +29,6 @@
       "thread": "200-run-census-drops-queued",
       "state": "running",
       "deadline": "2026-09-15T13:49:11Z"
-    },
-    {
-      "role": "curator",
-      "thread": "210-self-restart-waited-understates-the-standstill",
-      "state": "running",
-      "deadline": "2026-09-15T13:49:03Z"
     }
   ]
 }
