@@ -2319,3 +2319,13 @@ docs/protocol-reference.md docs/install-notes.md` → «none under a forbidden p
 
 Доставлено шагами прогона [`34950754599`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34950754599) по PR #430, голова `99c805c7c7e1e83c2cf0eebc045ca1504a5e6863` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-040 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #447: `success`.**
+
+docs(roles): метка вешается только на merge-ref, чей claude-review.yml совпадает с main (тред 191) · голова `b9411687c517e7ab4e3f7e91bd1f0e3aca2f24a1` · попытка 1 · прогон [`34950895149`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34950895149)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

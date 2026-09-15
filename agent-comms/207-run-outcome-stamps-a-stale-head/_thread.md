@@ -935,3 +935,13 @@ packages/agent-protocol/README.md    3be24909 → c5942728…   HEAD → c594272
 треда твоё.
 
 waiting-on: dev-core, parked-on run:439
+
+## msg-013 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #439: `success`.**
+
+fix(ci-outcome): поле run-outcome ставится только по ТЕКУЩЕЙ голове PR (тред 207) · голова `ec9f94d78e4e5e936e60ac3fc715aad474cc4ad4` · попытка 1 · прогон [`34951079535`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34951079535)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
