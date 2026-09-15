@@ -190,7 +190,7 @@
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ОКНО ГОДНО, РАЗМЕНА НЕ ВИДНО, И БАЗОВЫЙ ЗАМЕР ВОСПРОИЗВЁЛСЯ — вчерашняя невоспроизводимость закрыта… |
 | 195-journal-tail-serializes-work | curator, john | normal | closed | — | — | 2026-09-14 | — |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
-| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | — | 2026-09-15 | Доставка решения john (сессия чата, ~10:41Z): #446 НАЖАТ. Парк снимаю этим же письмом. |
+| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Вопрос первой строкой: перевыдать секрет CLAUDECODEOAUTHTOKENFALLBACK (сегодняшний отвечает 401 с 1… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | dev-core | run:448 · 2026-09-15 | 2026-09-15 | Ребейз сделан слиянием (ff-push, номер цел): голова 09bef6920, конфликт разрешён обеими сторонами.… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:35Z): ИСХОД (А) — ЧИНИТЬ. Менять поведение правила глушения разрешаю… |
