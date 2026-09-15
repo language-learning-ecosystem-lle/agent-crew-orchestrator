@@ -2136,6 +2136,29 @@ agent-protocol derive       --root <comms> --ref <ref> [--write]           # all
                             # the write — a `set -e` shell still reaches its commit step
 agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
+agent-protocol journal write --root <comms> --ref <ref> --thread <NNN-slug> --from <role> \
+                            --body-file <p> [--write] [--no-push]
+                            # THE JOURNAL OF A ROLE IS WRITTEN LIKE A LETTER (thread 206, decision of
+                            # john 2026-09-14): straight into the mail branch, with no branch of its own,
+                            # no pull request, no CI run and no button. Measured that morning: of the nine
+                            # PRs standing without a label FOUR were pure journal entries, and each paid a
+                            # branch, a `checks` run, a round (or the proof of its exception), a conflict
+                            # against somebody else's tail, a rebase and a merge button — for a paragraph
+                            # of chronicle. An entry carries no code and changes no behaviour: there is
+                            # nothing in it for a reviewer to judge, which is the class the mail belongs to
+                            # WHERE IT LANDS: `<mail.dir>/journal/<role>/<NNN-slug>.md` in the mail branch.
+                            # The form «a file per thread» (#408, 2026-09-13) survives the move — only the
+                            # branch changed — and the thread is the one the entry RIDES IN
+                            # --write MEANS WRITTEN, like a letter's: the file, the commit and the push are
+                            # one action, under the same lock, the same dirty check, the same replanning
+                            # retry and the same undo (`deliverMessage`). --no-push writes the file only
+                            # A SECOND WRITE APPENDS — a thread lives across several ticks and the finding
+                            # of the third belongs beside the first. The SAME text twice is refused by name:
+                            # an append-only file cannot be edited back, so a re-run by a session that lost
+                            # its output would leave the paragraph in the branch twice
+                            # THE OLD ENTRIES ARE NOT MOVED: `docs/journal/**` of the main branch stays
+                            # where it is and stays true — the same rule as the move to a file per thread.
+                            # `merge-gate --journals` therefore keeps its exception while those paths live
 agent-protocol new-message  --root <comms> --ref <ref> \
                             (--thread <id> | --ensure-thread <slug> --title <t> --participants <a,b>) \
                             --from <role> \
@@ -2850,6 +2873,7 @@ the push are one action:
 | --- | --- |
 | `new-message` | **delivers** — writes, commits, pushes (retry, `--no-push` for CI) |
 | `new-thread` | **delivers** — both files in one commit, pushes (retry, `--no-push` for CI) |
+| `journal write` | **delivers** — the entry of a role into the mail branch, one commit, pushes (thread 206) |
 | `index build` | writes `INDEX.md` — **not committed**: derived |
 | `thread build` | writes `_thread.md` — **not committed**: derived |
 | `derive` | writes all derived files — **not committed**: derived |
