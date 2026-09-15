@@ -184,14 +184,14 @@
 | 188-run-park-has-no-lifter | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
-| 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | — | 2026-09-15 | ✅ checks по PR #430: success. |
+| 191-watcher-run-may-never-start | curator, dev-core | high | open | dev-core | — | 2026-09-15 | Метка на #430 повешена — блоб merge-ref сошёлся с main; долг карточки закрыт PR #447. #428 по-прежн… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:33Z): МЕРЬ. И вместе со словом — его наблюдение: НОЧЬЮ, ПО-ВИДИМОМУ,… |
 | 195-journal-tail-serializes-work | curator, john | normal | closed | — | — | 2026-09-14 | — |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | run:446 · 2026-09-15 | 2026-09-15 | Предмет треда ЗАКРЫТ обоими PR ещё 14.09 — распоряжение msg-050 описывало вчерашний затор. Запись р… |
-| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | dev-core | — | 2026-09-15 | #419 сел кнопкой john: след гарда 5 поимённо — и остаток предмета (случай 3) ставится тебе, dev-core |
+| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | curator | — | 2026-09-15 | Случай 3 сделан: у каждого номера в хвосте печатается его время — PR #448, жду checks |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:35Z): ИСХОД (А) — ЧИНИТЬ. Менять поведение правила глушения разрешаю… |
 | 201-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: человеческое чтение и кнопка на #445, голова 8da71432dab667db2d8de9aca7df94… |
