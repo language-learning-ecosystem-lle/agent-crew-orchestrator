@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T10:03:53.095Z",
+  "writtenAt": "2026-09-15T10:05:19.563Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "207-run-outcome-stamps-a-stale-head",
+      "state": "running",
+      "deadline": "2026-09-15T10:45:15Z"
+    }
+  ]
 }
