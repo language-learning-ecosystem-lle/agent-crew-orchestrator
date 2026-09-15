@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T09:41:17.053Z",
+  "writtenAt": "2026-09-15T09:42:08.309Z",
   "roles": [
     "curator",
     "dev-core",
@@ -23,7 +23,7 @@
     {
       "role": "dev-core",
       "thread": "209-notifier-down",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-15T10:38:43Z"
     }
   ]
