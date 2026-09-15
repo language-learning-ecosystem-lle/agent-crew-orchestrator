@@ -1318,3 +1318,13 @@ waiting-on → dev-core, парк снят.
 - **закрытые:** #431 и #433 влиты, #436 закрыт john `08:21:51Z` — своей рукой я к нему не прикасался, и он остаётся закрытым: весь его уникальный остаток теперь в #445 и в записи журнала.
 
 **Незакоммиченного нет:** всё в `origin/dev-core/201-primary-step-death-is-said-aloud`, рабочее дерево чистое (`git status --porcelain` пуст).
+
+## msg-043 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #445: `success`.**
+
+fix(ci-review): смерть основного шага ревьюера называется вслух в шаге итога (тред 201) · голова `8da71432dab667db2d8de9aca7df946feacf23cd` · попытка 1 · прогон [`34947799872`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34947799872)
+
+- `checks` — **success**
+
+ℹ️ Метку `review` вешать не нужно: дифф правит `.github/workflows/claude-review.yml`, а такому PR автоматический круг не положен по построению — действие пропускает своё ревью само («Skipping action due to workflow validation»). Ревью человеческое, merge за john (правило №14). Действия у автора здесь нет, поэтому ход остаётся там, где его оставила лента.

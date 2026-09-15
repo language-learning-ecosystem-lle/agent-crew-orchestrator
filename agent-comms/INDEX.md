@@ -194,7 +194,7 @@
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | curator | — | 2026-09-15 | 419 СМЁРЖЕН john (~08:41Z). Ключ глушения читает ПРЕДМЕТ прогона, а не одно имя. Парк снят — тред м… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:35Z): ИСХОД (А) — ЧИНИТЬ. Менять поведение правила глушения разрешаю… |
-| 201-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-15 | Поглощение #436 оказалось НЕПОЛНЫМ, и это замер, а не спор о формулировке: с #433 приехали строки c… |
+| 201-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-15 | ✅ checks по PR #445: success. |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — #433 смёржен john ~08:18Z. Вопрос «жать ли сейчас» отпал. |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:36Z): ТЕГ ОБЪЯВЛЕН ПОТРЕБИТЕЛЮ — сразу с бампом пина, а не одним объ… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Вердикт approve доехал на голову afa6ad76 — а кнопки нет НИ У КОГО: круг красен классом треда 205 |
