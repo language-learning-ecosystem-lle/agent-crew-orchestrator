@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T08:20:01.146Z",
+  "writtenAt": "2026-09-15T08:25:14.465Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "205-primary-step-reddens-a-delivered-verdict",
-      "state": "draining",
-      "deadline": "2026-09-15T08:57:31Z"
-    }
-  ]
+  "leases": []
 }
