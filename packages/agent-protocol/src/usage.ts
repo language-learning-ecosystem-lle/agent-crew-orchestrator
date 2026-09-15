@@ -453,6 +453,20 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # without --write: prints what it would send and leaves the state alone
                               # only what the transport CONFIRMED is marked announced (029): a failed
                               # delivery is a NON-ZERO exit with the state untouched, so it rings again
+  agent-protocol journal write --root <mail> --ref <ref> --thread <id> --from <role> --body-file <p> [--write] [--no-push]
+                              # THE JOURNAL OF A ROLE IS WRITTEN LIKE A LETTER (206, john 2026-09-14):
+                              # straight into the mail branch, with no branch, no PR, no run and no button.
+                              # Measured that morning: of nine PRs standing without a label FOUR were pure
+                              # journal entries, each paying a branch, a run, a round, a conflict, a rebase
+                              # and a button — for a paragraph of chronicle
+                              # the entry lands at '<mail.dir>/journal/<role>/<thread>.md' — the form
+                              # 'a file per thread' (#408) survives the move, only the branch changed
+                              # --write means WRITTEN: the file, the commit and the push are one action,
+                              # with the same lock, retry and undo as a letter's
+                              # a second write APPENDS (a thread lives across ticks); the SAME text twice
+                              # is refused by name — an append-only file cannot be edited back by a re-run
+                              # the old entries in 'docs/journal/**' of the main branch are NOT moved:
+                              # they stay there and stay true, the same rule as the move to a file per thread
   agent-protocol new-message  --root <mail> --ref <ref> (--thread <id> | --ensure-thread <slug> --title <t> --participants <a,b>) --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--park-ground <fact>] [--merged-pr <n>] [--run-outcome <n>] [--verdict <approve|needs-fixes> --pr <n>] [--task <d>]... [--write] [--no-push]
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
@@ -602,11 +616,13 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # a raised session passes none of the three — the launch environment carries them
                               # --no-push: write the files only (for a caller that owns its own git, e.g. CI)
 
-WHICH '--write' DELIVERS (thread 033). Three commands SEND — 'new-message', 'new-thread'
-and 'thread status': the file, the commit and the push are one action. The third joined
-them by the same argument (065.1) — a status moved on one disk is a thread still open for
-everybody who reads the feed. Everything else writes and stops, and each for a stated
-reason:
+WHICH '--write' DELIVERS (thread 033). Four commands SEND — 'new-message', 'new-thread',
+'thread status' and 'journal write': the file, the commit and the push are one action. The
+third joined them by the same argument (065.1) — a status moved on one disk is a thread
+still open for everybody who reads the feed; the fourth by the argument of 206 — a journal
+entry that stopped at the disk is a paragraph nobody can read, and the whole point of the
+move was that it needs no PR to become visible. Everything else writes and stops, and each
+for a stated reason:
   · 'index build', 'thread build', 'derive' — DERIVED files, committed by the generator
     workflow ('chore(comms): rebuild derived') on the push that produced them;
   · 'migrate', 'schema migrate' — bulk rewrites read by a human before they are committed

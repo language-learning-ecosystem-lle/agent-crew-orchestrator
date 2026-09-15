@@ -91,6 +91,13 @@ import {
 } from "./fs/git.js";
 import { gitEnvOutsideHook } from "./fs/git-env.js";
 import { resolveMailRoot } from "./fs/mail-root.js";
+import {
+  type JournalPlan,
+  journalEntryFile,
+  journalEntryLabel,
+  journalSubject,
+  planJournalEntry,
+} from "./journal/write.js";
 import { type BaseMovePaths, describeBaseNote } from "./merge/base-note.js";
 import {
   type BaseDrift,
@@ -4426,6 +4433,119 @@ const newMessage = (argv: readonly string[]): void => {
   } catch (error) {
     // A BUSY CHECKOUT IS A REFUSAL WITH A NAME, not a stack trace: the caller has to be
     // able to tell "somebody else is delivering right now" from "the mail is broken".
+    if (error instanceof DeliveryRefusedError || error instanceof MailCheckoutBusyError) {
+      fail(error.message, 2);
+    }
+    throw error;
+  }
+};
+
+/**
+ * WRITE AN ENTRY INTO THE JOURNAL OF A ROLE — straight into the mail branch, with no
+ * branch, no pull request, no run and no button (john's word of 2026-09-14, thread
+ * `206-journal-writes-without-a-pr`).
+ *
+ * WHY IT IS A DELIVERY AND NOT A COMMIT OF THE WORK. Measured on the morning of
+ * 2026-09-14: of the nine pull requests standing without a label, FOUR were pure journal
+ * entries, and each paid a branch, a `checks` run, a round or the proof of its exception,
+ * a conflict against somebody else's tail, a rebase and a button — for a paragraph of
+ * chronicle. A role's note about its own work carries no code and changes no behaviour;
+ * that is the class the mail belongs to, and the mail has been written straight by a
+ * command since R3. The reasoning and the shape of the file are in `journal/write.ts`;
+ * this is the door.
+ *
+ * `--write` MEANS WRITTEN, exactly as it does for a letter: the file, the commit and the
+ * push are one action, with the same lock, the same dirty check, the same replanning retry
+ * and the same undo — `deliverMessage`, unchanged. Nothing here knows about git.
+ *
+ * THE ENTRY IS RE-READ INSIDE THE ATTEMPT. The pre-flight read only knows this disk;
+ * delivery fetches and fast-forwards, and a second session of the same role may have
+ * appended to the very same file in between. Planning against the pre-flight text would
+ * then overwrite their paragraph with ours — so the append is composed after the refresh,
+ * and a text that turns out to be already there is refused from inside the attempt.
+ */
+const journalWrite = (argv: readonly string[]): void => {
+  const root = requiredRoot(argv);
+  const thread = required(argv, "--thread");
+  // The same door as the mail's (thread 086): an id this package's reader would never walk
+  // past is a name the entry can be written under and nobody can find it by.
+  refuseUnreadableThreadId(thread);
+  const from = required(argv, "--from");
+  const loaded = configFrom(argv, repoOf(root));
+  if (!loaded.registry.isKnown(from)) fail(`role '${from}' is not listed in the config`, 2);
+  // THE THREAD HAS TO EXIST, and the refusal says why the name matters: the entry is NAMED
+  // BY THE THREAD it rides in (#408, decision of john 2026-09-13), so a name no conversation
+  // answers to is a typo that lands the paragraph where no reader of that thread will look.
+  if (!existsSync(join(root, thread))) {
+    fail(
+      `thread '${thread}' not found in '${root}' — a journal entry is NAMED BY THE THREAD it rides in, so an id no conversation answers to would put the entry where no reader of that thread ever looks`,
+      2,
+    );
+  }
+  const bodyPath = required(argv, "--body-file");
+  const text = readFile(bodyPath, "journal entry");
+  // WHERE THE FILE LIES IS ASKED BEFORE ANYTHING IS WRITTEN — the same door, the same
+  // predicate and the same sentence as `new-message`'s (thread 170): a body left inside a
+  // checkout is untracked dirt, and in the mail checkout it is dirt the next delivery of
+  // every role on this box refuses on.
+  const where = bodyFileLocation(bodyPath);
+  if (!where.ok) fail(`journal write — ${where.refusal}`, 2);
+  if (text.trim() === "") {
+    fail(
+      `the journal entry in '${bodyPath}' is empty — an entry says what happened and why, and an empty one would be a commit into the mail branch saying nothing`,
+      2,
+    );
+  }
+
+  const at = journalEntryFile({ mailRoot: root, role: from, thread });
+  const label = journalEntryLabel({ mailDir: loaded.config.mail.dir, role: from, thread });
+  const plan = (): JournalPlan =>
+    planJournalEntry({
+      role: from,
+      thread,
+      body: text,
+      ...(existsSync(at) ? { existing: readFileSync(at, "utf8") } : {}),
+    });
+
+  const first = plan();
+  if (first.kind === "duplicate") {
+    fail(first.refusal, 2);
+    return;
+  }
+  const write = argv.includes("--write");
+  if (!write) {
+    out(`agent-protocol: would ${first.kind} ${label} (--write writes it):`);
+    out(first.content);
+    return;
+  }
+  if (argv.includes("--no-push")) {
+    writeOut(at, first.content);
+    out(`agent-protocol: wrote ${label} — NOT committed (--no-push: the caller owns its git)`);
+    return;
+  }
+
+  const checkout = repoOf(root);
+  try {
+    const delivered = deliverMessage({
+      git: gitIn(checkout),
+      write: writeOut,
+      branch: loaded.config.mail.branch,
+      subject: journalSubject({ mailDir: loaded.config.mail.dir, role: from, thread }),
+      // The commit is BY THE ROLE, like a letter's (027): the mail checkout is shared by
+      // every role on the box, so the signature can only travel with the commit.
+      identity: roleIdentity(from),
+      stage: () => {
+        const next = plan();
+        if (next.kind === "duplicate") throw new DeliveryRefusedError(next.refusal);
+        return { files: [{ path: at, content: next.content }], label };
+      },
+      note: out,
+      lock: mailLockFor({ checkout, holder: `journal write ${from} → ${thread}`, note: out }),
+    });
+    out(
+      `agent-protocol: wrote ${delivered.label} — committed and pushed to origin/${loaded.config.mail.branch}${delivered.attempts > 1 ? ` (after ${delivered.attempts} attempts: the branch moved underneath)` : ""}`,
+    );
+  } catch (error) {
     if (error instanceof DeliveryRefusedError || error instanceof MailCheckoutBusyError) {
       fail(error.message, 2);
     }
@@ -14347,11 +14467,20 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
     const events = existsSync(journalPath)
       ? parseJournal(readFile(journalPath, "orchestrator journal"))
       : [];
+    // AND THE MAIL THE FOLD IS JUDGED WITH, BUILT ONCE FOR BOTH READERS (thread 196). The journal
+    // alone does not say whether a run delivered: a turn that stayed on the role is written down
+    // as `exited-without-handoff` and only the mail tells it apart from a break (`isSelfTurnDelivery`,
+    // threads 021/023). The tick has always been given this set; the queue row below was folding
+    // without it, and the two readings of ONE flag disagreed in the field — measured on
+    // `.orchestrator/daemon.log` 2026-09-13T14:49…15:18Z, where the row of `curator×190-…` promised
+    // `⛔ OUT OF ATTEMPTS — 9 of 3` in the very tick whose plan raised that pair. One value, handed
+    // to both, is what makes that shape unwritable rather than merely fixed.
+    const marks = deliveryMarks(threads);
     // THE PAIRS THIS BOX HAS STOPPED RAISING, ON THEIR OWN QUEUE ROWS (thread 140). Read from
-    // the very journal the tick below plans on, so the row and the skip line cannot disagree
-    // about which pairs are spent. Without it the row of a pair frozen three days ago is
-    // character for character the row of one that is next in line.
-    const outOfAttempts = spentCeilings(foldLeases(events, now, gates.maxAttempts.value));
+    // the very journal the tick below plans on, WITH THE SAME MAIL and the same ceiling, so the
+    // row and the skip line cannot disagree about which pairs are spent. Without it the row of a
+    // pair frozen three days ago is character for character the row of one that is next in line.
+    const outOfAttempts = spentCeilings(foldLeases(events, now, gates.maxAttempts.value, marks));
     // THE SECOND FORM IS ANSWERED OUT OF THE VERY SAME SCAN (thread 155): `no-delivers-since:X`
     // asks whether thread X has grown a letter carrying `delivers:` SINCE THE PARK WAS DECLARED,
     // and `threads` is that mail, already read this tick. The window is the park's own stamp and
@@ -14446,11 +14575,17 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
       // WHAT THIS PROCESS HAS ALREADY SAID ABOUT ACCOUNTS (thread 179) — see the declaration
       // above. Without it every tick is the first tick and every state is news.
       announced: announcedAccounts,
-      now: new Date(),
+      // THE INSTANT OF THE QUEUE ABOVE, not a second one taken here (thread 196): the two folds
+      // are only "provably equal on the same inputs" while the inputs are the same three values,
+      // and a backoff whose thaw falls between the two readings is exactly the pair the row and
+      // the plan would then disagree about.
+      now,
       // The mail is already parsed for the queue above — the set of sessions that
       // wrote is what keeps a run that delivered into its own turn out of the
-      // failed attempts (thread 023).
-      deliveryMarks: deliveryMarks(threads),
+      // failed attempts (thread 023). THE VERY VALUE THE ROW WAS PRINTED WITH (thread 196):
+      // two builds of this set off one `threads` are equal, but nothing kept them so, and the
+      // row folded without it at all until the field defect of 2026-09-13.
+      deliveryMarks: marks,
       maxConsecutive: gates.maxConsecutive.value,
       maxAttempts: gates.maxAttempts.value,
       parked,
@@ -17148,6 +17283,12 @@ const main = async (argv: readonly string[]): Promise<void> => {
   } else if (command === "new-message") {
     guardArguments("new-message", argv.slice(1));
     newMessage(argv.slice(1));
+  } else if (command === "journal" && subcommand === "write") {
+    // BEHIND THE SAME DOOR AS THE MAIL WRITERS (thread 075), for the same reason: what this
+    // command swallows it swallows into a branch that is written append-only by hand, and a
+    // paragraph committed under a mistyped thread cannot be taken back by a re-run.
+    guardArguments("journal write", argv.slice(2));
+    journalWrite(argv.slice(2));
   } else if (command === "new-thread") {
     // THE DOOR ON A WRITING COMMAND (thread 075): what `new-thread` swallows it swallows
     // into an APPEND-ONLY feed — a mistyped flag is not a session started with the wrong
