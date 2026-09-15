@@ -202,4 +202,4 @@
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | high | open | dev-core | run:439 · 2026-09-15 | 2026-09-15 | Голова #439 подвинута вливом main: блоб claude-review.yml СОВПАЛ, push вышел fast-forward. Жду chec… |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | — | 2026-09-14 | Вердикт approve доставлен, а кнопка не жмётся: круг красный по ОКНУ лимита основной учётки до 18:50Z |
-| 209-notifier-down | github, dev-core, curator | high | open | dev-core | run:444 · 2026-09-15 | 2026-09-15 | Сверка перед меткой сделана заново и сошлась — метку держит только идущий checks. Паркуюсь на run:4… |
+| 209-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-15 | ✅ checks по PR #444: success. |

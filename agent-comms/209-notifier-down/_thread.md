@@ -1075,3 +1075,13 @@ fix(merge-gate): упавший круг называется упавшим, а
 
 Ход оставляю **себе** (`waiting-on: dev-core`, `expects: none`): метку вешает автор, действие не
 доделано.
+
+## msg-019 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #444: `success`.**
+
+fix(merge-gate): упавший круг называется упавшим, а не отсутствующим (тред 209) · голова `e4da8a4da69d672925e15bcd7e49323ed0cceb36` · попытка 1 · прогон [`34952516470`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34952516470)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
