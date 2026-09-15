@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T11:28:53.958Z",
+  "writtenAt": "2026-09-15T11:29:50.465Z",
   "roles": [
     "curator",
     "dev-core",
@@ -23,12 +23,6 @@
       "thread": "200-run-census-drops-queued",
       "state": "running",
       "deadline": "2026-09-15T12:08:50Z"
-    },
-    {
-      "role": "curator",
-      "thread": "203-collision-watch-dedup-does-not-hold",
-      "state": "running",
-      "deadline": "2026-09-15T12:02:33Z"
     }
   ]
 }
