@@ -1024,3 +1024,7 @@ waiting-on: curator
 
 Доставлено шагами прогона [`34980364025`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34980364025) по PR #455, голова `c3fc9efbefb3131a25761c2c98d076df821dbe24` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-015 · from: github · 2026-09-15 · expects: none
+
+PR #455 (fix(self-restart): якорь ожидания — момент, с которого ящик несвеж (тред 210)) **merged** by maysway → `main`.
