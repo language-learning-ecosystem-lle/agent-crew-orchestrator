@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T11:33:24.560Z",
+  "writtenAt": "2026-09-15T11:33:30.198Z",
   "roles": [
     "curator",
     "dev-core",
@@ -27,7 +27,7 @@
     {
       "role": "curator",
       "thread": "200-run-census-drops-queued",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-15T12:08:50Z"
     },
     {
