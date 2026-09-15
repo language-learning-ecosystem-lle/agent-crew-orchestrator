@@ -127,7 +127,7 @@
 - [Секрет репозитория этим токеном не мерится](repo-secret-presence-is-unmeasurable-by-this-token.md) — `gh secret list` даёт 403
 - [Дом находки может уже стоять открытым PR](finding-may-already-have-an-open-pr.md) — перечисли `gh pr list` до нового треда И до постановки в своём: одно слово john исполняется в двух тредах; дверь стареет за ночь, метка и круг — за минуты
 - [Эскалация может быть ЧАСТЬЮ уже стоящей](escalation-may-be-part-of-a-wider-one.md) — второй развилки не заводи; вопрос класса отвечается НОМЕРОМ СТРОКИ нормы
-- [Новый путь исполнения принимается ПЕРВЫМ срабатыванием](new-execution-path-is-accepted-by-its-first-firing.md) — merge его не принимает
+- [Новый путь исполнения принимается ПЕРВЫМ срабатыванием](new-execution-path-is-accepted-by-its-first-firing.md) — merge его не принимает; рядом: [`continue-on-error` прячет исход шага](continue-on-error-hides-the-step-outcome.md) — `--json jobs` даёт `success`, правда в `env` следующего шага
 - [Свежая норма может отменить предмет открытого PR](fresh-norm-may-void-an-open-prs-subject.md) — гарды зелены, читай оговорку о необратной силе; сигнал — нота гарда 2
 - [Два PR одного треда делят ОДИН журнальный файл](two-open-prs-of-one-thread-share-one-journal-file.md) — норма «файл на тред» их не разводит
 - [«Не связанный такт» не наступает](unbound-tick-never-comes.md) — работа по слову john ставится В ТОМ ЖЕ треде, где слово
