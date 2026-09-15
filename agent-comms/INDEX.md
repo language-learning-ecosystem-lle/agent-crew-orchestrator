@@ -196,7 +196,7 @@
 | 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:35Z): ИСХОД (А) — ЧИНИТЬ. Менять поведение правила глушения разрешаю… |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать кнопку merge на #440 — гарды 1, 2, 3 сложились, стоит один гард 4 (д… |
-| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:36Z): ТЕГ ОБЪЯВЛЕН ПОТРЕБИТЕЛЮ — сразу с бампом пина, а не одним объ… |
+| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | open | curator | — | 2026-09-15 | Предмет треда ПРОВЕРЕН ПОЛЕМ: пин 0.2.15 у потребителя переехал, и с новой сборки повторов НЕТ — 17… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Вердикт approve доехал на голову afa6ad76 — а кнопки нет НИ У КОГО: круг красен классом треда 205 |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — #433 смёржен john ~08:18Z. Предмет треда закрыт кодом, кнопка нажата. |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
