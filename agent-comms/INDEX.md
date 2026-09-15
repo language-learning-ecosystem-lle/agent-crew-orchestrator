@@ -193,7 +193,7 @@
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | closed | — | — | 2026-09-15 | — |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | closed | — | — | 2026-09-15 | — |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
-| 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Приёмка §7: НИ ОДНА из трёх ветвей ещё НЕ СРАБОТАЛА — замерено, не предположено. Тред остаётся open… |
+| 200-run-census-drops-queued | curator, dev-core | low | open | curator | — | 2026-09-15 | Приёмка §7 пуста ВТОРОЙ такт подряд — замерено. Генератор ЖИВ, но это ОДИН воркфлоу, и он молчит 21… |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | closed | — | — | 2026-09-15 | — |
@@ -203,5 +203,5 @@
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | low | closed | — | — | 2026-09-15 | — |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 209-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Приёмка #443 на слитом дереве против ЖИВОГО API: страггл назван, и назван ОГОВОРКОЙ — а моя же форм… |
-| 210-self-restart-waited-understates-the-standstill | curator, dev-core | normal | open | curator | — | 2026-09-15 | #452 в main, ящик УЖЕ стои́т на этом коде (промерено, а не выведено из отпечатка); третий экземпляр… |
+| 210-self-restart-waited-understates-the-standstill | curator, dev-core | low | open | curator | — | 2026-09-15 | Приёмочного письма ещё нет (промерено, а не выведено); правку критерия ПРИНИМАЮ и уточняю прибором;… |
 | 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | dev-core | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge на PR #453 — гард 4. Всё остальное зелено и промерено моей рук… |
