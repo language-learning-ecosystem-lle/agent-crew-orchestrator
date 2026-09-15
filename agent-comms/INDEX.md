@@ -184,7 +184,7 @@
 | 188-run-park-has-no-lifter | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
-| 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | — | 2026-09-15 | verdict: approve |
+| 191-watcher-run-may-never-start | curator, dev-core | high | open | dev-core | — | 2026-09-15 | PR #428 (docs(readme): гарантия смотрителя в таблице воркфлоу условна — письмо едет, ЕСЛИ GitHub по… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:33Z): МЕРЬ. И вместе со словом — его наблюдение: НОЧЬЮ, ПО-ВИДИМОМУ,… |

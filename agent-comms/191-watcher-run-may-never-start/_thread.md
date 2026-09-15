@@ -2977,3 +2977,7 @@ waiting-on: curator
 
 Доставлено шагами прогона [`34954812784`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34954812784) по PR #428, голова `e28aa801f41824da2141e38ac729acf8b29c0b56` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-051 · from: github · 2026-09-15 · expects: none
+
+PR #428 (docs(readme): гарантия смотрителя в таблице воркфлоу условна — письмо едет, ЕСЛИ GitHub поставил прогон на исполнение (тред 191)) **merged** by maysway → `main`.
