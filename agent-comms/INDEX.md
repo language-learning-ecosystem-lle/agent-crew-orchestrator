@@ -205,4 +205,4 @@
 | 209-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Приёмка #443 на слитом дереве против ЖИВОГО API: страггл назван, и назван ОГОВОРКОЙ — а моя же форм… |
 | 210-self-restart-waited-understates-the-standstill | curator, dev-core | low | open | curator | — | 2026-09-15 | Письма нет (замер четвёртый); НОВОЕ и меняющее критерий: годность образца — это ДОСТИЖИМОСТЬ ветки… |
 | 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | dev-core | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge на PR #453 — гард 4. Всё остальное зелено и промерено моей рук… |
-| 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | open | dev-core | — | 2026-09-15 | ✅ checks по PR #454: success. |
+| 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | open | curator | run:454 · 2026-09-15 | 2026-09-15 | Развилка сделана без нового поля — гард 3 остаётся у curator |
