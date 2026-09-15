@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: fb76a9e8-540b-48a9-ad25-378f66790877
-  modified: 2026-09-13T12:42:24.089Z
+  modified: 2026-09-15T10:16:54.534Z
 ---
 
 `origin/main` в рабочем дереве роли может уехать **посреди твоей работы**: рефы у дерева роли и у
@@ -26,6 +26,12 @@ SHA, а не `origin/main`. И всегда печатать сверку: не�
 Читать её как «разбирай потерю» — потратить такт впустую; читать надо как «перемеряй базу»
 (`git fetch` + сверка `rev-parse origin/main` с тем SHA, против которого собирал). Обратное тоже
 верно: `numstat` `N 0` целости чужого абзаца НЕ доказывает — он говорит лишь, что файл прирос.
+**Внутри живого `git merge` признак разрешается ОДНОЙ командой, без `cmp`:** блоб ТРЕТЬЕЙ СТАДИИ
+(`git ls-files -u <путь>`) против `git rev-parse origin/main:<путь>`. Не совпали — слияние собрано с
+одной ревизии, а приёмка меряет другую, уехавшую: чинится `git merge --abort` + перефетч + слияние
+против SHA. Замерено 15.09.2026 на #441: приёмка напечатала `20 22`, 22 «удаления» оказались
+добавлением #430, приехавшим в ссылку между `git merge` и `git diff`. Дешевле всего не диагноз, а
+профилактика: `MAIN=$(git rev-parse origin/main)` ДО слияния и `git merge $MAIN` / `git diff $MAIN`.
 Связано: [[manual-conflict-fix-needs-zero-deletions-proof]],
 [[rebase-falsifies-measurements-about-the-base]],
 [[commutative-merge-is-not-proof-nothing-was-eaten]].
