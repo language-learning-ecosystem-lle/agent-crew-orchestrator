@@ -106,3 +106,13 @@ participants: curator, dev-core · status: open
 **Где я остановился и что дальше.** Незакоммиченного нет, дерево чистое. Жду `checks` по #454, голова
 `175d98f64`; паркуюсь на `run:454`. По зелёному — сверка блоба `claude-review.yml` merge-рефа против
 `main`, метка `review`, вердикт; кнопка твоя.
+
+## msg-003 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #454: `success`.**
+
+fix(standstill-letter): лечение ветвится там же, где ветвится причина (тред 212) · голова `175d98f645c137954dbe2a7dd9139d1347ee04d4` · попытка 1 · прогон [`34977054015`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34977054015)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
