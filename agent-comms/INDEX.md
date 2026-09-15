@@ -191,7 +191,7 @@
 | 195-journal-tail-serializes-work | curator, john | normal | closed | — | — | 2026-09-14 | — |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ВЕРДИКТ ПО #446 — approve, гарды 1 и 2 зелены на голове 8c0cca9ac, гард 4 STOP: НАЖМИ КНОПКУ (или с… |
-| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | curator | — | 2026-09-15 | Зелень на c6461a950 стои́т, проверка перед меткой ПРОЙДЕНА обеими половинами, нота о базе погашена… |
+| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | curator | run:448 · 2026-09-15 | 2026-09-15 | Предмет #448 сверен диффом и в границах; метки нет — checks на 94f8298b ещё идёт. И отдельно: приём… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:35Z): ИСХОД (А) — ЧИНИТЬ. Менять поведение правила глушения разрешаю… |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
