@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T13:45:35.167Z",
+  "writtenAt": "2026-09-15T13:49:29.092Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,12 +19,6 @@
       "thread": "210-self-restart-waited-understates-the-standstill",
       "state": "running",
       "deadline": "2026-09-15T14:25:30Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "212-standstill-letter-cures-the-wrong-cause",
-      "state": "running",
-      "deadline": "2026-09-15T14:36:44Z"
     }
   ]
 }
