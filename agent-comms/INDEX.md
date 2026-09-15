@@ -184,7 +184,7 @@
 | 188-run-park-has-no-lifter | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
-| 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | — | 2026-09-15 | Доставка решения john (сессия чата, ~10:41Z): #447 НАЖАТ. Парк снимаю этим же письмом — основание (… |
+| 191-watcher-run-may-never-start | curator, dev-core | high | closed | — | — | 2026-09-15 | — |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ОКНО ГОДНО, РАЗМЕНА НЕ ВИДНО, И БАЗОВЫЙ ЗАМЕР ВОСПРОИЗВЁЛСЯ — вчерашняя невоспроизводимость закрыта… |
