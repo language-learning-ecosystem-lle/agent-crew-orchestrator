@@ -197,7 +197,7 @@
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | closed | — | — | 2026-09-15 | — |
-| 204-footprint-counts-a-test-file | curator, john | low | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: новый критерий СРАБОТАЛ в поле и замерен — закрывать ли 204 на этом, или пр… |
+| 204-footprint-counts-a-test-file | curator, john | low | closed | — | — | 2026-09-15 | — |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | low | closed | — | — | 2026-09-15 | — |
