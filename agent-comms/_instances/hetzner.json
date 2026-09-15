@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T12:18:29.791Z",
+  "writtenAt": "2026-09-15T12:18:37.810Z",
   "roles": [
     "curator",
     "dev-core",
@@ -29,6 +29,12 @@
       "thread": "200-run-census-drops-queued",
       "state": "running",
       "deadline": "2026-09-15T13:18:26Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "210-self-restart-waited-understates-the-standstill",
+      "state": "running",
+      "deadline": "2026-09-15T13:18:33Z"
     }
   ]
 }
