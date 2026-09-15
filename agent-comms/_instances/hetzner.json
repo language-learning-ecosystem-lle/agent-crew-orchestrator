@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T11:51:34.216Z",
+  "writtenAt": "2026-09-15T11:51:52.456Z",
   "roles": [
     "curator",
     "dev-core",
@@ -23,6 +23,12 @@
       "thread": "198-mute-key-by-name-eats-other-bells",
       "state": "running",
       "deadline": "2026-09-15T12:27:23Z"
+    },
+    {
+      "role": "curator",
+      "thread": "205-primary-step-reddens-a-delivered-verdict",
+      "state": "running",
+      "deadline": "2026-09-15T12:31:48Z"
     },
     {
       "role": "dev-core",
