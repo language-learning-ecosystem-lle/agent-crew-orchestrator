@@ -28,6 +28,6 @@ metadata:
 за пять минут (`34759327001`, `34759533566`, `34759556615`) дали в тред ОДНО письмо — два последних
 заглушены. Значит счёт писем по `success` завышает их число; сколько заглушено, видно только
 `::notice::` в логе самого смотрителя (`gh run view <id> --log | grep ЗАГЛУШЁН`). Подробнее —
-[[mute-key-is-the-notifier-name-not-the-subject]].
+[[mute-key-is-name-plus-subject]].
 
 Связано: [[failed-review-round-class-lives-in-the-artifact]], [[identical-red-letters-may-be-two-incidents]], [[price-an-open-window-by-the-red-streak]], [[queued-watcher-run-loses-the-alarm]].
