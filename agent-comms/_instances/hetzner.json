@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T10:35:40.828Z",
+  "writtenAt": "2026-09-15T10:36:30.084Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,6 +19,12 @@
       "thread": "198-mute-key-by-name-eats-other-bells",
       "state": "running",
       "deadline": "2026-09-15T11:35:31Z"
+    },
+    {
+      "role": "curator",
+      "thread": "208-guard1-verdict-drops-the-round-census",
+      "state": "running",
+      "deadline": "2026-09-15T11:16:26Z"
     }
   ]
 }
