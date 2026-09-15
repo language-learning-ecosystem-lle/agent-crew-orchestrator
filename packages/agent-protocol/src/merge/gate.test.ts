@@ -837,6 +837,55 @@ describe("guard 1 — the round of review behind the approve (thread 027)", () =
     expect(outcome?.detail).toContain("32534201968");
   });
 
+  /**
+   * THE FOURTH CAUSE (thread 209). `rounds` keeps only `completed/success`, so a round that
+   * read THIS head on THIS event and ended RED falls out of it — and used to be explained by
+   * a sentence listing three causes it is none of: another head, another event, not finished.
+   * It also called a `completed` round not CLOSED.
+   *
+   * The field case: 2026-09-14, six rounds of 'Claude PR Review' ended `completed/failure` on
+   * the very heads they had read, each because the FIRST step of the job died while every
+   * delivery step after it went green. The verdict arrived; the round stayed red. The cure the
+   * old text points at — re-label, or push — buys an identical second round.
+   *
+   * WHAT IS NOT CHANGED, locked here on purpose: the state stays `fail`. Only a round ending
+   * 'success' anchors a verdict.
+   */
+  it("(б'') names the round that CLOSED AND FAILED on this head, and does not call it unfinished", () => {
+    const red = run({
+      id: 34868367192,
+      headSha: PUSHED_HEAD,
+      conclusion: "failure",
+      createdAt: "2026-08-21T22:50:00Z",
+      updatedAt: "2026-08-21T22:56:00Z",
+    });
+
+    const outcome = guard(orphan({ state: "read", workflow: REVIEW, runs: [red] }), 1);
+    // THE NEGATIVE CONTROL — the same census with the round on ANOTHER head. There the cause
+    // really is "it read another head", and that sentence has to stay exactly where it was.
+    const elsewhere = guard(orphan({ state: "read", workflow: REVIEW, runs: [run()] }), 1);
+
+    // The norm does not move: both are still a STOP.
+    expect(outcome?.state).toBe("fail");
+    expect(elsewhere?.state).toBe("fail");
+    // ...and the two readings DIFFER, which is the whole of what was missing.
+    expect(outcome?.detail).not.toBe(elsewhere?.detail);
+
+    expect(outcome?.detail).toContain("ENDED IN 'success'");
+    expect(outcome?.detail).toContain("34868367192=failure");
+    expect(outcome?.detail).toContain("a FAILED round is not a MISSING one");
+    // The reader is sent to the STEPS of the named run, not to a second label.
+    expect(outcome?.detail).toContain("/actions/runs/34868367192/jobs");
+    // THE DEFECT ITSELF: a `completed` round was called not CLOSED, and "has not finished" was
+    // offered as its cause.
+    expect(outcome?.detail).not.toContain("no CLOSED round");
+    expect(outcome?.detail).not.toContain("has not finished");
+
+    // The untouched branch still says exactly what it said before.
+    expect(elsewhere?.detail).toContain("no CLOSED round of 'Claude PR Review' on e738643");
+    expect(elsewhere?.detail).toContain("has not finished");
+  });
+
   it("(б') STOPS a verdict that lies outside the window of a round that IS on this head", () => {
     const outcome = guard(
       orphan({
