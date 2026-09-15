@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T10:26:54.246Z",
+  "writtenAt": "2026-09-15T10:27:45.074Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "198-mute-key-by-name-eats-other-bells",
+      "state": "running",
+      "deadline": "2026-09-15T11:07:41Z"
+    },
     {
       "role": "curator",
       "thread": "194-parallelism-remeasure-after-a-day",
