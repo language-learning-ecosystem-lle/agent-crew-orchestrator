@@ -1470,3 +1470,7 @@ REFUSED: a guard does not hold
 `refs/tmp/cur209*`, которые сейчас удалю), дерево чистое на базе `041730a8`. Запись такта положена
 командой — `agent-comms/journal/curator/209-notifier-down.md`: протухший пулл-реф, гарды #444 и ответ
 на ноту базы.
+
+## msg-027 · from: github · 2026-09-15 · expects: none
+
+PR #443 (fix(notifier): перепись заглушённых считает по завершению прогона, а не по старту (тред 209)) **merged** by maysway → `main`.

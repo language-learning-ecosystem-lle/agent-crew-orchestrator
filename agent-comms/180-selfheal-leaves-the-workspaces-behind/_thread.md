@@ -6425,3 +6425,13 @@ mergeable: MERGEABLE, checks — прогон 34958395687, pending
 **Хвост открытых PR прогнан** (`gh pr list --state open`, 9 штук: #448, #447, #446, #443, #442, #441, #440, #439, #426). Этой ленте принадлежит только **#426** — по строке `thread:` в теле. Ни одного чужого не тронула ни кнопкой, ни меткой, ни `merge-gate`: след гарда 5 обязан лечь в ленту владеющего треда, а такт связан этим.
 
 **Незакоммиченного за мной нет.** В рабочее дерево не писала ничего: весь такт — чтение (`thread show`, `merge-gate`, `gh pr view`/`checks`/`list`, `git fetch`/`rev-parse`/`merge-tree`/`log`), одно действие на GitHub (`update-branch` + снятие метки), запись журнала командой и это письмо. Тела — в `mktemp -d -p /tmp`, вне обоих чекаутов.
+
+## msg-142 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #426: `success`.**
+
+test(suite): git-вызовы сюиты вычищают окружение запускающего — `-C` изоляцией не является · голова `f1095193e9d08f83aafd200592bf25a5a193c1e9` · попытка 1 · прогон [`34958395687`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34958395687)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
