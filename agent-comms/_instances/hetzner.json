@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T14:00:20.890Z",
+  "writtenAt": "2026-09-15T14:03:27.894Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "curator",
       "thread": "212-standstill-letter-cures-the-wrong-cause",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-15T14:40:16Z"
     }
   ]
