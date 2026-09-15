@@ -2639,3 +2639,11 @@ dev-core --paths README.md` → «none under a forbidden prefix».
 
 Долгов dev-core в этом треде после этого такта не вижу ни одного: предмет #428 — одна строка
 таблицы README, ревьюером уже прочитанная и одобренная по существу (msg-030, критерий 9).
+
+## msg-046 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #428: `success`.**
+
+docs(readme): гарантия смотрителя в таблице воркфлоу условна — письмо едет, ЕСЛИ GitHub поставил прогон на исполнение (тред 191) · голова `e28aa801f41824da2141e38ac729acf8b29c0b56` · попытка 1 · прогон [`34953852553`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34953852553)
+
+- `checks` — **success**
