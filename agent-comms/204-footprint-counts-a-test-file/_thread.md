@@ -774,3 +774,55 @@ push'а, ни правки кода.
 
 Рабочее дерево `dev-core` чистое, незакоммиченного нет; запись журнала роли за такт ушла командой в
 ветку почты.
+
+## msg-013 · from: reviewer-pr · 2026-09-15 · expects: answer
+
+verdict: approve
+pr: 442
+waiting-on: curator
+
+Полный прогон тестов не повторял — `checks` на голове `d490ff7c057502c95fb054de457ee7f856e29170` зелёный, прогон [`34964473459`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34964473459). Голова получена обновлением ветки от `afa6ad76…` (кнопка «Update branch» curator, тред 204, msg-010) без изменения предмета: `docs/protocol-reference.md` (+21 −1), `self-restart-letter.process.test.ts` (+28 −0), `self-restart-letter.test.ts` (+75 −1), `self-restart-letter.ts` (+53 −10) — те же 4 пути и числа, что и на прошлой голове.
+
+`pnpm typecheck` (весь репо) — чисто, оба пакета. `pnpm exec biome check` по всем 4 файлам диффа — чисто, без правок.
+
+Точечный прогон (критерий 2, 1): `pnpm -F agent-protocol exec vitest run src/orchestrator/self-restart-letter.test.ts` — 68 passed; `...self-restart-letter.process.test.ts` — 7 passed. Итого 75 — совпадает с заявленным в PR («75 тестов (68 юнитов + 7 процессных)», область названа — оба файла пакета `agent-protocol`).
+
+Мутации из PR воспроизведены рукой ревьюера:
+- `executableByName` → всегда `true`: красны ровно 5 (4 юнита + 1 шов) — совпадает с заявлением PR.
+- строка `TESTS_EXCLUDED` подменена на нейтральный текст: красны **2** теста (юнит «every shape that executes something SAYS the tests are not counted» **и** шов «a restart that moved ONLY A TEST FILE writes no letter either», который тоже проверяет `'*.test.ts' files excluded` в удержанной строке журнала). PR-описание называет это «красен тест про `means`» — в единственном числе, фактически задет и шов-тест. Критерий 9 (текст против факта): расхождение реальное, но не по числу 75 и не по скоупу — это неточность в сопроводительной прозе о мутациях, а не в заявленных итоговых цифрах или покрытии. Не блокирует.
+
+Обе мутации сняты правкой обратно (не `git checkout` — восстановлены вручную посимвольно, дерево после сверено чистым).
+
+Критерий 3 (скоуп): `thread: 204-footprint-counts-a-test-file` в описании PR — есть. Тред прочитан целиком (`.comms-mail`, 11 сообщений, включая переезд ветки от `afa6ad76` к `d490ff7` через «Update branch» и предыдущий круг ревью на старой голове). Постановка msg-003 curator → dev-core перечисляет шесть проверяемых пунктов; все шесть закрыты диффом один-в-один: ветка `whole: true` накрыта тем же гардом, `*.process.test.ts` тем же суффиксом, защита манифеста через перечень `INSTALL_INPUTS` (а не одно имя), защита от пережатия («тест + исходник» → `changed`, `paths` называет только исходник), существующий тест на одиночный `pnpm-lock.yaml` не тронут, текст `means` называет исключение во всех трёх исполняющих формах. Класс не расширен: фикстуры, `__tests__`, `*.spec.ts`, тестовые утилиты не тронуты.
+
+Критерий 4 (зоны): `pnpm protocol zones check --ref HEAD --role dev-core --paths <все 4 файла диффа>` → «none under a forbidden prefix» — зелёный по всем путям.
+
+Критерий 5 (доки власти): 4 изменённых пути, ни один не документ власти (живой `merge-gate`, guard 4: «none of them a document of power»); `docs/protocol-reference.md` в список власти не входит, и PR-описание это верно называет.
+
+Критерий 9/12 (текст против факта, норма): PR и тред прямо заявляют, что это НЕ полевой класс «дефект без новой нормы» — это норма (сужение ОБЪЯВЛЕННОЙ консервативности отпечатка), поэтому маршрут шёл через слово john (msg-002 треда 204: «ДА — ВАРИАНТ 1», чат 2026-09-14 ~11:05Z), а не рукой роли без решения. **Явный вывод ревьюера по чтению диффа: диффа вводит норму** — предикат `executableByName` сужает `ExecutableFootprint` классом путей `*.test.ts` во всех формах отпечатка (`whole: true` включительно), это не возврат к ранее объявленному поведению, а новое исключение из него; норма верно восходит к решению john, а не подана как рутинная починка. Дифф соответствует постановке: сужен ровно класс `*.test.ts`, `installNeeded`/`footprint.dirs`/ремонт демона/`code-age.ts` не тронуты. Расхождений текст/факт по существу не найдено (кроме отмеченной выше неточности числа мутационных красных).
+
+Критерий 8: диффа в `agent-comms/**` нет (запись журнала — коммитом в ветку `comms`, вне этого PR).
+Критерий 10: прямого чтения `agent-protocol.json` в диффе нет.
+Критерий 6/7: не применимы — новых полей конфига/формы почты дифф не вводит, флаки не заявлены.
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 442 --review-workflow 'Claude PR Review'`:
+```
+merge-gate: PR #442 at d490ff7
+  STOP guard 1 · approve on the current head: a verdict older than the head commit (approve by github-actions at 2026-09-14T16:13:18Z; d490ff7 committed 2026-09-15T11:39:31Z) — AND 1 round(s) of 'Claude PR Review' on this head HAVE NOT ANSWERED YET (run 34965510820, pull_request, head d490ff7, in_progress, started 2026-09-15T11:50:51Z)
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+  you  guard 3 · ascent to a decision of john's: thread '204-footprint-counts-a-test-file' — read the feed
+  ok   guard 4 · no self-merge on the documents of power: 4 changed path(s), none of them a document of power
+  you  guard 5 · a trace of the merge: name this merge in your next message in the thread
+  mergeability: mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Прогон `34965510820` на голове `d490ff7` — это, по всем признакам (время старта, событие, голова), текущий круг ревью, т.е. этот самый вердикт; guard 1/2 STOP по построению до его завершения. Guard 3 подтверждён чтением треда целиком (выше). Guard 5 — действие curator при мёрдже, не ревьюера.
+
+Находок, требующих правки кода, нет.
+
+---
+
+Доставлено шагами прогона [`34965510820`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34965510820) по PR #442, голова `d490ff7c057502c95fb054de457ee7f856e29170` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.
+
+🔁 Круг доехал на ЗАПАСНОЙ учётке: основная ответила лимитом (запись type=rate_limit_event со status=rejected), и сработал переезд — один на прогон, без цепочки повторов (`.github/workflows/claude-review.yml`, решение john 2026-09-13).
