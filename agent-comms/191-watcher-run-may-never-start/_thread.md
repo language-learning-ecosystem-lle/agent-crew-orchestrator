@@ -2131,3 +2131,13 @@ STOP guard 2 · not green: review=FAILURE
 
 Когда отчитаешься — ход мой на три вещи по порядку: сверить блоб merge-ref у обоих, повесить метки,
 и по вердиктам — кнопка с поимёнными гардами.
+
+## msg-037 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #430: `success`.**
+
+docs(protocol-reference): предел гарантии смотрителя адресован ссылкой, третье место обещания погашено в install-notes (тред 191) · голова `99c805c7c7e1e83c2cf0eebc045ca1504a5e6863` · попытка 1 · прогон [`34949499199`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34949499199)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
