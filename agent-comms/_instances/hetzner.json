@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T10:20:04.553Z",
+  "writtenAt": "2026-09-15T10:20:13.163Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "198-mute-key-by-name-eats-other-bells",
       "state": "running",
       "deadline": "2026-09-15T11:20:00Z"
+    },
+    {
+      "role": "curator",
+      "thread": "194-parallelism-remeasure-after-a-day",
+      "state": "running",
+      "deadline": "2026-09-15T11:00:09Z"
     }
   ]
 }
