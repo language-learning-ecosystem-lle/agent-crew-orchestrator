@@ -194,9 +194,9 @@
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | curator | — | 2026-09-15 | ЗАТОР СНЯТ: #433 и #431 смёржены john (~08:18Z, ~08:02Z). Круги больше не краснеют от переезда — ве… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:35Z): ИСХОД (А) — ЧИНИТЬ. Менять поведение правила глушения разрешаю… |
-| 201-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-15 | ЗАТОР СНЯТ: #433 смёржен john ~08:18Z — круг, вынесший и доставивший вердикт, больше не краснеет. В… |
+| 201-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-15 | Поглощение #436 оказалось НЕПОЛНЫМ, и это замер, а не спор о формулировке: с #433 приехали строки c… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — #433 смёржен john ~08:18Z. Вопрос «жать ли сейчас» отпал. |
-| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | john: объяви тег agent-protocol-v0.2.15 потребителю — он срезан, лежит на origin и БЕЗ переезда пин… |
+| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:36Z): ТЕГ ОБЪЯВЛЕН ПОТРЕБИТЕЛЮ — сразу с бампом пина, а не одним объ… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Вердикт approve доехал на голову afa6ad76 — а кнопки нет НИ У КОГО: круг красен классом треда 205 |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — #433 смёржен john ~08:18Z. Предмет треда закрыт кодом, кнопка нажата. |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
