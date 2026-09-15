@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T09:57:56.168Z",
+  "writtenAt": "2026-09-15T09:58:04.140Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "191-watcher-run-may-never-start",
       "state": "running",
       "deadline": "2026-09-15T10:37:40Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "198-mute-key-by-name-eats-other-bells",
+      "state": "running",
+      "deadline": "2026-09-15T10:58:00Z"
     },
     {
       "role": "dev-core",
