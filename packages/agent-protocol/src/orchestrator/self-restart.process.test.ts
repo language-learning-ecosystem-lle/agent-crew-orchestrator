@@ -857,6 +857,120 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
   );
 
   it(
+    "dates the wait by the commit that made the box stale, not by the tick that noticed",
+    () => {
+      // THE HALF #452 LEFT (thread 210, curator's msg-011 §3). The test above fixed a wait
+      // that was RE-STAMPED while it ran; this one is about where it STARTS. The first drain
+      // tick used to write `new Date()`, and that tick is the moment the box first LOOKED and
+      // found itself both stale and clean — never the moment it went stale. Between the two
+      // sits every standstill the box could not act on: a dirty tree, a stopped box, or a
+      // batch of merges landing between two ticks. The drift's own date is the anchor, and it
+      // is the SAME value the drift line prints — which is why the letter can be checked
+      // against `daemon.log` afterwards.
+      //
+      // IT IS A PROCESS TEST BECAUSE THE DATE IS READ FROM GIT BY THE TICK. A unit is handed
+      // the anchor; only the daemon runs `git log` over its own drift, and "the value in the
+      // caller's hand is the one that reaches the file" is precisely what was untrue.
+      const home = homeContour();
+      const loaded = git(home.repo, "rev-parse", "HEAD").trim();
+
+      // THE COMMIT THAT MADE THE BOX STALE, dated where the field case dates it. Built with
+      // `commit-tree` under a committer date of its own so the fixture holds a stamp the
+      // assertions can name, instead of one taken from the clock the test runs on.
+      const staleSince = "2026-09-15T10:37:50Z";
+      const stale = execFileSync(
+        "git",
+        [
+          "-C",
+          home.repo,
+          "-c",
+          "user.name=t",
+          "-c",
+          "user.email=t@e",
+          "commit-tree",
+          `${loaded}^{tree}`,
+          "-p",
+          loaded,
+          "-m",
+          "the commit whose landing made this box stale",
+        ],
+        {
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            GIT_COMMITTER_DATE: staleSince,
+            GIT_AUTHOR_DATE: staleSince,
+          },
+        },
+      ).trim();
+      git(home.repo, "push", "-qf", "origin", `${stale}:refs/heads/main`);
+      git(home.repo, "fetch", "-q", "origin");
+
+      const journal = join(home.repo, ".orchestrator", "journal.jsonl");
+      mkdirSync(join(home.repo, ".orchestrator"), { recursive: true });
+      writeFileSync(
+        journal,
+        `${JSON.stringify({
+          kind: "lease-acquired",
+          ts: "2026-07-25T10:00:00Z",
+          role: "dev-core",
+          thread: "055-x",
+          deadline: "2099-01-01T00:00:00Z",
+        })}\n`,
+      );
+
+      // TICK 1 — the box notices now, long after it went stale, and starts waiting.
+      const said = tick(home.cli, home.repo);
+      expect(said).toContain("DRAINING TO RESTART");
+      const began = parseSelfRestartMemory(
+        readFileSync(join(home.repo, ".orchestrator", "self-restart.json"), "utf8"),
+      );
+      expect(began?.target).toBe(stale);
+      expect(began?.drainSince).toBe(staleSince);
+      // The invariant #452 rests on: the two stamps of a drain record are ONE moment, so the
+      // record still reads as the open drain it is and not as a landed go.
+      expect(began?.at).toBe(began?.drainSince);
+      expect(began?.went).toBeUndefined();
+
+      // THE LETTER AND THE LOG NOW NAME THE SAME INSTANT — curator's acceptance procedure
+      // (msg-011 §5) reads `(since T)` out of `daemon.log` and subtracts the letter's number
+      // from when the box went. The two shapes differ (`git log --format=%cI` prints an
+      // offset, the memory is UTC to the second), so the comparison is of instants.
+      const printed = /drifting for [^(]*\(since ([^)]+)\)/.exec(said)?.[1];
+      expect(printed).toBeDefined();
+      expect(Date.parse(printed ?? "")).toBe(Date.parse(began?.drainSince ?? ""));
+
+      // TICK 2 — the session closes and the box goes. The successor subtracts, and what it
+      // gets is the whole standstill: hours here, because the commit is dated hours back.
+      writeFileSync(
+        journal,
+        `${readFileSync(journal, "utf8")}${JSON.stringify({
+          kind: "lease-released",
+          ts: "2026-07-25T11:00:00Z",
+          role: "dev-core",
+          thread: "055-x",
+          reason: "completed",
+        })}\n`,
+      );
+      sleepPastTheSecond();
+      expect(tick(home.cli, home.repo)).toContain("SELF-RESTART: the loaded code is behind");
+      const went = parseSelfRestartMemory(
+        readFileSync(join(home.repo, ".orchestrator", "self-restart.json"), "utf8"),
+      );
+      expect(went?.went).toBe(true);
+      expect(went?.drainSince).toBe(staleSince);
+      const event = selfRestartEvent({ memory: went, loaded: stale });
+      expect(event?.waitedForSec).toBe(
+        Math.round((Date.parse(went?.at ?? "") - Date.parse(staleSince)) / 1000),
+      );
+      // And it is not the number the old anchor would have given: that one is the gap between
+      // the two ticks above, which is seconds. A whole hour of it could not be a tick gap.
+      expect(event?.waitedForSec ?? 0).toBeGreaterThan(3600);
+    },
+    4 * HANG_CEILING_MS,
+  );
+
+  it(
     "clears the standoff when the drift is over — a state file that outlives its subject lies",
     () => {
       // The box is ON its ref, and a standoff from the drift it has since caught up on is
