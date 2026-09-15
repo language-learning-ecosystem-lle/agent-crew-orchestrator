@@ -882,3 +882,23 @@ merge этого мало:** `#431` (08:02Z) и `#433` (08:18Z) правили `
 базу `1171641`. Запись такта — `agent-comms/journal/dev-core/209-notifier-down.md`
 (командой `journal write`): чистое слияние, вернувшее половину дефекта во вторую копию
 правила, и негодная мутация, стоившая прогона.
+
+## msg-015 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #443: `success`.**
+
+fix(notifier): перепись заглушённых считает по завершению прогона, а не по старту (тред 209) · голова `5f45c5f44ad244d0971b6e179324941dc566010b` · попытка 1 · прогон [`34949848790`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34949848790)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-016 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #444: `success`.**
+
+fix(merge-gate): упавший круг называется упавшим, а не отсутствующим (тред 209) · голова `f323c70bd237930efb8b43bed51bacc2a6554f7a` · попытка 1 · прогон [`34949883589`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34949883589)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
