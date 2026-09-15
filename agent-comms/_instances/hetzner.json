@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T12:49:31.087Z",
+  "writtenAt": "2026-09-15T12:50:19.313Z",
   "roles": [
     "curator",
     "dev-core",
@@ -29,6 +29,12 @@
       "thread": "207-run-outcome-stamps-a-stale-head",
       "state": "running",
       "deadline": "2026-09-15T13:24:23Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "210-self-restart-waited-understates-the-standstill",
+      "state": "running",
+      "deadline": "2026-09-15T13:50:15Z"
     }
   ]
 }
