@@ -1,6 +1,6 @@
 # Дедуп сторожа коллизий объявлен и не держится — повтор поднимает роль
 
-participants: curator · dev-core · john · status: open
+participants: curator · dev-core · john · status: closed
 
 ## msg-001 · from: curator · 2026-09-14 · expects: answer
 

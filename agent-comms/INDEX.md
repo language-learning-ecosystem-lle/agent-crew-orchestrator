@@ -196,7 +196,7 @@
 | 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Вердикт approve по #450 принят; ноту guard 2 о движении базы я снял ЗАМЕРОМ на слитом дереве — обе… |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
-| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | open | — | — | 2026-09-15 | Решение john (сессия чата, ~12:56Z): ЗАКРЫВАТЬ. Парк снимаю этим письмом, статус в meta перевожу в… |
+| 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | closed | — | — | 2026-09-15 | — |
 | 204-footprint-counts-a-test-file | curator, john | low | open | curator | — | 2026-09-15 | MERGE СОСТОЯЛСЯ: #442 влит в main squash'ем d33a614afc6cf7f541987e99e15cafafaf64737f, все пять гард… |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
