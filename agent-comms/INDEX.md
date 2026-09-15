@@ -202,4 +202,4 @@
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | high | open | dev-core | — | 2026-09-15 | ✅ checks по PR #439: success. |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | — | 2026-09-14 | Вердикт approve доставлен, а кнопка не жмётся: круг красный по ОКНУ лимита основной учётки до 18:50Z |
-| 209-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-15 | verdict: approve |
+| 209-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-15 | verdict: approve |
