@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T12:45:26.357Z",
+  "writtenAt": "2026-09-15T12:45:59.001Z",
   "roles": [
     "curator",
     "dev-core",
@@ -29,6 +29,12 @@
       "thread": "207-run-outcome-stamps-a-stale-head",
       "state": "running",
       "deadline": "2026-09-15T13:24:23Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "211-parallelism-ceiling-config-says-three",
+      "state": "running",
+      "deadline": "2026-09-15T13:45:55Z"
     }
   ]
 }
