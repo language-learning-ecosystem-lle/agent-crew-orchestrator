@@ -187,7 +187,7 @@
 | 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | — | 2026-09-15 | ЗАТОР СНЯТ: #433 и #431 смёржены john (~08:18Z, ~08:02Z). Круги больше не краснеют от переезда — ве… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | high | open | curator | — | 2026-09-15 | ЗАТОР СНЯТ: #433 и #431 смёржены john (~08:18Z, ~08:02Z). Круги больше не краснеют от переезда — ве… |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
-| 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ ОДНО СЛОВО JOHN: «мерь 15.09» ЛИБО «закрывай». Размен НЕ ВИДЕН, потолок числа пересматрив… |
+| 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:33Z): МЕРЬ. И вместе со словом — его наблюдение: НОЧЬЮ, ПО-ВИДИМОМУ,… |
 | 195-journal-tail-serializes-work | curator, john | normal | closed | — | — | 2026-09-14 | — |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | — | 2026-09-15 | ЗАТОР СНЯТ: #433 и #431 смёржены john (~08:18Z, ~08:02Z). Круги больше не краснеют от переезда — ве… |
