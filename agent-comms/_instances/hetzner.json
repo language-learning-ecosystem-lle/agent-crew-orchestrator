@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T10:18:16.738Z",
+  "writtenAt": "2026-09-15T10:18:36.314Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "dev-core",
-      "thread": "208-guard1-verdict-drops-the-round-census",
-      "state": "draining",
-      "deadline": "2026-09-15T11:05:32Z"
-    }
-  ]
+  "leases": []
 }
