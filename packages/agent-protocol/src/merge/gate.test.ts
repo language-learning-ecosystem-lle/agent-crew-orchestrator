@@ -9,6 +9,7 @@ import {
   type PullRequestFacts,
   powerDocumentList,
   powerDocuments,
+  type ReviewRunFact,
   readD1Reference,
   threadOfDescription,
   touchedPowerDocuments,
@@ -1103,6 +1104,158 @@ describe("guard 1 — the round of review behind the approve (thread 027)", () =
 
     expect(refused?.state).toBe("fail");
     expect(refused?.detail).toContain("changes were requested");
+  });
+});
+
+/**
+ * THE CENSUS HAS TO REACH THE REFUSALS TOO (thread 208). #414 repaired the two branches that
+ * PRINT the anchor — `anchored` and `orphan` — and the clause stops there: the ternary of
+ * guard 1 has TWO refusing branches standing before them, and neither reads it.
+ *
+ * The field measurement, 2026-09-14: the patched door run against PR #414 itself, whose head
+ * `883336d8` carried round 34858167752 of `Claude PR Review` with `status: in_progress` and
+ * `conclusion: null` at that very moment. The door printed
+ *
+ *   STOP guard 1 · approve on the current head: changes were requested on 883336d
+ *                  (github-actions) — a new round, not a merge
+ *
+ * and said nothing about the round that was running as it printed. The second branch is the
+ * worse of the two: its prescription is "re-label", and a re-label under a running round
+ * opens a SECOND round on the same head.
+ *
+ * WHAT IS NOT CHANGED, and it is locked by the negative control in every case below: `state`
+ * stays exactly what it was. The clause only speaks — refusing on an unanswered round would
+ * be a change of the norm, and the norm is john's.
+ */
+describe("guard 1 — the refusing branches name a round still in flight (thread 208)", () => {
+  /** #414 as it stood: the head the STOP was printed about. */
+  const HEAD_414 = `883336d8${"0".repeat(32)}`;
+  const HEAD_414_MADE = "2026-09-14T14:20:00Z";
+  const REVIEW = "Claude PR Review";
+
+  /**
+   * The round that was in flight: the id and the pair `in_progress`/`null` are the recorded
+   * ones, the window stamps are this fixture's own — the branch never reads them.
+   */
+  const inFlight: ReviewRunFact = {
+    id: 34858167752,
+    name: REVIEW,
+    headSha: HEAD_414,
+    event: "pull_request",
+    status: "in_progress",
+    conclusion: undefined,
+    createdAt: "2026-09-14T14:50:00Z",
+    updatedAt: "2026-09-14T14:53:00Z",
+  };
+
+  const facts = (
+    review: PullRequestFacts["reviews"][number],
+    runs: readonly ReviewRunFact[],
+  ): PullRequestFacts =>
+    pr({
+      headSha: HEAD_414,
+      headCommittedAt: HEAD_414_MADE,
+      reviews: [review],
+      reviewRuns: { state: "read", workflow: REVIEW, runs },
+    });
+
+  /** Branch 1 of the ternary: a verdict of its own on this head, so no anchor is ever asked. */
+  const changesRequested = {
+    state: "CHANGES_REQUESTED",
+    commitSha: HEAD_414,
+    author: "github-actions",
+    submittedAt: "2026-09-14T14:53:00Z",
+  };
+  /** Branch 2: a verdict GitHub hung on a head that did not exist when it was submitted. */
+  const older = {
+    state: "APPROVED",
+    commitSha: HEAD_414,
+    author: "github-actions",
+    submittedAt: "2026-09-14T13:40:00Z",
+  };
+
+  it("names the round in flight beside 'changes were requested' — and does not move the verdict", () => {
+    const withRound = guard(facts(changesRequested, [inFlight]), 1);
+    // THE NEGATIVE CONTROL: the same census minus the record with no `conclusion`.
+    const without = guard(facts(changesRequested, []), 1);
+
+    expect(withRound?.state).toBe("fail");
+    expect(without?.state).toBe("fail");
+    expect(withRound?.detail).toContain("changes were requested on 883336d");
+    // …and the two readings DIFFER, which is the whole of what was missing.
+    expect(withRound?.detail).not.toBe(without?.detail);
+    expect(withRound?.detail).toContain("34858167752");
+    expect(withRound?.detail).toContain("in_progress");
+    expect(withRound?.detail).toContain("HAVE NOT ANSWERED YET");
+    expect(without?.detail).not.toContain("HAVE NOT ANSWERED YET");
+  });
+
+  it("names it beside 'a verdict older than the head commit' — where the cure is a re-label", () => {
+    const withRound = guard(facts(older, [inFlight]), 1);
+    const without = guard(facts(older, []), 1);
+
+    expect(withRound?.state).toBe("fail");
+    expect(without?.state).toBe("fail");
+    expect(withRound?.detail).toContain("older than the head commit");
+    // The branch that prescribes re-labelling has to say a round is already running.
+    expect(withRound?.detail).toContain("re-label");
+    expect(withRound?.detail).not.toBe(without?.detail);
+    expect(withRound?.detail).toContain("34858167752");
+    expect(withRound?.detail).toContain("HAVE NOT ANSWERED YET");
+    expect(withRound?.detail).toContain("SECOND round on the same head");
+    expect(without?.detail).not.toContain("HAVE NOT ANSWERED YET");
+  });
+
+  it("the merge is refused by the same guard either way — the exit code does not move", () => {
+    const decide = (runs: readonly ReviewRunFact[]) =>
+      evaluateMergeGate({ pr: facts(changesRequested, runs), powerDocs: ["PROTOCOL.md"] })
+        .curatorMayMerge;
+
+    expect(decide([inFlight])).toBe(false);
+    expect(decide([])).toBe(false);
+  });
+
+  it("invents no census where the runs were never asked for, or could not be read", () => {
+    const notAsked = guard(
+      pr({
+        headSha: HEAD_414,
+        headCommittedAt: HEAD_414_MADE,
+        reviews: [changesRequested],
+        reviewRuns: undefined,
+      }),
+      1,
+    );
+    const unreadable = guard(
+      pr({
+        headSha: HEAD_414,
+        headCommittedAt: HEAD_414_MADE,
+        reviews: [changesRequested],
+        reviewRuns: { state: "unreadable", workflow: REVIEW, reason: "Resource not accessible" },
+      }),
+      1,
+    );
+
+    expect(notAsked?.state).toBe("fail");
+    expect(unreadable?.state).toBe("fail");
+    expect(notAsked?.detail).not.toContain("HAVE NOT ANSWERED YET");
+    expect(unreadable?.detail).not.toContain("HAVE NOT ANSWERED YET");
+  });
+
+  it("a round of ANOTHER workflow, or on another head, is not this head's unanswered round", () => {
+    const foreign = guard(
+      facts(changesRequested, [
+        { ...inFlight, id: 1, name: "checks" },
+        { ...inFlight, id: 2, headSha: `aaaaaaaa${"0".repeat(32)}` },
+        // A dispatch round hangs on the head of the base — it answers about nothing here.
+        { ...inFlight, id: 3, event: "workflow_dispatch" },
+        // And a CLOSED round is not "in flight", whatever it concluded.
+        { ...inFlight, id: 4, status: "completed", conclusion: "failure" },
+      ]),
+      1,
+    );
+
+    expect(foreign?.state).toBe("fail");
+    expect(foreign?.detail).not.toContain("HAVE NOT ANSWERED YET");
   });
 });
 
