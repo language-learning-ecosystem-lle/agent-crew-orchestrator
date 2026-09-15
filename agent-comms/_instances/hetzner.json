@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T11:00:01.991Z",
+  "writtenAt": "2026-09-15T11:00:29.492Z",
   "roles": [
     "curator",
     "dev-core",
@@ -18,12 +18,6 @@
     }
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "180-selfheal-leaves-the-workspaces-behind",
-      "state": "draining",
-      "deadline": "2026-09-15T11:55:38Z"
-    },
     {
       "role": "dev-core",
       "thread": "198-mute-key-by-name-eats-other-bells",
