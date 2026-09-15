@@ -137,6 +137,12 @@ const stuckWorkspace = (repo: string): string => {
   const tree = join(repo, ".worktrees", "dev-core");
   git(repo, "worktree", "add", "-q", "--detach", tree, "HEAD");
   git(tree, "checkout", "-q", "-b", "dev-core/180-x");
+  // THE SIGNATURE THE LAUNCH WOULD HAVE SET. Without it the door refuses this tree for TWO
+  // reasons on alternate readings, and two reasons are two fingerprints: the standstill run
+  // would reset on every tick and the second bell could never come due. A fixture that made
+  // the counter behave differently from the field is worse than no fixture.
+  git(tree, "config", "user.name", "dev-core");
+  git(tree, "config", "user.email", "dev-core@agents.invalid");
   installed(tree, BEHIND);
   return tree;
 };
@@ -242,11 +248,20 @@ describe("the bell of an unraisable pair reaches the MAIL (П-1, thread 180)", (
 });
 
 /**
- * THE П-2 HALF OF THIS SEAM IS NOT ASSERTED HERE YET, and it is said out loud rather than
- * left as an absence: a fixture of three refused ticks in a row over this same stuck tree
- * did NOT make the daemon print its own `nothing has been raised for N tick(s)` line, so
- * the standstill letter had nothing to be due on and the case was red for a reason that is
- * upstream of the letter. Whether that is a property of `--once` in this fixture or a
- * defect of the wiring is UNMEASURED — see the report in thread 180. The planner of that
- * letter is covered by `standstill-letter.test.ts`; what is missing is the crossing.
+ * WHY П-2 IS NOT ASSERTED IN THIS FIXTURE, and it is a FINDING rather than a gap left by
+ * the clock — measured here on 2026-09-15, three ticks over the stuck tree above:
+ * `stall.json` stayed at `ticks: 1` and the second bell never came due.
+ *
+ * THE CAUSE IS П-1 ITSELF. The letter it writes carries `waiting-on: curator`, so the
+ * moment it lands the thread stops waiting on the refused role — the pair leaves the queue,
+ * the next tick has NO candidate at all, and `foldStall` HOLDS the run as it stands rather
+ * than extending it (an empty queue is an idle circuit, which is the right answer to the
+ * question it was asked). The 209 silent ticks of the field case are therefore not
+ * reproducible in a contour that has П-1 in it: the first tick converts them into a turn.
+ *
+ * That is arguably the outcome john asked for and it is NOT asserted to be, because
+ * whether П-2 can still ring at all — and on what shape of standstill — is the question
+ * this file cannot answer without a second cause of standing that keeps the queue full.
+ * The planner of that letter is covered by `standstill-letter.test.ts`; what is open is the
+ * crossing, and it is reported in thread 180 rather than left to be rediscovered.
  */
