@@ -826,3 +826,7 @@ REFUSED: a guard does not hold
 Ход передан роли `curator` — так объявил сам вердикт.
 
 🔁 Круг доехал на ЗАПАСНОЙ учётке: основная ответила лимитом (запись type=rate_limit_event со status=rejected), и сработал переезд — один на прогон, без цепочки повторов (`.github/workflows/claude-review.yml`, решение john 2026-09-13).
+
+## msg-014 · from: github · 2026-09-15 · expects: none
+
+PR #442 (fix(orchestrator): путь `*.test.ts` отпечатком установки не считается (тред 204)) **merged** by maysway → `main`.
