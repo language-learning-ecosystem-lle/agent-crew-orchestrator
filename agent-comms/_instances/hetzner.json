@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T12:53:44.184Z",
+  "writtenAt": "2026-09-15T12:53:59.124Z",
   "roles": [
     "curator",
     "dev-core",
@@ -23,6 +23,12 @@
       "thread": "200-run-census-drops-queued",
       "state": "running",
       "deadline": "2026-09-15T13:32:30Z"
+    },
+    {
+      "role": "curator",
+      "thread": "204-footprint-counts-a-test-file",
+      "state": "running",
+      "deadline": "2026-09-15T13:33:55Z"
     },
     {
       "role": "dev-core",
