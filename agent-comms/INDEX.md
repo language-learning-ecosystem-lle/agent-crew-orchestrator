@@ -191,10 +191,10 @@
 | 195-journal-tail-serializes-work | curator, john | normal | closed | — | — | 2026-09-14 | — |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | — | 2026-09-15 | ✅ checks по PR #446: success. |
-| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | curator | — | 2026-09-15 | Случай 3 сделан: у каждого номера в хвосте печатается его время — PR #448, жду checks |
+| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | curator | run:448 · 2026-09-15 | 2026-09-15 | Предмет #448 сверен диффом и в границах; метки нет — checks на 94f8298b ещё идёт. И отдельно: приём… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:35Z): ИСХОД (А) — ЧИНИТЬ. Менять поведение правила глушения разрешаю… |
-| 201-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: человеческое чтение и кнопка на #445, голова 8da71432dab667db2d8de9aca7df94… |
+| 201-notifier-down | github, dev-core, curator | high | open | dev-core | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: человеческое чтение и кнопка на #445, голова 8da71432dab667db2d8de9aca7df94… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — #433 смёржен john ~08:18Z. Вопрос «жать ли сейчас» отпал. |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:36Z): ТЕГ ОБЪЯВЛЕН ПОТРЕБИТЕЛЮ — сразу с бампом пина, а не одним объ… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Вердикт approve доехал на голову afa6ad76 — а кнопки нет НИ У КОГО: круг красен классом треда 205 |
