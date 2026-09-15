@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: 0553169a-0941-4452-b6c4-bbaffe461867
-  modified: 2026-09-14T14:57:41.465Z
+  modified: 2026-09-15T13:03:40.659Z
 ---
 
 `journalctl -u <любой юнит>` из поднятой сессии роли возвращает 4 строки подсказки «You are
@@ -72,6 +72,17 @@ currently not seeing messages from other users and the system. Users in groups '
 `^agent-protocol: daemon` ([[byte-cut-text-goes-binary-and-grep-goes-silent]]), а ноль подпирать
 счётом строк демона ПОСЛЕ искомого места: 172 строки после последней `HAS GONE STALE` — это якорь
 «печатал, но нечего было сказать», без него ноль не значит ничего.
+
+**ЯКОРЬ `^agent-protocol: daemon` ЛОЖНО ДАЁТ НОЛЬ — префиксов у демона НЕСКОЛЬКО** (замерено
+2026-09-15, тред 211): строка отказа планировщика по потолку ящика идёт префиксом
+`agent-protocol: candidate ` (`candidate '<роль>×<тред>' skipped: the ceiling of this BOX is full
+— N of M pair(s) allowed on one box are live`), и якорь выше её не видит: 0 против **2016** тем же
+литералом без якоря. Контроль `^agent-protocol: courier` дал тоже 0 — якорь был мёртв ЦЕЛИКОМ.
+Техника: искать литералом БЕЗ якоря, а попадания делить вторым грепом по префиксу — положительным
+И отрицательным сразу (`grep -ac '^agent-protocol: candidate'` = демон, `grep -avc` того же =
+эхо сессий), и называть в докладе ОБА числа. Ноль базовой точки, снятой ДО кнопки, обесценивает
+приёмку ПОСЛЕ неё ([[acceptance-run-needs-a-thread-that-waits]]); заметка
+[[verify-the-grep-pattern-not-its-result]] здесь не страхует — она про ЛИТЕРАЛ, а ломается ПРЕФИКС.
 
 **НОМЕР СТРОКИ ПРОТУХАЕТ: проворот идёт ПО РАЗМЕРУ и хранится ровно ОДИН прежний файл** (замерено
 2026-09-14, тред 196): за сутки `daemon.log` провернулся на 8,6 МБ / 38 511 строк, унеся в `.1`

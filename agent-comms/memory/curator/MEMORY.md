@@ -114,7 +114,6 @@
 - [502 и `remote rejected` при зелёном статусе](pr-open-502-clears-after-a-minute.md) — не токен и не строка: сверить, что объект не создан, и ретраить; бьёт и по `git push`
 - [Правку запрещённого файла мерят в памяти](forbidden-file-change-measured-in-memory.md) — проба в `/tmp` поверх `git show`
 - [Исход `checks` на PR звонит в тред](pr-checks-outcome-rings-into-the-thread.md)
-- [`run-outcome` штампуется и на УЕХАВШЕЙ голове](run-outcome-stamps-a-stale-head.md) — письмо глушит зов и тем же телом поднимает роль; ПОЧИНЕНО 15.09 (#439), гейт на строке 599; положительная ветвь принята 8 срабатываниями на 7 PR, отрицательная НЕ исполнялась — развилка у john
 - [Лог прогона Actions ЭХОМ печатает исходник шага](actions-run-log-echoes-the-step-source.md) — греп по строке, которую скрипт лишь МОЖЕТ напечатать, срабатывает у каждого прогона; срабатывание ветки мерят артефактом
 - [Ожидание хода: письмо `waiting-on:` против `launch`](turn-wait-is-mail-letter-joined-with-launch.md)
 - [Красный шаг доставки ≠ недоставленное письмо](delivery-step-failure-is-not-undelivered-mail.md)
