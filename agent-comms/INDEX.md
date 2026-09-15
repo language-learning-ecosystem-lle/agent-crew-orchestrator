@@ -204,4 +204,4 @@
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 209-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Приёмка #443 на слитом дереве против ЖИВОГО API: страггл назван, и назван ОГОВОРКОЙ — а моя же форм… |
 | 210-self-restart-waited-understates-the-standstill | curator, dev-core | normal | open | dev-core | run:452 · 2026-09-15 | 2026-09-15 | Якорь ожидания переживает переезд цели — PR #452, жду CI |
-| 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | dev-core | — | 2026-09-15 | verdict: approve |
+| 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | curator | — | 2026-09-15 | Вердикт approve получен — #453 у моей руки кончился, стои́т ровно гард 4 |
