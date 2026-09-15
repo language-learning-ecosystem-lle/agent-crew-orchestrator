@@ -511,8 +511,11 @@ exec_fixture() { # <имя> <json последней записи>
 F_LIMIT="$(exec_fixture limit "$(printf '{"type":"result","subtype":"success","is_error":true,"api_error_status":429,"terminal_reason":"api_error","result":"%s"}' "$LIMIT_RESULT")")"
 F_TURNS="$(exec_fixture turns '{"type":"result","is_error":true,"api_error_status":null,"terminal_reason":"max_turns","result":"Reached maximum turns"}')"
 
-letter_case() { # <номер> <что за состояние> <файл транскрипта|пусто> <самопропуск: 0|1>
-  local n="$1" what="$2" exec_file="${3:-}" self_skip="${4:-0}"
+letter_case() { # <номер> <что за состояние> <файл транскрипта|пусто> <самопропуск: 0|1> [исход основного шага] [переезд: 0|1]
+  # ДВА ПОСЛЕДНИХ АРГУМЕНТА НЕОБЯЗАТЕЛЬНЫ И ПО УМОЛЧАНИЮ ПУСТЫ — состояния (10)–(13)
+  # подают их ровно так же, как подавали до появления (29): шаг обязан пережить пустой
+  # `PRIMARY_OUTCOME` («об исходе судить не по чему»), и это тоже сверка, а не умолчание.
+  local n="$1" what="$2" exec_file="${3:-}" self_skip="${4:-0}" primary="${5:-}" moved="${6:-0}"
   note_state "$n"
   echo "== ($n) ${what}"
   local arena="$WORK/letter-$n" bin
@@ -540,8 +543,10 @@ STUB
     GITHUB_WORKSPACE="$arena" GH_TOKEN="$FAKE_TOKEN" \
     PR="$PR" RUN_ID=33762234440 RUN_URL="https://example.invalid/runs/33762234440" \
     SELF_SKIP="$self_skip" EXECUTION_FILE="$exec_file" \
+    PRIMARY_OUTCOME="$primary" REVIEW_MOVED="$moved" \
       bash "$STEP_SH"
   ) > "$arena/step.log" 2>&1
+  STEP_LOG="$arena/step.log"
   if [ ! -s "$arena/letter.md" ]; then
     fail "письмо не составлено вовсе"; sed 's/^/    /' "$arena/step.log"; return 0
   fi
@@ -1041,6 +1046,38 @@ check "шаг итога доставок оставляет джобу зелё
 check "круг ЗЕЛЁНЫЙ" "success" "$(job_conclusion success "$FINAL_28" "$REVIEWER_COE")"
 check "и с прежним поведением он был таким же — правка сюда не дотянулась" "success" \
   "$(job_conclusion success "$FINAL_28" false)"
+
+# --- (29) ВТОРАЯ ПОЛОВИНА ПЕРЕНОСА: СМЕРТЬ ОСНОВНОГО ШАГА НАЗЫВАЕТСЯ ВСЛУХ -------------
+#
+# ЗАЧЕМ ЗДЕСЬ. Состояния (25)–(28) выше держат ЦВЕТ: основной шаг джобу больше не красит.
+# Шаг, который не красит, — это шаг, о смерти которого никто не узнает, если её не СКАЗАТЬ
+# словом, и граница №2 решения john 2026-09-14 `13:27Z` ровно об этом: перенос значения, а
+# не глушение. Держится она не комментарием в `.yml`, а этим состоянием.
+#
+# ЧТО ИМЕННО ГОНЯЕТСЯ: тело шага итога из `.yml` целиком, как состояния (10)–(13), только
+# с исходом основного шага и фактом переезда в среде. Печать проверяется В ЛОГЕ ШАГА, а не
+# в письме: на этой ветви письма нет вовсе — вердикт доехал.
+#
+# МУТАЦИОННЫЕ ПРОБЫ: убрать строку `PRIMARY_OUTCOME` из `env:` шага итога в `.yml` — краснеет
+# сверка переменной; вынуть печатающий блок из тела шага — краснеют обе сверки лога.
+python3 - "${CODE_DIR}/.github/workflows/claude-review.yml" "$WORK/summary.env" <<'PY'
+import sys, yaml
+NAME = "Итог доставок — что доехало и что нет"
+wf = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+steps = [s for job in wf["jobs"].values() for s in job.get("steps", [])]
+found = [s for s in steps if s.get("name") == NAME]
+if len(found) != 1:
+    sys.exit("шаг итога найден %d раз(а) — вынуть переменные нечем" % len(found))
+open(sys.argv[2], "w", encoding="utf-8").write(str((found[0].get("env") or {}).get("PRIMARY_OUTCOME", "")))
+PY
+letter_case 29 "основной шаг умер лимитом, круг доработала запасная: смерть НАЗВАНА вслух" \
+  "$F_LIMIT" 0 failure 1
+check "шаг получает исход ОСНОВНОГО шага" \
+  '${{ steps.reviewer.outcome }}' "$(cat "$WORK/summary.env")"
+check "исход основного шага напечатан" "да" \
+  "$(file_probe -F 'основной шаг ревьюера: failure' "$STEP_LOG")"
+check "и сказано, что круг доработала запасная учётка" "да" \
+  "$(file_probe -F 'круг доработала ЗАПАСНАЯ учётка' "$STEP_LOG")"
 
 if [ "$FAILED" = "0" ]; then
   echo "интеграционный прогон доставки: ВСЕ СОСТОЯНИЯ ПРОШЛИ — $(printf '%s' "$STATES" | wc -w) шт."
