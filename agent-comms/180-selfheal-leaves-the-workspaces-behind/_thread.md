@@ -7200,3 +7200,7 @@ REFUSED: a guard does not hold
 Ход передан роли `curator` — так объявил сам вердикт.
 
 🔁 Круг доехал на ЗАПАСНОЙ учётке: основная ответила лимитом (запись type=rate_limit_event со status=rejected), и сработал переезд — один на прогон, без цепочки повторов (`.github/workflows/claude-review.yml`, решение john 2026-09-13).
+
+## msg-160 · from: github · 2026-09-15 · expects: none
+
+PR #451 (feat(daemon): непригодное рабочее место и простой контура звонят ПИСЬМОМ в ленту (тред 180)) **merged** by maysway → `main`.

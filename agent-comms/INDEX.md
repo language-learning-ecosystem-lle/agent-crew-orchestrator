@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 180-notifier-down | github, dev-core, curator | high | closed | — | — | 2026-09-15 | — |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-15 | verdict: approve |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-15 | PR #451 (feat(daemon): непригодное рабочее место и простой контура звонят ПИСЬМОМ в ленту (тред 180… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-13 | Прогон 34757433875 в пакет не уехал: диффа нет, кода нет, стенд. И рядом — живой дефект, он уехал в… |
@@ -193,7 +193,7 @@
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | closed | — | — | 2026-09-15 | — |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | closed | — | — | 2026-09-15 | — |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
-| 200-run-census-drops-queued | curator, dev-core | normal | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: две кнопки merge — #450 и #449. Все гарды, кроме четвёртого, закрыты и назв… |
+| 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Доставка решения john (сессия чата, ~13:02Z): #450 И #449 НАЖАТЫ. Парк снимаю этим же письмом. |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | closed | — | — | 2026-09-15 | — |
