@@ -824,7 +824,7 @@ env = found[0].get("env") or {}
 with open(sys.argv[3], "w", encoding="utf-8") as fh:
     fh.write("%s\n%s\n" % (env.get("PRIMARY_OUTCOME", ""), env.get("EXECUTION_FILE", "")))
 PY
-CURRENT_STATE="17-22"
+CURRENT_STATE="17-24"
 # Обратных кавычек в ДВОЙНЫХ кавычках здесь нет намеренно: `bash` исполняет их как
 # подстановку команды, и первая редакция этого блока напечатала «limit: command not
 # found» вместо имени шага — то есть отказ назвал бы не то, что чинят.
@@ -914,6 +914,32 @@ limit_case 22 "транскрипта нет вовсе: переезда нет
 check "переезда нет" "0" "$(out_of fallback)"
 check "причина названа отсутствием транскрипта" "да" \
   "$(file_probe -F 'транскрипта основного шага нет' "$LIMIT_OUT")"
+
+# (23)–(24) `allowed_warning` — ПРЕДУПРЕЖДЕНИЕ, А НЕ ОТКАЗ (полевой вход 2026-09-14,
+# прогон 34841729661 по #426). Форма транскрипта ниже — из его артефакта дословно:
+# четыре `allowed_warning` ПЕРЕД одним `rejected`, последняя запись с `429`. Состояния
+# разводят две вещи, которые прежнее условие `!= "allowed"` склеивало: РЕШЕНИЕ (переезд
+# нужен — его даёт настоящий отказ) и ПРИЗНАК (он обязан назвать этот отказ, а не первое
+# попавшееся предупреждение).
+printf '[{"type":"system","subtype":"init"},{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning"}},{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning"}},{"type":"rate_limit_event","rate_limit_info":{"status":"rejected"}},{"type":"result","subtype":"success","is_error":true,"terminal_reason":"api_error","api_error_status":429,"result":"You'"'"'ve hit your session limit · resets 1:50pm (UTC)"}]\n' > "$WORK/exec-warned-then-rejected.json"
+# Тот же вход БЕЗ отказа: предупреждение есть, красен шаг по ЧУЖОЙ причине. Это и есть
+# мутационная проба правки — верни в `.yml` условие `!= "allowed"`, и краснеет (24).
+printf '[{"type":"system","subtype":"init"},{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning"}},{"type":"result","subtype":"success","is_error":true,"result":"Reached maximum turns"}]\n' > "$WORK/exec-warned-only.json"
+
+limit_case 23 "предупреждение ПЕРЕД отказом: переезд есть, а признак называет ОТКАЗ" \
+  failure "$WORK/exec-warned-then-rejected.json" "секрет-есть" "$WORK/claude-prompt.txt"
+check "переезд объявлен" "1" "$(out_of fallback)"
+check "лимит объявлен" "1" "$(out_of hit)"
+check "признак называет отказ" "да" "$(file_probe -F 'status=rejected' "$LIMIT_OUT")"
+check "признак НЕ называет предупреждение" "нет" \
+  "$(file_probe -F 'status=allowed_warning' "$LIMIT_OUT")"
+
+limit_case 24 "одно предупреждение, отказа нет, шаг красен по чужой причине: переезда НЕТ" \
+  failure "$WORK/exec-warned-only.json" "секрет-есть" "$WORK/claude-prompt.txt"
+check "переезда нет — вторая учётка за чужой отказ не платит" "0" "$(out_of fallback)"
+check "лимит не объявлен" "0" "$(out_of hit)"
+check "причина названа отсутствием признака" "да" \
+  "$(file_probe -F 'признака лимита нет' "$LIMIT_OUT")"
 
 if [ "$FAILED" = "0" ]; then
   echo "интеграционный прогон доставки: ВСЕ СОСТОЯНИЯ ПРОШЛИ — $(printf '%s' "$STATES" | wc -w) шт."
