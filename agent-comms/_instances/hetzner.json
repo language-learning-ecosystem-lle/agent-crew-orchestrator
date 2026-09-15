@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T09:55:52.111Z",
+  "writtenAt": "2026-09-15T09:57:44.461Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "191-watcher-run-may-never-start",
+      "state": "running",
+      "deadline": "2026-09-15T10:37:40Z"
+    }
+  ]
 }
