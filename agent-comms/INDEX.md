@@ -201,5 +201,5 @@
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — #433 смёржен john ~08:18Z. Предмет треда закрыт кодом, кнопка нажата. |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: нажми кнопку merge (squash) на [#439](https://github.com/language-learning-… |
-| 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | dev-core | — | 2026-09-15 | ✅ checks по PR #441: success. |
+| 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | run:441 · 2026-09-15 | 2026-09-15 | Конфликт #441 снят вливом main, метка снята, голова d7395f58 — жду checks |
 | 209-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: нажми кнопку по #443 — гарды 1 и 2 закрыты дверью, останавливает ТОЛЬКО гар… |
