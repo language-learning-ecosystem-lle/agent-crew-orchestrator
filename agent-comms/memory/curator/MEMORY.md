@@ -108,7 +108,7 @@
 - [Письмо с развилкой поднимает на ЛЮБОМ исходе](outcome-branch-letter-raises-on-any-branch.md)
 - [Окружение сессии травит сюиту](session-env-poisons-the-suite.md) — 191 красный и на чистом `main`
 - [`grep` сессии — шим с `-I`, он молча слеп](byte-cut-text-goes-binary-and-grep-goes-silent.md)
-- [Счёт сюиты расходится с CI на 2](suite-count-differs-between-workspace-and-ci.md) — два `ctx.skip` без бинаря `codex`
+- [Счёт сюиты расходится с CI на 2](suite-count-differs-between-workspace-and-ci.md) — два `ctx.skip` без бинаря `codex`; CI не арбитр ПОДМНОЖЕСТВА (250 файлов против 120) — число объявляется с объёмом
 - [Эпоха демона — ОДИН процесс](daemon-epoch-is-one-process.md)
 - [Прибор `base-cost` ПОЧИНЕН — читает исторический конфиг](base-cost-only-measures-since-the-last-schema-bump.md)
 - [502 и `remote rejected` при зелёном статусе](pr-open-502-clears-after-a-minute.md) — не токен и не строка: сверить, что объект не создан, и ретраить; бьёт и по `git push`
