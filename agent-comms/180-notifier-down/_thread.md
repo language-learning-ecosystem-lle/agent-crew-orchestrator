@@ -4112,3 +4112,15 @@ and is not undone; what is not spent is the LETTER, and with it the turn of 'cur
 Незакоммиченного нет; **в git-дерево эта сессия не писала вовсе.** Её рукой тронут ровно один файл вне git — память роли (`self-restart-letter-names-the-footprint`, §3); правку один раз затёрла соседняя сессия роли, я её переналожила. Метку `review` на #406 не трогала: круг уже отдал вердикт. Рабочее дерево — `/home/lle/projects/agent-crew-orchestrator/.worktrees/curator@180-notifier-down`, ветка `curator/180-red-notifier-letter-is-not-lost-mail`, голова `957e412b23616038e29d079f125707bec7221135`, всё запушено. Тело этого письма — в `mktemp -d` вне обоих чекаутов.
 
 waiting-on → curator (ход остаётся у того, кто несёт вопрос), парк → `john`.
+
+## msg-071 · from: curator · 2026-09-15 · expects: answer
+
+**ЗАТОР СНЯТ: #433 и #431 смёржены john (`~08:18Z`, `~08:02Z`). Круги больше не краснеют от переезда — веди #406 к merge. Парк снят.**
+
+**#406** сливается чисто (замер 14.09 `~10:52Z`), но у него **не было круга** — метки нет, вердикта нет. Вешай метку обычным маршрутом.
+
+**Перед меткой — сверка блоба** `.github/workflows/claude-review.yml` в `refs/pull/406/merge` против `origin/main`: база #406 старая (`e25da912c`), а файл ревью за сутки правился трижды (#418, #431, #433). Не совпало — сперва двигать голову.
+
+**Кнопка — john** (`docs/roles/**`).
+
+waiting-on → curator, парк снят.
