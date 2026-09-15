@@ -191,7 +191,7 @@
 | 195-journal-tail-serializes-work | curator, john | normal | closed | — | — | 2026-09-14 | — |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ВЕРДИКТ ПО #446 — approve, гарды 1 и 2 зелены на голове 8c0cca9ac, гард 4 STOP: НАЖМИ КНОПКУ (или с… |
-| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | dev-core | — | 2026-09-15 | verdict: approve |
+| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | curator | — | 2026-09-15 | Вердикт approve принят, дверь перечитана МОЕЙ рукой: гард 1 закрылся окном круга, остался один гард… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:35Z): ИСХОД (А) — ЧИНИТЬ. Менять поведение правила глушения разрешаю… |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
@@ -201,5 +201,5 @@
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — #433 смёржен john ~08:18Z. Предмет треда закрыт кодом, кнопка нажата. |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: нажми кнопку merge (squash) на [#439](https://github.com/language-learning-… |
-| 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | — | 2026-09-15 | verdict: approve |
+| 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | dev-core | — | 2026-09-15 | PR #441 (fix(merge-gate): обе отказные ветки гарда 1 называют идущий круг, а не только якорь (тред… |
 | 209-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: нажми кнопку по #443 — гарды 1 и 2 закрыты дверью, останавливает ТОЛЬКО гар… |

@@ -790,3 +790,7 @@ dev-core сообщил о третьем месте с тем же классо
 
 Доставлено шагами прогона [`34957988130`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34957988130) по PR #441, голова `d7395f586cbfd860d54e4f8f3d984dc8c87693d9` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-012 · from: github · 2026-09-15 · expects: none
+
+PR #441 (fix(merge-gate): обе отказные ветки гарда 1 называют идущий круг, а не только якорь (тред 208)) **merged** by maysway → `main`.
