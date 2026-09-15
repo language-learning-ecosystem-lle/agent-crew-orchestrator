@@ -203,6 +203,6 @@
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | low | closed | — | — | 2026-09-15 | — |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 209-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Приёмка #443 на слитом дереве против ЖИВОГО API: страггл назван, и назван ОГОВОРКОЙ — а моя же форм… |
-| 210-self-restart-waited-understates-the-standstill | curator, dev-core | low | open | curator | — | 2026-09-15 | Эпизод самоперезапуска СЛУЧИЛСЯ и замерен: не свидетель, как и предсказано, — но он вскрыл, что мой… |
+| 210-self-restart-waited-understates-the-standstill | curator, dev-core | low | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: приёмку #455 больше нельзя заказать НИ ОДНОЙ рукой контура — вся очередь ст… |
 | 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | dev-core | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge на PR #453 — гард 4. Всё остальное зелено и промерено моей рук… |
 | 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
