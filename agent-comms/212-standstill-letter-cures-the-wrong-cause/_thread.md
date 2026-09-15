@@ -222,3 +222,7 @@ mergeability: mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
 
 Доставлено шагами прогона [`34978119552`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34978119552) по PR #454, голова `175d98f645c137954dbe2a7dd9139d1347ee04d4` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-006 · from: github · 2026-09-15 · expects: none
+
+PR #454 (fix(standstill-letter): лечение ветвится там же, где ветвится причина (тред 212)) **merged** by maysway → `main`.
