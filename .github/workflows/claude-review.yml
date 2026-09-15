@@ -171,7 +171,7 @@ jobs:
           # оно поменяло бы поведение всех прочих команд шага разом — это смена нормы, а не
           # починка.
           set -uo pipefail
-          GREEN=0; HEAD_SHA=""; RUN_ID=""; RUN_URL=""; CONCLUSION=""; WHY=""
+          GREEN=0; HEAD_SHA=""; RUN_ID=""; RUN_URL=""; CONCLUSION=""; STATE=""; WHY=""
 
           HEAD_SHA=$(gh pr view "$PR" --json headRefOid -q .headRefOid 2>/dev/null) || HEAD_SHA=""
           if [ -z "$HEAD_SHA" ]; then
@@ -188,14 +188,33 @@ jobs:
               RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
               # Джобы последней попытки этого прогона; имя `checks` — джоба
               # checks.yml, которая и гоняет `pnpm test`.
-              CONCLUSION=$(gh api \
+              #
+              # ОТБОР НЕ ФИЛЬТРУЕТ ПО `status` (тред 200). До этой правки здесь стояло
+              # `select(.name=="checks" and .status=="completed")`, и незавершённая джоба
+              # ВЫПАДАЛА ИЗ ОТБОРА МОЛЧА: пустой отбор даёт `null`, то есть ровно то же
+              # значение, что и «джобы с таким именем в прогоне нет вовсе». Старая строка
+              # причины сознавалась в этом скобкой — «ещё не завершена (ИЛИ ЕЁ ТАМ НЕТ)»:
+              # два разных состояния мира назывались одной фразой, потому что различить их
+              # было нечем. Теперь джоба берётся по одному имени, а состояние читается как
+              # `.conclusion // .status` — `status` считается наравне с `conclusion` (слово
+              # john 2026-09-13, тред 191). `queued`/`in_progress`/`waiting`/`requested`
+              # попадают в свою ветку `case` и называются СВОИМ словом, а пустое значение
+              # теперь значит ровно одно: джобы нет.
+              #
+              # ЦВЕТ ДВЕРИ ЭТИМ НЕ МЕНЯЕТСЯ: `GREEN=1` по-прежнему ставит ровно
+              # `conclusion == success`, и оба новых исхода оставляют `GREEN=0` — то есть
+              # ревьюер гоняет `pnpm test` сам, как и до правки. Чинится ИМЯ состояния, а
+              # не решение.
+              STATE=$(gh api \
                 "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/jobs?per_page=100" \
-                --jq '[.jobs[] | select(.name=="checks" and .status=="completed")] | sort_by(.started_at) | last | .conclusion' 2>/dev/null) || CONCLUSION=""
-              [ "$CONCLUSION" = "null" ] && CONCLUSION=""
-              case "$CONCLUSION" in
-                success) GREEN=1 ;;
-                "")      WHY="в прогоне ${RUN_ID} джоба 'checks' ещё не завершена (или её там нет)" ;;
-                *)       WHY="в прогоне ${RUN_ID} джоба 'checks' завершилась '${CONCLUSION}'" ;;
+                --jq '[.jobs[] | select(.name=="checks")] | sort_by(.started_at) | last | (.conclusion // .status)' 2>/dev/null) || STATE=""
+              [ "$STATE" = "null" ] && STATE=""
+              case "$STATE" in
+                success) GREEN=1; CONCLUSION="$STATE" ;;
+                "")      WHY="в прогоне ${RUN_ID} джобы 'checks' нет вовсе" ;;
+                queued|in_progress|waiting|requested|pending)
+                         WHY="в прогоне ${RUN_ID} джоба 'checks' ещё НЕ ЗАВЕРШЕНА (status '${STATE}') — исхода у неё пока нет" ;;
+                *)       CONCLUSION="$STATE"; WHY="в прогоне ${RUN_ID} джоба 'checks' завершилась '${CONCLUSION}'" ;;
               esac
             fi
           fi
