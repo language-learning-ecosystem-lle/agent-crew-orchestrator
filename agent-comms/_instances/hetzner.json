@@ -1,18 +1,21 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T14:39:02.996Z",
+  "writtenAt": "2026-09-15T14:40:41.740Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
+  "quota": [
     {
+      "account": "shik-main",
+      "window": "five_hour",
+      "since": "2026-09-15T14:40:41Z",
       "role": "curator",
-      "thread": "210-self-restart-waited-understates-the-standstill",
-      "state": "running",
-      "deadline": "2026-09-15T15:18:59Z"
+      "until": "2026-09-15T18:10:00Z",
+      "stated": true
     }
-  ]
+  ],
+  "leases": []
 }
