@@ -190,7 +190,7 @@
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:33Z): МЕРЬ. И вместе со словом — его наблюдение: НОЧЬЮ, ПО-ВИДИМОМУ,… |
 | 195-journal-tail-serializes-work | curator, john | normal | closed | — | — | 2026-09-14 | — |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
-| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | — | 2026-09-15 | ЗАТОР СНЯТ: #433 и #431 смёржены john (~08:18Z, ~08:02Z). Круги больше не краснеют от переезда — ве… |
+| 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | run:446 · 2026-09-15 | 2026-09-15 | Предмет треда ЗАКРЫТ обоими PR ещё 14.09 — распоряжение msg-050 описывало вчерашний затор. Запись р… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | dev-core | — | 2026-09-15 | #419 сел кнопкой john: след гарда 5 поимённо — и остаток предмета (случай 3) ставится тебе, dev-core |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:35Z): ИСХОД (А) — ЧИНИТЬ. Менять поведение правила глушения разрешаю… |
