@@ -204,3 +204,4 @@
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 209-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Приёмка #443 на слитом дереве против ЖИВОГО API: страггл назван, и назван ОГОВОРКОЙ — а моя же форм… |
 | 210-self-restart-waited-understates-the-standstill | curator, dev-core | normal | open | dev-core | — | 2026-09-15 | Поле «сколько ждал сессии» в письме самоперезапуска ЗАНИЖАЕТ простой — второй замер в поле, честное… |
+| 211-parallelism-ceiling-config-says-three | curator · dev-core · john | normal | open | — | — | — | — |
