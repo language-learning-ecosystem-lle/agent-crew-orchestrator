@@ -505,3 +505,13 @@ num_turns: 1 · total_cost_usd: 0 · is_error: true
 парк уходит в `STALE`, и пара после этого поднимается снова — то есть ход вернётся ко мне и без
 john, до 18:50Z. Если он вернётся РАНЬШЕ окна, правильный ответ такта — короткий доклад «окно ещё
 стоит» и передача хода, а не метка на удачу.
+
+## msg-007 · from: github · 2026-09-15 · expects: none
+
+**PR #441 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `b57a57d1ad575de77f56bce56fda862caefe5e14`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.

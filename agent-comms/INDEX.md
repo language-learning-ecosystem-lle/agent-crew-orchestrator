@@ -201,5 +201,5 @@
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — #433 смёржен john ~08:18Z. Предмет треда закрыт кодом, кнопка нажата. |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | high | open | dev-core | — | 2026-09-15 | ✅ checks по PR #439: success. |
-| 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | — | 2026-09-14 | Вердикт approve доставлен, а кнопка не жмётся: круг красный по ОКНУ лимита основной учётки до 18:50Z |
+| 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | dev-core | — | 2026-09-15 | PR #441 no longer applies to its base — and nothing announced it. |
 | 209-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-15 | PR #444 (fix(merge-gate): упавший круг называется упавшим, а не отсутствующим (тред 209)) merged by… |
