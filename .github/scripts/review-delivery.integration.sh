@@ -511,8 +511,11 @@ exec_fixture() { # <имя> <json последней записи>
 F_LIMIT="$(exec_fixture limit "$(printf '{"type":"result","subtype":"success","is_error":true,"api_error_status":429,"terminal_reason":"api_error","result":"%s"}' "$LIMIT_RESULT")")"
 F_TURNS="$(exec_fixture turns '{"type":"result","is_error":true,"api_error_status":null,"terminal_reason":"max_turns","result":"Reached maximum turns"}')"
 
-letter_case() { # <номер> <что за состояние> <файл транскрипта|пусто> <самопропуск: 0|1>
-  local n="$1" what="$2" exec_file="${3:-}" self_skip="${4:-0}"
+letter_case() { # <номер> <что за состояние> <файл транскрипта|пусто> <самопропуск: 0|1> [исход основного шага] [переезд: 0|1]
+  # ДВА ПОСЛЕДНИХ АРГУМЕНТА НЕОБЯЗАТЕЛЬНЫ И ПО УМОЛЧАНИЮ ПУСТЫ — состояния (10)–(13)
+  # подают их ровно так же, как подавали до появления (29): шаг обязан пережить пустой
+  # `PRIMARY_OUTCOME` («об исходе судить не по чему»), и это тоже сверка, а не умолчание.
+  local n="$1" what="$2" exec_file="${3:-}" self_skip="${4:-0}" primary="${5:-}" moved="${6:-0}"
   note_state "$n"
   echo "== ($n) ${what}"
   local arena="$WORK/letter-$n" bin
@@ -540,8 +543,10 @@ STUB
     GITHUB_WORKSPACE="$arena" GH_TOKEN="$FAKE_TOKEN" \
     PR="$PR" RUN_ID=33762234440 RUN_URL="https://example.invalid/runs/33762234440" \
     SELF_SKIP="$self_skip" EXECUTION_FILE="$exec_file" \
+    PRIMARY_OUTCOME="$primary" REVIEW_MOVED="$moved" \
       bash "$STEP_SH"
   ) > "$arena/step.log" 2>&1
+  STEP_LOG="$arena/step.log"
   if [ ! -s "$arena/letter.md" ]; then
     fail "письмо не составлено вовсе"; sed 's/^/    /' "$arena/step.log"; return 0
   fi
@@ -824,7 +829,7 @@ env = found[0].get("env") or {}
 with open(sys.argv[3], "w", encoding="utf-8") as fh:
     fh.write("%s\n%s\n" % (env.get("PRIMARY_OUTCOME", ""), env.get("EXECUTION_FILE", "")))
 PY
-CURRENT_STATE="17-22"
+CURRENT_STATE="17-24"
 # Обратных кавычек в ДВОЙНЫХ кавычках здесь нет намеренно: `bash` исполняет их как
 # подстановку команды, и первая редакция этого блока напечатала «limit: command not
 # found» вместо имени шага — то есть отказ назвал бы не то, что чинят.
@@ -914,6 +919,165 @@ limit_case 22 "транскрипта нет вовсе: переезда нет
 check "переезда нет" "0" "$(out_of fallback)"
 check "причина названа отсутствием транскрипта" "да" \
   "$(file_probe -F 'транскрипта основного шага нет' "$LIMIT_OUT")"
+
+# (23)–(24) `allowed_warning` — ПРЕДУПРЕЖДЕНИЕ, А НЕ ОТКАЗ (полевой вход 2026-09-14,
+# прогон 34841729661 по #426). Форма транскрипта ниже — из его артефакта дословно:
+# четыре `allowed_warning` ПЕРЕД одним `rejected`, последняя запись с `429`. Состояния
+# разводят две вещи, которые прежнее условие `!= "allowed"` склеивало: РЕШЕНИЕ (переезд
+# нужен — его даёт настоящий отказ) и ПРИЗНАК (он обязан назвать этот отказ, а не первое
+# попавшееся предупреждение).
+printf '[{"type":"system","subtype":"init"},{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning"}},{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning"}},{"type":"rate_limit_event","rate_limit_info":{"status":"rejected"}},{"type":"result","subtype":"success","is_error":true,"terminal_reason":"api_error","api_error_status":429,"result":"You'"'"'ve hit your session limit · resets 1:50pm (UTC)"}]\n' > "$WORK/exec-warned-then-rejected.json"
+# Тот же вход БЕЗ отказа: предупреждение есть, красен шаг по ЧУЖОЙ причине. Это и есть
+# мутационная проба правки — верни в `.yml` условие `!= "allowed"`, и краснеет (24).
+printf '[{"type":"system","subtype":"init"},{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning"}},{"type":"result","subtype":"success","is_error":true,"result":"Reached maximum turns"}]\n' > "$WORK/exec-warned-only.json"
+
+limit_case 23 "предупреждение ПЕРЕД отказом: переезд есть, а признак называет ОТКАЗ" \
+  failure "$WORK/exec-warned-then-rejected.json" "секрет-есть" "$WORK/claude-prompt.txt"
+check "переезд объявлен" "1" "$(out_of fallback)"
+check "лимит объявлен" "1" "$(out_of hit)"
+check "признак называет отказ" "да" "$(file_probe -F 'status=rejected' "$LIMIT_OUT")"
+check "признак НЕ называет предупреждение" "нет" \
+  "$(file_probe -F 'status=allowed_warning' "$LIMIT_OUT")"
+
+limit_case 24 "одно предупреждение, отказа нет, шаг красен по чужой причине: переезда НЕТ" \
+  failure "$WORK/exec-warned-only.json" "секрет-есть" "$WORK/claude-prompt.txt"
+check "переезда нет — вторая учётка за чужой отказ не платит" "0" "$(out_of fallback)"
+check "лимит не объявлен" "0" "$(out_of hit)"
+check "причина названа отсутствием признака" "да" \
+  "$(file_probe -F 'признака лимита нет' "$LIMIT_OUT")"
+
+# --- (25)–(28) ЦВЕТ КРУГА: РЕШАЕТ ДОСТАВКА, А НЕ ИСХОД ШАГА РЕВЬЮЕРА -----------------
+#
+# ЗАЧЕМ ЗДЕСЬ (тред 205). 14.09 прогон 34841729661 по #426 доставил вердикт `approve`
+# всеми тремя каналами и остался КРАСНЫМ: из двадцати трёх шагов упал ровно один —
+# основной шаг ревьюера, умерший лимитом, из-за которого и состоялся переезд. Дверь
+# читает цвет джобы, а не шаги: `review=FAILURE` → `STOP guard 2`, и PR не мёржит НИКТО.
+# Класс, а не случай: пока исход джобы падает вместе с шагом ревьюера, любой круг с
+# переездом красен ПО ПОСТРОЕНИЮ.
+#
+# ЧЕМ ЭТО ГОНЯЕТСЯ БЕЗ ДЕНЕГ. Цвет джобы Actions — функция ДВУХ вещей, и обе лежат в
+# репозитории: атрибута `continue-on-error` у шагов (вынимается из `.yml` разбором) и
+# кода выхода шага «Итог доставок» (считается ЖИВЫМ `delivery_exit_code` из
+# `review-delivery.sh` — тем самым предикатом, что судит в проде, а не его пересказом).
+# Второго источника правды о правиле «зелено ⇔ вердикт вынесен И доставлен» здесь не
+# заводится: состояния ниже только СКЛАДЫВАЮТ эти две вещи так, как их складывает GitHub.
+COLOR_ENV="$WORK/job-color.env"
+python3 - "${CODE_DIR}/.github/workflows/claude-review.yml" "$COLOR_ENV" <<'PY'
+import sys, yaml
+SUMMARY = "Итог доставок — что доехало и что нет"
+wf = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+steps = [s for job in wf["jobs"].values() for s in job.get("steps", [])]
+
+def one(pred, what):
+    found = [s for s in steps if pred(s)]
+    if len(found) != 1:
+        sys.exit(f"шаг '{what}' найден {len(found)} раз(а) — судить о цвете круга нечем")
+    return found[0]
+
+def coe(step):
+    return "true" if step.get("continue-on-error") is True else "false"
+
+open(sys.argv[2], "w", encoding="utf-8").write("\n".join([
+    coe(one(lambda s: s.get("id") == "reviewer", "id: reviewer")),
+    coe(one(lambda s: s.get("id") == "reviewer_fallback", "id: reviewer_fallback")),
+    coe(one(lambda s: s.get("name") == SUMMARY, SUMMARY)),
+]) + "\n")
+PY
+CURRENT_STATE="25-28"
+[ -s "$COLOR_ENV" ] || fail 'атрибуты шагов не вынуты из yaml (нужен python3 с PyYAML)'
+REVIEWER_COE="$(sed -n 1p "$COLOR_ENV")"
+FALLBACK_COE="$(sed -n 2p "$COLOR_ENV")"
+SUMMARY_COE="$(sed -n 3p "$COLOR_ENV")"
+
+# ЦВЕТ ДЖОБЫ ПО ПРАВИЛАМ GITHUB: шаг красит джобу, если его `conclusion` не `success`, а
+# `continue-on-error` превращает `failure` в `success` РОВНО в `conclusion`. Красить
+# может любой из двух: шаг ревьюера и шаг итога доставок; остальные на этих состояниях
+# зелены (замер прогона 34841729661 — шаги 10–17 `success` все до одного).
+job_conclusion() { # <исход шага ревьюера> <код шага итога> <continue-on-error ревьюера>
+  local reviewer_outcome="$1" final="$2" coe="$3"
+  if [ "$reviewer_outcome" != "success" ] && [ "$coe" != "true" ]; then
+    printf 'failure'
+    return 0
+  fi
+  if [ "$final" != "0" ] && [ "$SUMMARY_COE" != "true" ]; then
+    printf 'failure'
+    return 0
+  fi
+  printf 'success'
+}
+
+note_state 25
+echo '== (25) круг с ПЕРЕЕЗДОМ: основной шаг умер, вердикт вынесен и доставлен тремя каналами'
+# Полевой вход #426 дословно: `self_skip=0`, `verdict.md` есть, три доставки `ok`.
+FINAL_25="$(delivery_exit_code 0 1 ok ok ok)"
+check "шаг итога доставок говорит «доехало всё»" "0" "$FINAL_25"
+check "право красить джобу у шага ревьюера СНЯТО" "true" "$REVIEWER_COE"
+check "и у запасного шага тоже — вердикт может вынести он" "true" "$FALLBACK_COE"
+check "а у шага итога доставок оно ОСТАЛОСЬ — иначе краснеть нечем" "false" "$SUMMARY_COE"
+check "круг ЗЕЛЁНЫЙ — вердикт доставлен" "success" \
+  "$(job_conclusion failure "$FINAL_25" "$REVIEWER_COE")"
+# КОНТРОЛЬ МУТАЦИИ ПРЯМО ЗДЕСЬ: вернуть шагу ревьюера право красить — и ровно этот
+# вход снова даёт тупик #426. Проба на САМОЙ строке `.yml` — сверка `REVIEWER_COE` выше.
+check "контроль мутации: с прежним поведением тот же вход КРАСЕН" "failure" \
+  "$(job_conclusion failure "$FINAL_25" false)"
+
+note_state 26
+echo '== (26) вердикта нет: круг КРАСНЫЙ, как и был'
+FINAL_26="$(delivery_exit_code 0 0 none none none)"
+check "шаг итога доставок красит сам" "1" "$FINAL_26"
+check "круг КРАСНЫЙ и при зелёном шаге ревьюера (дефект H2)" "failure" \
+  "$(job_conclusion success "$FINAL_26" "$REVIEWER_COE")"
+check "и при красном" "failure" "$(job_conclusion failure "$FINAL_26" "$REVIEWER_COE")"
+
+note_state 27
+echo '== (27) вердикт есть, а доставка не доехала: круг КРАСНЫЙ, как и был'
+FINAL_27="$(delivery_exit_code 0 1 failed ok ok)"
+check "шаг итога доставок красит сам" "1" "$FINAL_27"
+check "круг КРАСНЫЙ — суждение живо, но адресат его не получил" "failure" \
+  "$(job_conclusion failure "$FINAL_27" "$REVIEWER_COE")"
+
+note_state 28
+echo '== (28) самопропуск действия: ни зеленее, ни краснее — как и был'
+# На самопропуске действие ничего не исполняет и шаг кончается `success`, поэтому
+# `continue-on-error` этого состояния не касается вовсе — и это проверяется, а не
+# объявляется: обе колонки ниже дают один ответ.
+FINAL_28="$(delivery_exit_code 1 0 none none none)"
+check "шаг итога доставок оставляет джобу зелёной (тред 046)" "0" "$FINAL_28"
+check "круг ЗЕЛЁНЫЙ" "success" "$(job_conclusion success "$FINAL_28" "$REVIEWER_COE")"
+check "и с прежним поведением он был таким же — правка сюда не дотянулась" "success" \
+  "$(job_conclusion success "$FINAL_28" false)"
+
+# --- (29) ВТОРАЯ ПОЛОВИНА ПЕРЕНОСА: СМЕРТЬ ОСНОВНОГО ШАГА НАЗЫВАЕТСЯ ВСЛУХ -------------
+#
+# ЗАЧЕМ ЗДЕСЬ. Состояния (25)–(28) выше держат ЦВЕТ: основной шаг джобу больше не красит.
+# Шаг, который не красит, — это шаг, о смерти которого никто не узнает, если её не СКАЗАТЬ
+# словом, и граница №2 решения john 2026-09-14 `13:27Z` ровно об этом: перенос значения, а
+# не глушение. Держится она не комментарием в `.yml`, а этим состоянием.
+#
+# ЧТО ИМЕННО ГОНЯЕТСЯ: тело шага итога из `.yml` целиком, как состояния (10)–(13), только
+# с исходом основного шага и фактом переезда в среде. Печать проверяется В ЛОГЕ ШАГА, а не
+# в письме: на этой ветви письма нет вовсе — вердикт доехал.
+#
+# МУТАЦИОННЫЕ ПРОБЫ: убрать строку `PRIMARY_OUTCOME` из `env:` шага итога в `.yml` — краснеет
+# сверка переменной; вынуть печатающий блок из тела шага — краснеют обе сверки лога.
+python3 - "${CODE_DIR}/.github/workflows/claude-review.yml" "$WORK/summary.env" <<'PY'
+import sys, yaml
+NAME = "Итог доставок — что доехало и что нет"
+wf = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+steps = [s for job in wf["jobs"].values() for s in job.get("steps", [])]
+found = [s for s in steps if s.get("name") == NAME]
+if len(found) != 1:
+    sys.exit("шаг итога найден %d раз(а) — вынуть переменные нечем" % len(found))
+open(sys.argv[2], "w", encoding="utf-8").write(str((found[0].get("env") or {}).get("PRIMARY_OUTCOME", "")))
+PY
+letter_case 29 "основной шаг умер лимитом, круг доработала запасная: смерть НАЗВАНА вслух" \
+  "$F_LIMIT" 0 failure 1
+check "шаг получает исход ОСНОВНОГО шага" \
+  '${{ steps.reviewer.outcome }}' "$(cat "$WORK/summary.env")"
+check "исход основного шага напечатан" "да" \
+  "$(file_probe -F 'основной шаг ревьюера: failure' "$STEP_LOG")"
+check "и сказано, что круг доработала запасная учётка" "да" \
+  "$(file_probe -F 'круг доработала ЗАПАСНАЯ учётка' "$STEP_LOG")"
 
 if [ "$FAILED" = "0" ]; then
   echo "интеграционный прогон доставки: ВСЕ СОСТОЯНИЯ ПРОШЛИ — $(printf '%s' "$STATES" | wc -w) шт."
