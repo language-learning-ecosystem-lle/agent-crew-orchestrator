@@ -369,8 +369,18 @@ jobs:
           # джобы `checks` для зова на метку ниже. Промежуточная форма — TSV, а
           # не готовый markdown: второй читатель, грепающий чужое оформление,
           # ломается от правки первого.
+          # ДЖОБА БЕЗ ИСХОДА НАЗЫВАЕТ СВОЙ `status`, А НЕ ПАДАЕТ В `?` (тред 200).
+          # `.conclusion` у незавершённой джобы `null`, и запасной ход `// "?"`
+          # сваливал её в ту же кучу, что и «исход не прочитался»: `queued` был
+          # неотличим от порчи ответа. `status` считается наравне с `conclusion`
+          # (слово john 13.09, тред 191), и `?` остаётся ровно за третьим
+          # случаем — когда нет НИ ТОГО, НИ ДРУГОГО.
+          #
+          # ЧИТАТЕЛЬ НИЖЕ ЭТИМ НЕ ТРОНУТ: `CHECKS_CONCLUSION` сравнивается с
+          # `success` и только с ним (строка `[ "${CHECKS_CONCLUSION:-}" = "success" ]`),
+          # а `queued` ему не равен ровно так же, как не был равен `?`.
           JOBS_TSV=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/attempts/${RUN_ATTEMPT}/jobs" --paginate \
-                       --jq '.jobs[] | [.name, (.conclusion // "?")] | @tsv')
+                       --jq '.jobs[] | [.name, (.conclusion // .status // "?")] | @tsv')
           JOBS=$(printf '%s\n' "$JOBS_TSV" | awk -F'\t' 'NF { printf "- `%s` — **%s**\n", $1, $2 }')
           CHECKS_CONCLUSION=$(printf '%s\n' "$JOBS_TSV" | awk -F'\t' '$1 == "checks" { print $2; exit }')
 

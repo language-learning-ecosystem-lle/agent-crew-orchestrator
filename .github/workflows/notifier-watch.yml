@@ -291,8 +291,11 @@ jobs:
           fi
 
           echo "1/2 · разбор по джобам прогона ${RUN_ID}, попытка ${RUN_ATTEMPT}"
+          # ДЖОБА БЕЗ ИСХОДА НАЗЫВАЕТ СВОЙ `status`, А НЕ ПАДАЕТ В `?` (тред 200)
+          # — то же место и та же правка, что в `ci-outcome.yml`. `?` остаётся за
+          # случаем «нет ни исхода, ни статуса», то есть за порчей ответа.
           JOBS=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/attempts/${RUN_ATTEMPT}/jobs" --paginate \
-                   --jq '.jobs[] | "- `\(.name)` — **\(.conclusion // "?")**"') || JOBS="- (разбор по джобам не прочитан)"
+                   --jq '.jobs[] | "- `\(.name)` — **\(.conclusion // .status // "?")**"') || JOBS="- (разбор по джобам не прочитан)"
 
           # ГРОМКОСТЬ ГЛУШЕНИЯ — ЗДЕСЬ. Сколько отказов этого уведомителя не
           # доехало письмом с прошлого раза, спрашивается у GitHub (прогоны
@@ -357,10 +360,11 @@ jobs:
             MUTED_IDS=''
             MUTED_SHORTFALL=''
             MUTED_AMBIGUOUS=''
+            MUTED_INFLIGHT=''
             # Метка ЗАПРОСА шире метки письма на слак полёта: у фильтра API есть
             # только `created`, а перепись судит по завершению (тред 209).
             CENSUS_SINCE="$(notifier_mute_census_since "$LAST_AT")"
-            if ! gh api "/repos/${GITHUB_REPOSITORY}/actions/workflows/${WF_ID}/runs?per_page=100&status=completed&created=%3E${CENSUS_SINCE}" > "$RUNS_JSON"; then
+            if ! gh api "/repos/${GITHUB_REPOSITORY}/actions/workflows/${WF_ID}/runs?per_page=100&created=%3E${CENSUS_SINCE}" > "$RUNS_JSON"; then
               MUTED_UNREAD='список прогонов не получен — запрос к GitHub не выполнен'
             elif ! MUTED_IDS="$(notifier_mute_muted_ids "$RUNS_JSON" "$LAST_AT" "$RUN_ID" "$SUBJECT")"; then
               MUTED_UNREAD='список прогонов получен, но не разобран — отказал отбор отказных прогонов'
@@ -368,6 +372,8 @@ jobs:
               MUTED_UNREAD='список прогонов получен и разобран, но полнота выборки не сосчитана — отказал счёт непоместившихся прогонов'
             elif ! MUTED_AMBIGUOUS="$(notifier_mute_ambiguous "$RUNS_JSON" "$LAST_AT" "$RUN_ID" "$SUBJECT")"; then
               MUTED_UNREAD='список прогонов получен и разобран, но прогоны с неразрешённым предметом не сосчитаны — отказал счёт неразличимых прогонов'
+            elif ! MUTED_INFLIGHT="$(notifier_mute_inflight "$RUNS_JSON" "$LAST_AT" "$RUN_ID" "$SUBJECT")"; then
+              MUTED_UNREAD='список прогонов получен и разобран, но прогоны без исхода не сосчитаны — отказал счёт ещё не ответивших прогонов'
             fi
             if [ -n "$MUTED_UNREAD" ]; then
               MUTED_LINE="🔇 Сколько отказов с ключом \`${MUTE_KEY}\` заглушено с прошлого письма (\`${LAST_AT}\`) — НЕ ПРОЧИТАНО: ${MUTED_UNREAD}. Само письмо это не задержало. Настоящая ошибка напечатана в логе ЭТОГО прогона смотрителя — ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}, шаг «Позвонить в тред-приёмник»; в прогонах \`${WF_NAME}\` её нет."
@@ -407,6 +413,10 @@ jobs:
               # письма значило бы приписать ей чужое число.
               [ "$MUTED_SHORTFALL" = 0 ] || MUTED_WHY="за один запрос GitHub отдаёт 100 новейших прогонов, а под запрос переписи у \`${WF_NAME}\` их попало больше — ${MUTED_SHORTFALL} в выборку не поместились, и отказы среди них не сосчитаны"
               [ "$MUTED_AMBIGUOUS" = 0 ] || MUTED_WHY="${MUTED_WHY:+${MUTED_WHY}; }у ${MUTED_AMBIGUOUS} отказных прогонов предмет не разрешился, и отличить их от ключа \`${MUTE_KEY}\` нечем — в число они не вошли"
+              # ТРЕТЬЯ ПРИЧИНА (тред 200): прогон в окне, который ЕЩЁ НЕ ОТВЕТИЛ.
+              # Ни засчитать (он не отказ), ни отвергнуть (он может им стать) —
+              # значит он опускает число до нижней границы, а не выпадает молча.
+              [ "$MUTED_INFLIGHT" = 0 ] || MUTED_WHY="${MUTED_WHY:+${MUTED_WHY}; }${MUTED_INFLIGHT} прогонов в окне ещё НЕ ЗАВЕРШИЛИСЬ (исхода у них нет) — ни засчитать их заглушёнными, ни отвергнуть нечем"
               if [ -n "$MUTED_WHY" ]; then
                 MUTED_LINE="🔇 **Заглушено с прошлого письма (\`${LAST_AT}\`) отказов с тем же ключом \`${MUTE_KEY}\`: НЕ МЕНЕЕ $#**${MUTED_RUNS}. Это НИЖНЯЯ ГРАНИЦА, а не число: ${MUTED_WHY}. Правило — окно ${NOTIFIER_MUTE_WINDOW_SEC} с по ключу «имя уведомителя + предмет прогона» (\`.github/scripts/notifier-mute.sh\`)."
               elif [ "$#" -gt 0 ]; then
