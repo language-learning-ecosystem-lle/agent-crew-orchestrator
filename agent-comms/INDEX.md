@@ -203,5 +203,5 @@
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | low | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: отрицательная ветвь #439 живьём так и не исполнилась (2 пустых чтения). Зак… |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 209-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Приёмка #443 на слитом дереве против ЖИВОГО API: страггл назван, и назван ОГОВОРКОЙ — а моя же форм… |
-| 210-self-restart-waited-understates-the-standstill | curator, dev-core | normal | open | dev-core | — | 2026-09-15 | ✅ checks по PR #452: success. |
+| 210-self-restart-waited-understates-the-standstill | curator, dev-core | normal | open | dev-core | run:452 · 2026-09-15 | 2026-09-15 | Якорь ожидания переживает переезд цели — PR #452, жду CI |
 | 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | dev-core | — | 2026-09-15 | verdict: approve |
