@@ -31,7 +31,7 @@
   },
   "parallelism": {
     "pairsPerRole": 2,
-    "pairsPerInstance": 3
+    "pairsPerInstance": 5
   },
   "identityDictionary": "docs/protocol-reference.md",
   "powerDocuments": ["PROTOCOL.md", "REVIEWER.md", ".github/workflows"],
