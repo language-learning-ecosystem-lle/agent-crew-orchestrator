@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T09:50:19.633Z",
+  "writtenAt": "2026-09-15T09:54:24.481Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "191-watcher-run-may-never-start",
-      "state": "running",
-      "deadline": "2026-09-15T10:23:49Z"
-    },
     {
       "role": "dev-core",
       "thread": "207-run-outcome-stamps-a-stale-head",
