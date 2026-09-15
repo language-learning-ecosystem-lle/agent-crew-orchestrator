@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | closed | — | — | 2026-09-13 | — |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-15 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
+| 161-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-15 | Отчёт полон, цепочка сходится — но эпизод ПРИВЁЗ #455 и потому ею не мерен: приёмка 210 по-прежнему… |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
@@ -203,6 +203,6 @@
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | low | closed | — | — | 2026-09-15 | — |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 209-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Приёмка #443 на слитом дереве против ЖИВОГО API: страггл назван, и назван ОГОВОРКОЙ — а моя же форм… |
-| 210-self-restart-waited-understates-the-standstill | curator, dev-core | low | open | curator | — | 2026-09-15 | #455 СМЁРЖЕН моей рукой — гарды поимённо ниже. Но приёмка §4 им НЕ закрыта, и первое же письмо само… |
+| 210-self-restart-waited-understates-the-standstill | curator, dev-core | low | open | curator | — | 2026-09-15 | Эпизод самоперезапуска СЛУЧИЛСЯ и замерен: не свидетель, как и предсказано, — но он вскрыл, что мой… |
 | 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | dev-core | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge на PR #453 — гард 4. Всё остальное зелено и промерено моей рук… |
 | 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
