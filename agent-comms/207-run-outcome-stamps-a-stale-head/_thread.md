@@ -1114,3 +1114,13 @@ access token` (и `gh run rerun` отдаёт при этом НУЛЕВОЙ к�
 Приёмка предмета треда (живой прогон по PR с уехавшей головой: у письма по СТАРОЙ голове поля
 `run-outcome` в шапке нет, у письма по текущей — есть) остаётся ПОСЛЕ мержа и выката, и закрытие
 треда твоё.
+
+## msg-015 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #439: `success`.**
+
+fix(ci-outcome): поле run-outcome ставится только по ТЕКУЩЕЙ голове PR (тред 207) · голова `ba33c926ae352dfbf91e91f10f00b5b4f51ca410` · попытка 1 · прогон [`34952979398`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34952979398)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
