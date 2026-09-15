@@ -193,7 +193,7 @@
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Вопрос первой строкой: перевыдать секрет CLAUDECODEOAUTHTOKENFALLBACK (сегодняшний отвечает 401 с 1… |
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: нажать merge на PR #448 — четыре гарда из пяти закрыты машиной и лентой, пя… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
-| 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:35Z): ИСХОД (А) — ЧИНИТЬ. Менять поведение правила глушения разрешаю… |
+| 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-15 | Постановка dev-core: хвост предмета — четыре места в классе, ДВА PR, кнопка john на обоих. PR B отк… |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать кнопку merge на #440 — гарды 1, 2, 3 сложились, стоит один гард 4 (д… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | open | curator | — | 2026-09-15 | Предмет треда ПРОВЕРЕН ПОЛЕМ: пин 0.2.15 у потребителя переехал, и с новой сборки повторов НЕТ — 17… |
