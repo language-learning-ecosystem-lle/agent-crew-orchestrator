@@ -205,4 +205,4 @@
 | 209-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Приёмка #443 на слитом дереве против ЖИВОГО API: страггл назван, и назван ОГОВОРКОЙ — а моя же форм… |
 | 210-self-restart-waited-understates-the-standstill | curator, dev-core | low | open | dev-core | — | 2026-09-15 | Починка #452 НЕПОЛНА, и это доказано ПОСТРОЕНИЕМ, а не образцом: якорь ожидания — первый ТИК дренаж… |
 | 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | dev-core | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: кнопка merge на PR #453 — гард 4. Всё остальное зелено и промерено моей рук… |
-| 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | open | dev-core | — | 2026-09-15 | PR #454 (fix(standstill-letter): лечение ветвится там же, где ветвится причина (тред 212)) merged b… |
+| 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
