@@ -7,7 +7,11 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { checkWorkspacePackage, WORKSPACE_PACKAGE } from "./workspace-package.js";
+import {
+  checkWorkspacePackage,
+  isStaleWorkspaceBuild,
+  WORKSPACE_PACKAGE,
+} from "./workspace-package.js";
 
 const at = { role: "dev-acme", path: "/home/x/repo/.worktrees/dev-acme", repo: "/home/x/repo" };
 
@@ -67,5 +71,45 @@ describe("the workspace runs the build the circuit runs", () => {
     expect(verdict).toEqual({ ok: true });
     // Not even a line: a comparison that did not happen is not reported as one that did.
     expect(checkWorkspacePackage({ ...at, facts: { installed: "0.2.7" } })).toEqual({ ok: true });
+  });
+});
+
+/**
+ * WHOEVER CARRIES THIS REFUSAL ONWARD CARRIES ONLY ITS TEXT (thread 212), so the text has
+ * to be recognisable — and the recogniser is asked of what the door ACTUALLY RETURNS here,
+ * never of a literal restated in this file: a test that pinned its own copy of the sentence
+ * would keep passing while the door and the letter drifted apart.
+ */
+describe("the stale build is told apart from every other refusal by its own mark", () => {
+  it("holds on the refusal the door writes about a tree on another build", () => {
+    const verdict = checkWorkspacePackage({
+      ...at,
+      facts: { installed: "0.2.7", reference: "0.2.9" },
+    });
+
+    expect(verdict.ok).toBe(false);
+    if (verdict.ok) return;
+    expect(isStaleWorkspaceBuild(verdict.reason)).toBe(true);
+  });
+
+  it("does NOT hold on the refusal about a tree that was never installed", () => {
+    const verdict = checkWorkspacePackage({ ...at, facts: { reference: "0.2.9" } });
+
+    expect(verdict.ok).toBe(false);
+    if (verdict.ok) return;
+    // Its cure is the command the sentence itself prints, so the letter must not talk over
+    // it with the pin — the same answer as for a dirty tree or a foreign head.
+    expect(isStaleWorkspaceBuild(verdict.reason)).toBe(false);
+  });
+
+  it("does NOT hold on a refusal about the STATE of the tree", () => {
+    expect(
+      isStaleWorkspaceBuild(
+        "the workspace has uncommitted changes left by the 'exited-without-handoff' run of this pair",
+      ),
+    ).toBe(false);
+    expect(isStaleWorkspaceBuild("the workspace '/w/dev-acme' was locked as it was created")).toBe(
+      false,
+    );
   });
 });

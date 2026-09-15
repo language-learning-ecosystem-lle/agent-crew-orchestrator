@@ -40,18 +40,35 @@
  * half. A reader who has the first still cannot tell the second, and it was the second that
  * john had to go and find by hand.
  *
- * WHAT THE LETTER MAY NOT SAY. `pnpm install` is NOT the cure and the letter must never
- * offer it — measured the same day, in this order: `pnpm install --frozen-lockfile` in the
- * tree left `0.2.14`; `git merge --ff-only origin/main` answered `fatal: Not possible to
- * fast-forward`; `git merge --no-edit origin/main` gave `0.2.15`, and the merge commit was
- * then REFUSED by the `conventional-commits` hook and had to be finished with `--no-verify`.
- * The version comes from the PIN, and the pin is in the files of the branch itself — so a
- * tree on its own branch is levelled by MERGING, by a hand, and the box does not do it:
- * john's boundary of 2026-09-12 («дерево на СОБСТВЕННОЙ ветке роли не трогать») stands
- * unnarrowed, and this bell is what was chosen INSTEAD of narrowing it.
+ * WHAT THE LETTER MAY NOT SAY, WHEN THE TREE IS BEHIND. `pnpm install` is NOT the cure and
+ * the letter must never offer it — measured the same day, in this order: `pnpm install
+ * --frozen-lockfile` in the tree left `0.2.14`; `git merge --ff-only origin/main` answered
+ * `fatal: Not possible to fast-forward`; `git merge --no-edit origin/main` gave `0.2.15`,
+ * and the merge commit was then REFUSED by the `conventional-commits` hook and had to be
+ * finished with `--no-verify`. The version comes from the PIN, and the pin is in the files
+ * of the branch itself — so a tree on its own branch is levelled by MERGING, by a hand, and
+ * the box does not do it: john's boundary of 2026-09-12 («дерево на СОБСТВЕННОЙ ветке роли
+ * не трогать») stands unnarrowed, and this bell is what was chosen INSTEAD of narrowing it.
+ *
+ * AND IT MAY NOT SAY IT WHEN THE TREE IS NOT BEHIND (thread
+ * `212-standstill-letter-cures-the-wrong-cause`, curator's measurement of 2026-09-15). The
+ * paragraph above was printed under EVERY workspace refusal, and the workspace door has
+ * nine of them: the stale build is one, and the other eight are about the STATE of the tree
+ * — dirt, a lock, a head that is not the role's, a tidy-up that failed, a signature that did
+ * not read back. The first letter this bell ever rang in the field, `2026-09-15T13:26:10Z`
+ * into `180-selfheal-leaves-the-workspaces-behind`, carried a true diagnosis («uncommitted
+ * changes … its head is on 'probe/180-p1-firing'», with the door's own repair commands
+ * inside it) and then this cure, which had nothing to do with it — and a reader who ran what
+ * was printed would have merged `main` INTO a dirty tree instead of clearing it. So the cure
+ * forks where the reason forks: {@link isStaleWorkspaceBuild} — the refusal's own mark, not
+ * a phrase this module guesses at — decides, and under every other reason the letter says
+ * nothing over the commands the door has already printed. A bell a reader cannot act on is
+ * the defect one step further on; a bell that tells him to act on the wrong thing is that
+ * same defect, carried out.
  */
 
 import type { StallRefusal } from "./stall.js";
+import { isStaleWorkspaceBuild } from "./workspace-package.js";
 
 /**
  * WHOSE TURN A BELL LEAVES. Never the refused role — a pair the circuit will not raise is
@@ -179,7 +196,11 @@ export const planStandstillLetters = (input: {
  * the language of the feed it lands in.
  *
  * AND IT NAMES THE CURE BY NAME, because a bell a reader cannot act on is the defect one
- * step further on. The cure is the merge and its hook, both measured — see the header.
+ * step further on — WHERE THE CURE IS THE LETTER'S TO NAME. That is exactly one reason out
+ * of nine: the stale build, whose cure is the merge and its hook, both measured (see the
+ * header). Under the eight reasons about the state of the tree the door has already printed
+ * its own repair inside the sentence quoted above, and the letter's whole duty is not to
+ * talk over it: it says where the cure is and why the pin is not it.
  */
 export const renderWorkspaceLetter = (letter: WorkspaceLetter): string =>
   [
@@ -187,7 +208,9 @@ export const renderWorkspaceLetter = (letter: WorkspaceLetter): string =>
     "",
     `Дверь рабочего места отказала: ${letter.reason}`,
     "",
-    "**Лечение — рука человека, и оно НЕ `pnpm install`.** Версия в дереве берётся из пина, а пин лежит в файлах САМОЙ ВЕТКИ: пока ветка не подтянула `main`, переустановка пакета не меняет ничего (замер john 15.09: `pnpm install --frozen-lockfile` → прежняя версия; `git merge --ff-only origin/main` → `fatal: Not possible to fast-forward`; `git merge --no-edit origin/main` → новая версия, и коммит слияния отклонил хук `conventional-commits`, довершено `git commit --no-verify`).",
+    isStaleWorkspaceBuild(letter.reason)
+      ? "**Лечение — рука человека, и оно НЕ `pnpm install`.** Версия в дереве берётся из пина, а пин лежит в файлах САМОЙ ВЕТКИ: пока ветка не подтянула `main`, переустановка пакета не меняет ничего (замер john 15.09: `pnpm install --frozen-lockfile` → прежняя версия; `git merge --ff-only origin/main` → `fatal: Not possible to fast-forward`; `git merge --no-edit origin/main` → новая версия, и коммит слияния отклонил хук `conventional-commits`, довершено `git commit --no-verify`)."
+      : "**Лечение — рука человека, и названо оно ВЫШЕ, в самом отказе:** дверь говорит, чем именно дерево непригодно, и, где ремонт возможен, печатает его команды прямо в диагнозе — исполняется напечатанное там. Своих команд поверх них это письмо не ставит, и про пин здесь речи нет: этот отказ не о том, что ветка дерева отстала от сборки ящика, и слияние `main` его не снимает.",
     "",
     "Дерево роли на СОБСТВЕННОЙ ветке ящик не трогает (граница john 12.09, подтверждена 15.09): автоматического слияния `main` в ветку роли не будет — вместо него звонит это письмо.",
     "",

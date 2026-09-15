@@ -11,12 +11,43 @@ import {
   standstillLetterKey,
   workspaceLetterKey,
 } from "./standstill-letter.js";
+import { checkWorkspacePackage } from "./workspace-package.js";
 
+/** The stale-build refusal for a given installed version, as `workspace-package.ts` writes it. */
+const staleBuildRefusal = (installed?: string): string => {
+  const verdict = checkWorkspacePackage({
+    role: "dev-speech",
+    path: "/home/x/repo/.worktrees/dev-speech",
+    repo: "/home/x/repo",
+    facts: {
+      ...(installed === undefined ? {} : { installed }),
+      reference: "0.2.15",
+      pin: "github:lle/aco#agent-protocol-v0.2.15",
+    },
+  });
+  return verdict.ok ? "" : verdict.reason;
+};
+
+/**
+ * THE REFUSAL IS QUOTED FROM THE DOOR THAT WRITES IT, not paraphrased (thread 212): the
+ * letter now forks on the refusal's own mark, so a fixture that dropped the sentence the
+ * door actually prints would test the fork against a text no tick ever carries.
+ */
 const REFUSAL = {
   role: "dev-speech",
   thread: "134-speech-product-seam",
+  reason: staleBuildRefusal("0.2.14"),
+};
+
+/**
+ * A refusal about the STATE of the tree — the one that rang in the field on 2026-09-15 at
+ * `13:26:10Z`, with the door's own repair commands inside it.
+ */
+const DIRTY = {
+  role: "dev-core",
+  thread: "180-selfheal-leaves-the-workspaces-behind",
   reason:
-    "the workspace of 'dev-speech' runs 'agent-protocol' 0.2.14, the home checkout runs 0.2.15",
+    "the workspace has uncommitted changes left by the 'exited-without-handoff' run of this pair, and its head is on 'probe/180-p1-firing' — a branch that is not 'dev-core's to write to. KEEP: git -C /w/dev-core checkout -b dev-core/180-x && git -C /w/dev-core commit -am '…' && git -C /w/dev-core push. PARK: git -C /w/dev-core stash push -u",
 };
 
 describe("the letter about a workspace the box will not repair (П-1, thread 180)", () => {
@@ -59,6 +90,35 @@ describe("the letter about a workspace the box will not repair (П-1, thread 180
     // read as an instruction to install.
     expect(text).toContain("НЕ `pnpm install`");
     expect(text).toContain(STANDSTILL_LETTER_TURN);
+  });
+
+  /**
+   * THE FORK OF THREAD 212: the cure above is the cure of ONE of the nine reasons this door
+   * refuses with, and it was printed under all nine. The two cases below are the two sides
+   * of it, and the third is the reason that lives in the same module as the first and is
+   * still not it — «названный случай — образец, а не класс».
+   */
+  it("does NOT offer the merge under a refusal about the STATE of the tree", () => {
+    const text = renderWorkspaceLetter(DIRTY);
+    // What the field letter of 15.09 said and should not have: not one word of the pin cure.
+    expect(text).not.toContain("git merge --no-edit origin/main");
+    expect(text).not.toContain("--no-verify");
+    expect(text).not.toContain("conventional-commits");
+    expect(text).not.toContain("НЕ `pnpm install`");
+    // And it does not talk over the commands the door has already printed inside the reason.
+    expect(text).toContain(DIRTY.reason);
+    expect(text).toContain("git -C /w/dev-core stash push -u");
+    expect(text).toContain("названо оно ВЫШЕ");
+    // The boundary is john's and holds under every reason — it stays.
+    expect(text).toContain("Дерево роли на СОБСТВЕННОЙ ветке ящик не трогает");
+    expect(text).toContain(STANDSTILL_LETTER_TURN);
+  });
+
+  it("does NOT offer the merge for a tree that was never installed — that cure IS the door's", () => {
+    const text = renderWorkspaceLetter({ ...REFUSAL, reason: staleBuildRefusal() });
+    expect(text).toContain("install --frozen-lockfile");
+    expect(text).not.toContain("git merge --no-edit origin/main");
+    expect(text).not.toContain("НЕ `pnpm install`");
   });
 });
 
