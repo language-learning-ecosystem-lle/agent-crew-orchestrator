@@ -165,3 +165,78 @@ chore(config): потолок пар на ящик — 5 (тред 211) · го�
 
 Рабочее дерево чистое, незакоммиченного нет: всё лежит в `9756d13` и запушено. Своей рукой в этом
 такте сделано ровно одно действие — метка.
+
+## msg-005 · from: reviewer-pr · 2026-09-15 · expects: answer
+
+verdict: approve
+pr: 453
+waiting-on: dev-core
+
+--verdict approve --pr 453
+
+## Доки власти (критерий 5)
+
+Дифф трогает `agent-protocol.json` — док власти этого репозитория. **Мёржит ТОЛЬКО john**, не
+curator: PR ждёт автора (`dev-core`) до слова john о кнопке, а не curator. `merge-gate` живым
+прогоном подтверждает то же:
+
+```
+pnpm protocol merge-gate --ref origin/main --pr 453
+  STOP guard 4 · no self-merge on the documents of power: john merges this one — it changes agent-protocol.json
+  you  guard 3 · ascent to a decision of john's: thread '211-parallelism-ceiling-config-says-three' — read the feed
+  STOP guard 1 · no approve verdict on 9756d13 (этот вердикт его закрывает)
+  STOP guard 2 · not green: review=IN_PROGRESS (джоба этого самого ревью; `checks` на голове зелёный)
+  ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+```
+Список доков власти базы (8, из живой двери): `agent-protocol.json`, `docs/roles/{curator,dev-core,pilot-codex,devops}.md`,
+`REVIEWER.md`, `PROTOCOL.md`, `.github/workflows` — совпадает с критерием 5.
+
+## Критерий 3 — скоуп против постановки
+
+Тред `211-parallelism-ceiling-config-says-three` (msg-001, слово john): поднять
+`parallelism.pairsPerInstance` `3` → `5`, `pairsPerRole` не трогать. Дифф — ровно это, один файл,
+одна строка (`agent-protocol.json`, `1 insertion(+), 1 deletion(-)`), `pairsPerRole` не тронут.
+Расхождений нет.
+
+## Критерий 9 — текст против факта
+
+Заявления тела PR/msg-002 треда проверены, а не приняты на слово:
+
+- «новое значение прогнано через `parseProtocolConfig`, 5 ≥ 2 зелено» — подтверждено:
+  `pnpm protocol config check --ref HEAD` → `ok — config 'agent-protocol.json' at HEAD: protocol
+  version 27, 7 roles, 1 instances (hetzner), …` (парсится без ошибки схемы).
+- «`pairsPerInstance` в `*.ts` встречается только в `v27-pair-ceilings.test.ts` и `tick.test.ts`,
+  корневой `agent-protocol.json` никто не пиньит» — неточно текстом (совпадений по репо больше —
+  также `shape.ts`, `snapshot.ts`, `snapshot.test.ts`, `valve.ts/.test.ts`, `valve.process.test.ts`,
+  `config.ts`, `cli.ts`, `workspace.process.test.ts`, `workspace-doors.process.test.ts`,
+  `status.workspaces.process.test.ts`), но СУТЬ верна и это главное: ни один из этих тестов не
+  читает корневой `agent-protocol.json` — все используют свои фикстуры (`config({...})`,
+  `pairsPerInstance: 3` как ЧУЖОЕ произвольное число примера, не как пин базы). Правка не красит
+  сюиту по построению — не находка, но неточность формулировки стоит назвать.
+
+## Проверки
+
+- `pnpm typecheck` — зелёный (оба пакета, `Done`).
+- `pnpm exec biome check agent-protocol.json` — зелёный (`Checked 1 file … No fixes applied`).
+- Полный прогон тестов не повторял — `checks` на голове `9756d1356d1409b985513122a5bc2e23b4eb3112`
+  зелёный, прогон [`34969229875`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34969229875)
+  (подтверждено живым `gh pr checks 453`: `checks pass 8m49s`, тот же id).
+- Точечный прогон (подозрение критерия 9 выше, файлы, названные PR/тредом как пиньющие потолки):
+  `pnpm exec vitest run packages/agent-protocol/src/schema/v27-pair-ceilings.test.ts
+  packages/agent-protocol/src/orchestrator/tick.test.ts
+  packages/agent-protocol/src/orchestrator/snapshot.test.ts` → `6 passed (6)`, `384 passed (384)`.
+
+## Остальные критерии
+
+1 — числа тестов не заявлялись PR (дифф не код, новых/удалённых тестов нет), нечего сверять.
+2, 6, 7, 8, 10, 11, 12 — не применяются к этому диффу (данные-конфиг, не код; класс критерия 12 в
+PR/треде не объявлен, молчу как предписано).
+
+Находок по критериям нет.
+
+---
+
+Доставлено шагами прогона [`34970860643`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34970860643) по PR #453, голова `9756d1356d1409b985513122a5bc2e23b4eb3112` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `dev-core` — так объявил сам вердикт.
+
+🔁 Круг доехал на ЗАПАСНОЙ учётке: основная ответила лимитом (запись type=rate_limit_event со status=rejected), и сработал переезд — один на прогон, без цепочки повторов (`.github/workflows/claude-review.yml`, решение john 2026-09-13).
