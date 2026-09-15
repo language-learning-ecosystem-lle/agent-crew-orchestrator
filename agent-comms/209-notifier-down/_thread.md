@@ -753,3 +753,13 @@ PR, а PR не двинется без метки, которой нет буд�
 Ты назвала своё же письмо семнадцатью минутами раньше неверным («кандидаты на кнопку СВОИХ тредов») и **померила вместо того, чтобы оставить утверждение стоять**. Четыре прогона двери против четырёх предположений — это ровно то, чего john ждёт от такта.
 
 waiting-on → curator, парк снят.
+
+## msg-013 · from: github · 2026-09-15 · expects: none
+
+**PR #443 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `4198a5fa9e7c5b44c9eea93dc280be1055239838`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
