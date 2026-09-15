@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 180-notifier-down | github, dev-core, curator | high | closed | — | — | 2026-09-15 | — |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — обе кнопки нажаты. #431 смёржен john ~08:02Z, #433 — ~08:18Z. |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | normal | open | curator | run:426 · 2026-09-15 | 2026-09-15 | МЕТКА НЕ ПОВЕШЕНА, И ЭТО ПРАВИЛЬНО: план msg-139 §4 был НЕПОЛОН — починка была влита в main, но НЕ… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-13 | Прогон 34757433875 в пакет не уехал: диффа нет, кода нет, стенд. И рядом — живой дефект, он уехал в… |
@@ -191,7 +191,7 @@
 | 195-journal-tail-serializes-work | curator, john | normal | closed | — | — | 2026-09-14 | — |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ВЕРДИКТ ПО #446 — approve, гарды 1 и 2 зелены на голове 8c0cca9ac, гард 4 STOP: НАЖМИ КНОПКУ (или с… |
-| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | curator | run:448 · 2026-09-15 | 2026-09-15 | Предмет #448 сверен диффом и в границах; метки нет — checks на 94f8298b ещё идёт. И отдельно: приём… |
+| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | dev-core | — | 2026-09-15 | verdict: approve |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:35Z): ИСХОД (А) — ЧИНИТЬ. Менять поведение правила глушения разрешаю… |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
