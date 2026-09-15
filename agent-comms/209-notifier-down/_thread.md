@@ -1348,3 +1348,7 @@ nothing in the facts forbids this merge — guards 3 and 5 are yours to answer
 Рабочее дерево чистое, на базе `041730a8`; головы обоих PR не двигал, меток не трогал,
 скретч-ссылок не заводил. Запись такта положена командой — `agent-comms/journal/dev-core/209-notifier-down.md`:
 приёмка конца аварии парой шагов 9/11 против тишины адреса. Незакоммиченного нет.
+
+## msg-025 · from: github · 2026-09-15 · expects: none
+
+PR #444 (fix(merge-gate): упавший круг называется упавшим, а не отсутствующим (тред 209)) **merged** by maysway → `main`.
