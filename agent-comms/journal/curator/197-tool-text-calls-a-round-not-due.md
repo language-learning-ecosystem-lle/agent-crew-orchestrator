@@ -322,3 +322,56 @@ msg-055 §7.2, msg-057 §5.3. Ответа нет ни на один. Причи
 
 Обратное тоже стоит держать в голове и оно дороже: свежий родитель при РАЗОШЕДШЕМСЯ блобе метку
 запрещает. Мерить надо блоб, а родителя читать только чтобы понимать, почему блобы разошлись.
+
+## Приёмка случая А ПЕРВЫМ СРАБАТЫВАНИЕМ: отказ гарда 1 назвал имена прогонов головы (15.09, 11:06Z)
+
+Предмет постановки msg-001 §1 — дверь `merge-gate` схлопывала ДВЕ причины пустого `named` в один
+текст и прописывала дорогое лекарство («снять и повесить метку заново») там, где круг на голове ЕСТЬ,
+а ошиблись ЗНАЧЕНИЕМ `--review-workflow`. Починка слита; **мержем она не принимается** — новый путь
+исполнения принимается первым срабатыванием (норма треда `202`, #440). Срабатывание куплено даром:
+своя короткая команда, чужого прогона не ждал.
+
+**Как мерил.** `pnpm protocol merge-gate --ref origin/main --pr 440 --review-workflow 'Claude Review'`
+— имя воркфлоу СОЗНАТЕЛЬНО неверное (настоящее — `Claude PR Review`, `name:` файла
+`.github/workflows/claude-review.yml`). Голова #440 — `ca54742268558896286e2a2a4bdb323cdf8efe92`,
+на ней есть закрытый успешный круг и зелёный `checks`, то есть ровно случай (б) постановки.
+
+**Что дверь ответила (дословно, 11:06Z):**
+
+```
+STOP guard 1 · approve on the current head: an approve is shown on ca54742 (github-actions) but no
+round of review on this head produced it: no round of 'Claude Review' is reported for ca54742 at all
+— while these DID run on it: 'Claude PR Review', 'checks' — the name asked for is not among them, so
+CHECK THE VALUE of --review-workflow against the 'name:' of the reviewer's workflow before
+re-labelling: a closed round may be standing right there under a name this door was never asked
+about. If the value is right, what is missing is a round on this head (re-label, or a push). An
+approve shown against this head with no round behind it is not an answer about it: fix the NAME or
+fix the HEAD, not the merge
+```
+
+Требование постановки было проверяемым и одно: **из отказа должно быть видно, что чинить — значение
+флага или голову.** Видно: имена прогонов головы названы (`'Claude PR Review', 'checks'`), сказано,
+что спрошенного среди них нет, и лекарство перестало быть единственным прочтением («fix the NAME or
+fix the HEAD»). Случай (б) отличается от (а) без догадки. **Приёмка случая А закрыта.**
+
+**Ветвей текста ТРИ, сработала одна — и это названо, а не замолчано** (`gate.ts:905-916`,
+`workflowsOnHead`):
+
+1. прогоны на голове есть и у них есть имена → сработало живьём (выше);
+2. прогонов на голове НЕТ вовсе → «and NO workflow at all reports a run on this head, so the name
+   asked for is not what is wrong here» — прочитано КОДОМ, в поле не срабатывало;
+3. прогоны есть, имён у них нет → «whether the value … is the wrong one cannot be told from this
+   payload» — прочитано кодом, в поле не срабатывало.
+
+Ветви 2 и 3 дёшево не заказываются: для (2) нужна голова без единого прогона, для (3) — ответ
+`actions/runs` без `name`, которого эта установка не даёт. Обе — вырожденные половины того же
+предиката, и молчать о том, что они не мерены, нельзя: перечисление ветвей сильнее образца.
+
+**Побочный факт, замеренный тем же прогоном и НЕ использованный:** у #440 (тред `202`) на голове
+`ca54742` лежит `approve` и зелёный `checks`, гард 4 — STOP (`PROTOCOL.md`, `docs/roles/curator.md`),
+то есть кнопка john. Рукой не тронул ничего: такт связан тредом `197`, а след гарда 5 по этому PR
+кладётся в ленту `202`. Дверь там же напечатала ноту переезда базы (`4ccc9e6` лёг ПОСЛЕ старта
+зачтённого `checks`) — это тоже предмет треда `202`.
+
+**Случай Б постановки** (курьер звал вешать метку на чисто журнальный PR) принят первым
+срабатыванием 14.09 на #411 — запись о нём лежит в этом же файле выше.
