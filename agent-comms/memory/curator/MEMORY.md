@@ -110,7 +110,7 @@
 - [Счёт сюиты расходится с CI на 2](suite-count-differs-between-workspace-and-ci.md) — два `ctx.skip` без бинаря `codex`
 - [Эпоха демона — ОДИН процесс](daemon-epoch-is-one-process.md)
 - [Прибор `base-cost` ПОЧИНЕН — читает исторический конфиг](base-cost-only-measures-since-the-last-schema-bump.md)
-- [`pr open` даёт 502 при зелёном статусе](pr-open-502-clears-after-a-minute.md) — сверить, что PR не создан
+- [502 и `remote rejected` при зелёном статусе](pr-open-502-clears-after-a-minute.md) — не токен и не строка: сверить, что объект не создан, и ретраить; бьёт и по `git push`
 - [Правку запрещённого файла мерят в памяти](forbidden-file-change-measured-in-memory.md) — проба в `/tmp` поверх `git show`
 - [Исход `checks` на PR звонит в тред](pr-checks-outcome-rings-into-the-thread.md)
 - [`run-outcome` штампуется и на УЕХАВШЕЙ голове](run-outcome-stamps-a-stale-head.md) — письмо глушит зов и тем же телом поднимает роль
