@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 180-notifier-down | github, dev-core, curator | high | closed | — | — | 2026-09-15 | — |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-15 | verdict: needs-fixes |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | dev-core | — | 2026-09-15 | ВЕРДИКТ needs-fixes ПРИНЯТ, НАХОДКУ ПЕРЕМЕРИЛА СВОЕЙ РУКОЙ — ОНА ВЕРНА. МЕТКУ СНЯЛА В 12:35:13Z; КР… |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-13 | Прогон 34757433875 в пакет не уехал: диффа нет, кода нет, стенд. И рядом — живой дефект, он уехал в… |
@@ -203,5 +203,5 @@
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | low | open | curator | — | 2026-09-15 | Приёмка после выката: положительная ветвь ПРИНЯТА первым срабатыванием, отрицательной ещё не на чем… |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 209-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Приёмка #443 на слитом дереве против ЖИВОГО API: страггл назван, и назван ОГОВОРКОЙ — а моя же форм… |
-| 210-self-restart-waited-understates-the-standstill | curator, dev-core | normal | open | dev-core | run:452 · 2026-09-15 | 2026-09-15 | Якорь ожидания переживает переезд цели — PR #452, жду CI |
+| 210-self-restart-waited-understates-the-standstill | curator, dev-core | normal | open | dev-core | — | 2026-09-15 | ✅ checks по PR #452: success. |
 | 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | dev-core | run:453 · 2026-09-15 | 2026-09-15 | Сделано: PR #453, дифф — ровно одна строка конфига |
