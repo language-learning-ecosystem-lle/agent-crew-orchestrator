@@ -509,6 +509,7 @@ import {
   describeVersionRepair,
   describeVersionStand,
   describeVersionVerdictMet,
+  drainSinceInProgress,
   INSTALL_INPUTS,
   installNeeded,
   parseSelfRestartMemory,
@@ -13777,6 +13778,11 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
         ceiling: SELF_RESTART_MAX_ATTEMPTS,
       })}`,
     );
+    // 210 — THE START OF THE WAIT IS CARRIED BY THE CODE THIS BOX IS STUCK ON, NOT BY THE
+    // TARGET. This used to be `memory.target === verdict.target`, and the target is the one
+    // thing about a drain that moves on its own: a commit landing during the wait made the
+    // record "another target's" and threw away the moment the waiting had begun.
+    const waitBegan = drainSinceInProgress(memory, drift.vintage.sha);
     try {
       writeOut(
         paths.daemonSelfRestart,
@@ -13791,11 +13797,7 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
           // drain has none, and "it waited for nothing" is then the true answer.
           from: drift.vintage.sha,
           ...(drift.behind === undefined ? {} : { behind: drift.behind }),
-          ...(memory !== undefined &&
-          memory.target === verdict.target &&
-          memory.drainSince !== undefined
-            ? { drainSince: memory.drainSince }
-            : {}),
+          ...(waitBegan === undefined ? {} : { drainSince: waitBegan }),
           // AND THE GO DECLARES ITSELF (thread 173). Everything above is also true of the
           // drain record this one overwrites; what is true of NEITHER a drain nor a tree
           // somebody else moved is that a `go` was decided here, at this stamp. Without the

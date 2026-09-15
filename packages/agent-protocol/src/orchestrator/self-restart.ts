@@ -341,6 +341,17 @@ export const attemptsFor = (memory: SelfRestartMemory | undefined, target: strin
  * the whole repair off at two — so the count is carried over untouched (a memory of
  * ANOTHER target is zero, by the same rule as everywhere else). Draining is waiting, not
  * trying: it is the one state of this machine that costs nothing and may last hours.
+ *
+ * AND A TARGET THAT MOVES UNDER A RUNNING DRAIN DOES NOT RESTART THE WAIT (thread 210).
+ * The record is keyed by the target, so a commit landing while the sessions are still
+ * running made this a memory "of another target": the defence above did not apply, a
+ * whole new record was written, and the start of the wait became the moment of THAT
+ * commit. Field measurement of 2026-09-15 (thread `161-daemon-self-restart`, letter
+ * msg-011): the drain began at 10:37:50Z, five commits landed by 10:41:20Z, the box went
+ * at 10:45:59Z, and the letter said it had waited 246 s instead of 489 s — the box had
+ * not stopped waiting for a moment of those 489. The new target is taken (it IS what the
+ * repair now aims at), and the anchor of the wait is carried over by
+ * {@link drainSinceInProgress}.
  */
 export const rememberSelfRestartDrain = (input: {
   readonly memory: SelfRestartMemory | undefined;
@@ -354,11 +365,17 @@ export const rememberSelfRestartDrain = (input: {
   const { memory } = input;
   const known = memory !== undefined && memory.target === input.target;
   if (known && memory.drainSince !== undefined) return undefined;
+  // THE ANCHOR SURVIVES THE TARGET, THE STAMP STAYS ONE STAMP. `at` is written from the
+  // same value on purpose: "a drain record is one in which `at` and `drainSince` are the
+  // same moment" is what {@link selfRestartWent} reads to tell an interrupted drain from a
+  // landed go on a record older than the `went` declaration, and a carried wait must not
+  // start looking like a go to it.
+  const since = drainSinceInProgress(memory, input.from) ?? input.at;
   return {
     target: input.target,
     attempts: attemptsFor(memory, input.target),
-    at: input.at,
-    drainSince: input.at,
+    at: since,
+    drainSince: since,
     from: input.from,
     ...(input.behind === undefined ? {} : { behind: input.behind }),
   };
@@ -432,6 +449,42 @@ export type SelfRestartEvent = {
  */
 export const selfRestartWent = (memory: SelfRestartMemory): boolean =>
   memory.went === true || memory.drainSince === undefined || memory.at !== memory.drainSince;
+
+/**
+ * THE START OF A WAIT THAT IS STILL RUNNING — the one stamp a new target inherits, and
+ * `undefined` for every record that is not a wait in progress (thread 210).
+ *
+ * THE KEY OF THE WAIT IS THE CODE THIS BOX IS STUCK ON, NOT THE TARGET. The target is
+ * whatever the ref points at this second and it moves every time the crew merges anything;
+ * what the letter's "how long it waited for the sessions" measures is the box standing
+ * still on ITS OWN code while the sessions run, and that ends in exactly one way — the box
+ * comes up on other code. So `from` is the test: the record has to name the SHA this
+ * process is executing right now (it is read once, at startup, and cannot move under a
+ * running process), and a record from a box that has since been repaired is not this wait.
+ *
+ * AND THE RECORD HAS TO BE AN OPEN DRAIN — {@link selfRestartWent} false. A record the go
+ * path wrote is a wait that ENDED, at the moment the go was stamped; carrying its start
+ * into a new one would report the two as one standstill, which is the same lie as thread
+ * 210's with the sign turned around. The next drain on the same code then stamps its own
+ * start, and the letter's number is that drain's.
+ *
+ * WHAT IT DELIBERATELY CANNOT SEE: whether the wait belongs to THIS process. A box killed
+ * by the stop flag mid-drain and raised again on the same (still stale) code leaves a
+ * record this function accepts, and the wait it then reports spans the gap between the two
+ * processes. That is the standstill of the box measured honestly and the wait of the live
+ * process overstated; the memory carries no pid and inventing one to split them would be a
+ * field, a migration and a norm — none of which this repair is.
+ */
+export const drainSinceInProgress = (
+  memory: SelfRestartMemory | undefined,
+  from: string,
+): string | undefined =>
+  memory === undefined ||
+  memory.drainSince === undefined ||
+  memory.from !== from ||
+  selfRestartWent(memory)
+    ? undefined
+    : memory.drainSince;
 
 export const selfRestartEvent = (input: {
   readonly memory: SelfRestartMemory | undefined;

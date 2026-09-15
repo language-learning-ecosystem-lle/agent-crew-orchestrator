@@ -758,6 +758,105 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
   );
 
   it(
+    "keeps the start of the wait when the ref MOVES under a drain that is still running",
+    () => {
+      // THE FIELD CASE OF 2026-09-15 (thread 210, measured in `161-daemon-self-restart`):
+      // the box drained from 10:37:50Z, five commits landed while the sessions ran, it went
+      // at 10:45:59Z — and the letter said it had waited 246 s instead of 489. The record is
+      // keyed by the target, so every commit made it a memory "of another target" and the
+      // wait started over on disk while the box had not stopped waiting for a tick.
+      //
+      // IT IS A PROCESS TEST BECAUSE THE MOVING TARGET IS THE TICK'S OWN READING. A unit
+      // over the writer is given both records by hand; only the daemon re-reads the ref,
+      // re-reads its memory from the disk and decides which of the two to keep, and that
+      // read-decide-write loop is the whole of the defect.
+      const home = homeContour();
+      const journal = join(home.repo, ".orchestrator", "journal.jsonl");
+      mkdirSync(join(home.repo, ".orchestrator"), { recursive: true });
+      writeFileSync(
+        journal,
+        `${JSON.stringify({
+          kind: "lease-acquired",
+          ts: "2026-07-25T10:00:00Z",
+          role: "dev-core",
+          thread: "055-x",
+          deadline: "2099-01-01T00:00:00Z",
+        })}\n`,
+      );
+
+      // TICK 1 — the sessions are live, the box starts waiting and stamps the moment.
+      expect(tick(home.cli, home.repo)).toContain("DRAINING TO RESTART");
+      const began = parseSelfRestartMemory(
+        readFileSync(join(home.repo, ".orchestrator", "self-restart.json"), "utf8"),
+      );
+      const firstTarget = git(home.repo, "rev-parse", "origin/main").trim();
+      expect(began?.target).toBe(firstTarget);
+      expect(began?.drainSince).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+
+      // A COMMIT LANDS WHILE THE BOX IS WAITING — the crew merges, as it does all day. The
+      // commit is built with `commit-tree` so that the detached HEAD of the fixture (the
+      // code this box is running) is not moved by the fixture itself.
+      const landed = git(
+        home.repo,
+        "commit-tree",
+        `${firstTarget}^{tree}`,
+        "-p",
+        firstTarget,
+        "-m",
+        "a commit lands while the sessions run",
+      ).trim();
+      git(home.repo, "push", "-q", "origin", `${landed}:refs/heads/main`);
+      git(home.repo, "fetch", "-q", "origin");
+      expect(git(home.repo, "rev-parse", "origin/main").trim()).toBe(landed);
+      // The stamps of tick 1 and tick 2 must land in different seconds, or "the wait was not
+      // re-stamped" is a coin toss — see `sleepPastTheSecond`.
+      sleepPastTheSecond();
+
+      // TICK 2 — same wait, new target. The record takes the new target (that IS what the
+      // repair now aims at) and keeps the moment the waiting began.
+      expect(tick(home.cli, home.repo)).toContain("DRAINING TO RESTART");
+      const moved = parseSelfRestartMemory(
+        readFileSync(join(home.repo, ".orchestrator", "self-restart.json"), "utf8"),
+      );
+      expect(moved?.target).toBe(landed);
+      expect(moved?.behind).toBe(2);
+      expect(moved?.drainSince).toBe(began?.drainSince);
+      // And it is still readable as the open drain it is: the go has not happened yet.
+      expect(moved?.went).toBeUndefined();
+      expect(moved?.at).toBe(moved?.drainSince);
+
+      // TICK 3 — the session closes and the box goes. What the successor will read is the
+      // wait from its true beginning, across two targets and two ticks.
+      writeFileSync(
+        journal,
+        `${readFileSync(journal, "utf8")}${JSON.stringify({
+          kind: "lease-released",
+          ts: "2026-07-25T11:00:00Z",
+          role: "dev-core",
+          thread: "055-x",
+          reason: "completed",
+        })}\n`,
+      );
+      sleepPastTheSecond();
+      expect(tick(home.cli, home.repo)).toContain("SELF-RESTART: the loaded code is behind");
+      const went = parseSelfRestartMemory(
+        readFileSync(join(home.repo, ".orchestrator", "self-restart.json"), "utf8"),
+      );
+      expect(went?.target).toBe(landed);
+      expect(went?.went).toBe(true);
+      expect(went?.drainSince).toBe(began?.drainSince);
+      const event = selfRestartEvent({ memory: went, loaded: landed });
+      // The whole point, in the unit the letter prints: the wait is measured from the first
+      // tick of the drain and not from the last commit that landed during it.
+      expect(event?.waitedForSec).toBe(
+        Math.round((Date.parse(went?.at ?? "") - Date.parse(began?.drainSince ?? "")) / 1000),
+      );
+      expect(event?.waitedForSec).toBeGreaterThan(0);
+    },
+    4 * HANG_CEILING_MS,
+  );
+
+  it(
     "clears the standoff when the drift is over — a state file that outlives its subject lies",
     () => {
       // The box is ON its ref, and a standoff from the drift it has since caught up on is
