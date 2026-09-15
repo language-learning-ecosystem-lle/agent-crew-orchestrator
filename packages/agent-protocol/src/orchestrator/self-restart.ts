@@ -87,6 +87,7 @@
 import { execFileSync, spawn } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
 import { type CodeDrift, describeDriftSize } from "./code-age.js";
+import { eventTimestamp } from "./journal.js";
 import { describePutItBack, describeWhereItStands } from "./workspace.js";
 
 /** How many times one target SHA may be attempted before the box stands and speaks. */
@@ -329,6 +330,31 @@ export const attemptsFor = (memory: SelfRestartMemory | undefined, target: strin
   memory === undefined || memory.target !== target ? 0 : memory.attempts;
 
 /**
+ * THE DRIFT'S DATE MADE FIT TO BE A STAMP IN THIS FILE, or nothing (thread 210).
+ *
+ * TWO THINGS ARE WRONG WITH IT AS IT COMES. `git log --format=%cI` prints an offset
+ * (`…T13:37:50+03:00`) and every other stamp here is written by {@link eventTimestamp} in
+ * UTC to the second, so it is re-stamped rather than copied: one file read by one human and
+ * one subtraction should not hold two shapes of the same kind of fact. And it comes from
+ * ANOTHER machine's clock — the committer's — so it can sit in this box's future, which
+ * would make the drain record claim a wait that has not started. A date that will not parse
+ * or that has not happened yet is answered with `undefined`, and the caller falls back to
+ * its own "now": an anchor too late is the defect of this thread, an anchor in the future is
+ * a subtraction that comes out backwards and takes the number out of the letter entirely.
+ */
+const driftAnchor = (input: {
+  readonly at: string;
+  readonly driftSince?: string;
+}): string | undefined => {
+  if (input.driftSince === undefined) return undefined;
+  const began = Date.parse(input.driftSince);
+  if (Number.isNaN(began)) return undefined;
+  const now = Date.parse(input.at);
+  if (!Number.isNaN(now) && began > now) return undefined;
+  return eventTimestamp(new Date(began));
+};
+
+/**
  * WHAT THE FIRST TICK OF A DRAIN WRITES DOWN, and what every tick after it does not.
  *
  * A drain is not one tick: while the sessions run, the verdict answers `drain` every
@@ -352,6 +378,16 @@ export const attemptsFor = (memory: SelfRestartMemory | undefined, target: strin
  * not stopped waiting for a moment of those 489. The new target is taken (it IS what the
  * repair now aims at), and the anchor of the wait is carried over by
  * {@link drainSinceInProgress}.
+ *
+ * AND THE WAIT DOES NOT BEGIN WHEN THE BOX NOTICES IT (thread 210, the half #452 left). The
+ * first drain tick used to stamp "now", and "now" is the moment the box first LOOKED and
+ * found itself both stale and clean — not the moment it became stale. Everything between
+ * the two is standstill the letter then does not count: a dirty tree, a stopped box, or a
+ * batch of merges landing between two ticks all push the first tick past the commit that
+ * made the code old, and the number is short by exactly that gap. So the anchor offered by
+ * the caller is {@link CodeDrift.since} — the committer date of the OLDEST commit this
+ * process lacks, recomputed from git on every tick and already in the caller's hand — and
+ * `at` is used only when git could not date the drift at all.
  */
 export const rememberSelfRestartDrain = (input: {
   readonly memory: SelfRestartMemory | undefined;
@@ -361,6 +397,13 @@ export const rememberSelfRestartDrain = (input: {
   readonly behind?: number;
   /** Now, as the caller stamps everything else — UTC ISO to the second. */
   readonly at: string;
+  /**
+   * WHEN THIS BOX BECAME STALE — {@link CodeDrift.since}, the committer date of the oldest
+   * commit it lacks. Absent when git could not be read (an undated drift is a loss of its
+   * own, {@link describeDriftSize} says so in the same words), and then the wait is anchored
+   * at `at` as it was before.
+   */
+  readonly driftSince?: string;
 }): SelfRestartMemory | undefined => {
   const { memory } = input;
   const known = memory !== undefined && memory.target === input.target;
@@ -370,7 +413,12 @@ export const rememberSelfRestartDrain = (input: {
   // same moment" is what {@link selfRestartWent} reads to tell an interrupted drain from a
   // landed go on a record older than the `went` declaration, and a carried wait must not
   // start looking like a go to it.
-  const since = drainSinceInProgress(memory, input.from) ?? input.at;
+  //
+  // THE ORDER IS CARRIED, THEN MEASURED, THEN NOW. A drain already in progress keeps the
+  // anchor it opened with (#452) — the two agree in the ordinary case anyway, because the
+  // oldest missing commit does not move while `from` does not — and the reading is used
+  // where there is nothing to carry, which is the first tick. `at` remains the last resort.
+  const since = drainSinceInProgress(memory, input.from) ?? driftAnchor(input) ?? input.at;
   return {
     target: input.target,
     attempts: attemptsFor(memory, input.target),

@@ -768,6 +768,152 @@ describe("the wait a moving target used to reset", () => {
   });
 });
 
+/**
+ * THE WAIT BEGINS WHEN THE CODE WENT OLD, NOT WHEN THE BOX LOOKED (thread 210, the half
+ * #452 left standing — curator's statement in msg-011 §3/§4 of this thread).
+ *
+ * #452 stopped a moving TARGET from re-stamping a running wait. What it did not touch is
+ * where the wait starts in the first place: the first drain tick stamped `new Date()`, and
+ * that tick is when the box first found itself BOTH stale AND clean. Everything before the
+ * look is standstill the letter then does not count — a dirty tree, a stopped box, or (the
+ * common one) a batch of merges landing between two thirty-second ticks. The value that
+ * dates it correctly was already in the caller's hand and simply not passed:
+ * {@link CodeDrift.since}, the committer date of the oldest commit this process lacks,
+ * recomputed from git every tick and printed on the same line as the drain — which is what
+ * makes `daemon.log` the independent instrument the letter is checked against.
+ */
+describe("the standstill before the first drain tick", () => {
+  const stuckOn = "49653f41fb7e0000000000000000000000000000";
+  const head = "4ccc9e62312f000000000000000000000000000b";
+
+  it("anchors the wait at the oldest missing commit, not at the tick that noticed", () => {
+    // A batch landed while the tree was dirty: the box could not drain, and by the tick that
+    // finally could, the oldest commit it lacks is four minutes old. The tick is NOT the
+    // start of that standstill and must not be written as one.
+    const opened = rememberSelfRestartDrain({
+      memory: undefined,
+      target: head,
+      from: stuckOn,
+      behind: 5,
+      at: "2026-09-15T10:41:53Z",
+      driftSince: "2026-09-15T10:37:50Z",
+    });
+    expect(opened).toEqual({
+      target: head,
+      attempts: 0,
+      at: "2026-09-15T10:37:50Z",
+      drainSince: "2026-09-15T10:37:50Z",
+      from: stuckOn,
+      behind: 5,
+    });
+    // THE INVARIANT #452 RESTS ON, asserted here on purpose: a drain record is one whose
+    // `at` and `drainSince` are the SAME moment. Move the anchor and the pair must move
+    // together, or `selfRestartWent` reads an open drain as a landed go.
+    expect(opened?.at).toBe(opened?.drainSince);
+    expect(opened === undefined ? undefined : selfRestartWent(opened)).toBe(false);
+  });
+
+  it("makes the letter report the standstill and not the part of it the box watched", () => {
+    // The whole point, end to end: the go stamps its own moment over the carried anchor and
+    // the successor subtracts. 10:37:50 → 10:45:59 is 489 s of standing still; anchored at
+    // the tick that noticed (10:41:53) the same episode reads 246 s — the field number.
+    const opened = rememberSelfRestartDrain({
+      memory: undefined,
+      target: head,
+      from: stuckOn,
+      behind: 5,
+      at: "2026-09-15T10:41:53Z",
+      driftSince: "2026-09-15T10:37:50Z",
+    });
+    const went: SelfRestartMemory = {
+      target: head,
+      attempts: 1,
+      at: "2026-09-15T10:45:59Z",
+      ...(drainSinceInProgress(opened, stuckOn) === undefined
+        ? {}
+        : { drainSince: drainSinceInProgress(opened, stuckOn) as string }),
+      from: stuckOn,
+      behind: 5,
+      went: true,
+    };
+    expect(selfRestartEvent({ memory: went, loaded: head })?.waitedForSec).toBe(489);
+  });
+
+  it("re-stamps the git date into the shape every other stamp in this file has", () => {
+    // `git log --format=%cI` prints an offset, and the box that measured this thread printed
+    // exactly `(since 2026-09-15T13:37:50+03:00)`. The instant is kept, the shape is the
+    // file's: `eventTimestamp`, UTC to the second.
+    expect(
+      rememberSelfRestartDrain({
+        memory: undefined,
+        target: head,
+        from: stuckOn,
+        at: "2026-09-15T10:41:53Z",
+        driftSince: "2026-09-15T13:37:50+03:00",
+      })?.drainSince,
+    ).toBe("2026-09-15T10:37:50Z");
+  });
+
+  it("keeps the anchor of a drain already running — #452 is not undone by the reading", () => {
+    // The carried stamp wins. In the field the two agree (the oldest missing commit does not
+    // move while `from` does not), but the order matters where they cannot: a wait already
+    // open is dated by its own opening and by nothing measured afterwards.
+    const opened = rememberSelfRestartDrain({
+      memory: undefined,
+      target: "4b8402da7000000000000000000000000000000a",
+      from: stuckOn,
+      behind: 1,
+      at: "2026-09-15T10:37:50Z",
+      driftSince: "2026-09-15T10:37:50Z",
+    });
+    expect(
+      rememberSelfRestartDrain({
+        memory: opened,
+        target: head,
+        from: stuckOn,
+        behind: 5,
+        at: "2026-09-15T10:41:53Z",
+        // Suppose git answered with something later, for whatever reason: the running wait
+        // is not re-dated by it.
+        driftSince: "2026-09-15T10:41:00Z",
+      })?.drainSince,
+    ).toBe("2026-09-15T10:37:50Z");
+  });
+
+  it("falls back to the tick when git could not date the drift", () => {
+    // `code-age` leaves `since` undefined when the log could not be read, and calls that a
+    // loss of its own. The drain still records a start; it is just the old, late one.
+    expect(
+      rememberSelfRestartDrain({
+        memory: undefined,
+        target: head,
+        from: stuckOn,
+        behind: 5,
+        at: "2026-09-15T10:41:53Z",
+      })?.drainSince,
+    ).toBe("2026-09-15T10:41:53Z");
+  });
+
+  it("refuses a date that will not parse or that has not happened yet", () => {
+    // The committer date comes from ANOTHER machine's clock and a hand may have edited the
+    // repository's history; a stamp in this box's future would make the drain claim a wait
+    // that has not begun, and the subtraction would come out backwards — which takes the
+    // number out of the letter entirely rather than making it too small.
+    const anchored = (driftSince: string): string | undefined =>
+      rememberSelfRestartDrain({
+        memory: undefined,
+        target: head,
+        from: stuckOn,
+        at: "2026-09-15T10:41:53Z",
+        driftSince,
+      })?.drainSince;
+    expect(anchored("not a date at all")).toBe("2026-09-15T10:41:53Z");
+    expect(anchored("2026-09-15T10:41:54Z")).toBe("2026-09-15T10:41:53Z");
+    // The boundary is inclusive: a commit that landed on this very second is a legal anchor.
+    expect(anchored("2026-09-15T10:41:53Z")).toBe("2026-09-15T10:41:53Z");
+  });
+});
+
 describe("what is typed", () => {
   it("is the manual command, plus the mark that a daemon typed it", () => {
     const argv = selfRestartArgv({ ref: "origin/main", repo: "/box/repo", waitSec: 150 });

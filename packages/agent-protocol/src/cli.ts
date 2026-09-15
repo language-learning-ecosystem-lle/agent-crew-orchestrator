@@ -13844,12 +13844,20 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
       // it, and by then this fact is gone: nothing but the file crosses the exit. Written
       // on the FIRST drain tick only (`rememberSelfRestartDrain` answers `undefined` for
       // every later one), and it spends no attempt — draining is waiting, not trying.
+      //
+      // AND THE MOMENT IS THE DRIFT'S, NOT THIS TICK'S (thread 210). `drift.since` is the
+      // committer date of the oldest commit this process lacks — the one whose landing made
+      // the box stale — and it is the same value the drift line above prints as
+      // `drifting for … (since T)`. This tick is only when the box first LOOKED and found
+      // itself stale AND clean; anchoring the wait there loses everything before the look,
+      // which is exactly the standstill a dirty tree or a batch of merges adds.
       const stamp = rememberSelfRestartDrain({
         memory,
         target: drift.refSha,
         from: drift.vintage.sha,
         ...(drift.behind === undefined ? {} : { behind: drift.behind }),
         at: eventTimestamp(new Date()),
+        ...(drift.since === undefined ? {} : { driftSince: drift.since }),
       });
       if (stamp !== undefined)
         try {
