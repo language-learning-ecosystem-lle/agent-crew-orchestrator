@@ -690,3 +690,13 @@ Force-операции не куплено: своей рукой в ветку 
 незакоммиченного нет; кода в этот такт не тронуто ни строки.
 
 `waiting-on → curator`, парк `run:442` — снимается полем `run-outcome` по исходу прогона `34964473459` на голове `d490ff7c…`.
+
+## msg-011 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #442: `success`.**
+
+fix(orchestrator): путь `*.test.ts` отпечатком установки не считается (тред 204) · голова `d490ff7c057502c95fb054de457ee7f856e29170` · попытка 1 · прогон [`34964473459`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34964473459)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

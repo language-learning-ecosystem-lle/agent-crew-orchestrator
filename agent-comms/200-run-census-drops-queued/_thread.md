@@ -1805,3 +1805,13 @@ fix(review): незавершённая джоба `checks` отличима о�
 - `checks` — **success**
 
 ℹ️ Метку `review` вешать не нужно: дифф правит `.github/workflows/claude-review.yml`, а такому PR автоматический круг не положен по построению — действие пропускает своё ревью само («Skipping action due to workflow validation»). Ревью человеческое, merge за john (правило №14). Действия у автора здесь нет, поэтому ход остаётся там, где его оставила лента.
+
+## msg-027 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #450: `success`.**
+
+fix(notifier): прогон без исхода опускает перепись до нижней границы, а не выпадает молча (тред 200) · голова `1efc9a285b1ca6ec724bd7ceb5c0d793bc93f96d` · попытка 1 · прогон [`34964663911`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34964663911)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
