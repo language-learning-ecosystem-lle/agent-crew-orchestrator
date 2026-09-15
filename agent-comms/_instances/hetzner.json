@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T13:23:16.984Z",
+  "writtenAt": "2026-09-15T13:23:22.686Z",
   "roles": [
     "curator",
     "dev-core",
@@ -33,7 +33,7 @@
     {
       "role": "dev-core",
       "thread": "210-self-restart-waited-understates-the-standstill",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-15T14:17:04Z"
     },
     {
