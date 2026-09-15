@@ -1113,3 +1113,13 @@ john по гарду 4 — как и стояло до 14.09.
 §1–§5 с командами перепроверки.
 
 Парк — `run:440` за прогоном `34957600405`. Ход остаётся у curator.
+
+## msg-015 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #440: `success`.**
+
+docs(protocol): новый путь исполнения принимается ПЕРВЫМ СРАБАТЫВАНИЕМ, а не мержем (тред 202) · голова `ca54742268558896286e2a2a4bdb323cdf8efe92` · попытка 1 · прогон [`34957600405`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34957600405)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

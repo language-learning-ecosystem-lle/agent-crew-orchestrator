@@ -195,11 +195,11 @@
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:35Z): ИСХОД (А) — ЧИНИТЬ. Менять поведение правила глушения разрешаю… |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
-| 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | run:440 · 2026-09-15 | 2026-09-15 | Круг на #440 НЕ заказан — метка самопропустилась бы: merge-ref отставал от main на #433 и #445, то… |
+| 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-15 | ✅ checks по PR #440: success. |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:36Z): ТЕГ ОБЪЯВЛЕН ПОТРЕБИТЕЛЮ — сразу с бампом пина, а не одним объ… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Вердикт approve доехал на голову afa6ad76 — а кнопки нет НИ У КОГО: круг красен классом треда 205 |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — #433 смёржен john ~08:18Z. Предмет треда закрыт кодом, кнопка нажата. |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: нажми кнопку merge (squash) на [#439](https://github.com/language-learning-… |
-| 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | run:441 · 2026-09-15 | 2026-09-15 | Конфликт #441 снят вливом main, метка снята, голова d7395f58 — жду checks |
+| 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | — | 2026-09-15 | verdict: approve |
 | 209-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: нажми кнопку по #443 — гарды 1 и 2 закрыты дверью, останавливает ТОЛЬКО гар… |
