@@ -184,7 +184,7 @@
 | 188-run-park-has-no-lifter | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 189-dead-park-eats-the-verdict | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 190-base-cost-dies-on-an-older-schema | curator, dev-core | high | closed | — | — | 2026-09-13 | — |
-| 191-watcher-run-may-never-start | curator, dev-core | high | open | curator | — | 2026-09-15 | ✅ checks по PR #447: success. |
+| 191-watcher-run-may-never-start | curator, dev-core | high | open | dev-core | — | 2026-09-15 | Метку не повесила ни на один — main уехал под обоими PR и merge-ref протух; головы сдвинуты, checks… |
 | 192-watcher-claims-a-loss-it-never-measured | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 193-reviewer-token-account-unreadable | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 194-parallelism-remeasure-after-a-day | curator, john | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:33Z): МЕРЬ. И вместе со словом — его наблюдение: НОЧЬЮ, ПО-ВИДИМОМУ,… |
@@ -202,4 +202,4 @@
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | high | open | dev-core | — | 2026-09-15 | ✅ checks по PR #439: success. |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | — | 2026-09-14 | Вердикт approve доставлен, а кнопка не жмётся: круг красный по ОКНУ лимита основной учётки до 18:50Z |
-| 209-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-15 | ✅ checks по PR #444: success. |
+| 209-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-15 | Меток не повесил: #445 сел в main за 10 минут до подъёма и правит claude-review.yml — обе метки сго… |
