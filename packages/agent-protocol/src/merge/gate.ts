@@ -1020,13 +1020,43 @@ export const reviewRunAnchor = (input: {
           .join(
             "; ",
           )}): a run with no 'conclusion' anchors nothing, and this one may still replace the verdict credited here`;
+  // A ROUND THAT CLOSED AND FAILED IS NOT A ROUND THAT IS MISSING (thread 209). The branch
+  // below used to fold every non-anchoring run into one sentence that enumerated three causes
+  // — another head, another event, not finished — and the fourth one, "it ran HERE and ended
+  // red", was in none of them. Worse, it called such a round not CLOSED when `completed` is
+  // exactly what it is, and every cure standing beside it in this file reads "re-label, or a
+  // push". For a red round that is the WRONG medicine: the label already fired, so hanging it
+  // again re-runs the same workflow over the same tree and buys the same ending.
+  //
+  // Measured 2026-09-14: six rounds of 'Claude PR Review' ended `completed/failure` on heads
+  // they had read correctly, each because the FIRST step of the job died while every delivery
+  // step after it went green — the verdict arrived, the round stayed red. A reader given the
+  // old sentence looks for an unfinished run that does not exist, and pays for a second round
+  // to learn the first one's cause. Naming the conclusion costs one clause.
+  //
+  // WHAT IS NOT CHANGED: the state stays `orphan`. Only a round ending 'success' anchors a
+  // verdict, and softening that would be a change of the norm, which is john's.
+  const failedHere = named.filter(
+    (run) =>
+      run.headSha === head &&
+      run.event === "pull_request" &&
+      run.status === "completed" &&
+      run.conclusion !== undefined &&
+      run.conclusion !== "success",
+  );
   if (rounds.length === 0)
     return {
       state: "orphan",
       detail:
         named.length === 0
           ? `no round of '${reading.workflow}' is reported for ${head.slice(0, 7)} at all — ${workflowsOnHead(reading.runs)}. An approve shown against this head with no round behind it is not an answer about it: fix the NAME or fix the HEAD, not the merge`
-          : `no CLOSED round of '${reading.workflow}' on ${head.slice(0, 7)}: ${named.map(describeRun).join("; ")} — a round that read another head, or on another event, or that has not finished, does not anchor a verdict about this head`,
+          : failedHere.length === 0
+            ? `no CLOSED round of '${reading.workflow}' on ${head.slice(0, 7)}: ${named.map(describeRun).join("; ")} — a round that read another head, or on another event, or that has not finished, does not anchor a verdict about this head`
+            : `no round of '${reading.workflow}' on ${head.slice(0, 7)} ENDED IN 'success': ${named.map(describeRun).join("; ")}. ${failedHere.length} of them DID read this head and FAILED (${failedHere
+                .map((run) => `${run.id ?? "?"}=${run.conclusion ?? "?"}`)
+                .join(
+                  ", ",
+                )}), and a FAILED round is not a MISSING one — the label already fired, so hanging it again re-runs the same workflow over the same tree and repeats the same ending unless the cause was transient. READ WHAT FAILED before spending a second round: \`gh api "repos/{owner}/{repo}/actions/runs/${failedHere[0]?.id ?? "<id>"}/jobs" --jq '.jobs[].steps[] | "\\(.number) \\(.name) \\(.conclusion)"'\`. And a verdict this red round DELIVERED is still an orphan here: guard 1 anchors on the ROUND's conclusion, so a green delivery under a red round carries nothing — what is missing is a round of review on this head that ENDS green`,
     };
 
   const windows = rounds
