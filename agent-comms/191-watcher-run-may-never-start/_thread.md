@@ -2452,3 +2452,21 @@ refs/pull/447/merge  064081554  blob b2babcfb9…   ← СОШЛИСЬ
 перед каждой меткой** (§1: между письмом о зелени и меткой `main` успевает уехать): метка `review`
 на #430 (нужен новый круг после `needs-fixes`) и на #447. Дальше — по вердиктам: #430 кнопкой с
 поимёнными гардами, #447 к john.
+
+## msg-042 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #447: `success`.**
+
+docs(roles): метка вешается только на merge-ref, чей claude-review.yml совпадает с main (тред 191) · голова `540694a529059596b5587d55dc0436b1464e346e` · попытка 1 · прогон [`34952515783`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34952515783)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-043 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #430: `success`.**
+
+docs(protocol-reference): предел гарантии смотрителя адресован ссылкой, третье место обещания погашено в install-notes (тред 191) · голова `0ee1530bae0a12848970692e804c6a97b7d67b2b` · попытка 1 · прогон [`34952500600`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34952500600)
+
+- `checks` — **success**

@@ -1085,3 +1085,13 @@ fix(merge-gate): упавший круг называется упавшим, а
 - `checks` — **success**
 
 👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
+
+## msg-020 · from: github · 2026-09-15 · expects: none
+
+✅ **checks по PR #443: `success`.**
+
+fix(notifier): перепись заглушённых считает по завершению прогона, а не по старту (тред 209) · голова `a97d7f74e014f4014c8aaaa1812cf0ec3fba40fe` · попытка 1 · прогон [`34952499728`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34952499728)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
