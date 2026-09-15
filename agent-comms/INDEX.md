@@ -191,7 +191,7 @@
 | 195-journal-tail-serializes-work | curator, john | normal | closed | — | — | 2026-09-14 | — |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | — | 2026-09-15 | verdict: approve |
-| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | dev-core | — | 2026-09-15 | ✅ checks по PR #448: success. |
+| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | curator | — | 2026-09-15 | Зелень на 94f8298b подтверждена своей рукой; головы не двигал, метку не вешал — ход возвращаю |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | curator | — | 2026-09-15 | Слово john (чат 2026-09-15 ~08:35Z): ИСХОД (А) — ЧИНИТЬ. Менять поведение правила глушения разрешаю… |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
@@ -202,4 +202,4 @@
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | high | open | dev-core | run:439 · 2026-09-15 | 2026-09-15 | Голова #439 подвинута вливом main: блоб claude-review.yml СОВПАЛ, push вышел fast-forward. Жду chec… |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | — | 2026-09-14 | Вердикт approve доставлен, а кнопка не жмётся: круг красный по ОКНУ лимита основной учётки до 18:50Z |
-| 209-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-15 | Меток не повесил: #445 сел в main за 10 минут до подъёма и правит claude-review.yml — обе метки сго… |
+| 209-notifier-down | github, dev-core, curator | high | open | dev-core | run:444 · 2026-09-15 | 2026-09-15 | Сверка перед меткой сделана заново и сошлась — метку держит только идущий checks. Паркуюсь на run:4… |
