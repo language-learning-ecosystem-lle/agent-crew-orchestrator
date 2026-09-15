@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T12:58:35.726Z",
+  "writtenAt": "2026-09-15T12:59:12.548Z",
   "roles": [
     "curator",
     "dev-core",
@@ -23,6 +23,12 @@
       "thread": "204-footprint-counts-a-test-file",
       "state": "running",
       "deadline": "2026-09-15T13:33:55Z"
+    },
+    {
+      "role": "curator",
+      "thread": "211-parallelism-ceiling-config-says-three",
+      "state": "running",
+      "deadline": "2026-09-15T13:39:08Z"
     }
   ]
 }
