@@ -122,6 +122,36 @@ export type WorkspacePackageVerdict =
  * and the one command that repairs it — the four things the session of 2026-09-02 had to
  * derive from an `exit 2`.
  */
+/**
+ * THE MARK THIS ONE REFUSAL LEAVES ON ITSELF — written INTO the sentence, not matched
+ * against it afterwards.
+ *
+ * WHY A REFUSAL NEEDS TO BE RECOGNISABLE AT ALL (thread `212-standstill-letter-cures-the-wrong-cause`).
+ * A workspace refusal travels onward as nothing but its text — the letter of
+ * `standstill-letter.ts` is handed the door's sentence and the pair it was about — and of
+ * the nine reasons that door refuses with, THIS is the only one whose cure is not the
+ * command the sentence itself prints: the version comes from the pin, the pin is in the
+ * files of the branch, so the tree is levelled by a MERGE by a hand and the `install`
+ * quoted below does not move it (john's measurement of 2026-09-15). Every other reason —
+ * the dirt, the lock, the foreign head, the failed tidy-up — already prints the commands
+ * that repair it, and a letter that put the merge on top of them would be curing a disease
+ * the tree does not have.
+ *
+ * ONE LITERAL, USED BOTH TO WRITE AND TO RECOGNISE, cannot drift from itself: an edit to
+ * the sentence carries the recogniser with it, and `workspace-package.test.ts` holds the
+ * two apart by asking this predicate of what {@link checkWorkspacePackage} actually
+ * returns rather than of a literal restated in the test.
+ */
+const STALE_BUILD_MARK = "the tree is on a DIFFERENT BUILD from the circuit that raises it";
+
+/**
+ * Is this door's sentence the one about a tree running ANOTHER BUILD of the package — as
+ * opposed to a tree with no package installed at all, or any of the reasons the workspace
+ * door refuses a launch for the STATE of the tree? Read the mark above for what the answer
+ * is used for.
+ */
+export const isStaleWorkspaceBuild = (reason: string): boolean => reason.includes(STALE_BUILD_MARK);
+
 export const checkWorkspacePackage = (input: {
   readonly role: string;
   /** The role's workspace, absolute — the tree being judged. */
@@ -151,6 +181,6 @@ export const checkWorkspacePackage = (input: {
   }
   return {
     ok: false,
-    reason: `the workspace of '${input.role}' runs '${WORKSPACE_PACKAGE}' ${installed}, the home checkout '${input.repo}' installs ${reference}${pinned} — the tree is on a DIFFERENT BUILD from the circuit that raises it, and the protocol schema cannot see that (both carry the same schema version, which is why the launch was legal until now). A session raised here spends its first mail command on an 'exit 2' from a flag its own build does not have: ${repair}`,
+    reason: `the workspace of '${input.role}' runs '${WORKSPACE_PACKAGE}' ${installed}, the home checkout '${input.repo}' installs ${reference}${pinned} — ${STALE_BUILD_MARK}, and the protocol schema cannot see that (both carry the same schema version, which is why the launch was legal until now). A session raised here spends its first mail command on an 'exit 2' from a flag its own build does not have: ${repair}`,
   };
 };
