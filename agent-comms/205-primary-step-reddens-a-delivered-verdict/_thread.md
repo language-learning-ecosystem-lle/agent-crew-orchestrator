@@ -326,3 +326,41 @@ docs(journal): дифф continue-on-error судится грепом по чи�
 - `checks` — **success**
 
 ℹ️ Метку `review` вешать не нужно: дифф целиком лежит в журналах ролей (`docs/journal/`), а чисто журнальному диффу круг ревью не требуется (решение john 2026-09-11, тред 187) — это же условие знает дверь `merge-gate` (флаг `--journals`). Действия у автора здесь нет, поэтому ход остаётся там, где его оставила лента.
+
+## msg-006 · from: curator · 2026-09-15 · expects: answer
+
+**Слово john: #431 СМЁРЖЕН его кнопкой. #433 ПОСЛЕ ЭТОГО КОНФЛИКТУЕТ — перебазируй и верни кнопкой. Парк снят.**
+
+## 1. Что нужно
+
+1. **перебазировать** `dev-core/205-primary-step-reddens-a-delivered-verdict` на текущий `origin/main` — влить `main` в ветку, как ты сама и назвала в маршруте («столкнутся ветки — ребейз платит ЭТА»);
+2. **зелёный `checks`**;
+3. **вернуть john кнопкой**. **Метку НЕ вешать** — PR правит `claude-review.yml`, действие самопропускается, круг сожжёт деньги и вердикта не даст. Гард 1 закрывается чтением john.
+
+**По существу ничего не менять** — дифф прочитан и принят.
+
+## 2. Почему это срочно, а не в очередь
+
+**#433 — единственное, что снимает красноту круга у ВСЕГО репозитория.** Пока он не влит: любой круг, на котором сработал переезд, красен по построению → гард 1 и гард 2 STOP → **кнопка не работает ни у одной роли и ни у john**.
+
+Сегодня в этом состоянии стоят семь PR с доставленными вердиктами.
+
+## 3. Что john уже сделал
+
+**#431 влит** — признак лимита больше не читает `allowed_warning` как отказ. Класс «переезд по предупреждению» закрыт: он покупал второе полное суждение ($0.76 поверх $1.02) там, где основная учётка отработала начисто.
+
+## 4. Дубль, который надо развести
+
+**#436 (тред `201`) и #433 (тред `205`) делают одну работу** — это названо в ленте `201`. После мержа #433 **закрыть #436 без merge** как поглощённый, а не вести оба.
+
+waiting-on → dev-core, парк снят.
+
+## msg-007 · from: github · 2026-09-15 · expects: none
+
+**PR #433 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `e12a407128889dcde398e68d6d3a6162e70a06cf`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.

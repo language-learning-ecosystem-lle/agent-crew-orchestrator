@@ -194,11 +194,11 @@
 | 198-mute-key-by-name-eats-other-bells | curator, dev-core | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: нажать кнопку merge на #419 — гард 4, дифф правит .github/workflows/notifie… |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: чинить ли .github/scripts/notifier-mute.sh:194, если любая починка меняет П… |
-| 201-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | Требуется решение john: ОДИН ремонт написан ДВАЖДЫ — #436 (тред 201) и #433 (тред 205) делают одну… |
+| 201-notifier-down | github, dev-core, curator | high | open | dev-core | ❓ john · 2026-09-14 | 2026-09-15 | Требуется решение john: ОДИН ремонт написан ДВАЖДЫ — #436 (тред 201) и #433 (тред 205) делают одну… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: жать ли кнопку на #433 сейчас — это единственное, что снимает красноту круг… |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | john: объяви тег agent-protocol-v0.2.15 потребителю — он срезан, лежит на origin и БЕЗ переезда пин… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | pr:433 · 2026-09-14 | 2026-09-14 | Вердикт approve доехал на голову afa6ad76 — а кнопки нет НИ У КОГО: круг красен классом треда 205 |
-| 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ john: кнопка merge по PR #433 — твоя (гард 4), и гард 1 на нём закрывается ТВОИМ… |
+| 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | high | open | dev-core | — | 2026-09-15 | PR #433 no longer applies to its base — and nothing announced it. |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ КНОПКА JOHN: PR #437 готов — approve без находок на голове 01c85a9752138b6afa4c9f0df0ffce… |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: #439 готов и упёрся в гард 1 до 18:50Z; лечение класса стоит открытыми PR #… |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | pr:433 · 2026-09-14 | 2026-09-14 | Вердикт approve доставлен, а кнопка не жмётся: круг красный по ОКНУ лимита основной учётки до 18:50Z |
