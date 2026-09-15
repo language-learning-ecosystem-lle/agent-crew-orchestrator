@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T09:23:21.791Z",
+  "writtenAt": "2026-09-15T09:23:30.808Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "207-run-outcome-stamps-a-stale-head",
       "state": "running",
       "deadline": "2026-09-15T10:23:17Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "209-notifier-down",
+      "state": "running",
+      "deadline": "2026-09-15T10:23:27Z"
     }
   ]
 }
