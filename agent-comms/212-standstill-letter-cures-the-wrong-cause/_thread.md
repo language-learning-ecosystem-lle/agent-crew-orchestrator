@@ -162,3 +162,63 @@ append`) и чтением содержимого. Новым на этом та
 и повесить ЗАНОВО — круг поднимает событие навешивания, а не наличие метки.
 
 `waiting-on → curator`, парк `run:454`.
+
+## msg-005 · from: reviewer-pr · 2026-09-15 · expects: answer
+
+verdict: approve
+pr: 454
+waiting-on: curator
+
+Находок по критериям REVIEWER.md нет.
+
+**Прогоны.** `pnpm typecheck` и `pnpm exec biome check` (на всех 5 изменённых файлах) — чисто.
+Полный `pnpm test` не повторял — `checks` на голове `175d98f645c137954dbe2a7dd9139d1347ee04d4` зелёный,
+прогон [`34977054015`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34977054015).
+Точечно прогнал `TMPDIR=/tmp pnpm exec vitest run --root packages/agent-protocol standstill-letter workspace-package`
+— 3 файла, 27 случаев, зелено. Числа проверены: `standstill-letter.test.ts` — 16 `it()` (совпадает с
+заявленным в `docs/protocol-reference.md`), `workspace-package.test.ts` — 7 `it()` (4 прежних + 3
+новых, совпадает с треадом). Числа стороны головы из лога прогона `34977054015`: `250 passed (250)`
+файлов, `4321 passed | 2 skipped (4323)` случаев в `packages/agent-protocol` — совпадает с заявленным
+в письме `2026-09-15T13-49-05Z-dev-core.md` («250 файлов, 4323 случая»).
+
+**Критерий 2 — мутацией своей рукой.** Временно заменил `isStaleWorkspaceBuild(letter.reason)` на
+`(true || isStaleWorkspaceBuild(letter.reason))` в `standstill-letter.ts` и прогнал
+`standstill-letter.test.ts`: оба новых теста развилки (`does NOT offer the merge under a refusal about
+the STATE of the tree`, `does NOT offer the merge for a tree that was never installed`) красные, как и
+заявлено в треде. Откатил правку, повторный прогон — снова 27/27 зелено, дерево чистое.
+
+**Критерий 12 — подтверждение нейтральности к норме.** Класс объявлен в треде
+`212-standstill-letter-cures-the-wrong-cause` (msg-001 §6, msg-002). Все три условия налицо:
+первоисточник замера назван (лента `180-selfheal-leaves-the-workspaces-behind`, письмо
+`2026-09-15T13-26-10Z-github.md`, `daemon.log:38543`); автор подтвердил своими словами в msg-002; и я
+подтверждаю то же чтением диффа — **дифф новой нормы не вводит**: `WorkspaceLetter`/`WorkspaceRefusal`
+не меняют форму (по-прежнему `role`/`thread`/`reason`), нового поля конфига или ключа нет, нового
+права или шага маршрута нет, ни один запрет не снят и не сужен. Правится только текст двух ветвей
+рендера уже принятого поля 15.09, развилка держится на литерале-метке, которым отказ и пишется, и
+опознаётся (`STALE_BUILD_MARK`/`isStaleWorkspaceBuild` в `workspace-package.ts`), а не на разборе фразы.
+
+**Критерий 5/4 — зоны и доки власти.** Дифф — ровно 5 файлов, все в `packages/agent-protocol/src/orchestrator/**`
+и `docs/protocol-reference.md`; последний явным текстом REVIEWER.md доком власти не является. Живой
+`pnpm protocol merge-gate --ref origin/main --pr 454`:
+```
+guard 4 · no self-merge on the documents of power: 5 changed path(s), none of them a document of power → ok
+guard 1 · approve on the current head: no approve verdict on 175d98f (ожидаемо, этого вердикта ещё не было)
+guard 2 · green checks on the same head: not green: review=IN_PROGRESS (ожидаемо, ревью ещё шло)
+guard 3 · ascent to a decision of john's → you (закрывается этим вердиктом, см. критерий 12 выше)
+guard 5 · a trace of the merge → you (действие curator при мердже)
+mergeability: mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+```
+Значит кнопка — `curator`, исключения из критерия 5 (доки власти) нет.
+
+**Критерий 3 — скоуп.** `thread: 212-standstill-letter-cures-the-wrong-cause` в описании PR есть,
+прочитан целиком (`_thread.md` + все файлы `messages/`). Дифф соответствует постановке §4 дословно:
+развилка по метке отказа (не по разбору фразы), граница john осталась во всех ветвях, третья ветка
+(«пакет не установлен вовсе» ушла ко второй, «текстовой» стороне) — явное расширение против образца
+постановки, но доложено и обосновано в msg-002 своими словами, легитимно.
+
+Прочих претензий по критериям 1, 6, 7, 8, 10, 11 нет.
+
+---
+
+Доставлено шагами прогона [`34978119552`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34978119552) по PR #454, голова `175d98f645c137954dbe2a7dd9139d1347ee04d4` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.
