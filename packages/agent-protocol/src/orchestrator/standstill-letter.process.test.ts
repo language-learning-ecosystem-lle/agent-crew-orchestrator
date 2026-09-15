@@ -64,7 +64,7 @@ const CURATOR = {
   summary: "the coordinator",
 };
 
-const CONFIG = {
+const config = (devCore: Record<string, unknown>): Record<string, unknown> => ({
   protocolVersion: CURRENT_PROTOCOL_VERSION,
   mail: { branch: "comms", dir: "agent-comms" },
   orchestrator: {
@@ -73,8 +73,22 @@ const CONFIG = {
     ref: "HEAD",
     workdir: { branch: "main", worktrees: ".worktrees" },
   },
-  roles: [DEV_CORE, GITHUB, CURATOR],
-};
+  roles: [devCore, GITHUB, CURATOR],
+});
+
+/**
+ * THE DOOR П-1 DOES NOT COVER, declared in the card itself (curator's §2.2 of 2026-09-15):
+ * a system identity this process cannot become. `spawnIdentityFor` refuses BEFORE the
+ * workspace is ever settled, so `workspaceRefusals` stays empty and П-1 is silent by
+ * construction — which is the whole point of putting the П-2 fixture here and not on the
+ * workspace door, where П-1 fires on tick one and carries the turn off before the counter
+ * can reach its threshold.
+ *
+ * A user no box has: the probe answers `unknown user` where `sudo` exists and `ENOENT`
+ * where it does not, and BOTH are the same refusal to this door — so the fixture does not
+ * depend on the sudoers of whatever box runs the suite.
+ */
+const NOBODY = "aco-nobody-of-this-box";
 
 /** What the box runs, and what the tree was left on — the divergence the door reads. */
 const CIRCUIT = "0.2.15";
@@ -84,14 +98,14 @@ const META = "---\ntitle: T\nparticipants: dev-core, curator, github\nstatus: op
 const WAITING =
   "---\nfrom: curator\ndate: 2026-07-25T10:00:00Z\nexpects: answer\nwaiting-on: dev-core\n---\n\nThe body.\n";
 
-const contour = (): string => {
+const contour = (devCore: Record<string, unknown> = DEV_CORE): string => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-standstill-"));
   const origin = join(base, "origin.git");
   execFileSync("git", ["init", "--bare", "-q", "-b", "main", origin]);
 
   const repo = join(base, "work");
   execFileSync("git", ["clone", "-q", origin, repo]);
-  writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(CONFIG, null, 2)}\n`);
+  writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(config(devCore), null, 2)}\n`);
   writeFileSync(join(repo, "CARD.md"), "the role card\n");
   writeFileSync(join(repo, ".gitignore"), ".worktrees/\n.orchestrator/\nmailco/\nnode_modules/\n");
   writeFileSync(
@@ -248,20 +262,80 @@ describe("the bell of an unraisable pair reaches the MAIL (П-1, thread 180)", (
 });
 
 /**
- * WHY П-2 IS NOT ASSERTED IN THIS FIXTURE, and it is a FINDING rather than a gap left by
- * the clock — measured here on 2026-09-15, three ticks over the stuck tree above:
- * `stall.json` stayed at `ticks: 1` and the second bell never came due.
+ * WHY П-2 IS NOT MEASURED ON THE DOOR ABOVE, and it is a finding rather than a gap: three
+ * ticks over the stuck tree leave `stall.json` at `ticks: 1` and the second bell never comes
+ * due. THE CAUSE IS П-1 ITSELF — its letter carries `waiting-on: curator`, so the moment it
+ * lands the thread stops waiting on the refused role, the pair leaves the queue, the next
+ * tick has no candidate at all, and `foldStall` HOLDS the run rather than extending it (an
+ * empty queue is an idle circuit, which is the right answer to the question it was asked).
+ * The 209 silent ticks of the field case are therefore NOT reproducible on the workspace
+ * door once П-1 is in the build: the first tick converts them into a turn.
  *
- * THE CAUSE IS П-1 ITSELF. The letter it writes carries `waiting-on: curator`, so the
- * moment it lands the thread stops waiting on the refused role — the pair leaves the queue,
- * the next tick has NO candidate at all, and `foldStall` HOLDS the run as it stands rather
- * than extending it (an empty queue is an idle circuit, which is the right answer to the
- * question it was asked). The 209 silent ticks of the field case are therefore not
- * reproducible in a contour that has П-1 in it: the first tick converts them into a turn.
+ * That is why the crossing below stands on a DIFFERENT door. Of the three that feed the
+ * standstill run in `launch()` — the declared system identity, the reach of the account's
+ * directory, and the workspace — only the third fills `workspaceRefusals`; on the first two
+ * П-1 is silent by construction, the thread goes on waiting on its own role, the queue stays
+ * full and the counter runs free to its threshold (curator's §2.2, thread 180, 2026-09-15).
  *
- * That is arguably the outcome john asked for and it is NOT asserted to be, because
- * whether П-2 can still ring at all — and on what shape of standstill — is the question
- * this file cannot answer without a second cause of standing that keeps the queue full.
- * The planner of that letter is covered by `standstill-letter.test.ts`; what is open is the
- * crossing, and it is reported in thread 180 rather than left to be rediscovered.
+ * THE IDENTITY DOOR IS CHOSEN over the account one because it is declared entirely in the
+ * card — one optional key — while the account door needs a directory whose BITS deny a
+ * named uid, which is a fixture that behaves differently for root and would have to be
+ * skipped on half the boxes that run this suite.
+ *
+ * AND THE THIRD BRANCH, `silent` — a tick with no refusals at all and nothing in flight — is
+ * NOT asserted here, said in prose rather than left to be noticed: this fixture cannot reach
+ * it, because a tick with a candidate always produces either a raise or a refusal, and a
+ * tick without one returns before the fold. Whether the live cycle can reach it at all is
+ * unmeasured; it stays covered by `standstill-letter.test.ts` as a unit.
  */
+describe("the bell of a STANDING circuit reaches the MAIL (П-2, thread 180)", () => {
+  /** The pair standing on the identity door: refused every tick, and never written about by П-1. */
+  const standing = (): string => contour({ ...DEV_CORE, systemUser: NOBODY });
+
+  it("rings into the feed on the THIRD tick and not before, with П-1 silent throughout", () => {
+    const repo = standing();
+    enable(repo);
+
+    const first = daemon(repo);
+    // The door that refused, named — and it is the identity one, two doors above П-1's.
+    expect(first.out).toContain(`declares systemUser '${NOBODY}'`);
+    expect(feed(repo)).not.toContain("Контур СТОИ́Т");
+    daemon(repo);
+    // Two ticks are bad luck, not a standstill: `STALL_TICKS` is 3 and the letter obeys it.
+    expect(feed(repo)).not.toContain("Контур СТОИ́Т");
+
+    daemon(repo);
+    const text = feed(repo);
+    // THE EVIDENCE IS THE FEED, exactly as in П-1 above, and never the daemon's stdout: the
+    // line in the log is what was already there for 209 ticks and reached nobody.
+    expect(text).toContain("Контур СТОИ́Т");
+    expect(text).toContain("за 3 тик(ов) подряд");
+    expect(text).toContain("dev-core×012-x");
+    // The refusal the letter quotes is the IDENTITY door's, in the collapsed form
+    // `stallReasons` keeps — the quoted parts, the user among them, are what `classOf`
+    // replaces with '…' so that two roles standing on one fault are one fault.
+    expect(text).toContain("declares systemUser '…'");
+    expect(text).toContain("a sudoers rule");
+    expect(text).toContain("curator");
+    // П-1 IS SILENT ON THIS DOOR — the half of the claim that makes the fixture a crossing
+    // of П-2 and not a second reading of П-1. A letter about the workspace here would mean
+    // the two bells had been wired to the same refusal.
+    expect(text).not.toContain("Рабочее место роли");
+  });
+
+  it("says it ONCE per standstill run, not once per tick past the threshold", () => {
+    const repo = standing();
+    enable(repo);
+    daemon(repo);
+    daemon(repo);
+    daemon(repo);
+    daemon(repo);
+    daemon(repo);
+
+    // Two mechanisms hold this down and the assertion does not tell them apart: the ledger
+    // keyed by the run's `since`, and — from the fourth tick on — the turn this very letter
+    // handed to `curator`, which takes the pair out of the queue exactly as it does on the
+    // workspace door above. The claim under test is only that the feed is not flooded.
+    expect(times(feed(repo), "Контур СТОИ́Т")).toBe(1);
+  });
+});
