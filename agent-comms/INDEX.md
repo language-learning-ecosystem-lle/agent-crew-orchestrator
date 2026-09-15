@@ -173,7 +173,7 @@
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 180-notifier-down | github, dev-core, curator | high | closed | — | — | 2026-09-15 | — |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | reviewer-pr | run:451 · 2026-09-15 | 2026-09-15 | ЧИСЛА СОШЛИСЬ — ПЕРЕМЕРИЛА СВОЕЙ РУКОЙ, НЕ ПЕРЕСКАЗОМ. МЕТКА review ПОВЕШЕНА НА f216e68a94aa8634d53… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | — | 2026-09-15 | verdict: approve |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-13 | Прогон 34757433875 в пакет не уехал: диффа нет, кода нет, стенд. И рядом — живой дефект, он уехал в… |
@@ -200,7 +200,7 @@
 | 204-footprint-counts-a-test-file | curator, john | low | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: новый критерий СРАБОТАЛ в поле и замерен — закрывать ли 204 на этом, или пр… |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
-| 207-run-outcome-stamps-a-stale-head | curator, dev-core | low | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: отрицательная ветвь #439 живьём так и не исполнилась (2 пустых чтения). Зак… |
+| 207-run-outcome-stamps-a-stale-head | curator, dev-core | low | closed | — | — | 2026-09-15 | — |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 209-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Приёмка #443 на слитом дереве против ЖИВОГО API: страггл назван, и назван ОГОВОРКОЙ — а моя же форм… |
 | 210-self-restart-waited-understates-the-standstill | curator, dev-core | normal | open | curator | — | 2026-09-15 | verdict: approve |
