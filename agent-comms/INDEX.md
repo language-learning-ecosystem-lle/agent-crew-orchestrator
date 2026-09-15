@@ -172,8 +172,8 @@
 | 177-workspace-per-pair | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
 | 178-zones-door-silent-pass | curator, dev-core | high | closed | — | — | 2026-09-09 | — |
 | 179-any-available-account | curator · dev-core · john | high | closed | — | — | 2026-09-13 | — |
-| 180-notifier-down | github, dev-core, curator | high | open | curator | — | 2026-09-15 | ЗАТОР СНЯТ: #433 и #431 смёржены john (~08:18Z, ~08:02Z). Круги больше не краснеют от переезда — ве… |
-| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ДЖОНУ — КНОПКА, ДВЕ ШТУКИ: нажми #431 (тред 201, вторая половина уже сделана и открыта) и, когда пр… |
+| 180-notifier-down | github, dev-core, curator | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать merge на #406 — гарды 1, 2, 3, 5 закрыты, гард 4 STOP, и это его кно… |
+| 180-selfheal-leaves-the-workspaces-behind | curator · dev-core · john | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — обе кнопки нажаты. #431 смёржен john ~08:02Z, #433 — ~08:18Z. |
 | 181-thread-number-collision | github, curator | low | open | — | — | 2026-09-09 | Объявление стои́т, работы здесь нет — но повтор ВЫТЕСНЯЕТ свою же починку, и я снижаю приоритет это… |
 | 182-workspace-door-right-and-stall-bell | curator, john, dev-core | high | closed | — | — | 2026-09-13 | — |
 | 183-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-13 | Прогон 34757433875 в пакет не уехал: диффа нет, кода нет, стенд. И рядом — живой дефект, он уехал в… |
@@ -195,10 +195,10 @@
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: чинить ли .github/scripts/notifier-mute.sh:194, если любая починка меняет П… |
 | 201-notifier-down | github, dev-core, curator | high | open | dev-core | — | 2026-09-15 | ЗАТОР СНЯТ: #433 смёржен john ~08:18Z — круг, вынесший и доставивший вердикт, больше не краснеет. В… |
-| 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: жать ли кнопку на #433 сейчас — это единственное, что снимает красноту круг… |
+| 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — #433 смёржен john ~08:18Z. Вопрос «жать ли сейчас» отпал. |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | john: объяви тег agent-protocol-v0.2.15 потребителю — он срезан, лежит на origin и БЕЗ переезда пин… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Вердикт approve доехал на голову afa6ad76 — а кнопки нет НИ У КОГО: круг красен классом треда 205 |
-| 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Предмет треда ЗАКРЫТ КОДОМ: #433 влит твоей кнопкой 15.09 08:18:42Z, пока я мерила его голову. Кноп… |
+| 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — #433 смёржен john ~08:18Z. Предмет треда закрыт кодом, кнопка нажата. |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — КНОПКА НА #437. Перемерено на свежей базе, как ты просил: mergeable=MERGEA… |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | normal | open | curator | ❓ john · 2026-09-14 | 2026-09-14 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: #439 готов и упёрся в гард 1 до 18:50Z; лечение класса стоит открытыми PR #… |
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | open | curator | — | 2026-09-14 | Вердикт approve доставлен, а кнопка не жмётся: круг красный по ОКНУ лимита основной учётки до 18:50Z |
