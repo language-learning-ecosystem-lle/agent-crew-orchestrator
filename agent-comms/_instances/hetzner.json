@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T11:53:14.858Z",
+  "writtenAt": "2026-09-15T11:53:54.853Z",
   "roles": [
     "curator",
     "dev-core",
@@ -29,12 +29,6 @@
       "thread": "205-primary-step-reddens-a-delivered-verdict",
       "state": "running",
       "deadline": "2026-09-15T12:31:48Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "204-footprint-counts-a-test-file",
-      "state": "draining",
-      "deadline": "2026-09-15T12:48:19Z"
     }
   ]
 }
