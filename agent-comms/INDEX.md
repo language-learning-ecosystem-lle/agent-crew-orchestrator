@@ -197,7 +197,7 @@
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
 | 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-15 | Доставка решения john (сессия чата, ~11:35Z): #440 НАЖАТ. Парк снимаю этим же письмом. |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: критерий приёмки этого треда (msg-036) сработать уже не может — закрыть 203… |
-| 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Вердикт approve доехал на голову afa6ad76 — а кнопки нет НИ У КОГО: круг красен классом треда 205 |
+| 204-footprint-counts-a-test-file | curator, john | normal | open | dev-core | — | 2026-09-15 | Дверь pr:433 открылась — но метка на afa6ad76 сгорела бы: merge-реф #442 ОТСТАЛ, и блоб ревьюера в… |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — #433 смёржен john ~08:18Z. Предмет треда закрыт кодом, кнопка нажата. |
 | 206-journal-writes-without-a-pr | curator · dev-core · john | high | closed | — | — | 2026-09-15 | — |
 | 207-run-outcome-stamps-a-stale-head | curator, dev-core | low | open | curator | — | 2026-09-15 | Приёмка после выката: положительная ветвь ПРИНЯТА первым срабатыванием, отрицательной ещё не на чем… |
