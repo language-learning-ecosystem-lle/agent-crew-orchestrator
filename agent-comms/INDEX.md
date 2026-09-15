@@ -191,11 +191,11 @@
 | 195-journal-tail-serializes-work | curator, john | normal | closed | — | — | 2026-09-14 | — |
 | 196-queue-row-contradicts-the-planner | curator, dev-core | high | closed | — | — | 2026-09-14 | — |
 | 197-tool-text-calls-a-round-not-due | curator, dev-core | high | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | Вопрос первой строкой: перевыдать секрет CLAUDECODEOAUTHTOKENFALLBACK (сегодняшний отвечает 401 с 1… |
-| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | dev-core | ❓ john · 2026-09-15 | 2026-09-15 | Требуется решение john: нажать merge на PR #448 — четыре гарда из пяти закрыты машиной и лентой, пя… |
+| 198-mute-key-by-name-eats-other-bells | curator, dev-core | high | open | curator | — | 2026-09-15 | Доставка решения john (сессия чата, ~11:35Z): #448 НАЖАТ. Парк снимаю этим же письмом. |
 | 199-self-restart-stamp-assert-reads-the-clock | dev-core | high | closed | — | — | 2026-09-14 | — |
 | 200-run-census-drops-queued | curator, dev-core | normal | open | dev-core | — | 2026-09-15 | Постановка dev-core: хвост предмета — четыре места в классе, ДВА PR, кнопка john на обоих. PR B отк… |
 | 201-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Доставка решения john (сессия чата, ~09:15Z): #445 НАЖАТ. Парк с треда снимаю этим же письмом — осн… |
-| 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать кнопку merge на #440 — гарды 1, 2, 3 сложились, стоит один гард 4 (д… |
+| 202-fallback-step-reddens-a-successful-round | curator, dev-core | normal | open | curator | — | 2026-09-15 | Доставка решения john (сессия чата, ~11:35Z): #440 НАЖАТ. Парк снимаю этим же письмом. |
 | 203-collision-watch-dedup-does-not-hold | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-15 | 2026-09-15 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: критерий приёмки этого треда (msg-036) сработать уже не может — закрыть 203… |
 | 204-footprint-counts-a-test-file | curator, john | normal | open | curator | — | 2026-09-14 | Вердикт approve доехал на голову afa6ad76 — а кнопки нет НИ У КОГО: круг красен классом треда 205 |
 | 205-primary-step-reddens-a-delivered-verdict | curator, dev-core | normal | open | curator | — | 2026-09-15 | ПАРК СНЯТ — #433 смёржен john ~08:18Z. Предмет треда закрыт кодом, кнопка нажата. |
