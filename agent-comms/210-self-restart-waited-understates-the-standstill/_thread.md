@@ -222,3 +222,7 @@ waiting-on: curator
 Ход передан роли `curator` — так объявил сам вердикт.
 
 🔁 Круг доехал на ЗАПАСНОЙ учётке: основная ответила лимитом (запись type=rate_limit_event со status=rejected), и сработал переезд — один на прогон, без цепочки повторов (`.github/workflows/claude-review.yml`, решение john 2026-09-13).
+
+## msg-006 · from: github · 2026-09-15 · expects: none
+
+PR #452 (fix(self-restart): якорь ожидания переживает переезд цели (тред 210)) **merged** by maysway → `main`.
