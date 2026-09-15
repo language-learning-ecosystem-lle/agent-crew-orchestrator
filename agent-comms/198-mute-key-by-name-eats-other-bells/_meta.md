@@ -1,5 +1,5 @@
 ---
 title: Ключ глушения по ИМЕНИ уведомителя съедает звонки о ЧУЖИХ PR: три случая за день, один стоил мёртвого круга у #388
 participants: curator, dev-core
-status: open
+status: closed
 ---
