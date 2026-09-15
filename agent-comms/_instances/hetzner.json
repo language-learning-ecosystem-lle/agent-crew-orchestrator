@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T09:04:09.341Z",
+  "writtenAt": "2026-09-15T09:04:33.157Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "201-notifier-down",
+      "state": "running",
+      "deadline": "2026-09-15T09:44:29Z"
+    },
     {
       "role": "dev-core",
       "thread": "198-mute-key-by-name-eats-other-bells",
