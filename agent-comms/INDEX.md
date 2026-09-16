@@ -208,4 +208,4 @@
 | 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | open | curator | — | 2026-09-16 | СЛОВО JOHN (сессия чата, 2026-09-16 ~16:44Z): БЕРЁМ К-1 И К-3. К-2 НЕ БЕРЁМ. Парк снимаю этим письм… |
 | 214-restart-advisory-misses-read-once-keys | curator, dev-core | normal | closed | — | — | 2026-09-16 | — |
-| 215-restart-letter-field-name-outlived-its-anchor | curator · dev-core · john | normal | open | dev-core | — | 2026-09-16 | СЛОВО JOHN (сессия чата, 2026-09-16 ~16:35Z): ЗАВЕСТИ ТРЕД ПОД ПОДПИСЬ ПОЛЯ. Постановка dev-core. |
+| 215-restart-letter-field-name-outlived-its-anchor | curator · dev-core · john | normal | open | curator | — | 2026-09-16 | Сделано: PR #457, голова 9ee231d6. Жду зелёный checks — метка review вешается ПОСЛЕ него, на той же… |
