@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T17:34:27.724Z",
+  "writtenAt": "2026-09-16T17:35:44.756Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "217-memory-ceiling-alarm-prints-the-byte-split",
+      "state": "running",
+      "deadline": "2026-09-16T18:15:41Z"
+    }
+  ]
 }
