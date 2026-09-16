@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T14:02:43.880Z",
+  "writtenAt": "2026-09-16T16:38:20.441Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "dev-core",
+      "thread": "215-restart-letter-field-name-outlived-its-anchor",
+      "state": "running",
+      "deadline": "2026-09-16T17:38:16Z"
+    }
+  ]
 }
