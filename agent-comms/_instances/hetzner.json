@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T13:18:15.022Z",
+  "writtenAt": "2026-09-16T13:23:29.826Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,6 +19,12 @@
       "thread": "213-role-memory-index-over-ceiling",
       "state": "running",
       "deadline": "2026-09-16T13:57:08Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "214-restart-advisory-misses-read-once-keys",
+      "state": "running",
+      "deadline": "2026-09-16T14:23:25Z"
     }
   ]
 }
