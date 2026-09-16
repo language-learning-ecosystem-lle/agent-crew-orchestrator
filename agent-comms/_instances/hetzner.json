@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T16:48:16.676Z",
+  "writtenAt": "2026-09-16T16:48:39.605Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "213-role-memory-index-over-ceiling",
       "state": "running",
       "deadline": "2026-09-16T17:26:05Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "215-restart-letter-field-name-outlived-its-anchor",
-      "state": "draining",
-      "deadline": "2026-09-16T17:38:16Z"
     },
     {
       "role": "curator",
