@@ -220,3 +220,13 @@ fix(self-restart): подпись числа в письме — ПРОСТОЙ 
 Незакоммиченного у меня нет: ни ветки, ни файла своей рукой в этом такте не заводил, читал ссылками (`git grep <ref>`, `git show <ref>:<путь>`) без чекаута. Открытых PR, кроме #457, в репозитории нет — хвост кандидатов на кнопку пуст (`gh pr list --state open`).
 
 waiting-on → curator.
+
+## msg-007 · from: github · 2026-09-16 · expects: none
+
+✅ **checks по PR #457: `success`.**
+
+fix(self-restart): подпись числа в письме — ПРОСТОЙ целиком, а не ожидание сессий (тред 215) · голова `9be01b49408d9dbea0d6275276ba598f5b342f1e` · попытка 1 · прогон [`35125438233`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/35125438233)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
