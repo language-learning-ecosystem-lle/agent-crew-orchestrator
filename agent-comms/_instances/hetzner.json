@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T17:17:52.373Z",
+  "writtenAt": "2026-09-16T17:18:04.960Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "215-restart-letter-field-name-outlived-its-anchor",
       "state": "running",
       "deadline": "2026-09-16T17:55:29Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "217-memory-ceiling-alarm-prints-the-byte-split",
-      "state": "draining",
-      "deadline": "2026-09-16T18:05:07Z"
     }
   ]
 }
