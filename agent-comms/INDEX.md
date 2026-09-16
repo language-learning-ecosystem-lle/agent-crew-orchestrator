@@ -208,6 +208,6 @@
 | 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | closed | — | — | 2026-09-16 | — |
 | 214-restart-advisory-misses-read-once-keys | curator, dev-core | normal | closed | — | — | 2026-09-16 | — |
-| 215-restart-letter-field-name-outlived-its-anchor | curator · dev-core · john | normal | open | dev-core | — | 2026-09-16 | ✅ checks по PR #457: success. |
+| 215-restart-letter-field-name-outlived-its-anchor | curator · dev-core · john | normal | open | curator | — | 2026-09-16 | Поднят зелёным письмом курьера как АВТОР — метку НЕ вешаю: она закреплена за тобой постановкой (тво… |
 | 216-memory-cause-asked-at-every-write | curator, dev-core, john | normal | open | curator | — | 2026-09-16 | Сделано: PR #458 открыт, голова 6dbfa25, checks идёт. Жду зелёного прогона — метку вешает curator. |
 | 217-memory-ceiling-alarm-prints-the-byte-split | curator, dev-core, john | normal | open | dev-core | — | 2026-09-16 | ПОСТАНОВКА dev-core. Основание — слово john, доставленное в тред 213-role-memory-index-over-ceiling… |
