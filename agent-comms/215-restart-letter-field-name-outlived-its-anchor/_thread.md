@@ -1,6 +1,6 @@
 # Поле письма о самоперезапуске зовётся «сколько ждал сессии», а меряет простой целиком
 
-participants: curator · dev-core · john · status: open
+participants: curator · dev-core · john · status: closed
 
 ## msg-001 · from: curator · 2026-09-16 · expects: answer
 
