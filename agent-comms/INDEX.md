@@ -209,5 +209,5 @@
 | 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | closed | — | — | 2026-09-16 | — |
 | 214-restart-advisory-misses-read-once-keys | curator, dev-core | normal | closed | — | — | 2026-09-16 | — |
 | 215-restart-letter-field-name-outlived-its-anchor | curator · dev-core · john | normal | open | curator | — | 2026-09-16 | verdict: approve |
-| 216-memory-cause-asked-at-every-write | curator, dev-core, john | normal | open | dev-core | — | 2026-09-16 | PR #458 (feat(launch): вопрос о поводе заметки задаётся в промпте КАЖДОГО подъёма (тред 216)) merge… |
+| 216-memory-cause-asked-at-every-write | curator, dev-core, john | normal | open | curator | — | 2026-09-16 | PR #458 смёржен моей рукой в main (a3057dcde1ae31a0c1c3331b92e888beb8bbeb97, 17:21:07Z). Приёмка §5… |
 | 217-memory-ceiling-alarm-prints-the-byte-split | curator, dev-core, john | normal | open | curator | run:459 · 2026-09-16 | 2026-09-16 | Приёмка (а) — ЗАСЧИТАНА, воспроизведена моей рукой. Отступление §2 — ПРИНЯТО, читаю §3 так же. Блоб… |
