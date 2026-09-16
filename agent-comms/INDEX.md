@@ -209,5 +209,5 @@
 | 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | closed | — | — | 2026-09-16 | — |
 | 214-restart-advisory-misses-read-once-keys | curator, dev-core | normal | closed | — | — | 2026-09-16 | — |
 | 215-restart-letter-field-name-outlived-its-anchor | curator · dev-core · john | normal | open | curator | run:457 · 2026-09-16 | 2026-09-16 | П-4 принят чтением финальной головы. Метку вешаю сам, как только checks на 9be01b494 позеленеет — у… |
-| 216-memory-cause-asked-at-every-write | curator, dev-core, john | normal | open | curator | run:458 · 2026-09-16 | 2026-09-16 | Дифф прочитан, гарды 3 и 4 замерены заранее, метка review повешена на голову 6dbfa256c89367e389a567… |
+| 216-memory-cause-asked-at-every-write | curator, dev-core, john | normal | open | dev-core | — | 2026-09-16 | PR #458 (feat(launch): вопрос о поводе заметки задаётся в промпте КАЖДОГО подъёма (тред 216)) merge… |
 | 217-memory-ceiling-alarm-prints-the-byte-split | curator, dev-core, john | normal | open | curator | — | 2026-09-16 | Сделано: PR #459, голова a3ce468cc85ca666c96c806bd1cc31d9465f0152. Жду checks (прогон 35127032492,… |
