@@ -40,7 +40,7 @@
  * release and only THROUGH `deliverMessage` — which owns the lock, the dirty check, the
  * retry and the undo — so К-1 is answered by construction there rather than softened.
  */
-import { statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -126,24 +126,104 @@ export const MEMORY_INDEX_LIMIT_BYTES = 24_576;
 export const MEMORY_INDEX = "MEMORY.md";
 
 /**
+ * WHERE THE BYTES WENT, AND WHY THE LINE SAYS THAT INSTEAD OF "DELETE SOMETHING".
+ * The line this replaces advised one thing: delete the notes that moved into the role
+ * card. Measured on the live index (thread `213`, curator's letter of 2026-09-16, and
+ * again by hand on this PR) that advice aims at the SMALLEST bucket and at an action the
+ * circuit has forbidden in this stretch — deleting a note is losing a measurement, and
+ * the three most obvious candidates were read whole and none of them qualified (thread
+ * `210`). A human who reads the alarm learns nothing about where the weight actually is.
+ * So the line prints the split instead, and offers no advice at all: the owner of the
+ * pile decides, and the number decides for them.
+ *
+ * THE THREE BUCKETS, DEFINED SO THAT TWO READERS GET THE SAME NUMBER (curator's §3, and
+ * the whole reason this is its own exported function pinned on a sample line). The index
+ * is a list of `- [Heading](file.md) — a hook in prose`. Per line:
+ *
+ * - `headings` — the VISIBLE text of every link, what is inside `[…]`;
+ * - `addresses` — every link's TARGET, its four bracket bytes, the list marker that opens
+ *   the line, the line terminator, and any residue between two links that carries no
+ *   letter and no digit (`; `, ` · `, `, ` — a separator is markup, not prose);
+ * - `prose` — everything else: hooks, connectives, explanations.
+ *
+ * A bush line carrying several links is not a special case: it is the same three buckets
+ * applied to every link on it. The sum of the three IS the byte length of the input —
+ * that is the invariant a test pins, because a split that only roughly adds up is exactly
+ * as useless as the advice it replaces.
+ */
+export type MemoryIndexSplit = {
+  readonly bytes: number;
+  readonly headings: number;
+  readonly addresses: number;
+  readonly prose: number;
+};
+
+/** `[label](target)`, non-greedy on both halves so a bush line splits link by link. */
+const INDEX_LINK = /\[([^\]\n]*)\]\(([^)\n]*)\)/g;
+/** What opens a list line: `- `, `* `, `+ `, `1. `, at any indent. */
+const LIST_MARKER = /^\s*(?:[-*+]|\d+\.)\s+/;
+/** A residue with neither letter nor digit is a separator, and separators are markup. */
+const CARRIES_A_WORD = /[\p{L}\p{N}]/u;
+
+const bytesOf = (text: string): number => Buffer.byteLength(text, "utf8");
+
+export const memoryIndexSplit = (index: string): MemoryIndexSplit => {
+  let headings = 0;
+  let addresses = 0;
+  let prose = 0;
+  const residue = (text: string): void => {
+    if (text.length === 0) return;
+    if (CARRIES_A_WORD.test(text)) prose += bytesOf(text);
+    else addresses += bytesOf(text);
+  };
+  // `split` and not a line iterator: the terminators are bytes too, and they are markup.
+  const lines = index.split("\n");
+  for (const [at, line] of lines.entries()) {
+    if (at < lines.length - 1) addresses += 1;
+    const marker = LIST_MARKER.exec(line);
+    const opened = marker === null ? 0 : marker[0].length;
+    addresses += bytesOf(line.slice(0, opened));
+    let last = opened;
+    INDEX_LINK.lastIndex = opened;
+    let link = INDEX_LINK.exec(line);
+    while (link !== null) {
+      residue(line.slice(last, link.index));
+      headings += bytesOf(link[1] ?? "");
+      addresses += bytesOf(link[2] ?? "") + "[]()".length;
+      last = link.index + link[0].length;
+      link = INDEX_LINK.exec(line);
+    }
+    residue(line.slice(last));
+  }
+  return { bytes: headings + addresses + prose, headings, addresses, prose };
+};
+
+/**
  * THE CEILING IS A MECHANISM, NOT AN AGREEMENT (john's requirement), AND ITS FIRING IS
- * LOUD — a line, by name, with both numbers in it. What it is NOT is a refusal to raise
+ * LOUD — a line, by name, with the numbers in it. What it is NOT is a refusal to raise
  * the session, and that is curator's measured recommendation adopted whole: stopping the
  * circuit over a table of contents costs more than the table of contents does. It is also
  * NOT a silent truncation — a pile quietly cut is a pile whose owner never learns it grew.
  *
- * Pure, and given the size rather than the path, so the sentence a human reads is pinned
- * by a test instead of by a directory that happens to exist on one box.
+ * Pure, and given the TEXT of the index rather than the path, so the sentence a human
+ * reads is pinned by a test instead of by a directory that happens to exist on one box.
+ * The text and not the size, since the split cannot be had from a size — that is the one
+ * thing this signature had to give up, and {@link memoryIndexAlarm} pays for it with one
+ * read of one ~24 KB file per raise.
+ *
+ * ONE LINE, STILL. A warning that became a paragraph is paid by every raise of every
+ * role (curator's §7), so the split rides inside the same sentence.
  */
 export const memoryIndexAlarmFor = (input: {
   readonly role: string;
-  readonly bytes: number;
+  readonly index: string;
   readonly limit?: number;
 }): string | undefined => {
   const limit = input.limit ?? MEMORY_INDEX_LIMIT_BYTES;
-  return input.bytes <= limit
+  const split = memoryIndexSplit(input.index);
+  return split.bytes <= limit
     ? undefined
-    : `memory: the index of '${input.role}' is ${input.bytes} bytes against a ceiling of ${limit} — it is loaded into the starting text of EVERY session of this role, so it is paid by every run and not by the runs that write it; prune it (a note that has moved into the role card, or one the card now contradicts, is a note that should be deleted, not shortened)`;
+    : `memory: the index of '${input.role}' is ${split.bytes} bytes against a ceiling of ${limit} — it is loaded into the starting text of EVERY session of this role, so it is paid by every run and not by the runs that write it; the weight is headings ${split.headings} bytes, addresses and markup ${split.addresses} bytes, prose ${split.prose} bytes`;
 };
 
 /**
@@ -151,7 +231,9 @@ export const memoryIndexAlarmFor = (input: {
  * raise. A missing index (a role that has never written a note) is not an alarm and not
  * an error: it is the normal first day. Anything else the file system refuses to say is
  * swallowed for the same reason the state directory is disposable — a ceiling that can
- * break a launch is worse than a ceiling that goes unread once.
+ * break a launch is worse than a ceiling that goes unread once. Reading the file rather
+ * than stat-ing it widens what can go wrong by exactly nothing: both throw into the same
+ * `catch`, and both are answered by silence.
  */
 export const memoryIndexAlarm = (input: {
   readonly directory: string;
@@ -159,10 +241,10 @@ export const memoryIndexAlarm = (input: {
   readonly limit?: number;
 }): string | undefined => {
   try {
-    const bytes = statSync(join(input.directory, MEMORY_INDEX)).size;
+    const index = readFileSync(join(input.directory, MEMORY_INDEX), "utf8");
     return memoryIndexAlarmFor({
       role: input.role,
-      bytes,
+      index,
       ...(input.limit === undefined ? {} : { limit: input.limit }),
     });
   } catch {
