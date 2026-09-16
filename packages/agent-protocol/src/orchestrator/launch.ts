@@ -1699,6 +1699,51 @@ const windDownNorm = (
 };
 
 /**
+ * THE QUESTION ABOUT A NOTE'S SUBJECT, ASKED AT EVERY RAISE (john's word of 2026-09-16,
+ * thread `213-role-memory-index-over-ceiling` §1: «вопрос о поводе задаётся при КАЖДОЙ
+ * записи в память, а не опцией»).
+ *
+ * THE DEFECT IT ANSWERS, MEASURED. `memory-cause.ts` has carried the whole mechanism since
+ * 2026-09-03 — a note that names an open subject dies with it, a note that names none
+ * lives — and in the field it has never fired once. Counted on curator's live pile on
+ * 2026-09-16: 0 of 177 notes declare a cause, while 138 of the 177 name a thread id in
+ * their BODY, which is exactly the place it is not a cause and never will be. That is not
+ * a backlog: the prompt the note is written by never asked. Nobody disobeyed a rule here;
+ * they were never given one to read at the moment they were writing.
+ *
+ * WHY IT IS SAID HERE AND NOT AT THE COMMAND. The text that tells a session to keep notes
+ * is the VENDOR'S — not one line of it is in this repository, and everything this package
+ * hands over about memory is a single settings key (`autoMemoryDirectory`, `memory.ts`).
+ * We cannot edit that paragraph, so the only words of ours that reach the session before
+ * it writes are these. An option on `journal write`/`new-message` would not have worked
+ * for a plainer reason: those commands do not write notes at all — the vendor does, at a
+ * moment it picks itself, so a flag would never meet a single write. Same ground as R19
+ * two comments down: the mechanism is the package's, and a capability nobody was told
+ * about does not exist.
+ *
+ * WHY BOTH ANSWERS ARE SPELLED OUT, AND WHY "NO CAUSE" IS SAID FIRST-CLASS. The asymmetry
+ * of the prices is the whole reason this paragraph is shaped as a CHECK and not as an
+ * invitation. A missing cause costs an index line somebody prunes by hand later; a WRONG
+ * cause costs the note itself — `extinguishNotes` deletes the file and cuts its pointer
+ * out of the index (`memory-cause.ts`), with no undo, no confirmation and no second look.
+ * A paragraph from which "declaring a cause is the good citizen's answer" can be read
+ * would therefore be worse than no paragraph at all, and the trap is not hypothetical: it
+ * was priced on the live pile in 2026-09-03 — read the body mentions as causes and 8 of
+ * `dev-core`'s 36 notes would have burned, every one of them still true today.
+ *
+ * IT CHANGES NOTHING FOR THE NOTES ALREADY WRITTEN, and that is a property of the code
+ * rather than a promise of the text: a note with no cause is `continue`d past by
+ * `planExtinction` before any thread is asked about, so all 177 stay long-lived exactly as
+ * they are. This paragraph can only affect notes written after it.
+ *
+ * SAID TO EVERY ROLE AND IN EVERY RUN, including one held to read-only tools: the pile is
+ * the role's, the vendor writes into it on its own schedule, and there is no run in which
+ * the form of a note is a different form.
+ */
+const memoryCauseNorm =
+  "WHEN YOU WRITE A NOTE INTO YOUR MEMORY, ANSWER ONE QUESTION ABOUT IT — the mechanism is this package's and nothing else will ask you: does this note have a SUBJECT THAT CAN CLOSE? Put it as a check and not as a preference: «the thread this note is about is closed — has the note become useless? YES → that thread is its cause, declare it; NO → do not write the field at all.» A cause is declared as `thread: <NNN-slug>` in the note's front matter, under `metadata:`; naming a thread in the BODY is prose and is never read as a cause. BOTH ANSWERS ARE CORRECT ENDINGS OF THAT CHECK. A note that declares NO cause is the long-lived sort — it is never extinguished automatically, ever — and that is the default rather than an omission: most of what is worth remembering (how a tool is built, what a command actually does, what a measurement showed) stays true until the tool changes. A note that DOES declare one dies with its subject: the first raise after that thread is closed deletes the file and cuts its line out of the index, with no undo and no second look. So the two mistakes do not cost the same, and when you are unsure, declare nothing — a missing cause costs an index line somebody prunes by hand, a wrong one costs the measurement itself, and nobody can get that back.";
+
+/**
  * The prompt for `claude -p` — from the role card (its `instructions`) and ONE
  * thread. Pure: the instruction texts are already read outside. "This thread
  * only" is stated firmly in the prompt: the S2 completion signal is bound to the
@@ -1774,6 +1819,8 @@ export const buildLaunchPrompt = (input: {
     runEndsNorm(mail, input),
     "",
     windDownNorm({ ...input, mail }),
+    "",
+    memoryCauseNorm,
     "",
     "--- ROLE CARD ---",
     "",

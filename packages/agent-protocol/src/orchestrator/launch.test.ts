@@ -351,6 +351,71 @@ describe("buildLaunchPrompt", () => {
 });
 
 /**
+ * THE QUESTION ABOUT A NOTE'S SUBJECT IS ASKED AT EVERY RAISE (thread
+ * `216-memory-cause-asked-at-every-write`, john's word of 2026-09-16).
+ *
+ * WHY THE TEXT IS PINNED AND NOT JUST ITS PRESENCE. The mechanism in `memory-cause.ts` has
+ * been complete since 2026-09-03 and has never fired: 0 of curator's 177 notes declare a
+ * cause, 138 name a thread in the BODY where it is not one. What was missing was the
+ * question, and the question only works if BOTH of its answers survive an edit — a version
+ * of this paragraph that merely invites a cause turns the most expensive mistake in the
+ * pile (a wrong cause deletes the note, no undo) into the obedient-looking one. So the
+ * "no cause" branch is asserted as hard as the other.
+ */
+describe("buildLaunchPrompt — the cause of a note is asked for at every raise (thread 216)", () => {
+  const base = {
+    role: "curator",
+    thread: "216-memory-cause-asked-at-every-write",
+    instructions: [{ path: "docs/roles/curator.md", text: "the card" }],
+    deadline: "2026-09-16T18:00:00Z",
+    windDownSeconds: 720,
+    mail: { command: "cli", root: "/mail/agent-comms", ref: "origin/main" },
+  } as const;
+
+  const prompt = buildLaunchPrompt(base);
+
+  it("asks the question as a CHECK, with the form the answer is written in", () => {
+    expect(prompt).toContain("SUBJECT THAT CAN CLOSE");
+    expect(prompt).toContain("has the note become useless?");
+    expect(prompt).toContain("`thread: <NNN-slug>`");
+    expect(prompt).toContain("under `metadata:`");
+    // The half of the rule the code already enforces, said where the note is written:
+    // a thread named in the prose is where it was learned, not what it is about.
+    expect(prompt).toContain("never read as a cause");
+  });
+
+  it("KEEPS 'no cause' a legal answer, in the paragraph's own words", () => {
+    // `planExtinction` skips a note with no cause before it asks about any thread, so this
+    // is the mechanism stated, not a courtesy: the default sort is the long-lived one.
+    expect(prompt).toContain("BOTH ANSWERS ARE CORRECT ENDINGS");
+    expect(prompt).toContain("do not write the field at all");
+    expect(prompt).toContain("never extinguished automatically");
+    expect(prompt).toContain("the default rather than an omission");
+  });
+
+  it("names the price of a WRONG cause, which is the irreversible one", () => {
+    expect(prompt).toContain("no undo");
+    expect(prompt).toContain("when you are unsure, declare nothing");
+  });
+
+  it("is said to a run that cannot write into the mail too — the pile is the role's either way", () => {
+    const heldBack = buildLaunchPrompt({
+      ...base,
+      mail: { ...base.mail, writesHeldBy: "the operator" },
+    });
+    expect(heldBack).toContain("WHEN YOU WRITE A NOTE INTO YOUR MEMORY");
+  });
+
+  it("stands apart from the wind-down norm — different subject, different remedy", () => {
+    const windDown = prompt.indexOf("YOUR RUN HAS A DEADLINE");
+    const memory = prompt.indexOf("WHEN YOU WRITE A NOTE INTO YOUR MEMORY");
+    expect(windDown).toBeGreaterThan(-1);
+    expect(windDown).toBeLessThan(memory);
+    expect(prompt.slice(windDown, memory)).toContain("\n\n");
+  });
+});
+
+/**
  * THE EMPTY TURN IS AN ENDING THE PROMPT NAMES (thread `140-silent-exit-exhausts-the-role`).
  *
  * WHY IT IS TESTED HERE AND NOT IN `PROTOCOL.md`. Norm 018 itself says that the text a
