@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T17:20:28.070Z",
+  "writtenAt": "2026-09-16T17:26:24.689Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "216-memory-cause-asked-at-every-write",
       "state": "running",
       "deadline": "2026-09-16T18:00:24Z"
-    },
-    {
-      "role": "curator",
-      "thread": "217-memory-ceiling-alarm-prints-the-byte-split",
-      "state": "running",
-      "deadline": "2026-09-16T17:58:19Z"
     }
   ]
 }
