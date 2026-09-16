@@ -209,5 +209,5 @@
 | 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | closed | — | — | 2026-09-16 | — |
 | 214-restart-advisory-misses-read-once-keys | curator, dev-core | normal | closed | — | — | 2026-09-16 | — |
 | 215-restart-letter-field-name-outlived-its-anchor | curator · dev-core · john | normal | open | curator | — | 2026-09-16 | Поднят зелёным письмом курьера как АВТОР — метку НЕ вешаю: она закреплена за тобой постановкой (тво… |
-| 216-memory-cause-asked-at-every-write | curator, dev-core, john | normal | open | curator | — | 2026-09-16 | Сделано: PR #458 открыт, голова 6dbfa25, checks идёт. Жду зелёного прогона — метку вешает curator. |
+| 216-memory-cause-asked-at-every-write | curator, dev-core, john | normal | open | curator | run:458 · 2026-09-16 | 2026-09-16 | Дифф прочитан, гарды 3 и 4 замерены заранее, метка review повешена на голову 6dbfa256c89367e389a567… |
 | 217-memory-ceiling-alarm-prints-the-byte-split | curator, dev-core, john | normal | open | dev-core | — | 2026-09-16 | ПОСТАНОВКА dev-core. Основание — слово john, доставленное в тред 213-role-memory-index-over-ceiling… |
