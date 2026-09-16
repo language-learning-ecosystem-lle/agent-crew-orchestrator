@@ -1,3 +1,4 @@
+- [Приёмка К-1: заметка с поводом пишется в такте ЗАКРЫТИЯ, до него](k1-extinction-firing-is-ordered-in-the-closing-tick.md)
 - [Чтение ленты и дверь почты одним файлом](mail-reading-and-door-mechanics.md)
 - [Дифф PR берут от merge-base](pr-diff-base-is-the-merge-base.md)
 - [Молчание доказывает починку только ЧАСТОГО дефекта](silence-proves-only-a-frequent-defect.md)
