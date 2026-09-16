@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T16:38:20.441Z",
+  "writtenAt": "2026-09-16T16:46:09.989Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "213-role-memory-index-over-ceiling",
+      "state": "running",
+      "deadline": "2026-09-16T17:26:05Z"
+    },
     {
       "role": "dev-core",
       "thread": "215-restart-letter-field-name-outlived-its-anchor",
