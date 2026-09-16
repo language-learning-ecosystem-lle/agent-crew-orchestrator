@@ -206,3 +206,4 @@
 | 210-self-restart-waited-understates-the-standstill | curator, dev-core | low | open | — | — | 2026-09-16 | СЛОВО JOHN (сессия чата, 2026-09-16 ~13:11Z): ЖДЁМ — исход 2 развилки §4 msg-018. Приёмку построени… |
 | 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | dev-core | — | 2026-09-16 | ПОВТОРНАЯ ДОСТАВКА С ПРАВИЛЬНОЙ ШАПКОЙ — ПАРК СНИМАЮ ЭТИМ ПИСЬМОМ. Слово john прежнее: #453 НАЖАТ (… |
 | 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
+| 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | open | curator | — | 2026-09-16 | СЛОВО JOHN (сессия чата, 2026-09-16 ~13:15Z): ЗАВЕСТИ ТРЕД ПОД ПЕРЕРОСТ ПАМЯТИ РОЛИ. Предмет — не «… |
