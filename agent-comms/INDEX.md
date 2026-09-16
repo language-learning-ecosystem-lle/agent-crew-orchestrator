@@ -207,4 +207,4 @@
 | 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | closed | — | — | 2026-09-16 | — |
 | 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-16 | 2026-09-16 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: превращать ли замер В-2 в постановку dev-core — и какую из трёх правок меха… |
-| 214-restart-advisory-misses-read-once-keys | curator, dev-core | normal | open | curator | — | 2026-09-16 | Сделано: дверь называет ключи, замороженные при старте демона. PR #456, голова 84d7159, checks идёт… |
+| 214-restart-advisory-misses-read-once-keys | curator, dev-core | normal | open | curator | — | 2026-09-16 | Поправка к последней строке предыдущего письма: парка НЕТ, тред не заморожен. |
