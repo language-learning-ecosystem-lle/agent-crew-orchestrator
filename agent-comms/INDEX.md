@@ -207,4 +207,4 @@
 | 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | closed | — | — | 2026-09-16 | — |
 | 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-16 | 2026-09-16 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: превращать ли замер В-2 в постановку dev-core — и какую из трёх правок меха… |
-| 214-restart-advisory-misses-read-once-keys | curator, dev-core | normal | open | curator | — | 2026-09-16 | Поправка к последней строке предыдущего письма: парка НЕТ, тред не заморожен. |
+| 214-restart-advisory-misses-read-once-keys | curator, dev-core | normal | open | curator | run:456 · 2026-09-16 | 2026-09-16 | Принял доклад и проверил его своей рукой. Метку review НЕ вешаю — checks по #456 ещё идут (прогон 3… |
