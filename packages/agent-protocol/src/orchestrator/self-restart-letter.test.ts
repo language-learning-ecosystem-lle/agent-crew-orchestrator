@@ -70,9 +70,36 @@ describe("planSelfRestartLetter — the four facts john required", () => {
     );
   });
 
-  it("says how long it WAITED for the sessions, in units a human reads", () => {
+  it("says how long it STOOD STILL on the old code, in units a human reads", () => {
     expect(planSelfRestartLetter({ change: changed, event: full, root }).body).toContain(
       "1 ч 10 мин (4230 с)",
+    );
+  });
+
+  /**
+   * THE CAPTION IS THE ASSERT, not the number (thread 215). The anchor of the subtraction is
+   * the moment the box went STALE since #455, so the old caption ("сколько ждал сессии") now
+   * reports a whole standstill as a vigil — and a reader takes the vigil for the whole of it
+   * and underestimates how early the box went stale. The number is untouched and is pinned
+   * above; what is pinned here is that the line does not promise the session wait, that it
+   * names the anchor it counts from, and that the old caption is GONE rather than joined by a
+   * second one.
+   */
+  it("prices the WHOLE standstill under that name, and never under the old one", () => {
+    const { body } = planSelfRestartLetter({ change: changed, event: full, root });
+    expect(body).toContain("**сколько простоял на старом коде:** 1 ч 10 мин (4230 с)");
+    expect(body).not.toContain("ждал сессии");
+    expect(body).toContain("простой ЦЕЛИКОМ, с `2026-09-06T15:49:30Z`");
+  });
+
+  /**
+   * AND THE VIGIL IS NOT LOST WITH THE CAPTION — it moves nowhere, it was always said in
+   * words by the opening sentence, off the same fact (the wait being known at all). This is
+   * what keeps john's fourth fact in the letter after the rename.
+   */
+  it("still states the vigil in words, where the number no longer claims it", () => {
+    expect(planSelfRestartLetter({ change: changed, event: full, root }).body).toContain(
+      "ДОЖДАЛСЯ живых сессий",
     );
   });
 
@@ -108,16 +135,16 @@ describe("planSelfRestartLetter — a fact that is NOT KNOWN is said, not droppe
     );
   });
 
-  it("says that the wait is not recorded — and never prints it as a zero", () => {
+  it("says that the standstill is not recorded — and never prints it as a zero", () => {
     const { body } = planSelfRestartLetter({ change: changed, event: old, root });
-    expect(body).toMatch(/сколько ждал сессии:.*не записано/);
-    expect(body).not.toContain("сколько ждал сессии:** 0 с");
+    expect(body).toMatch(/сколько простоял на старом коде:.*не записано/);
+    expect(body).not.toContain("сколько простоял на старом коде:** 0 с");
   });
 
-  it("says a short wait in seconds and a middling one in minutes", () => {
+  it("says a short standstill in seconds and a middling one in minutes", () => {
     expect(
       planSelfRestartLetter({ change: changed, event: { ...full, waitedForSec: 42 }, root }).body,
-    ).toContain("сколько ждал сессии:** 42 с");
+    ).toContain("сколько простоял на старом коде:** 42 с");
     expect(
       planSelfRestartLetter({ change: changed, event: { ...full, waitedForSec: 600 }, root }).body,
     ).toContain("10 мин (600 с)");
@@ -771,8 +798,8 @@ describe("the seam: the memory that survived the exit → the letter", () => {
     };
 
     it("never prices the drain at zero — the very cost the letter is written to report", () => {
-      expect(body()).not.toContain("сколько ждал сессии:** 0 с");
-      expect(body()).toMatch(/сколько ждал сессии:.*не записано/);
+      expect(body()).not.toContain("сколько простоял на старом коде:** 0 с");
+      expect(body()).toMatch(/сколько простоял на старом коде:.*не записано/);
     });
 
     it("does not date the restart by the start of the drain", () => {
