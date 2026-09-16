@@ -500,6 +500,17 @@ export const describePowerDocuments = (documents: readonly PowerDocument[]): rea
  * their content, so what is known here is that the diff TOUCHES the file that carries the
  * number — and the line says exactly that, conditionally, rather than asserting a bump it
  * has not read. An "if" the reader can check beats a claim they cannot.
+ *
+ * AND `protocolVersion` IS NOT THE ONLY KEY THE BUTTON DOES NOT DELIVER (thread 214,
+ * measured in thread 211 on PR #453). The daemon resolves part of this file ONCE, at
+ * startup, and the tick then counts by the frozen copy: the pair ceilings
+ * (`cli.ts` — `daemonConfig` → `pairCeilings` in the planner), the role registry it raises
+ * from, the launch scope of the instance and the child environment. A merged `parallelism`
+ * of 5 under a daemon started on 3 is therefore a box that reports the new number and plans
+ * by the old one, with nothing ringing about the gap — which is the case this paragraph
+ * came from. The keys are NAMED rather than summarised as "the config", because the rest of
+ * the file (`mail.branch`, `mail.dir`, `review.label`) IS re-read every tick, and a line
+ * that told the reader to restart for those would be a line they learn to ignore.
  */
 export const describeVersionBumpFollowUp = (input: {
   readonly changedPaths: readonly string[];
@@ -508,7 +519,7 @@ export const describeVersionBumpFollowUp = (input: {
   const config = normalise(input.configPath);
   if (!input.changedPaths.map(normalise).some((path) => path === config)) return [];
   return [
-    `merge-gate: this diff touches '${input.configPath}' — IF it moves 'protocolVersion', THE BUTTON IS NOT THE END: every box running the circuit refuses every command until its build is pulled. After the merge, on each box: git pull --ff-only && pnpm install && systemctl --user restart agent-protocol@<instance>`,
+    `merge-gate: this diff touches '${input.configPath}' — THE BUTTON IS NOT THE END. IF it moves 'protocolVersion', every box running the circuit refuses every command until its build is pulled. AND SOME KEYS ARE READ ONCE, AT DAEMON STARTUP, so merging them moves nothing under a daemon already running: 'parallelism.*' (the pair ceilings the planner counts to), 'roles[]' (who this box can raise, and the launch profile it raises them with), 'instances' (which of those roles are this one's) and 'orchestrator.env' (the environment of the child) take effect only at its next start — until then the box plans by the old numbers. After the merge, on each box: git pull --ff-only && pnpm install && systemctl --user restart agent-protocol@<instance>`,
     "merge-gate: say that line in the merge trace of the thread — a bump merged in silence is the one class this circuit cannot notice for itself until the watchdog rings",
   ];
 };

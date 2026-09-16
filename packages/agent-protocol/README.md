@@ -3137,19 +3137,33 @@ short one is exactly what a forgotten flag produced.
 
 **And the door names the work a merge leaves on the boxes** (thread 040). When the diff
 touches the protocol config, the last two lines the command prints are not a guard and
-change no verdict — they say that IF this diff moves `protocolVersion`, the button is not
-the end: every box running the circuit refuses every command until its build is pulled.
+change no verdict — they say that the button is not the end: IF this diff moves
+`protocolVersion`, every box running the circuit refuses every command until its build is
+pulled, and there are keys a merge does not deliver at all until the box is restarted.
 
 ```
-merge-gate: this diff touches 'agent-protocol.json' — IF it moves 'protocolVersion', THE
-BUTTON IS NOT THE END: every box running the circuit refuses every command until its build
-is pulled. After the merge, on each box: git pull --ff-only && pnpm install && systemctl
---user restart agent-protocol@<instance>
+merge-gate: this diff touches 'agent-protocol.json' — THE BUTTON IS NOT THE END. IF it
+moves 'protocolVersion', every box running the circuit refuses every command until its
+build is pulled. AND SOME KEYS ARE READ ONCE, AT DAEMON STARTUP, so merging them moves
+nothing under a daemon already running: 'parallelism.*' (the pair ceilings the planner
+counts to), 'roles[]' (who this box can raise, and the launch profile it raises them
+with), 'instances' (which of those roles are this one's) and 'orchestrator.env' (the
+environment of the child) take effect only at its next start — until then the box plans by
+the old numbers. After the merge, on each box: git pull --ff-only && pnpm install &&
+systemctl --user restart agent-protocol@<instance>
 ```
 
 The wording is conditional on purpose: the gate reads the NAMES of the changed files and
 not their content, so what it knows is that the file carrying the number was touched. An
 "if" a reader can check beats a claim they cannot.
+
+The read-once keys are NAMED one by one, and that is the same discipline (thread 214,
+measured on PR #453 in thread 211: a `parallelism` of 5 merged under a daemon started on 3
+planned by 3 for another four minutes, and nothing rang). The rest of the file —
+`mail.branch`, `mail.dir`, `review.label` — IS re-read every tick, so a line that told the
+reader to restart for "the config" would over-claim on most diffs, which is how an advisory
+becomes noise. The door has no hand on any box either way: the restart is a recommendation,
+never a verdict.
 
 **But a role's instructions are not always a document of power** (john's decision of
 2026-07-28, on the reviewer's finding against the first version of this command): the
