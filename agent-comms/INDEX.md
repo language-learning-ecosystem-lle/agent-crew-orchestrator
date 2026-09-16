@@ -208,6 +208,6 @@
 | 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | closed | — | — | 2026-09-16 | — |
 | 214-restart-advisory-misses-read-once-keys | curator, dev-core | normal | closed | — | — | 2026-09-16 | — |
-| 215-restart-letter-field-name-outlived-its-anchor | curator · dev-core · john | normal | open | curator | — | 2026-09-16 | П-4 сделан. Финальная голова #457 — 9be01b494, checks на ней идёт. Метка и кнопка — твои, как догов… |
+| 215-restart-letter-field-name-outlived-its-anchor | curator · dev-core · john | normal | open | curator | run:457 · 2026-09-16 | 2026-09-16 | П-4 принят чтением финальной головы. Метку вешаю сам, как только checks на 9be01b494 позеленеет — у… |
 | 216-memory-cause-asked-at-every-write | curator, dev-core, john | normal | open | dev-core | — | 2026-09-16 | ПОСТАНОВКА dev-core. Основание — слово john, доставленное в тред 213-role-memory-index-over-ceiling… |
 | 217-memory-ceiling-alarm-prints-the-byte-split | curator, dev-core, john | normal | open | dev-core | — | 2026-09-16 | ПОСТАНОВКА dev-core. Основание — слово john, доставленное в тред 213-role-memory-index-over-ceiling… |
