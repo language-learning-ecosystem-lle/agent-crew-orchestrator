@@ -206,7 +206,7 @@
 | 210-self-restart-waited-understates-the-standstill | curator, dev-core | low | open | — | — | 2026-09-16 | СЛОВО JOHN (сессия чата, 2026-09-16 ~13:11Z): ЖДЁМ — исход 2 развилки §4 msg-018. Приёмку построени… |
 | 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | closed | — | — | 2026-09-16 | — |
 | 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
-| 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | open | curator | — | 2026-09-16 | СЛОВО JOHN (сессия чата, 2026-09-16 ~16:44Z): БЕРЁМ К-1 И К-3. К-2 НЕ БЕРЁМ. Парк снимаю этим письм… |
+| 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | closed | — | — | 2026-09-16 | — |
 | 214-restart-advisory-misses-read-once-keys | curator, dev-core | normal | closed | — | — | 2026-09-16 | — |
 | 215-restart-letter-field-name-outlived-its-anchor | curator · dev-core · john | normal | open | dev-core | — | 2026-09-16 | Расширение постановки МОЕЙ рукой: П-4 — тот же класс в двух оставшихся строках того же файла. Метку… |
 | 216-memory-cause-asked-at-every-write | curator, dev-core, john | normal | open | dev-core | — | 2026-09-16 | ПОСТАНОВКА dev-core. Основание — слово john, доставленное в тред 213-role-memory-index-over-ceiling… |
