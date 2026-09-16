@@ -292,12 +292,31 @@ export const executableChange = (input: {
  */
 const STANDSTILL = "сколько простоял на старом коде";
 
+/**
+ * AND THE STAMP ITSELF IS NAMED BY ITS ROLE, in the two places the letter has to mention it
+ * (thread 215, curator's П-4: the same class as the caption above, in the branch where it was
+ * not noticed). "НАЧАЛО СЛИВА" was the true name while the first drain tick stamped it, and
+ * #455 left it true in only one of two cases: `rememberSelfRestartDrain` writes
+ * `drainSinceInProgress(...) ?? driftAnchor(...) ?? at` (`self-restart.ts:421`), so the stamp
+ * is the committer date of the oldest missing commit — the moment the box went STALE —
+ * whenever git could date the drift, and the first drain tick only when it could not.
+ *
+ * THE FILE CANNOT TELL A READER WHICH ONE IT IS: the two write one field. So neither literal
+ * name is safe, and what is true of both is the stamp's ROLE — the anchor the standstill is
+ * counted from — said with the same word "простой" the caption above uses, so that two lines
+ * of one letter do not call one quantity by two names.
+ *
+ * ONE CONSTANT FOR BOTH SITES, for the reason this whole thread exists: a name kept in two
+ * copies is a name whose second copy outlives the first move of its anchor.
+ */
+const STANDSTILL_ANCHOR = "ЯКОРЬ ПРОСТОЯ";
+
 const waitedLine = (event: SelfRestartEvent): string => {
   const sec = event.waitedForSec;
   if (event.repair === "unrecorded")
-    return `- **${STANDSTILL}:** не записано — ход себя в памяти не отметил, а лежащий там штамп — начало слива${
+    return `- **${STANDSTILL}:** не записано — ход себя в памяти не отметил, а лежащий там штамп${
       event.drainSince === undefined ? "" : ` (\`${event.drainSince}\`)`
-    }, из которого длительность не вычитается`;
+    } — ${STANDSTILL_ANCHOR}, из которого длительность не вычитается: второго конца, хода, в памяти нет`;
   if (sec === undefined)
     return `- **${STANDSTILL}:** не записано — файл памяти писан кодом до \`drainSince\``;
   const since =
@@ -407,12 +426,14 @@ export const planSelfRestartLetter = (input: {
     // "WHEN IT WENT" IS A FACT ABOUT THE GO, so it is printed only when a go was recorded.
     // The record of an interrupted drain holds one stamp and it answers a different
     // question — printing that one here is what told the field reader the box went at
-    // 12:30:57 when at 12:30:57 it had only started waiting.
+    // 12:30:57 when at 12:30:57 it had only started waiting. WHAT that stamp is instead is
+    // said by {@link STANDSTILL_ANCHOR}: the essential claim of this clause — that it is NOT
+    // the moment of the restart — was and stays true; only its name moved with the anchor.
     event.wentAt === undefined
       ? `- **когда пошёл:** не записано — хода по пути ремонта в памяти нет${
           event.drainSince === undefined
             ? ""
-            : `; \`${event.drainSince}\` в ней — это НАЧАЛО СЛИВА, а не момент перезапуска`
+            : `; \`${event.drainSince}\` в ней — это ${STANDSTILL_ANCHOR}, а не момент перезапуска`
         }`
       : `- **когда пошёл:** ${event.wentAt}`,
     executableLine(input.change),

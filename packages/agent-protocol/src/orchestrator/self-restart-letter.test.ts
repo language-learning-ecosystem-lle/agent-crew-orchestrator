@@ -804,10 +804,32 @@ describe("the seam: the memory that survived the exit → the letter", () => {
 
     it("does not date the restart by the start of the drain", () => {
       expect(body()).toMatch(/когда пошёл:.*не записано/);
-      // The stamp may still appear — as the start of the drain, under that name — and it
-      // may never stand alone after "когда пошёл:".
+      // The stamp may still appear — under the name of its ROLE, below — and it may never
+      // stand alone after "когда пошёл:".
       expect(body()).not.toContain("**когда пошёл:** 2026-09-08T12:30:57Z");
-      expect(body()).toContain("НАЧАЛО СЛИВА");
+      expect(body()).toContain("ЯКОРЬ ПРОСТОЯ");
+    });
+
+    /**
+     * THE STAMP IS NAMED BY ITS ROLE IN BOTH LINES THAT MENTION IT (thread 215, П-4). After
+     * #455 `drainSince` is the committer date of the oldest missing commit whenever git could
+     * date the drift, and the first drain tick only when it could not — one field for two
+     * origins, so "НАЧАЛО СЛИВА" is a name that is false in the ordinary case. This branch is
+     * the reason the unit is the acceptance and the field is not: `unrecorded` does not print
+     * in an ordinary self-restart episode at all.
+     *
+     * BOTH LINES ARE ASSERTED, not one: the caption line and the "когда пошёл" line held two
+     * copies of the name, which is exactly how the first copy of this defect survived its
+     * anchor moving under it.
+     */
+    it("names the stamp by its ROLE in both lines, and nowhere as the start of the drain", () => {
+      expect(body()).not.toContain("НАЧАЛО СЛИВА");
+      expect(body()).not.toContain("начало слива");
+      // The caption line — the stamp lies there, and it is an anchor, not a duration.
+      expect(body()).toMatch(/сколько простоял на старом коде:.*ЯКОРЬ ПРОСТОЯ/);
+      expect(body()).toContain("(`2026-09-08T12:30:57Z`) — ЯКОРЬ ПРОСТОЯ");
+      // ...and the "когда пошёл" line, whose essential claim is untouched.
+      expect(body()).toMatch(/когда пошёл:.*ЯКОРЬ ПРОСТОЯ, а не момент перезапуска/);
     });
 
     it("does not report a repair, in the heading or in the opening sentence", () => {
