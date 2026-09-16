@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T16:52:39.948Z",
+  "writtenAt": "2026-09-16T16:53:25.644Z",
   "roles": [
     "curator",
     "dev-core",
@@ -25,6 +25,12 @@
       "thread": "215-restart-letter-field-name-outlived-its-anchor",
       "state": "draining",
       "deadline": "2026-09-16T17:28:06Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "216-memory-cause-asked-at-every-write",
+      "state": "running",
+      "deadline": "2026-09-16T17:53:21Z"
     }
   ]
 }
