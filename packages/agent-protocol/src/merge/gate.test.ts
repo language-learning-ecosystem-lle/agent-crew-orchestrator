@@ -1871,6 +1871,34 @@ describe("the follow-up a schema bump leaves on the boxes", () => {
     expect(lines).toContain("IF it moves");
   });
 
+  /**
+   * THE HALF THE LINE USED TO LEAVE OUT (thread 214, measured on PR #453 in thread 211).
+   * `protocolVersion` is not the only key the button fails to deliver: the daemon freezes
+   * the ceilings, the registry, the scope and the child environment at startup, so a merged
+   * `parallelism` of 5 plans as 3 until the restart and nothing rings about it. The names
+   * are pinned here one by one because the value of the line is precisely that a reader can
+   * check their own diff against it.
+   */
+  it("names the keys the daemon freezes at startup, not just the version", () => {
+    const lines = describeVersionBumpFollowUp({
+      changedPaths: ["agent-protocol.json"],
+      configPath: "agent-protocol.json",
+    }).join("\n");
+    expect(lines).toContain("protocolVersion");
+    expect(lines).toContain("parallelism");
+    expect(lines).toContain("roles[]");
+    expect(lines).toContain("instances");
+    expect(lines).toContain("orchestrator.env");
+    expect(lines).toContain("READ ONCE, AT DAEMON STARTUP");
+    // THE NEGATIVE CONTROL, and it is the reason the keys are named rather than the file:
+    // these three ARE re-read every tick (`cli.ts` calls `configFrom` for them inside the
+    // loop), so a line that sent the reader to `systemctl` for them would be teaching them
+    // that the advisory over-claims.
+    expect(lines).not.toContain("mail.branch");
+    expect(lines).not.toContain("mail.dir");
+    expect(lines).not.toContain("review.label");
+  });
+
   it("is silent on a diff that leaves the config alone — a warning on every PR is noise", () => {
     expect(
       describeVersionBumpFollowUp({
