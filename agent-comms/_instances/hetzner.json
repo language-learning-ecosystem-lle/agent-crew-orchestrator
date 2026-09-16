@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T17:11:50.255Z",
+  "writtenAt": "2026-09-16T17:11:57.329Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "216-memory-cause-asked-at-every-write",
-      "state": "draining",
-      "deadline": "2026-09-16T17:53:21Z"
-    },
     {
       "role": "dev-core",
       "thread": "217-memory-ceiling-alarm-prints-the-byte-split",
