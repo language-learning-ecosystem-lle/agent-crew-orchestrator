@@ -255,33 +255,79 @@ export const executableChange = (input: {
 };
 
 /**
- * "СКОЛЬКО ЖДАЛ СЕССИЮ", and the case where the answer is not known.
+ * THE CAPTION OF THE NUMBER, AND IT IS NO LONGER "СКОЛЬКО ЖДАЛ СЕССИЮ" (thread 215).
+ *
+ * John's requirement over this package named four facts and the fourth of them was the wait
+ * for the sessions — and while the anchor of the subtraction was the FIRST DRAIN TICK, that
+ * caption was exactly right: the box stamped the moment it decided to wait, and the number
+ * was the length of the vigil. #455 (thread 210) moved the anchor to the committer date of
+ * the oldest commit this process lacks — the moment the box became STALE — because the old
+ * anchor dropped everything between going stale and noticing it. The number is right and is
+ * not touched here: it is now THE WHOLE STANDSTILL on the old code, of which the vigil is the
+ * tail. The caption stayed behind, and a reader taking a standstill for a vigil underestimates
+ * exactly how early the box went stale — measured in the field the same tick that accepted
+ * #455: `254 с` printed under "ждал сессии" against a drain that opened at `13:50:33Z` over
+ * an anchor of `13:46:19Z` (thread 161, letter `2026-09-16T14:02:12Z`).
+ *
+ * THE VIGIL IS NOT LOST WITH THE CAPTION: that the box waited the live sessions out and broke
+ * none of them is what {@link drainSentence} says, in words, from the same `waitedForSec`
+ * being known at all. What this line stops claiming is that the NUMBER measures it.
+ *
+ * THE ANCHOR IS PRINTED BESIDE THE NUMBER rather than described, because it is the only thing
+ * that makes the new caption checkable — and it is the same value `daemon.log` prints as
+ * `drifting for … (since T)`, so the letter and the log name one moment. It is never absent
+ * on this branch: a finite `waitedForSec` is a subtraction from a parsed `drainSince`.
  *
  * `waitedForSec` is a subtraction of two stamps and it is ABSENT whenever the memory
  * predates `drainSince`, the pair came out backwards, or the go never advanced the record
  * it is subtracted from. That absence is said in words rather than printed as a zero:
- * "waited nothing" and "how long it waited is not recorded" are different facts about the
- * box, and the field case of thread 173 is what the difference costs — ten minutes of drain,
- * during which the box raised nobody, printed as `0 с`, in the very letter written to say
- * what the restart cost.
+ * "stood still for no time" and "how long it stood is not recorded" are different facts about
+ * the box, and the field case of thread 173 is what the difference costs — ten minutes of
+ * drain, during which the box raised nobody, printed as `0 с`, in the very letter written to
+ * say what the restart cost.
  *
  * WHICH OF THE ABSENCES IT IS gets named, because the two send a reader to different places:
  * an old memory is a fact about the code that wrote the file, an unrecorded go is a fact
  * about how this box came up.
  */
+const STANDSTILL = "сколько простоял на старом коде";
+
+/**
+ * AND THE STAMP ITSELF IS NAMED BY ITS ROLE, in the two places the letter has to mention it
+ * (thread 215, curator's П-4: the same class as the caption above, in the branch where it was
+ * not noticed). "НАЧАЛО СЛИВА" was the true name while the first drain tick stamped it, and
+ * #455 left it true in only one of two cases: `rememberSelfRestartDrain` writes
+ * `drainSinceInProgress(...) ?? driftAnchor(...) ?? at` (`self-restart.ts:421`), so the stamp
+ * is the committer date of the oldest missing commit — the moment the box went STALE —
+ * whenever git could date the drift, and the first drain tick only when it could not.
+ *
+ * THE FILE CANNOT TELL A READER WHICH ONE IT IS: the two write one field. So neither literal
+ * name is safe, and what is true of both is the stamp's ROLE — the anchor the standstill is
+ * counted from — said with the same word "простой" the caption above uses, so that two lines
+ * of one letter do not call one quantity by two names.
+ *
+ * ONE CONSTANT FOR BOTH SITES, for the reason this whole thread exists: a name kept in two
+ * copies is a name whose second copy outlives the first move of its anchor.
+ */
+const STANDSTILL_ANCHOR = "ЯКОРЬ ПРОСТОЯ";
+
 const waitedLine = (event: SelfRestartEvent): string => {
   const sec = event.waitedForSec;
   if (event.repair === "unrecorded")
-    return `- **сколько ждал сессии:** не записано — ход себя в памяти не отметил, а лежащий там штамп — начало слива${
+    return `- **${STANDSTILL}:** не записано — ход себя в памяти не отметил, а лежащий там штамп${
       event.drainSince === undefined ? "" : ` (\`${event.drainSince}\`)`
-    }, из которого длительность не вычитается`;
+    } — ${STANDSTILL_ANCHOR}, из которого длительность не вычитается: второго конца, хода, в памяти нет`;
   if (sec === undefined)
-    return "- **сколько ждал сессии:** не записано — файл памяти писан кодом до `drainSince`";
-  if (sec < 60) return `- **сколько ждал сессии:** ${sec} с`;
+    return `- **${STANDSTILL}:** не записано — файл памяти писан кодом до \`drainSince\``;
+  const since =
+    event.drainSince === undefined
+      ? ""
+      : ` — простой ЦЕЛИКОМ, с \`${event.drainSince}\`: ожидание живых сессий — его хвост, а не вся величина`;
+  if (sec < 60) return `- **${STANDSTILL}:** ${sec} с${since}`;
   const minutes = Math.floor(sec / 60);
-  if (minutes < 60) return `- **сколько ждал сессии:** ${minutes} мин (${sec} с)`;
+  if (minutes < 60) return `- **${STANDSTILL}:** ${minutes} мин (${sec} с)${since}`;
   const hours = Math.floor(minutes / 60);
-  return `- **сколько ждал сессии:** ${hours} ч ${minutes % 60} мин (${sec} с)`;
+  return `- **${STANDSTILL}:** ${hours} ч ${minutes % 60} мин (${sec} с)${since}`;
 };
 
 /**
@@ -380,12 +426,14 @@ export const planSelfRestartLetter = (input: {
     // "WHEN IT WENT" IS A FACT ABOUT THE GO, so it is printed only when a go was recorded.
     // The record of an interrupted drain holds one stamp and it answers a different
     // question — printing that one here is what told the field reader the box went at
-    // 12:30:57 when at 12:30:57 it had only started waiting.
+    // 12:30:57 when at 12:30:57 it had only started waiting. WHAT that stamp is instead is
+    // said by {@link STANDSTILL_ANCHOR}: the essential claim of this clause — that it is NOT
+    // the moment of the restart — was and stays true; only its name moved with the anchor.
     event.wentAt === undefined
       ? `- **когда пошёл:** не записано — хода по пути ремонта в памяти нет${
           event.drainSince === undefined
             ? ""
-            : `; \`${event.drainSince}\` в ней — это НАЧАЛО СЛИВА, а не момент перезапуска`
+            : `; \`${event.drainSince}\` в ней — это ${STANDSTILL_ANCHOR}, а не момент перезапуска`
         }`
       : `- **когда пошёл:** ${event.wentAt}`,
     executableLine(input.change),
