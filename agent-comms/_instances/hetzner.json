@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T13:25:30.749Z",
+  "writtenAt": "2026-09-16T13:25:54.083Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "211-parallelism-ceiling-config-says-three",
-      "state": "draining",
-      "deadline": "2026-09-16T13:57:53Z"
-    },
     {
       "role": "dev-core",
       "thread": "214-restart-advisory-misses-read-once-keys",
