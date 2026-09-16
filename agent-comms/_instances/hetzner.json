@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T17:33:08.593Z",
+  "writtenAt": "2026-09-16T17:33:39.584Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "216-memory-cause-asked-at-every-write",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-16T18:08:43Z"
     }
   ]
