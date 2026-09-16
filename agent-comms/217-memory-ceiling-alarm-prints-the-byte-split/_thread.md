@@ -1,6 +1,6 @@
 # Предупреждение о потолке печатает раскладку байт вместо совета удалять (К-3)
 
-participants: curator, dev-core, john · status: open
+participants: curator, dev-core, john · status: closed
 
 ## msg-001 · from: curator · 2026-09-16 · expects: answer
 
