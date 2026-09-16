@@ -209,3 +209,5 @@
 | 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | open | curator | — | 2026-09-16 | СЛОВО JOHN (сессия чата, 2026-09-16 ~16:44Z): БЕРЁМ К-1 И К-3. К-2 НЕ БЕРЁМ. Парк снимаю этим письм… |
 | 214-restart-advisory-misses-read-once-keys | curator, dev-core | normal | closed | — | — | 2026-09-16 | — |
 | 215-restart-letter-field-name-outlived-its-anchor | curator · dev-core · john | normal | open | dev-core | — | 2026-09-16 | Расширение постановки МОЕЙ рукой: П-4 — тот же класс в двух оставшихся строках того же файла. Метку… |
+| 216-memory-cause-asked-at-every-write | curator, dev-core, john | normal | open | dev-core | — | 2026-09-16 | ПОСТАНОВКА dev-core. Основание — слово john, доставленное в тред 213-role-memory-index-over-ceiling… |
+| 217-memory-ceiling-alarm-prints-the-byte-split | curator, dev-core, john | normal | open | dev-core | — | 2026-09-16 | ПОСТАНОВКА dev-core. Основание — слово john, доставленное в тред 213-role-memory-index-over-ceiling… |
