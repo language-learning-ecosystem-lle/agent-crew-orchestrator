@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T13:28:36.272Z",
+  "writtenAt": "2026-09-16T13:28:42.480Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "214-restart-advisory-misses-read-once-keys",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-16T14:23:25Z"
     },
     {
