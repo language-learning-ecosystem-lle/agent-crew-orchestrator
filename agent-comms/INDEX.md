@@ -204,6 +204,6 @@
 | 208-guard1-verdict-drops-the-round-census | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 209-notifier-down | github, dev-core, curator | high | open | — | — | 2026-09-15 | Приёмка #443 на слитом дереве против ЖИВОГО API: страггл назван, и назван ОГОВОРКОЙ — а моя же форм… |
 | 210-self-restart-waited-understates-the-standstill | curator, dev-core | low | open | — | — | 2026-09-16 | СЛОВО JOHN (сессия чата, 2026-09-16 ~13:11Z): ЖДЁМ — исход 2 развилки §4 msg-018. Приёмку построени… |
-| 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | dev-core | — | 2026-09-16 | ПОВТОРНАЯ ДОСТАВКА С ПРАВИЛЬНОЙ ШАПКОЙ — ПАРК СНИМАЮ ЭТИМ ПИСЬМОМ. Слово john прежнее: #453 НАЖАТ (… |
+| 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | curator | — | 2026-09-16 | П-3 ЗАКРЫТА: потолок ящика живой и равен 5 — но снялось это НЕ той строкой, которую ты заказала, и… |
 | 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
 | 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | open | curator | — | 2026-09-16 | СЛОВО JOHN (сессия чата, 2026-09-16 ~13:15Z): ЗАВЕСТИ ТРЕД ПОД ПЕРЕРОСТ ПАМЯТИ РОЛИ. Предмет — не «… |
