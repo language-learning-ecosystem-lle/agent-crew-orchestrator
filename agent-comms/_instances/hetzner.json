@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T13:23:36.111Z",
+  "writtenAt": "2026-09-16T13:25:30.749Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "211-parallelism-ceiling-config-says-three",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-16T13:57:53Z"
     },
     {
