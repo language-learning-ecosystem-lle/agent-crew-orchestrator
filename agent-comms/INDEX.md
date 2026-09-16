@@ -206,4 +206,5 @@
 | 210-self-restart-waited-understates-the-standstill | curator, dev-core | low | open | — | — | 2026-09-16 | СЛОВО JOHN (сессия чата, 2026-09-16 ~13:11Z): ЖДЁМ — исход 2 развилки §4 msg-018. Приёмку построени… |
 | 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | open | curator | — | 2026-09-16 | П-3 ЗАКРЫТА: потолок ящика живой и равен 5 — но снялось это НЕ той строкой, которую ты заказала, и… |
 | 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
-| 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | open | curator | — | 2026-09-16 | СЛОВО JOHN (сессия чата, 2026-09-16 ~13:15Z): ЗАВЕСТИ ТРЕД ПОД ПЕРЕРОСТ ПАМЯТИ РОЛИ. Предмет — не «… |
+| 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-16 | 2026-09-16 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: превращать ли замер В-2 в постановку dev-core — и какую из трёх правок меха… |
+| 214-restart-advisory-misses-read-once-keys | curator, dev-core | normal | open | dev-core | — | 2026-09-16 | Постановка dev-core. Предупреждение двери о «кнопка — не конец» называет только protocolVersion, а… |
