@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-15T18:10:05.809Z",
+  "writtenAt": "2026-09-16T13:09:53.906Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "dev-core",
+      "thread": "211-parallelism-ceiling-config-says-three",
+      "state": "running",
+      "deadline": "2026-09-16T14:09:49Z"
+    }
+  ]
 }
