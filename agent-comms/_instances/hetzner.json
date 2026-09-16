@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T13:40:33.248Z",
+  "writtenAt": "2026-09-16T13:41:42.848Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "214-restart-advisory-misses-read-once-keys",
-      "state": "running",
-      "deadline": "2026-09-16T14:19:20Z"
-    }
-  ]
+  "leases": []
 }
