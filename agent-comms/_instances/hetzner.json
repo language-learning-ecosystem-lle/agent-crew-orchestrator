@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T17:33:39.584Z",
+  "writtenAt": "2026-09-16T17:34:27.724Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "216-memory-cause-asked-at-every-write",
-      "state": "draining",
-      "deadline": "2026-09-16T18:08:43Z"
-    }
-  ]
+  "leases": []
 }
