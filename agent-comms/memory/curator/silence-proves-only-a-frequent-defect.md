@@ -32,3 +32,7 @@ metadata:
 ([[acceptance-evidence-may-land-in-a-foreign-feed]]). Закрытие треда против буквально
 названного john критерия приёмки — то же «сам поставил → сам принял»
 ([[declared-acceptance-rots-by-a-neighbour-fix]], [[named-forms-in-a-statement-may-not-bind]]).
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Молчание доказывает починку только ЧАСТОГО дефекта](silence-proves-only-a-frequent-defect.md) — одно окно, два вердикта: сперва «как часто печаталось», потом «сколько смотрел»

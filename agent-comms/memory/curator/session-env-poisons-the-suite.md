@@ -38,3 +38,7 @@ npx vitest run` — три переменные GIT_CONFIG снимаются В
 у `merge/gate.process.test.ts` под параллельной нагрузкой (отдельно файл `47 passed` за 113 с).
 Пятый красный перегоняй ОДИН, прежде чем звать дефектом ([[own-hand-crutches-hide-the-defect]],
 [[reproduce-with-the-tool-that-measured]]). Нужно это на кнопке — [[base-move-note-answered-by-measure]].
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Окружение сессии травит сюиту](session-env-poisons-the-suite.md) — 191 красный и на чистом `main`

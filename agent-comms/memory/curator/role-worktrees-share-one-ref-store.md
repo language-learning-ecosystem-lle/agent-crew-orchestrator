@@ -44,3 +44,7 @@ metadata:
 строка работает; `node_modules/` в `.gitignore` первой строкой, дерево остаётся чистым. Демон
 устанавливать НЕ станет — это решение john треда `085` записано прямо в `workspace-package.ts` («it
 does not install anything… this door NAMES the fault and a human repairs it»).
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Деревья ролей делят один склад refs](role-worktrees-share-one-ref-store.md) — чужой тег виден без `fetch`

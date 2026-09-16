@@ -45,3 +45,7 @@ delivered`, и это один блок (сторож на `mail + 1`, `telegram
 письма в треде-приёмнике. Тот же класс с другой стороны: [[delta-gated-watcher-is-silent-on-a-clean-tree]],
 [[courier-journal-is-not-a-delivery-oracle]], [[merged-code-is-not-running-code]],
 [[daemon-log-echoes-your-own-output]].
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Молчание сторожа мерится доставленным дайджестом](watcher-silence-needs-a-delivered-digest.md) — окно ищут по `telegram`

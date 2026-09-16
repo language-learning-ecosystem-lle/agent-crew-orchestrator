@@ -28,3 +28,7 @@ the same PR — otherwise the circuit halts on its own repository». `agent-prot
 [[version-bump-ascends-to-johns-acceptance]] — та про `version` ПАКЕТА и про гард 3, эта про
 `protocolVersion` СХЕМЫ и про гард 4. См. [[card-prose-rides-the-config-pr]],
 [[decision-may-presuppose-a-missing-mechanism]].
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Бамп схемы — кнопка john](schema-version-bump-is-johns-button.md) — конфиг обязан ехать тем же диффом

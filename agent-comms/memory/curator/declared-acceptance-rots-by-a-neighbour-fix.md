@@ -23,3 +23,7 @@ metadata:
 оговоркой нижней границы / законно отброшен»), а дефектом называть МОЛЧАНИЕ в любой из них. Рядом:
 [[decided-class-is-checked-in-every-branch]], [[merged-code-is-not-running-code]],
 [[new-execution-path-is-accepted-by-its-first-firing]], [[fresh-norm-may-void-an-open-prs-subject]].
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Объявленная приёмка протухает от СОСЕДНЕЙ починки](declared-acceptance-rots-by-a-neighbour-fix.md) — формулируй перечнем ветвей предиката, дефект = молчание в любой; рядом: [доказательство приезжает в ЧУЖУЮ ленту](acceptance-evidence-may-land-in-a-foreign-feed.md) — подъёмника нет, пиши командой обхода + правилом остановки; [два признака ОДНОГО предиката — один свидетель](two-signs-of-one-predicate-are-one-witness.md) — ветвь «признаки разошлись» недостижима, исходов два

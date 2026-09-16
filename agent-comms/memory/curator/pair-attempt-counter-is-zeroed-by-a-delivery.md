@@ -24,3 +24,7 @@ every shape of a delivery is written by a run». Значит **`waiting-on: <с
 письмом с числами, пустой выход запрещён. Рядом: [[parking-mechanics]],
 [[acceptance-evidence-may-land-in-a-foreign-feed]], [[priority-is-set-in-the-threads-own-feed]],
 [[acceptance-run-needs-a-thread-that-waits]].
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Потолок пары тратит МОЛЧАЛИВЫЙ выход](pair-attempt-counter-is-zeroed-by-a-delivery.md) — счётчик обнуляет доставка, значит `--expects none --waiting-on <сам>` законно ждёт полевое событие

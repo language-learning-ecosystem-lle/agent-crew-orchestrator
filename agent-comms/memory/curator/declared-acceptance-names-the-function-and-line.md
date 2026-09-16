@@ -27,3 +27,7 @@ excluded`, а «письмо пришло, а строки нет» = ящик �
 заявление, подлежащее проверке, как и [[own-hand-crutches-hide-the-defect]].
 См. также [[declared-acceptance-rots-by-a-neighbour-fix]],
 [[two-signs-of-one-predicate-are-one-witness]], [[new-execution-path-is-accepted-by-its-first-firing]].
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Приёмка текстом называет ФУНКЦИЮ и СТРОКУ](declared-acceptance-names-the-function-and-line.md) — писанная по постановке, а не по диффу, даёт ложную тревогу; текст про ОТПЕЧАТОК печатается у всех ветвей и классом не дискриминирует

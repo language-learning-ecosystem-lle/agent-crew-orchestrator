@@ -1,27 +1,27 @@
-- [Чтение ленты и дверь почты одним файлом](mail-reading-and-door-mechanics.md) — усечение и ординалы, шапка `--for`, письма под твоим, штамп, плоские номера, сухой прогон, `index.lock`
+- [Чтение ленты и дверь почты одним файлом](mail-reading-and-door-mechanics.md)
 - [Дифф PR берут от merge-base](pr-diff-base-is-the-merge-base.md)
-- [Молчание доказывает починку только ЧАСТОГО дефекта](silence-proves-only-a-frequent-defect.md) — одно окно, два вердикта: сперва «как часто печаталось», потом «сколько смотрел»
+- [Молчание доказывает починку только ЧАСТОГО дефекта](silence-proves-only-a-frequent-defect.md)
 - [Низкий приоритет всё равно поднимают](low-priority-still-gets-raised.md)
-- [Потолок пары тратит МОЛЧАЛИВЫЙ выход](pair-attempt-counter-is-zeroed-by-a-delivery.md) — счётчик обнуляет доставка, значит `--expects none --waiting-on <сам>` законно ждёт полевое событие
-- [Деревья ролей делят один склад refs](role-worktrees-share-one-ref-store.md) — чужой тег виден без `fetch`
-- [Механика парка одним файлом](parking-mechanics.md) — формы/номера, чем снимается каждая, перенос НЕ обновляет, чужое имя поверх — ОТКАЗ двери, звонок несёт СТАРУЮ первую строку, счёт по шапкам, ДВЕ проверки до звонка john; частные случаи: [заморозка того самого хода](parked-on-freezes-the-turn.md), [отказ молчащему письму](park-door-refuses-silent-letters.md), [письмо без парка поднимает впустую](letter-without-a-park-reraises-the-thread.md), [парк ставится ПОСЛЕ вердикта](park-goes-after-the-verdict-not-before.md), [`run:N` под `checks` снимается полем `run-outcome`](run-park-under-checks-ends-only-by-ceiling.md), [отказ у кончившегося круга](run-park-refused-when-the-round-is-over.md), [под живым `checks` решает наличие своей работы](no-park-beats-run-park-under-live-checks.md), [под кругом РЕВЬЮ `run:<pr>` правилен](park-run-under-a-review-round-lifts-on-the-verdict.md), [отложенная работа держится только парком на человеке](deferred-work-has-only-a-person-park.md)
+- [Потолок пары тратит МОЛЧАЛИВЫЙ выход](pair-attempt-counter-is-zeroed-by-a-delivery.md)
+- [Деревья ролей делят один склад refs](role-worktrees-share-one-ref-store.md)
+- [Механика парка одним файлом](parking-mechanics.md); [заморозка того самого хода](parked-on-freezes-the-turn.md); [отказ молчащему письму](park-door-refuses-silent-letters.md); [письмо без парка поднимает впустую](letter-without-a-park-reraises-the-thread.md); [парк ставится ПОСЛЕ вердикта](park-goes-after-the-verdict-not-before.md); [`run:N` под `checks` снимается полем `run-outcome`](run-park-under-checks-ends-only-by-ceiling.md); [отказ у кончившегося круга](run-park-refused-when-the-round-is-over.md); [под живым `checks` решает наличие своей работы](no-park-beats-run-park-under-live-checks.md); [под кругом РЕВЬЮ `run:<pr>` правилен](park-run-under-a-review-round-lifts-on-the-verdict.md); [отложенная работа держится только парком на человеке](deferred-work-has-only-a-person-park.md)
 - [Свежую ленту читают ДО подъёма роли](read-the-fresh-feed-before-raising-a-role.md)
 - [Чтение ссылки не должно писать в дерево](reading-a-ref-must-not-write-the-tree.md) — `git show <ref>:<путь>`
 - [Вендорская песочница мерится даром](vendor-sandbox-measures-for-free.md)
 - [«Уезжает в тред X» — намерение, а не запись](handoff-to-another-thread-is-prose.md)
-- [Треды, должные после #160](threads-owed-after-160.md) — реестр бесхозных предметов
-- [Класс полевого дефекта требует ДВУХ писем](field-defect-class-needs-two-letters.md) — объявляется РАНЬШЕ следа гарда 5
+- [Треды, должные после #160](threads-owed-after-160.md)
+- [Класс полевого дефекта требует ДВУХ писем](field-defect-class-needs-two-letters.md)
 - [Приёмка укладывается в объявленный `launch`](acceptance-must-fit-declared-launch-params.md)
 - [Цена такта — это очередь, а не проза](tick-cost-is-the-queue-not-prose.md)
 - [«0 of those new» = уже позвонило](notify-zero-new-means-already-rang.md)
 - [«Зелено» — это команда, дерево и ПОЧВА](green-is-only-the-runners-command.md)
 - [Постановка кончается тегом](statement-of-work-ends-at-the-tag.md) — конечная точка
-- [Смёрженное ≠ работающее](merged-code-is-not-running-code.md) — демон исполняет исходники чекаута
+- [Смёрженное ≠ работающее](merged-code-is-not-running-code.md)
 - [Приёмочный прогон нужен тред, который ЖДЁТ роль](acceptance-run-needs-a-thread-that-waits.md)
 - [Сверяй ШАБЛОН грепа, а не его вывод](verify-the-grep-pattern-not-its-result.md)
 - [Копия в `comms` кладётся ДО мёржа канона](comms-copy-before-canon-merge.md)
 - [Гард 4 кончается на `workflows/**`](guard4-reach-ends-at-workflows.md)
-- [Закрытие треда — третья дверь почты](closing-a-thread-is-a-third-door.md) — `thread status` у сессии есть
+- [Закрытие треда — третья дверь почты](closing-a-thread-is-a-third-door.md)
 - [Dispatch у Merge Notify ничего не пишет](merge-notify-dispatch-is-a-noop.md)
 - [Норма едет в PROTOCOL.md, таблица остаётся](norms-go-to-protocol-tables-stay.md)
 - [Проза карточки едет в PR конфига](card-prose-rides-the-config-pr.md)
@@ -30,111 +30,111 @@
 - [Стык мерится на реальной ленте даром](seam-measured-on-real-feed-for-free.md)
 - [Безголовый тред красит ВСЮ почту](headless-thread-reddens-all-mail.md)
 - [Системный пользователь не читает чужой аккаунт](system-user-role-cannot-read-shared-account.md)
-- [Решение может предполагать несуществующий механизм](decision-may-presuppose-a-missing-mechanism.md) — сверяй кодом/`usage` В ОБЕ стороны
-- [Расширение предмета внутри PR двери — по двум проверкам](scope-widening-inside-a-door-pr.md) — дверь отказала бы И норм не вводит
-- [Названный случай — образец, а не класс](reported-instance-is-a-sample.md); [решённый класс проверяют во ВСЕХ ветках предиката](decided-class-is-checked-in-every-branch.md) — и в словах, которые код печатает о своей мере
+- [Решение может предполагать несуществующий механизм](decision-may-presuppose-a-missing-mechanism.md)
+- [Расширение предмета внутри PR двери — по двум проверкам](scope-widening-inside-a-door-pr.md)
+- [Названный случай — образец, а не класс](reported-instance-is-a-sample.md); [решённый класс проверяют во ВСЕХ ветках предиката](decided-class-is-checked-in-every-branch.md)
 - [Машинный конфиг — в `$HOME`, не в репозитории](machine-config-is-instance-file.md)
 - [Хвост PR требует своего треда](pr-tail-sweep-needs-the-owning-thread.md)
-- [Переезд шага отменяет объявленное исключение](moved-step-repeals-declared-exception.md) — приёмка читается КОДОМ ВЫХОДА
+- [Переезд шага отменяет объявленное исключение](moved-step-repeals-declared-exception.md)
 - [`mergedBy` не называет руку](merged-by-does-not-name-the-hand.md)
-- [Механика круга ревьюера одним файлом](review-round-mechanics.md) — чем краснит гарды 1/2, красный круг с ДОСТАВЛЕННЫМ вердиктом, чтение сгоревшего круга, самопропуск, merge-ref, счёт, метка чужой руки; рядом: [пришпиленный блоб протухает в круге](pinned-blob-rots-in-the-review-circle.md), [канал вердикта — свой у ревьюера](reviewer-verdict-channel-is-its-own.md), [правка тела PR не убивает вердикт, но правится ДО метки](pr-body-edit-keeps-the-verdict.md), [переезд на запасную учётку с 15.09 даёт ЗЕЛЁНЫЙ круг и годный вердикт](fallback-step-reddens-a-successful-round.md), [оба токена ревьюера — учётки ролей](reviewer-token-is-the-second-account.md), [PR по `claude-review.yml` не мерит НИКТО](review-yml-pr-is-unmeasured-before-merge.md), [полевой класс гарда 3 там умирает](guard3-field-class-dies-on-review-yml.md), [метку вешать только на merge-ref с блобом `main`](label-needs-a-merge-ref-blob-matching-main.md), [метка тратит круг — дочитай письмо ДО неё](label-spends-a-round-read-the-whole-letter-first.md), [метка не твоя рука, если тред PR ждёт автора](label-is-not-your-hand-if-the-prs-thread-waits-for-its-author.md)
+- [Механика круга ревьюера одним файлом](review-round-mechanics.md); [пришпиленный блоб протухает в круге](pinned-blob-rots-in-the-review-circle.md); [канал вердикта — свой у ревьюера](reviewer-verdict-channel-is-its-own.md); [правка тела PR не убивает вердикт, но правится ДО метки](pr-body-edit-keeps-the-verdict.md); [переезд на запасную учётку с 15.09 даёт ЗЕЛЁНЫЙ круг и годный вердикт](fallback-step-reddens-a-successful-round.md); [оба токена ревьюера — учётки ролей](reviewer-token-is-the-second-account.md); [PR по `claude-review.yml` не мерит НИКТО](review-yml-pr-is-unmeasured-before-merge.md); [полевой класс гарда 3 там умирает](guard3-field-class-dies-on-review-yml.md); [метку вешать только на merge-ref с блобом `main`](label-needs-a-merge-ref-blob-matching-main.md); [метка тратит круг — дочитай письмо ДО неё](label-spends-a-round-read-the-whole-letter-first.md); [метка не твоя рука, если тред PR ждёт автора](label-is-not-your-hand-if-the-prs-thread-waits-for-its-author.md)
 - [Прошедшее время меряют `date`, а не числом ходов](elapsed-time-is-measured-not-estimated.md)
-- [Полевой критерий уступает перечислению](field-sample-criterion-yields-to-enumeration.md) — перечисление сильнее образца
-- [Хвост письма протухает молча](carried-tail-items-rot.md) — и СВОЙ объявленный долг тоже: «беру следующим тактом» дома не заводит
-- [Кнопка merge и база одним файлом](merge-with-match-head-commit.md) — жать с `--match-head-commit`; рядом: [мерж обнуляет сливаемость у ВСЕХ PR](merge-blanks-mergeability-for-all-prs.md), [своя кнопка заводит слив за 23 с, ждущий ИМЕННО эту сессию](own-merge-starts-a-drain-that-waits-for-me.md), [ребейз открытого PR не требует force-push](rebasing-an-open-pr-needs-no-force-push.md), [merge-ref ОТСТАЁТ от main](merge-ref-lags-behind-main.md), [`refs/pull/N/head` тоже бывает отставшим](pull-head-ref-lags-behind-the-branch.md), [нота о переезде базы — замером, конфликт ДО метки](base-move-note-answered-by-measure.md), [нота НЕИЗМЕРЕННОЙ ПАРЫ — чтением ТОЙ стороны: путь несущий или проза](door-pair-note-answered-by-how-the-file-is-named.md), [порядок мержа связывает СВОЮ руку](declared-merge-order-allocates-the-rebase.md), [общий хвост файла сериализует мержи](protocol-reference-tail-serializes-merges.md), [одно дерево во всех порядках ≠ целость](same-tree-proves-no-conflict-not-integrity.md)
+- [Полевой критерий уступает перечислению](field-sample-criterion-yields-to-enumeration.md)
+- [Хвост письма протухает молча](carried-tail-items-rot.md)
+- [Кнопка merge и база одним файлом](merge-with-match-head-commit.md); [мерж обнуляет сливаемость у ВСЕХ PR](merge-blanks-mergeability-for-all-prs.md); [своя кнопка заводит слив за 23 с, ждущий ИМЕННО эту сессию](own-merge-starts-a-drain-that-waits-for-me.md); [ребейз открытого PR не требует force-push](rebasing-an-open-pr-needs-no-force-push.md); [merge-ref ОТСТАЁТ от main](merge-ref-lags-behind-main.md); [`refs/pull/N/head` тоже бывает отставшим](pull-head-ref-lags-behind-the-branch.md); [нота о переезде базы — замером, конфликт ДО метки](base-move-note-answered-by-measure.md); [нота НЕИЗМЕРЕННОЙ ПАРЫ — чтением ТОЙ стороны: путь несущий или проза](door-pair-note-answered-by-how-the-file-is-named.md); [порядок мержа связывает СВОЮ руку](declared-merge-order-allocates-the-rebase.md); [общий хвост файла сериализует мержи](protocol-reference-tail-serializes-merges.md); [одно дерево во всех порядках ≠ целость](same-tree-proves-no-conflict-not-integrity.md)
 - [Годность тега среза — это поиск по линии](cut-tag-validity-is-a-line-search.md)
-- [Креды мерятся пушем](credentials-measured-by-push.md) — `ls-remote` проходит анонимно
+- [Креды мерятся пушем](credentials-measured-by-push.md)
 - [Потолок памяти мерит ОГЛАВЛЕНИЕ](memory-ceiling-measures-the-index.md)
 - [Правку памяти затирает соседняя сессия роли](memory-edits-are-clobbered-by-a-concurrent-session.md)
 - [У PAT нет записи в Actions](rerun-checks-without-moving-the-head.md)
 - [Незапушенная ветка — невидимая работа](unpushed-branch-is-invisible-work.md)
 - [Git-личность общая у контуров](git-identity-is-shared-across-contours.md)
 - [Приёмка слитого дерева стоит минуты](acceptance-on-the-merged-tree-is-cheap.md)
-- [Приёмка на закрытии убивает свой канал](acceptance-on-close-kills-its-own-channel.md) — исход называют файлами и строками
+- [Приёмка на закрытии убивает свой канал](acceptance-on-close-kills-its-own-channel.md)
 - [Норму от починки отличает дифф](norm-or-repair-is-read-in-the-diff.md)
-- [Точечное слово john не закрывает гард 3 дважды](pointwise-john-word-does-not-close-guard3-again.md) — граница лежит абзацем НИЖЕ слова
-- [Слово john переживает предписанный им переезд головы](johns-word-survives-a-head-move-it-prescribed.md) — гард 3 про ПРЕДМЕТ; два условия в след гарда 5
+- [Точечное слово john не закрывает гард 3 дважды](pointwise-john-word-does-not-close-guard3-again.md)
+- [Слово john переживает предписанный им переезд головы](johns-word-survives-a-head-move-it-prescribed.md)
 - [Каталог транскриптов выдаёт учётку](transcript-dir-reveals-the-account.md)
 - [Каталог учётки называет свой аккаунт и тариф](config-dir-names-its-account-and-tier.md)
 - [Группы приезжают от менеджера пользователя](groups-come-from-the-user-manager.md)
-- [Голый `mktemp -d` — внутри чекаута](bare-mktemp-lands-inside-the-checkout.md) — с 14.09 `journal write` отказывает поимённо
+- [Голый `mktemp -d` — внутри чекаута](bare-mktemp-lands-inside-the-checkout.md)
 - [Перечисленные формы могут не обязывать](named-forms-in-a-statement-may-not-bind.md)
-- [«Кредов не нужно» с ящика не мерится](no-credentials-needed-is-unmeasured-on-the-box.md) — токен стоит в среде молча
+- [«Кредов не нужно» с ящика не мерится](no-credentials-needed-is-unmeasured-on-the-box.md)
 - [Смотритель с гейтом дельты молчит на чистом дереве](delta-gated-watcher-is-silent-on-a-clean-tree.md)
 - [Системное письмо передаёт ход на своём адресе](system-letter-passes-the-turn-on-its-own-address.md)
 - [Передача хода ≠ остановка работы](turn-passed-is-not-work-stopped.md)
 - [Чисто тестовый предмет не восходит дёшево](test-only-item-has-no-cheap-ascent.md)
-- [Звонок смотрителя имени: список или текст](foreign-name-bell-judged-by-load-bearing.md) — исключение только несущему имени
+- [Звонок смотрителя имени: список или текст](foreign-name-bell-judged-by-load-bearing.md)
 - [Скрипт из PR мерится до мёржа](pr-script-measured-before-merge.md)
 - [Свой промпт — даровой оракул нормы поведения](own-prompt-is-the-free-oracle-for-role-norms.md)
-- [Слово john не бывает письмом john](johns-word-is-never-a-letter-by-john.md) — поиск по автору даёт ноль ВСЕГДА
-- [git-личность контура живёт в ОДНОМ доме](contour-git-identity-lives-in-one-home.md) — `insteadOf` в чужом `~/.gitconfig`
+- [Слово john не бывает письмом john](johns-word-is-never-a-letter-by-john.md)
+- [git-личность контура живёт в ОДНОМ доме](contour-git-identity-lives-in-one-home.md)
 - [Костыли своей руки прячут дефект](own-hand-crutches-hide-the-defect.md)
 - [Подагент наследует `deny`, а не `allowedTools`](subagent-inherits-deny-not-allowlist.md)
 - [Правка абсолютным путём бьёт по главному чекауту](absolute-path-edits-hit-the-main-checkout.md)
 - [Починка оставляет отставший док-инструмент](merged-fix-leaves-a-stale-doc-instrument.md)
-- [Тред без хода будит письмо ИЗВНЕ](turnless-thread-has-no-door.md) — `--turn` это форма ответов, не ход
+- [Тред без хода будит письмо ИЗВНЕ](turnless-thread-has-no-door.md)
 - [Мутации перегоняют в копии дерева](mutation-acceptance-runs-in-a-tmp-copy.md)
 - [Порог версии мерится на ящике](version-floor-is-measured-on-the-box.md)
 - [Состояния ноты двери снимаются с открытых PR](gate-note-states-are-free-on-open-prs.md)
 - [Письмо о заморозке себя не отзывает](freeze-letter-never-retracts-itself.md)
-- [Замёрзшая пара бывает уже сделана](frozen-pair-may-be-already-done.md) — предмет мог исполнить мир
+- [Замёрзшая пара бывает уже сделана](frozen-pair-may-be-already-done.md)
 - [Приёмка-свойство среды бесплатна в любом прогоне](session-property-acceptance-is-free-in-any-run.md)
-- [Журнал ящика роли не читается](field-state-is-read-from-the-daemon-log-file.md) — полевое состояние
+- [Журнал ящика роли не читается](field-state-is-read-from-the-daemon-log-file.md)
 - [Отчёт под чужим uid мерится структурой](foreign-uid-report-verified-by-structure.md)
 - [Звонок класса дайджеста — в хвосте курьерской строки](digest-bell-is-read-from-the-courier-tail.md)
 - [`run list --limit N` отдаёт НОВЕЙШИЕ N](run-list-truncates-to-the-newest-n.md)
-- [Причина пропуска в системном письме — константа](system-letter-explains-its-own-gap-by-fixed-prose.md) — мерь файлом и веткой кода
+- [Причина пропуска в системном письме — константа](system-letter-explains-its-own-gap-by-fixed-prose.md)
 - [Проза, отпускающая ход, требует заголовка](prose-releasing-the-turn-needs-the-header.md)
-- [Записанное ограничение читают в его блоке](recorded-limit-is-read-in-its-own-block.md) — фраза бывает про ДРУГОЙ гард
+- [Записанное ограничение читают в его блоке](recorded-limit-is-read-in-its-own-block.md)
 - [Дренаж останавливает ВСЮ очередь](drain-stalls-the-whole-queue.md)
 - [Смена читателя ломает файл БЕЗ хунков](reader-change-breaks-hunkless-consumers.md) — греп по значению
-- [Коммит среза не датирует рез](split-commit-does-not-date-the-cut.md) — даты унаследованы, тег lightweight
+- [Коммит среза не датирует рез](split-commit-does-not-date-the-cut.md)
 - [`FETCH_HEAD` двигает и `merge-gate`, и ЧУЖАЯ сессия](merge-gate-clobbers-fetch-head.md)
 - [Отказ доступа не принимается на своём репозитории](access-refusal-class-cannot-be-accepted-here.md)
-- [Незавершённость чека — это `bucket`](check-state-is-read-from-bucket.md) — `state` не знает слова `PENDING`
-- [Самоперезапуск ящика одной строкой](self-restart-ack-is-not-asked-twice.md) — приёмка не спрашивается дважды; рядом: [запись однослотовая](self-restart-record-is-single-slot.md), [«сколько ждал сессии» занижает простой](self-restart-waited-field-understates-the-standstill.md), [письмо называет ОТПЕЧАТОК](self-restart-letter-names-the-footprint.md)
+- [Незавершённость чека — это `bucket`](check-state-is-read-from-bucket.md)
+- [Самоперезапуск ящика одной строкой](self-restart-ack-is-not-asked-twice.md); [запись однослотовая](self-restart-record-is-single-slot.md); [«сколько ждал сессии» занижает простой](self-restart-waited-field-understates-the-standstill.md); [письмо называет ОТПЕЧАТОК](self-restart-letter-names-the-footprint.md)
 - [Гард 3 у бампа версии — слово john о приёмке](version-bump-ascends-to-johns-acceptance.md)
-- [Бамп схемы — кнопка john](schema-version-bump-is-johns-button.md) — конфиг обязан ехать тем же диффом
+- [Бамп схемы — кнопка john](schema-version-bump-is-johns-button.md)
 - [Новая коробочная тревога — норма без схемы](new-box-alarm-is-a-norm-without-a-schema-bump.md)
 - [Ёмкость окна мерится долларами](window-capacity-is-measured-in-dollar-equivalent.md)
 - [Сюита в worktree ломает контур](suite-in-a-worktree-breaks-the-contour.md) — общий `.git/config`
-- [Журнал курьера не оракул доставки](courier-journal-is-not-a-delivery-oracle.md) — «звонить не о чем» при 15 письмах
+- [Журнал курьера не оракул доставки](courier-journal-is-not-a-delivery-oracle.md)
 - [Приоритет ставится письмом В СВОЙ тред](priority-is-set-in-the-threads-own-feed.md) — ярус 1 очереди
 - [Копия дерева краснит тесты про git](gitless-tree-copy-reddens-four-tests.md)
-- [Молчание сторожа мерится доставленным дайджестом](watcher-silence-needs-a-delivered-digest.md) — окно ищут по `telegram`
+- [Молчание сторожа мерится доставленным дайджестом](watcher-silence-needs-a-delivered-digest.md)
 - [Журнал ящика отражает твой же вывод](daemon-log-echoes-your-own-output.md)
 - [Текст squash — усмотрение curator](squash-text-is-the-curators-call.md)
 - [Дерево пары поднимается без `node_modules`](role-worktree-has-no-node-modules.md)
 - [Письмо с развилкой поднимает на ЛЮБОМ исходе](outcome-branch-letter-raises-on-any-branch.md)
-- [Окружение сессии травит сюиту](session-env-poisons-the-suite.md) — 191 красный и на чистом `main`
+- [Окружение сессии травит сюиту](session-env-poisons-the-suite.md)
 - [`grep` сессии — шим с `-I`, он молча слеп](byte-cut-text-goes-binary-and-grep-goes-silent.md)
-- [Счёт сюиты расходится с CI на 2](suite-count-differs-between-workspace-and-ci.md) — два `ctx.skip` без бинаря `codex`; CI не арбитр ПОДМНОЖЕСТВА (250 файлов против 120) — число объявляется с объёмом
+- [Счёт сюиты расходится с CI на 2](suite-count-differs-between-workspace-and-ci.md)
 - [Эпоха демона — ОДИН процесс](daemon-epoch-is-one-process.md)
 - [Прибор `base-cost` ПОЧИНЕН — читает исторический конфиг](base-cost-only-measures-since-the-last-schema-bump.md)
-- [502 и `remote rejected` при зелёном статусе](pr-open-502-clears-after-a-minute.md) — не токен и не строка: сверить, что объект не создан, и ретраить; бьёт и по `git push`
-- [Правку запрещённого файла мерят в памяти](forbidden-file-change-measured-in-memory.md) — проба в `/tmp` поверх `git show`
+- [502 и `remote rejected` при зелёном статусе](pr-open-502-clears-after-a-minute.md)
+- [Правку запрещённого файла мерят в памяти](forbidden-file-change-measured-in-memory.md)
 - [Исход `checks` на PR звонит в тред](pr-checks-outcome-rings-into-the-thread.md)
-- [Лог прогона Actions ЭХОМ печатает исходник шага](actions-run-log-echoes-the-step-source.md) — греп по строке, которую скрипт лишь МОЖЕТ напечатать, срабатывает у каждого прогона; срабатывание ветки мерят артефактом
+- [Лог прогона Actions ЭХОМ печатает исходник шага](actions-run-log-echoes-the-step-source.md)
 - [Ожидание хода: письмо `waiting-on:` против `launch`](turn-wait-is-mail-letter-joined-with-launch.md)
 - [Красный шаг доставки ≠ недоставленное письмо](delivery-step-failure-is-not-undelivered-mail.md)
 - [Строка очереди может лгать про «не поднимет»](queue-row-promise-of-no-launch-can-be-false.md)
 - [Маркер конфликта съедает пустую строку](conflict-marker-eats-the-blank-line.md)
-- [Красный `checks` мог быть УЖЕ починен на `main`](red-checks-may-already-be-fixed-on-main.md) — прогон мерил СВОЮ базу
+- [Красный `checks` мог быть УЖЕ починен на `main`](red-checks-may-already-be-fixed-on-main.md)
 - [Маркер дренажа стоит в СЕРЕДИНЕ строки](drain-marker-sits-mid-line.md)
 - [Секрет репозитория этим токеном не мерится](repo-secret-presence-is-unmeasurable-by-this-token.md) — `gh secret list` даёт 403
-- [Дом находки может уже стоять открытым PR](finding-may-already-have-an-open-pr.md) — перечисли `gh pr list` до нового треда И до постановки в своём: одно слово john исполняется в двух тредах; дверь стареет за ночь, метка и круг — за минуты
-- [Эскалация может быть ЧАСТЬЮ уже стоящей](escalation-may-be-part-of-a-wider-one.md) — второй развилки не заводи; вопрос класса отвечается НОМЕРОМ СТРОКИ нормы
-- [Приёмка ЧАСТОЙ ветви закрывает регрессию, а не предмет PR](frequent-branch-acceptance-closes-regression-not-the-subject.md) — и вход РЕДКОЙ ветви бывает закрыт собственным маршрутом: это развилка к john, а не «подождём»
-- [Новый путь исполнения принимается ПЕРВЫМ срабатыванием](new-execution-path-is-accepted-by-its-first-firing.md) — merge его не принимает, а ЧАСТАЯ ветвь пуста по построению, пока открытых PR нет: заказывай её СЛЕДУЮЩЕЙ меткой `review` в любом треде, а не PR ради формальности; рядом: [`continue-on-error` прячет исход шага](continue-on-error-hides-the-step-outcome.md) — `--json jobs` даёт `success`, правда в `env` следующего шага; [заказ через порчу своего рабочего места запирает роль на ВСЕХ тредах](ordering-a-firing-may-lock-the-role.md) — постановка обязана назвать ТРЕТЬЮ руку
-- [Свежая норма может отменить предмет открытого PR](fresh-norm-may-void-an-open-prs-subject.md) — гарды зелены, читай оговорку о необратной силе; сигнал — нота гарда 2
-- [«Не связанный такт» не наступает](unbound-tick-never-comes.md) — работа по слову john ставится В ТОМ ЖЕ треде, где слово
-- [Кнопка merge не передаётся письмом](directive-letter-cannot-hand-over-the-button.md) — исполнитель обязан отступить; глагол «мёржи» не пишется не-curator
-- [Запись журнала едет КОМАНДОЙ, а не PR](journal-entry-rides-a-command-not-a-pr.md) — `journal write` в ветку почты с 14.09, цена дома находки = ноль; ТЕКСТ нормы в `main` с 15.09 (#437), `docs/journal/**` — архив
-- [Дерево роли перечекаучивается на каждом подъёме](role-worktree-is-rechecked-out-at-every-raise.md) — свежий `main` в detached HEAD; ветка PR и ручной чекаут такт не переживают
-- [Чистый `merge-tree` у стопки ничего не доказывает](clean-merge-tree-on-a-stacked-pair-proves-nothing.md) — сверяй `merge-base` с ОБЕИМИ головами; класс, представленный только вырожденной парой, НЕ измерен
-- [Состояние PR протухает, пока ты его меряешь](pr-state-rots-while-you-measure-it.md) — кнопку нажали за минуту до письма о ней; рядом: [письмо о передаче хода — не оракул состояния](handoff-letter-is-not-a-state-oracle.md) — снимок бывает НЕВЕРЕН, а не протух: дверь ДО предписанного действия
-- [«Поглощённый» дубль поглощён НЕ целиком](absorbed-duplicate-is-absorbed-in-part.md) — мера поглощения = перечень ГРАНИЦ постановки, не пересечение файлов; остаток мерь до закрытия и назови комментом в PR
-- [Соседняя починка убирает ПРОИЗВОДИТЕЛЯ события приёмки](acceptance-trigger-may-be-removed-by-a-neighbour-fix.md) — мерь живость генератора, а не только частоту дефекта
-- [Объявленная приёмка протухает от СОСЕДНЕЙ починки](declared-acceptance-rots-by-a-neighbour-fix.md) — формулируй перечнем ветвей предиката, дефект = молчание в любой; рядом: [доказательство приезжает в ЧУЖУЮ ленту](acceptance-evidence-may-land-in-a-foreign-feed.md) — подъёмника нет, пиши командой обхода + правилом остановки; [два признака ОДНОГО предиката — один свидетель](two-signs-of-one-predicate-are-one-witness.md) — ветвь «признаки разошлись» недостижима, исходов два
-- [Приёмка текстом называет ФУНКЦИЮ и СТРОКУ](declared-acceptance-names-the-function-and-line.md) — писанная по постановке, а не по диффу, даёт ложную тревогу; текст про ОТПЕЧАТОК печатается у всех ветвей и классом не дискриминирует
+- [Дом находки может уже стоять открытым PR](finding-may-already-have-an-open-pr.md)
+- [Эскалация может быть ЧАСТЬЮ уже стоящей](escalation-may-be-part-of-a-wider-one.md)
+- [Приёмка ЧАСТОЙ ветви закрывает регрессию, а не предмет PR](frequent-branch-acceptance-closes-regression-not-the-subject.md)
+- [Новый путь исполнения принимается ПЕРВЫМ срабатыванием](new-execution-path-is-accepted-by-its-first-firing.md); [`continue-on-error` прячет исход шага](continue-on-error-hides-the-step-outcome.md); [заказ через порчу своего рабочего места запирает роль на ВСЕХ тредах](ordering-a-firing-may-lock-the-role.md)
+- [Свежая норма может отменить предмет открытого PR](fresh-norm-may-void-an-open-prs-subject.md)
+- [«Не связанный такт» не наступает](unbound-tick-never-comes.md)
+- [Кнопка merge не передаётся письмом](directive-letter-cannot-hand-over-the-button.md)
+- [Запись журнала едет КОМАНДОЙ, а не PR](journal-entry-rides-a-command-not-a-pr.md)
+- [Дерево роли перечекаучивается на каждом подъёме](role-worktree-is-rechecked-out-at-every-raise.md)
+- [Чистый `merge-tree` у стопки ничего не доказывает](clean-merge-tree-on-a-stacked-pair-proves-nothing.md)
+- [Состояние PR протухает, пока ты его меряешь](pr-state-rots-while-you-measure-it.md); [письмо о передаче хода — не оракул состояния](handoff-letter-is-not-a-state-oracle.md)
+- [«Поглощённый» дубль поглощён НЕ целиком](absorbed-duplicate-is-absorbed-in-part.md)
+- [Соседняя починка убирает ПРОИЗВОДИТЕЛЯ события приёмки](acceptance-trigger-may-be-removed-by-a-neighbour-fix.md)
+- [Объявленная приёмка протухает от СОСЕДНЕЙ починки](declared-acceptance-rots-by-a-neighbour-fix.md); [доказательство приезжает в ЧУЖУЮ ленту](acceptance-evidence-may-land-in-a-foreign-feed.md); [два признака ОДНОГО предиката — один свидетель](two-signs-of-one-predicate-are-one-witness.md)
+- [Приёмка текстом называет ФУНКЦИЮ и СТРОКУ](declared-acceptance-names-the-function-and-line.md)

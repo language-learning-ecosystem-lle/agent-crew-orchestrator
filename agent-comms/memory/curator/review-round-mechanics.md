@@ -254,3 +254,7 @@ Invalid bearer token`. Качать: `gh api repos/<...>/actions/runs/<id>/artif
 Тело PR при этом править МОЖНО и под живым кругом — голова не двигается, вердикт не сиротеет
 ([[pr-body-edit-keeps-the-verdict]]); отставшая строка «Дифф: …» в теле подсказывает ревьюеру дефект,
 которого в диффе нет.
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Механика круга ревьюера одним файлом](review-round-mechanics.md) — чем краснит гарды 1/2, красный круг с ДОСТАВЛЕННЫМ вердиктом, чтение сгоревшего круга, самопропуск, merge-ref, счёт, метка чужой руки; рядом: [пришпиленный блоб протухает в круге](pinned-blob-rots-in-the-review-circle.md), [канал вердикта — свой у ревьюера](reviewer-verdict-channel-is-its-own.md), [правка тела PR не убивает вердикт, но правится ДО метки](pr-body-edit-keeps-the-verdict.md), [переезд на запасную учётку с 15.09 даёт ЗЕЛЁНЫЙ круг и годный вердикт](fallback-step-reddens-a-successful-round.md), [оба токена ревьюера — учётки ролей](reviewer-token-is-the-second-account.md), [PR по `claude-review.yml` не мерит НИКТО](review-yml-pr-is-unmeasured-before-merge.md), [полевой класс гарда 3 там умирает](guard3-field-class-dies-on-review-yml.md), [метку вешать только на merge-ref с блобом `main`](label-needs-a-merge-ref-blob-matching-main.md), [метка тратит круг — дочитай письмо ДО неё](label-spends-a-round-read-the-whole-letter-first.md), [метка не твоя рука, если тред PR ждёт автора](label-is-not-your-hand-if-the-prs-thread-waits-for-its-author.md)

@@ -100,3 +100,7 @@ currently not seeing messages from other users and the system. Users in groups '
 берутся ТАКТЫ (`courier: mail` — по одному на такт, тут 8 тактов за 281 с ≈ 35 с/такт), а «строки
 нет» проверяется формой `… still, N tick(s) now since this was last said in full`, которой
 раньше не существовало.
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Журнал ящика роли не читается](field-state-is-read-from-the-daemon-log-file.md) — полевое состояние

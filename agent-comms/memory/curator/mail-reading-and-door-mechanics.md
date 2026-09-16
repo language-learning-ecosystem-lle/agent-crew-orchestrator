@@ -226,3 +226,7 @@ a slug … i.e. a number in front of a number»). `thread status` требует
 
 `origin/comms` двигается только `fetch`, а ленту пишут другие роли непрерывно: без `git fetch origin
 comms` перечисляется свой последний `fetch`, а не мир ([[carried-tail-items-rot]]).
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Чтение ленты и дверь почты одним файлом](mail-reading-and-door-mechanics.md) — усечение и ординалы, шапка `--for`, письма под твоим, штамп, плоские номера, сухой прогон, `index.lock`

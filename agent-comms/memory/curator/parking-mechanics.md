@@ -216,3 +216,7 @@ person-парки для звонка. Практическое следстви
 Смежное: [[parked-on-freezes-the-turn]], [[park-door-refuses-silent-letters]],
 [[park-goes-after-the-verdict-not-before]], [[park-run-under-a-review-round-lifts-on-the-verdict]],
 [[run-park-refused-when-the-round-is-over]], [[deferred-work-has-only-a-person-park]].
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Механика парка одним файлом](parking-mechanics.md) — формы/номера, чем снимается каждая, перенос НЕ обновляет, чужое имя поверх — ОТКАЗ двери, звонок несёт СТАРУЮ первую строку, счёт по шапкам, ДВЕ проверки до звонка john; частные случаи: [заморозка того самого хода](parked-on-freezes-the-turn.md), [отказ молчащему письму](park-door-refuses-silent-letters.md), [письмо без парка поднимает впустую](letter-without-a-park-reraises-the-thread.md), [парк ставится ПОСЛЕ вердикта](park-goes-after-the-verdict-not-before.md), [`run:N` под `checks` снимается полем `run-outcome`](run-park-under-checks-ends-only-by-ceiling.md), [отказ у кончившегося круга](run-park-refused-when-the-round-is-over.md), [под живым `checks` решает наличие своей работы](no-park-beats-run-park-under-live-checks.md), [под кругом РЕВЬЮ `run:<pr>` правилен](park-run-under-a-review-round-lifts-on-the-verdict.md), [отложенная работа держится только парком на человеке](deferred-work-has-only-a-person-park.md)

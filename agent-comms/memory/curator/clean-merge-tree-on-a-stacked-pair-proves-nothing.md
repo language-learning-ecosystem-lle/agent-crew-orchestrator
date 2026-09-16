@@ -26,3 +26,7 @@ metadata:
 разделяет треды, а не ходы внутри треда, и этот класс она по построению не разводит.
 Рядом по духу: [[same-tree-proves-no-conflict-not-integrity]], [[verify-the-grep-pattern-not-its-result]],
 [[reported-instance-is-a-sample]].
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Чистый `merge-tree` у стопки ничего не доказывает](clean-merge-tree-on-a-stacked-pair-proves-nothing.md) — сверяй `merge-base` с ОБЕИМИ головами; класс, представленный только вырожденной парой, НЕ измерен

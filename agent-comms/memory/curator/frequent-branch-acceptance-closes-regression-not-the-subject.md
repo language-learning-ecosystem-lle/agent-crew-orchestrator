@@ -35,3 +35,7 @@ Actions у PAT нет ([[rerun-checks-without-moving-the-head]]).
 нечем, назови честно. Родственное: [[new-execution-path-is-accepted-by-its-first-firing]],
 [[declared-acceptance-names-the-function-and-line]], [[actions-run-log-echoes-the-step-source]],
 [[field-sample-criterion-yields-to-enumeration]].
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Приёмка ЧАСТОЙ ветви закрывает регрессию, а не предмет PR](frequent-branch-acceptance-closes-regression-not-the-subject.md) — и вход РЕДКОЙ ветви бывает закрыт собственным маршрутом: это развилка к john, а не «подождём»

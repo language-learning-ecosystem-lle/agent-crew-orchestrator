@@ -45,3 +45,7 @@ file:/home/aco-hetzner/.gitconfig   url.https://github.com/.insteadof git@github
 [[reported-instance-is-a-sample]].
 
 **Из указателя (перенесено 2026-09-07, оглавление шло за потолок):** в журнале роль при этом выглядит как «ушла молча»
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[git-личность контура живёт в ОДНОМ доме](contour-git-identity-lives-in-one-home.md) — `insteadOf` в чужом `~/.gitconfig`

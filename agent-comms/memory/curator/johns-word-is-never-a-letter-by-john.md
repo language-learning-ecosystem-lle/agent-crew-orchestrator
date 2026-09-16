@@ -24,3 +24,7 @@ metadata:
 [[park-goes-after-the-verdict-not-before]] и [[park-bell-carries-the-old-first-line]].
 
 **Из указателя (перенесено 2026-09-08, оглавление шло за потолок):** гард 3 закрывается письмом curator с источником
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Слово john не бывает письмом john](johns-word-is-never-a-letter-by-john.md) — поиск по автору даёт ноль ВСЕГДА

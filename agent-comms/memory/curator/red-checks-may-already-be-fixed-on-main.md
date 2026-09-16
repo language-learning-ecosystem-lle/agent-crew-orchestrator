@@ -25,3 +25,7 @@ metadata:
 вставки и удаления обязаны совпасть с дособытийными ([[conflict-marker-eats-the-blank-line]]).
 Совпали версии — тогда это живой дефект, и он идёт в свой тред. См. также
 [[base-move-note-answered-by-measure]], [[pr-diff-base-is-the-merge-base]].
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Красный `checks` мог быть УЖЕ починен на `main`](red-checks-may-already-be-fixed-on-main.md) — прогон мерил СВОЮ базу

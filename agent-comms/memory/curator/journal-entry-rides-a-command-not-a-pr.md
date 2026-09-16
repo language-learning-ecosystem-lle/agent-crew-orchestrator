@@ -42,3 +42,7 @@ git отвечает `fatal: path … exists, but not …`. Команда СА�
 класть НЕ надо — постановке это говорится отдельной строкой. Отменяет прежние поводы ждать:
 [[pr-tail-sweep-needs-the-owning-thread]], [[two-open-prs-of-one-thread-share-one-journal-file]],
 [[protocol-reference-tail-serializes-merges]], [[carried-tail-items-rot]].
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Запись журнала едет КОМАНДОЙ, а не PR](journal-entry-rides-a-command-not-a-pr.md) — `journal write` в ветку почты с 14.09, цена дома находки = ноль; ТЕКСТ нормы в `main` с 15.09 (#437), `docs/journal/**` — архив

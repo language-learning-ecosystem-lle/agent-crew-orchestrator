@@ -23,3 +23,7 @@ metadata:
 дождись зелёного / доложи) и отдельно — что кнопку жму я. Глагол «мёржи» в письме к
 не-curator не писать вовсе. См. [[journal-pr-guard3-rests-on-standing-norms]],
 [[merged-by-does-not-name-the-hand]].
+
+## Из указателя (перенесено 2026-09-16, тред 213, оглавление шло за потолок)
+
+[Кнопка merge не передаётся письмом](directive-letter-cannot-hand-over-the-button.md) — исполнитель обязан отступить; глагол «мёржи» не пишется не-curator
