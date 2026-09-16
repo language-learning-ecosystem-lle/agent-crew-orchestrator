@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T17:11:57.329Z",
+  "writtenAt": "2026-09-16T17:12:48.713Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "215-restart-letter-field-name-outlived-its-anchor",
+      "state": "running",
+      "deadline": "2026-09-16T18:12:44Z"
+    },
     {
       "role": "dev-core",
       "thread": "217-memory-ceiling-alarm-prints-the-byte-split",
