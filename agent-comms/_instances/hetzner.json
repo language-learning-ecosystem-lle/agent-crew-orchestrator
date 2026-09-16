@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-16T16:55:33.580Z",
+  "writtenAt": "2026-09-16T17:04:03.247Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "215-restart-letter-field-name-outlived-its-anchor",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-16T17:52:36Z"
     },
     {
