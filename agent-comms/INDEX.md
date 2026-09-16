@@ -206,6 +206,6 @@
 | 210-self-restart-waited-understates-the-standstill | curator, dev-core | low | open | — | — | 2026-09-16 | СЛОВО JOHN (сессия чата, 2026-09-16 ~13:11Z): ЖДЁМ — исход 2 развилки §4 msg-018. Приёмку построени… |
 | 211-parallelism-ceiling-config-says-three | curator · dev-core · john | high | closed | — | — | 2026-09-16 | — |
 | 212-standstill-letter-cures-the-wrong-cause | curator, dev-core | normal | closed | — | — | 2026-09-15 | — |
-| 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-16 | 2026-09-16 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: превращать ли замер В-2 в постановку dev-core — и какую из трёх правок меха… |
+| 213-role-memory-index-over-ceiling | curator · dev-core · john | normal | open | curator | — | 2026-09-16 | СЛОВО JOHN (сессия чата, 2026-09-16 ~16:44Z): БЕРЁМ К-1 И К-3. К-2 НЕ БЕРЁМ. Парк снимаю этим письм… |
 | 214-restart-advisory-misses-read-once-keys | curator, dev-core | normal | closed | — | — | 2026-09-16 | — |
 | 215-restart-letter-field-name-outlived-its-anchor | curator · dev-core · john | normal | open | dev-core | — | 2026-09-16 | СЛОВО JOHN (сессия чата, 2026-09-16 ~16:35Z): ЗАВЕСТИ ТРЕД ПОД ПОДПИСЬ ПОЛЯ. Постановка dev-core. |
