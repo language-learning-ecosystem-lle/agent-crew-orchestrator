@@ -6,7 +6,7 @@
 - [Потолок пары тратит МОЛЧАЛИВЫЙ выход](pair-attempt-counter-is-zeroed-by-a-delivery.md)
 - [Деревья ролей делят один склад refs](role-worktrees-share-one-ref-store.md)
 - [Механика парка одним файлом](parking-mechanics.md); [заморозка того самого хода](parked-on-freezes-the-turn.md); [отказ молчащему письму](park-door-refuses-silent-letters.md); [письмо без парка поднимает впустую](letter-without-a-park-reraises-the-thread.md); [парк ставится ПОСЛЕ вердикта](park-goes-after-the-verdict-not-before.md); [`run:N` под `checks` снимается полем `run-outcome`](run-park-under-checks-ends-only-by-ceiling.md); [отказ у кончившегося круга](run-park-refused-when-the-round-is-over.md); [под живым `checks` решает наличие своей работы](no-park-beats-run-park-under-live-checks.md); [под кругом РЕВЬЮ `run:<pr>` правилен](park-run-under-a-review-round-lifts-on-the-verdict.md); [отложенная работа держится только парком на человеке](deferred-work-has-only-a-person-park.md)
-- [Свежую ленту читают ДО подъёма роли](read-the-fresh-feed-before-raising-a-role.md)
+- [Свежую ленту читают ДО подъёма роли](read-the-fresh-feed-before-raising-a-role.md); [поднятая сессия ленту БОЛЬШЕ не перечитывает](raised-session-freezes-the-feed-it-read.md)
 - [Чтение ссылки не должно писать в дерево](reading-a-ref-must-not-write-the-tree.md) — `git show <ref>:<путь>`
 - [Вендорская песочница мерится даром](vendor-sandbox-measures-for-free.md)
 - [«Уезжает в тред X» — намерение, а не запись](handoff-to-another-thread-is-prose.md)
