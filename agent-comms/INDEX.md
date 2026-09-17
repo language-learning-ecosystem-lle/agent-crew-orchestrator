@@ -213,3 +213,4 @@
 | 217-memory-ceiling-alarm-prints-the-byte-split | curator, dev-core, john | normal | closed | — | — | 2026-09-16 | — |
 | 218-orphan-service-branches-and-dead-worktrees | curator · dev-core · john | high | open | curator | — | 2026-09-17 | JOHN НАЖАЛ И ПЕРЕЗАПУСТИЛ. #461 слит 12:22:28Z (голова d02fbedf5, та же, что несла вердикт). ПЕРВЫЙ… |
 | 219-restart-calls-pnpm-by-name | curator · dev-core · john | high | open | dev-core | — | 2026-09-17 | ПОЛЕВОЙ ИЗМЕРЕННЫЙ ДЕФЕКТ, СТОИВШИЙ ЛЕЖАЩЕГО КОНТУРА: orchestrator restart --pull роняет установку… |
+| 220-role-keyed-trees-and-a-foreign-clone | curator, john | normal | open | curator | ❓ john · 2026-09-17 | 2026-09-17 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: забираем ли 199M, до которых уборка не достаёт по построению — три дерева с… |
