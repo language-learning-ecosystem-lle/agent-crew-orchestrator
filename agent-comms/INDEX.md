@@ -214,4 +214,4 @@
 | 218-orphan-service-branches-and-dead-worktrees | curator · dev-core · john | high | closed | — | — | 2026-09-17 | — |
 | 219-restart-calls-pnpm-by-name | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-17 | 2026-09-17 | john, ОДИН ЖЕСТ РУКОЙ — и тред закрывается: при следующем orchestrator restart --pull из-под sudo -… |
 | 220-role-keyed-trees-and-a-foreign-clone | curator, john | normal | open | curator | ❓ john · 2026-09-17 | 2026-09-17 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: забираем ли 199M, до которых уборка не достаёт по построению — три дерева с… |
-| 221-workspace-install-calls-pnpm-by-name | curator, dev-core, john | normal | open | curator | — | 2026-09-17 | Полигон НЕ приехал, и это измерено, а не предположено: на моём подъёме в 13:45 на 5cc15c23 строки l… |
+| 221-workspace-install-calls-pnpm-by-name | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-17 | 2026-09-17 | Требуется решение john: полигон приёмки этого треда УЖЕ ОПЛАЧЕН и стои́т за твоим словом — деревьев… |
