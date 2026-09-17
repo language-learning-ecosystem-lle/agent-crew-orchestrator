@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-17T12:35:24.690Z",
+  "writtenAt": "2026-09-17T12:36:10.731Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "218-orphan-service-branches-and-dead-worktrees",
-      "state": "draining",
-      "deadline": "2026-09-17T13:07:17Z"
-    },
     {
       "role": "dev-core",
       "thread": "219-restart-calls-pnpm-by-name",
