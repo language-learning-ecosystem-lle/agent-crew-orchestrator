@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-17T16:00:01.980Z",
+  "writtenAt": "2026-09-17T16:00:53.084Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "curator",
       "thread": "220-role-keyed-trees-and-a-foreign-clone",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-17T16:33:31Z"
     }
   ]
