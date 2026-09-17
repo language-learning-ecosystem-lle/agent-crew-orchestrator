@@ -656,24 +656,33 @@ import {
   describeFailedTidyUp,
   describeFailedTidyUpOnItsBranch,
   describeFinishDirt,
+  describeLocalOnlyBranches,
   describeServiceBranches,
   describeStrandedPlace,
   describeStrandedWorkspace,
   describeWorkspaceIdentity,
+  describeWorkspaceLife,
   describeWorkspacePlan,
+  describeWorkspaceTidyUp,
   dirtLeftByFinish,
+  localOnlyBranches,
   lockHolderPid,
   lockReason,
   mainCheckoutVerdict,
   planWorkspace,
   planWorkspaceIdentity,
+  splitLocalOnlyBranches,
+  type TidyUpTotal,
+  WORKSPACE_PAIR_SEPARATOR,
   type WorkspaceCheckout,
   type WorkspaceDirt,
   type WorkspaceFacts,
   type WorkspaceInventory,
+  type WorkspaceLifeRow,
   type WorkspacePlan,
   workspaceInventoryOf,
   workspaceKeyOf,
+  workspaceLife,
   workspacePath,
   workspaceRoleOf,
   workspaceVerdict,
@@ -10116,6 +10125,43 @@ const journalEventsFor = (argv: readonly string[]): readonly OrchestratorEvent[]
   return existsSync(journal) ? parseJournal(readFile(journal, "orchestrator journal")) : [];
 };
 
+/**
+ * WHAT A DIRECTORY COSTS ON THE DISK, asked of `du` rather than computed by walking it:
+ * the number this block prints is a decision aid (`is a tidy-up rule worth its risk`), and
+ * `du` is the tool whoever reads it will check it with.
+ *
+ * `--count-links` IS THE WHOLE CHOICE HERE. Linked worktrees share objects with `.git`
+ * through hard links, and `du` over several paths at once counts a shared inode for the
+ * FIRST path only. That is exactly right for "how much would removing all of these free"
+ * and exactly wrong for "how big is this one tree", because the second answer would then
+ * depend on the order of the list. So the caller says which question it is asking.
+ *
+ * A FAILED READ RETURNS AN EMPTY MAP AND IS NAMED BY THE CALLER, never a zero: `du` that
+ * did not answer and a directory of no size must not print alike (discipline 4).
+ */
+const diskKib = (
+  paths: readonly string[],
+  options: { readonly countLinks?: boolean },
+): ReadonlyMap<string, number> => {
+  const sizes = new Map<string, number>();
+  if (paths.length === 0) return sizes;
+  let raw: string;
+  try {
+    raw = execFileSync("du", ["-sk", ...(options.countLinks === true ? ["-l"] : []), ...paths], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch {
+    return sizes;
+  }
+  for (const line of raw.split("\n")) {
+    const parsed = /^(\d+)\s+(.+)$/.exec(line);
+    if (parsed === null) continue;
+    sizes.set(parsed[2] as string, Number(parsed[1]));
+  }
+  return sizes;
+};
+
 const orchestratorStatus = async (rawArgv: readonly string[]): Promise<void> => {
   // `status` JOINS THE OPERATOR'S SHORT FORMS (thread 019): it is read between `up` and
   // `down`, by the same person in the same minute, and being the one of the three that
@@ -10129,7 +10175,13 @@ const orchestratorStatus = async (rawArgv: readonly string[]): Promise<void> => 
     return;
   }
   const paths = pathsFrom(argv);
-  out(renderFrame(await operatorFrame(argv)));
+  // THE FRAME IS KEPT, NOT ONLY PRINTED (thread 218). It has already folded the two facts
+  // the workspace inventory below is judged by — which threads are CLOSED and which pairs
+  // hold a LIVE lease — out of the mail and the journal. Reading either of them a second
+  // time here would be two readings of one state in one frame, which is how a summary
+  // starts to disagree with itself.
+  const frame = await operatorFrame(argv);
+  out(renderFrame(frame));
   out(renderPaths(paths));
 
   // S7: the PERMISSIONS the circuit will raise a role with. The same argument as
@@ -10199,25 +10251,70 @@ const orchestratorStatus = async (rawArgv: readonly string[]): Promise<void> => 
         `  NOT READ — '${join(repo, workdirSection.worktrees)}' could not be listed; where the roles work is declared and unreadable`,
       );
     } else {
-      const say = (label: string, path: string, role: string) =>
+      const factsOf = new Map(
+        seen.places.map((place) => [place.path, workspaceFacts(place.path, { dirt: true })]),
+      );
+      const say = (label: string, path: string, role: string, facts?: WorkspaceFacts) =>
         out(
           `  ${label}: ${
             workspaceVerdict({
               role,
               path,
-              facts: workspaceFacts(path, { dirt: true }),
+              facts: facts ?? workspaceFacts(path, { dirt: true }),
               base: base.commit,
               baseRef: base.ref,
             }).detail
           }`,
         );
-      for (const place of seen.places) {
+      // THE DRY INVENTORY (thread 218, package 1): what the tidy-up of that thread WOULD
+      // take, and what it costs, printed a whole package before anything can take it. It
+      // removes nothing, renames nothing, and has no flag that would.
+      const live = new Set(
+        frame.leases
+          .filter((view) => isLeaseAlive(view.state))
+          .map((view) => `${view.role}${WORKSPACE_PAIR_SEPARATOR}${view.thread}`),
+      );
+      // A THREAD NOBODY COULD ANSWER FOR IS NOT A CLOSED ONE. `closedThreads` is a fold of
+      // the mail the frame has already read; a thread that is not THERE at all is absent
+      // from that set for the same reason an open one is, and the difference between the
+      // two is the difference between `unknown` and `dead`.
+      const closedSet = frame.closedThreads;
+      const threadClosedOf = (thread: string): boolean | undefined =>
+        closedSet === undefined || !existsSync(join(paths.mailRoot, thread))
+          ? undefined
+          : closedSet.has(thread);
+      // EACH TREE ON ITS OWN (`--count-links`), because a per-tree number deduplicated
+      // against the trees before it would say a size that depends on the order they were
+      // listed in. The TOTAL below is measured the other way, and says so.
+      const sizes = diskKib(
+        seen.places.map((place) => place.path),
+        { countLinks: true },
+      );
+      const rows: WorkspaceLifeRow[] = seen.places.map((place) => {
+        const facts = factsOf.get(place.path);
+        const kib = sizes.get(place.path);
+        return {
+          place,
+          life: workspaceLife({
+            place,
+            ...(place.thread === undefined ? {} : { threadClosed: threadClosedOf(place.thread) }),
+            ...(facts?.dirty === undefined ? {} : { dirty: facts.dirty }),
+            ...(facts?.locked === undefined ? {} : { locked: facts.locked }),
+            leaseAlive: live.has(`${place.role}${WORKSPACE_PAIR_SEPARATOR}${place.thread}`),
+          }),
+          ...(kib === undefined ? {} : { kib }),
+        };
+      });
+      for (const row of rows) {
+        const place = row.place;
         say(
           place.thread === undefined ? place.role : `${place.role}×${place.thread}`,
           place.path,
           place.role,
+          factsOf.get(place.path),
         );
         if (!place.current) out(`    ${describeStrandedPlace({ place, pairsPerRole })}`);
+        out(`    ${describeWorkspaceLife(row)}`);
       }
       for (const role of seen.rolesWithoutAPlace) {
         say(role, workspacePath({ repo, worktrees: workdirSection.worktrees, role }), role);
@@ -10226,6 +10323,90 @@ const orchestratorStatus = async (rawArgv: readonly string[]): Promise<void> => 
       // nothing: the mail checkout is one of these, and so is a probe tree made by hand.
       for (const name of seen.unowned) {
         out(`  ${name}: not any role's workspace — nothing here is claimed about it`);
+      }
+      // EVERY TOTAL IS MARGINAL (thread 218, curator's measurement of 2026-09-17): what
+      // removing a set frees is `du(all registered places)` − `du(all of them but the
+      // set)`, and NOT one `du` over the set. A pass over the set alone deduplicates
+      // INSIDE it while still counting every hard link that runs out to a tree which
+      // STAYS — on this box that was 1173M against 1023M for the dead set, and 524M
+      // against 35M for the three role-keyed ones. `TidyUpTotal` carries the arithmetic.
+      //
+      // THE REMAINDER IS EVERY OTHER REGISTERED PLACE, the unowned ones included: the mail
+      // checkout and a probe tree made by hand hold the same shared pool, and leaving them
+      // out of the remainder would put their share back into the number as a saving.
+      const worktreesDir = join(repo, workdirSection.worktrees);
+      const universe = [
+        ...seen.places.map((place) => place.path),
+        ...seen.unowned.map((name) => join(worktreesDir, name)),
+      ];
+      const wholeKib = diskKib(universe, {});
+      const sumOf = (measured: ReadonlyMap<string, number>) =>
+        [...measured.values()].reduce((sum, kib) => sum + kib, 0);
+      const marginal = (set: readonly string[]): TidyUpTotal | undefined => {
+        const standing = universe.length - set.length;
+        if (set.length === 0) return { kib: 0, standing };
+        if (wholeKib.size === 0) return undefined;
+        const remainder = universe.filter((path) => !set.includes(path));
+        if (remainder.length === 0) return { kib: sumOf(wholeKib), standing };
+        const restKib = diskKib(remainder, {});
+        if (restKib.size === 0) return undefined;
+        return { kib: Math.max(0, sumOf(wholeKib) - sumOf(restKib)), standing };
+      };
+      const pathsOf = (verdict: string) =>
+        rows.filter((row) => row.life.verdict === verdict).map((row) => row.place.path);
+      const dead = marginal(pathsOf("dead"));
+      const old = marginal(pathsOf("not-a-pair"));
+      for (const line of describeWorkspaceTidyUp({
+        rows,
+        ...(dead === undefined ? {} : { dead }),
+        ...(old === undefined ? {} : { old }),
+      })) {
+        out(line);
+      }
+      // THE OTHER PILE OF THIS THREAD, and the one the tidy-up deliberately does NOT take.
+      const heads = gitAsk([
+        "-C",
+        repo,
+        "for-each-ref",
+        "--format=%(refname:short)",
+        "refs/heads/",
+      ]);
+      const remotes = gitAsk([
+        "-C",
+        repo,
+        "for-each-ref",
+        "--format=%(refname:short)",
+        "refs/remotes/origin/",
+      ]);
+      if (heads === undefined || remotes === undefined) {
+        out(
+          `  local-only branches: NOT READ — 'git -C ${repo} for-each-ref' did not answer for ${heads === undefined ? "refs/heads/" : "refs/remotes/origin/"}; branches that exist on this disk alone may be lying there unnamed`,
+        );
+      } else {
+        const lines = (raw: string) => raw.split("\n").filter((name) => name !== "");
+        // WHICH OF THEM A TIDY-UP WOULD ITSELF PRODUCE: the branch a pair tree is standing
+        // on right now survives `git worktree remove` and becomes exactly the pile this
+        // thread was opened about. `facts.branch` is `HEAD` for a detached tree, and a
+        // detached tree leaves nothing behind.
+        const heldBy = new Map<string, string>();
+        for (const place of seen.places) {
+          const branch = factsOf.get(place.path)?.branch;
+          if (branch === undefined || branch === "HEAD") continue;
+          heldBy.set(
+            branch,
+            place.thread === undefined
+              ? place.role
+              : `${place.role}${WORKSPACE_PAIR_SEPARATOR}${place.thread}`,
+          );
+        }
+        for (const line of describeLocalOnlyBranches(
+          splitLocalOnlyBranches({
+            branches: localOnlyBranches({ local: lines(heads), remote: lines(remotes) }),
+            heldBy,
+          }),
+        )) {
+          out(line);
+        }
       }
     }
   }

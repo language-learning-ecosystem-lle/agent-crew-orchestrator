@@ -600,7 +600,8 @@ export const workspaceInventoryOf = (input: {
  *
  * IT NAMES THREE THINGS AND PERFORMS NONE. What the tree is (a place keyed by the other
  * form), that nothing is going to happen to it here, and WHERE the question of clearing it
- * lives — thread `174-workspace-tidy-up`. Deleting a checkout is irreversible and belongs
+ * lives — thread `218-orphan-service-branches-and-dead-worktrees` (see `TIDY_UP_HOME`).
+ * Deleting a checkout is irreversible and belongs
  * to a human (role card: "any irreversible action → john"); a line that says so is the
  * whole of what this package owes the reader.
  */
@@ -609,8 +610,331 @@ export const describeStrandedPlace = (input: {
   readonly pairsPerRole: number;
 }): string =>
   input.place.thread === undefined
-    ? `${input.place.path} is keyed by the role alone while 'parallelism.pairsPerRole' is ${input.pairsPerRole} — no run will be seated in it again, and nothing here removes it; clearing abandoned trees is thread 174-workspace-tidy-up`
-    : `${input.place.path} is keyed by a PAIR while 'parallelism.pairsPerRole' is ${input.pairsPerRole} — the leftover of a higher ceiling, and nothing here removes it; clearing abandoned trees is thread 174-workspace-tidy-up`;
+    ? `${input.place.path} is keyed by the role alone while 'parallelism.pairsPerRole' is ${input.pairsPerRole} — no run will be seated in it again, and nothing here removes it; ${TIDY_UP_HOME}`
+    : `${input.place.path} is keyed by a PAIR while 'parallelism.pairsPerRole' is ${input.pairsPerRole} — the leftover of a higher ceiling, and nothing here removes it; ${TIDY_UP_HOME}`;
+
+/**
+ * WHERE THE QUESTION "AND WHO CLEARS THESE" ACTUALLY LIVES, in one place because two
+ * lines already pointed at it and a third is about to.
+ *
+ * IT USED TO SAY `174-workspace-tidy-up`, AND THAT WAS A POINTER AT A DOOR, NOT AT A
+ * DECISION: `174` is the standing address letters about a tree go to, while the rule this
+ * inventory is the first half of was decided in `218` (john, 2026-09-17). A reader sent to
+ * `174` finds the desk that receives the complaint; the rule is in `218`.
+ */
+export const TIDY_UP_HOME =
+  "the rule for clearing abandoned trees is thread 218-orphan-service-branches-and-dead-worktrees";
+
+/**
+ * IS THIS PAIR'S TREE STILL WORKING GROUND — the question the tidy-up of `218` will act
+ * on, asked HERE, a package before anything acts on it. john's condition for the removal
+ * was that what it would take be readable BEFORE it exists (msg-004 of that thread), and
+ * this is the shape that reading has.
+ *
+ * FOUR ANSWERS AND NOT TWO, because the two that are not `dead`/`alive` are the ones a
+ * silent inventory would turn into a deletion:
+ *
+ *  - `not-a-pair` — a tree keyed by the ROLE alone (`.worktrees/dev-core`). The criterion
+ *    john accepted speaks about `<role>@<thread>` with a CLOSED thread, and there is no
+ *    thread here to close; it is named, priced and left alone. (The mail checkout never
+ *    reaches this function at all — it is not any role's place, so `workspaceInventoryOf`
+ *    puts it in `unowned`, and that is where the guarantee lives.);
+ *  - `unknown` — a sign was not READ. A measurement that did not happen and a measurement
+ *    that came back "clean" must never print the same way (discipline 4); a tree whose
+ *    thread the mail could not answer for is not dead, it is unjudged.
+ *
+ * THE ORDER OF THE SIGNS IS THE ORDER OF THE ANSWER, and it is chosen so the reason names
+ * the INTERESTING sign: an open thread is the ordinary reason a tree lives, so it is asked
+ * first and the dull majority says so in one word; dirt, a lock and a live lease are then
+ * the reasons a tree with a CLOSED thread still lives — and those are exactly the three a
+ * reader of this block is looking for.
+ *
+ * AGE IS NOT A SIGN AND NEVER BECOMES ONE (john, msg-004): a term would be a policy nobody
+ * decided, and it would need a config key besides.
+ */
+export type WorkspaceLifeVerdict = "dead" | "alive" | "unknown" | "not-a-pair";
+
+export type WorkspaceLife = {
+  readonly verdict: WorkspaceLifeVerdict;
+  /** The one sign that decided, named as itself and never as "looks abandoned". */
+  readonly because: string;
+};
+
+export const workspaceLife = (input: {
+  readonly place: WorkspacePlace;
+  /** `undefined` — the mail read here does not carry that thread, so nobody answered. */
+  readonly threadClosed?: boolean | undefined;
+  /** `undefined` — nobody asked git about uncommitted changes in this tree. */
+  readonly dirty?: boolean | undefined;
+  /** The reason text of `git worktree lock`, when the tree is locked. */
+  readonly locked?: string | undefined;
+  /** The pair holds a lease that is alive right now — a session is seated there. */
+  readonly leaseAlive?: boolean | undefined;
+}): WorkspaceLife => {
+  const { thread } = input.place;
+  if (thread === undefined) {
+    return {
+      verdict: "not-a-pair",
+      because:
+        "keyed by the role alone — the criterion speaks about '<role>@<thread>' with a CLOSED thread, and this name carries no thread to close",
+    };
+  }
+  if (input.threadClosed === false)
+    return { verdict: "alive", because: `thread ${thread} is OPEN` };
+  if (input.threadClosed === undefined) {
+    return {
+      verdict: "unknown",
+      because: `thread ${thread} is in no thread of the mail read here — NOT READ, and a tree is never called dead on a subject nobody answered for`,
+    };
+  }
+  if (input.dirty === undefined) {
+    return {
+      verdict: "unknown",
+      because: `thread ${thread} is closed, but this tree was NOT READ for uncommitted changes`,
+    };
+  }
+  if (input.dirty) {
+    return {
+      verdict: "alive",
+      because: `thread ${thread} is closed, but the tree has UNCOMMITTED CHANGES — a dirty tree is never taken, whatever its thread says`,
+    };
+  }
+  if (input.locked !== undefined) {
+    return {
+      verdict: "alive",
+      because: `thread ${thread} is closed, but the tree is LOCKED by git: '${input.locked}'`,
+    };
+  }
+  if (input.leaseAlive === true) {
+    return {
+      verdict: "alive",
+      because: `thread ${thread} is closed, but the pair holds a LIVE LEASE — a session is seated here now`,
+    };
+  }
+  return {
+    verdict: "dead",
+    because: `thread ${thread} is closed, the tree is clean, unlocked, and the pair holds no live lease`,
+  };
+};
+
+/**
+ * A SIZE ON DISK A HUMAN DECIDES BY. The input is kibibytes because that is what `du -sk`
+ * answers in, and the output is deliberately coarse: this number is an order of magnitude
+ * for "is it worth a rule", never an accounting figure (the statement of `218` names the
+ * megabyte as consciously out of scope).
+ */
+export const describeDiskSize = (kib: number): string => {
+  if (kib < 1024) return `${Math.max(0, Math.round(kib))}K`;
+  const mib = kib / 1024;
+  return mib < 1024 ? `${mib.toFixed(mib < 10 ? 1 : 0)}M` : `${(mib / 1024).toFixed(1)}G`;
+};
+
+/** One tree of the inventory, with the verdict and the price already attached to it. */
+export type WorkspaceLifeRow = {
+  readonly place: WorkspacePlace;
+  readonly life: WorkspaceLife;
+  /** Its own size in kibibytes; `undefined` when the disk was not measured. */
+  readonly kib?: number | undefined;
+};
+
+/** The rendered row — one line under the workspace's own, never instead of it. */
+export const describeWorkspaceLife = (row: WorkspaceLifeRow): string => {
+  const label =
+    row.life.verdict === "dead"
+      ? "DEAD"
+      : row.life.verdict === "alive"
+        ? "alive"
+        : row.life.verdict === "unknown"
+          ? "NOT READ"
+          : "not a pair";
+  const size = row.kib === undefined ? "size NOT MEASURED" : describeDiskSize(row.kib);
+  return `tidy-up: ${label} — ${row.life.because} · ${size}`;
+};
+
+/**
+ * WHAT A SET COSTS IS WHAT REMOVING IT WOULD FREE, AND NOTHING ELSE — the measurement
+ * every total of this inventory is taken by, because it is the only one that answers the
+ * question the total is read for.
+ *
+ * MEASURED ON THIS BOX, 2026-09-17, ON THE SAME THREE TREES, THREE WAYS: the sum of the
+ * per-row sizes said 524M; one `du` pass over the three said 187M; what removing them
+ * actually frees is 35M. A FACTOR OF FIFTEEN on the number a decision is taken by. pnpm
+ * hard-links `node_modules`, so a pool of ~153M is held by ANY of the neighbours — and a
+ * `du` over the set deduplicates INSIDE the set while still counting every link that runs
+ * out to a tree which STAYS.
+ *
+ * So the total is `du(all registered places)` − `du(all of them except this set)`, and it
+ * carries the remainder it was measured against: without those words the number gets added
+ * up again by the next reader. Two `du` passes, 0.3s each on a warm cache — measured.
+ */
+export type TidyUpTotal = {
+  /** `du(all registered places)` − `du(all of them but this set)`, in kibibytes. */
+  readonly kib: number;
+  /** How many registered places stay standing — what the number is relative to. */
+  readonly standing: number;
+};
+
+/** The marginal figure, or the refusal, in the words both forms of the line share. */
+const describeTidyUpTotal = (total: TidyUpTotal | undefined): string =>
+  total === undefined
+    ? "size NOT MEASURED"
+    : `${describeDiskSize(total.kib)} would be freed while the other ${total.standing} registered place(s) stand`;
+
+/**
+ * THE THREE TOTALS THE DECISION IS ACTUALLY TAKEN ON, and every one of them SPEAKS WHEN
+ * IT IS EMPTY. This whole thread exists because three service branches and sixty-eight
+ * trees were invisible to every summary; an inventory that prints nothing when it finds
+ * nothing leaves "there are none" and "the block does not know about them" reading exactly
+ * alike, which is the silence itself, one level quieter.
+ *
+ * `dead` is the number john judges the tidy-up by: what it would take, and what that
+ * frees. THE TOTAL IS NEVER THE SUM OF THE ROWS and says so — see `TidyUpTotal` for the
+ * measurement and for what the additive form got wrong by a factor of fifteen. The rows
+ * keep their own full sizes (`--count-links`) because "how big is this one tree" is an
+ * honest question with an order-independent answer; the single prohibition is adding them.
+ *
+ * AND IT CLAIMS THE DISK NOWHERE. Every count and every size here is about the places the
+ * contour has REGISTERED as workspaces; a directory under `.worktrees` that no role and no
+ * pair is keyed by is outside this block entirely, and the line says "registered" so that
+ * a reader never takes it for a statement about the disk.
+ */
+export const describeWorkspaceTidyUp = (input: {
+  readonly rows: readonly WorkspaceLifeRow[];
+  /** What removing the dead set would free; `undefined` when the disk was not measured. */
+  readonly dead?: TidyUpTotal | undefined;
+  /** The same measurement for the role-keyed trees, which are a set of their own. */
+  readonly old?: TidyUpTotal | undefined;
+}): readonly string[] => {
+  const of = (verdict: WorkspaceLifeVerdict) =>
+    input.rows.filter((row) => row.life.verdict === verdict);
+  const names = (rows: readonly WorkspaceLifeRow[]) =>
+    rows
+      .map((row) =>
+        row.place.thread === undefined
+          ? row.place.role
+          : `${row.place.role}${WORKSPACE_PAIR_SEPARATOR}${row.place.thread}`,
+      )
+      .join(", ");
+  const dead = of("dead");
+  const old = of("not-a-pair");
+  const unread = of("unknown");
+  const lines: string[] = [];
+  lines.push(
+    dead.length === 0
+      ? `  dead pair trees: none — every '<role>@<thread>' tree here is alive by the criterion of 218 (nothing was skipped: ${input.rows.length} tree(s) were judged)`
+      : `  dead pair trees (${dead.length}): ${describeTidyUpTotal(input.dead)} — ${names(dead)}. The figure is MARGINAL, never the sum of the rows above. Nothing here removes them; ${TIDY_UP_HOME}`,
+  );
+  if (unread.length > 0) {
+    lines.push(
+      `  NOT READ (${unread.length}): ${names(unread)} — a sign these trees are judged by did not answer, so they are counted neither dead nor alive`,
+    );
+  }
+  lines.push(
+    old.length === 0
+      ? "  role-keyed trees: none — every tree here is keyed by a pair"
+      : `  role-keyed trees (${old.length}): ${describeTidyUpTotal(input.old)} — ${names(old)}. The criterion of 218 does not reach them: no thread in the name, so nothing to close`,
+  );
+  return lines;
+};
+
+/**
+ * THE BRANCHES NOBODY WILL EVER FIND AGAIN IF THE TREE GOES — the second half of this
+ * thread's subject, and the reason it is printed rather than acted on.
+ *
+ * A local branch that `origin` has never heard of exists in exactly one place: this disk.
+ * The tidy-up takes TREES and leaves BRANCHES standing (john, msg-004, accepting the
+ * second refinement): a branch is its own anchor and costs nothing on disk, so removing it
+ * would be an irreversible gesture bought for nothing. But a branch nobody LISTS is the
+ * second silent pile — which is the very thing this thread was opened about — so the price
+ * of leaving them standing is that they are named, every tick, by name.
+ */
+export const localOnlyBranches = (input: {
+  /** `refs/heads/` short names. */
+  readonly local: readonly string[];
+  /** `refs/remotes/origin/` short names, as git prints them (`origin/<name>`). */
+  readonly remote: readonly string[];
+}): readonly string[] => {
+  const onOrigin = new Set(input.remote.map((name) => name.replace(/^origin\//, "")));
+  return [...input.local].filter((name) => !onOrigin.has(name)).sort();
+};
+
+/** How many of the branches a tidy-up would leave behind the line spells out by name. */
+export const LOCAL_BRANCHES_SHOWN = 10;
+
+/** A local-only branch a pair tree is standing on right now, and the tree that stands. */
+export type HeldLocalBranch = {
+  readonly branch: string;
+  /** The pair key of the tree — `<role>@<thread>`. */
+  readonly by: string;
+};
+
+/**
+ * WHICH OF THEM THE TIDY-UP ITSELF WOULD PRODUCE — the split that makes this a signal and
+ * not a dump, and the answer to "those nine or all 466" (curator, 2026-09-17).
+ *
+ * THE NINE ARE NOT A DIFFERENT RULE, THEY ARE A DIFFERENT QUESTION. The line was ordered
+ * as the answer to what STEP 2 LEAVES BEHIND: take the tree away and the branch it stood
+ * on survives the removal, unheard of on `origin`, which is precisely the pile this thread
+ * was opened about. The rest — 456 on this box — is the accumulated history of feature
+ * branches, which the tidy-up neither produces nor touches. One capped, arbitrary list of
+ * both piles gives neither the signal nor the completeness, so they are two lines: the
+ * held ones by name, the rest by count and a command.
+ *
+ * THE HOLE THIS PAIR OF LINES HAS TO CLOSE, and it is the reason it is written down here:
+ * once step 2 removes a tree, its branch DROPS OUT of the named line (there is no tree
+ * holding it any more) and moves SILENTLY into the count of the other. So the requirement
+ * of package 2 that every removed pair be named in the tick log includes the branch it
+ * stood on — that log line is what makes the move audible. No code for it is needed here.
+ */
+export const splitLocalOnlyBranches = (input: {
+  readonly branches: readonly string[];
+  /** Branch name → the pair key of the tree whose HEAD is on it right now. */
+  readonly heldBy: ReadonlyMap<string, string>;
+}): {
+  readonly held: readonly HeldLocalBranch[];
+  readonly rest: readonly string[];
+} => {
+  const held: HeldLocalBranch[] = [];
+  const rest: string[] = [];
+  for (const branch of input.branches) {
+    const by = input.heldBy.get(branch);
+    if (by === undefined) rest.push(branch);
+    else held.push({ branch, by });
+  }
+  return { held, rest };
+};
+
+/**
+ * TWO LINES, BECAUSE THEY HAVE TWO DIFFERENT READERS (see `splitLocalOnlyBranches`), and
+ * both of them SPEAK WHEN EMPTY.
+ *
+ * Line A is capped all the same — the nine are units today and the cap costs nothing, but
+ * a list that grew and printed silently would read as "there are ten", which is the
+ * silence of this thread one level quieter. Line B never lists: an arbitrary ten out of
+ * 456 is neither signal nor completeness, so it gives the count and the command that has
+ * them all.
+ */
+export const describeLocalOnlyBranches = (input: {
+  readonly held: readonly HeldLocalBranch[];
+  readonly rest: readonly string[];
+}): readonly string[] => {
+  const shown = [...input.held].slice(0, LOCAL_BRANCHES_SHOWN);
+  const more = input.held.length - shown.length;
+  const lines: string[] = [];
+  lines.push(
+    input.held.length === 0
+      ? "  branches a tidy-up would leave behind: none — no registered pair tree stands on a branch that 'origin' has never heard of"
+      : `  branches a tidy-up would leave behind (${input.held.length}) — the tree goes, the branch stays and nothing here removes it (a branch is its own anchor and costs no disk): ${shown
+          .map((row) => `${row.by} → ${row.branch}`)
+          .join(", ")}${more > 0 ? `, and ${more} more not listed here` : ""}`,
+  );
+  lines.push(
+    input.rest.length === 0
+      ? "  other local-only branches: none — every other branch here is on 'origin' as well"
+      : `  other local-only branches (${input.rest.length}) — they exist on this disk and nowhere else, no tidy-up produces them and none of this touches them; 'git branch --format=%(refname:short) | grep -vxF "$(git branch -r --format=%(refname:lstrip=3))"' has all of them`,
+  );
+  return lines;
+};
 
 /**
  * THE REFUSAL THAT CAN BE ACTED ON WITHOUT GOING TO THE BOX (thread 099) — the second
