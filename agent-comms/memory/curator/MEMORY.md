@@ -139,3 +139,5 @@
 - [Соседняя починка убирает ПРОИЗВОДИТЕЛЯ события приёмки](acceptance-trigger-may-be-removed-by-a-neighbour-fix.md)
 - [Объявленная приёмка протухает от СОСЕДНЕЙ починки](declared-acceptance-rots-by-a-neighbour-fix.md); [доказательство приезжает в ЧУЖУЮ ленту](acceptance-evidence-may-land-in-a-foreign-feed.md); [два признака ОДНОГО предиката — один свидетель](two-signs-of-one-predicate-are-one-witness.md)
 - [Приёмка текстом называет ФУНКЦИЮ и СТРОКУ](declared-acceptance-names-the-function-and-line.md); [приёмка СТРОКОЙ ОТКАЗА самоопровергается](acceptance-by-a-refusal-line-self-refutes.md) — свидетеля ищи положительного, и `parallelism` тик НЕ перечитывает
+- [`is-ancestor` бесполезен как гард под squash](is-ancestor-is-useless-under-squash.md) — мерь патчем вклада
+- [Чекаут почты выглядит мёртвым деревом роли](comms-checkout-looks-like-a-dead-role-worktree.md) — `comms` тоже без `@`
