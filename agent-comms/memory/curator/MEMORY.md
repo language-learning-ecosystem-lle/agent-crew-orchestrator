@@ -1,5 +1,6 @@
 - [Приёмка К-1: заметка с поводом пишется в такте ЗАКРЫТИЯ, до него](k1-extinction-firing-is-ordered-in-the-closing-tick.md)
 - [Чтение ленты и дверь почты одним файлом](mail-reading-and-door-mechanics.md)
+- [Выравнивание зажигает только ОТСУТСТВУЮЩИЙ install](levelling-fires-only-on-a-missing-install.md) — сравнение сборок здесь инертно
 - [Дифф PR берут от merge-base](pr-diff-base-is-the-merge-base.md)
 - [Молчание доказывает починку только ЧАСТОГО дефекта](silence-proves-only-a-frequent-defect.md)
 - [Низкий приоритет всё равно поднимают](low-priority-still-gets-raised.md)
