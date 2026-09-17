@@ -2397,7 +2397,11 @@ describe("describeTidyUpPlan — what the tick says before it takes anything", (
   it("speaks when it takes none, and says what 'none' means", () => {
     const line = describeTidyUpPlan({ take: [], heldBack: [] }, 3);
     expect(line).toContain("nothing to take");
-    expect(line).toContain("218");
+    // AND IT SPELLS THE CRITERION OUT rather than pointing at a thread number: the
+    // pointer is what dies when the thread closes (see `TIDY_UP_HOME`), and a log line
+    // read a year from now has to carry its own meaning.
+    expect(line).toContain("a closed thread, clean, unlocked, no live lease");
+    expect(line).not.toMatch(/\d{3}/);
   });
 
   it("names the ceiling as a constant and names what waits for the next tick", () => {

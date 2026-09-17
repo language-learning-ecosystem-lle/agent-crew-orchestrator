@@ -14634,7 +14634,19 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
     readonly liveKeys: ReadonlySet<string>;
   }): void => {
     const worktrees = daemonConfig.orchestrator?.workdir?.worktrees;
-    if (worktrees === undefined) return; // nothing declares where the roles work
+    if (worktrees === undefined) {
+      // AND IT SAYS SO, for the rule this package is built on: a border that stayed
+      // silent is indistinguishable from a border nobody asked. Without this line the
+      // tick on which the tidy-up structurally CANNOT run reads exactly like the tick on
+      // which it ran and took nothing — `describeTidyUpPlan` is not reached either, so
+      // not a single `tidy-up:` line is printed. `orchestrator status` names the same
+      // absent key in the same words (`not declared (orchestrator.workdir.worktrees)`),
+      // and the two readings of one configuration must not differ in whether they speak.
+      err(
+        "agent-protocol: daemon — tidy-up: NOT RUN — nothing declares where the roles work (orchestrator.workdir.worktrees); no tree was judged and none was taken",
+      );
+      return;
+    }
     const seen = workspacesOnDisk({
       repo,
       worktrees,

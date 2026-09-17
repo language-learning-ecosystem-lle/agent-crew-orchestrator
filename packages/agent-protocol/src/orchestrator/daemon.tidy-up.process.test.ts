@@ -57,14 +57,17 @@ const CONFIG = {
 const threadMeta = (status: "open" | "closed"): string =>
   `---\ntitle: T\nparticipants: dev-core, curator\nstatus: ${status}\n---\n`;
 
-const contour = (threads: readonly (readonly [string, "open" | "closed"])[]): string => {
+const contour = (
+  threads: readonly (readonly [string, "open" | "closed"])[],
+  config: unknown = CONFIG,
+): string => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-tidy-"));
   const origin = join(base, "origin.git");
   execFileSync("git", ["init", "--bare", "-q", "-b", "main", origin]);
 
   const repo = join(base, "work");
   execFileSync("git", ["clone", "-q", origin, repo]);
-  writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(CONFIG, null, 2)}\n`);
+  writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(config, null, 2)}\n`);
   writeFileSync(join(repo, "CARD.md"), "the role card\n");
   git(repo, "add", ".");
   git(repo, "commit", "-qm", "config");
@@ -235,6 +238,32 @@ describe("the daemon's tidy-up — what one tick takes, and everything it leaves
 
     expect(result.out).toContain("tidy-up: nothing to take");
     expect(existsSync(join(repo, ".worktrees", "dev-core@999-never-existed"))).toBe(true);
+  });
+
+  /**
+   * THE TICK ON WHICH THE STEP CANNOT RUN AT ALL, and the one thing that tells it apart
+   * from a tick on which it ran and took nothing: a LINE. `worktrees` is optional by
+   * schema (v6) — a contour that declares nothing seats its sessions in the checkout the
+   * daemon was started from, and the criterion of this step has no directory to walk.
+   * Silence here would be the defect this whole package is written against: a border that
+   * did not answer is indistinguishable from a border nobody asked.
+   */
+  it("says NOT RUN, by the name of the key, when nothing declares where the roles work", () => {
+    const repo = contour([["001-done", "closed"]], {
+      ...CONFIG,
+      orchestrator: { ...CONFIG.orchestrator, workdir: { branch: "main" } },
+    });
+    workspace(repo, "dev-core@001-done"); // dead by every sign — and unreachable anyway
+
+    const result = tick(repo);
+
+    expect(result.out).toContain("tidy-up: NOT RUN");
+    expect(result.out).toContain("orchestrator.workdir.worktrees");
+    // AND IT IS NOT THE OTHER LINE: "took nothing" would be a claim about a criterion
+    // that was never applied to a single tree.
+    expect(result.out).not.toContain("tidy-up: nothing to take");
+    expect(existsSync(join(repo, ".worktrees", "dev-core@001-done"))).toBe(true);
+    expect(result.code).toBe(0);
   });
 
   it("a LOCKED tree with a closed thread is left standing, and the lock is why", () => {

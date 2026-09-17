@@ -829,7 +829,7 @@ export const describeWorkspaceTidyUp = (input: {
   const lines: string[] = [];
   lines.push(
     dead.length === 0
-      ? `  dead pair trees: none — every '<role>@<thread>' tree here is alive by the criterion of 218 (nothing was skipped: ${input.rows.length} tree(s) were judged)`
+      ? `  dead pair trees: none — every '<role>@<thread>' tree here is alive by the criterion (a closed thread, clean, unlocked, no live lease); nothing was skipped: ${input.rows.length} tree(s) were judged`
       : `  dead pair trees (${dead.length}): ${describeTidyUpTotal(input.dead)} — ${names(dead)}. The figure is MARGINAL, never the sum of the rows above. Nothing here removes them; ${TIDY_UP_HOME}`,
   );
   if (unread.length > 0) {
@@ -840,7 +840,7 @@ export const describeWorkspaceTidyUp = (input: {
   lines.push(
     old.length === 0
       ? "  role-keyed trees: none — every tree here is keyed by a pair"
-      : `  role-keyed trees (${old.length}): ${describeTidyUpTotal(input.old)} — ${names(old)}. The criterion of 218 does not reach them: no thread in the name, so nothing to close`,
+      : `  role-keyed trees (${old.length}): ${describeTidyUpTotal(input.old)} — ${names(old)}. The criterion does not reach them: no thread in the name, so nothing to close`,
   );
   return lines;
 };
@@ -1078,7 +1078,7 @@ export const describeTidyUpOutcome = (outcome: TidyUpOutcome): string => {
 /** What the tick says before it takes anything — and what it says when it takes none. */
 export const describeTidyUpPlan = (plan: TidyUpPlan, perTick: number): string =>
   plan.take.length === 0
-    ? "tidy-up: nothing to take — no '<role>@<thread>' tree is dead by the criterion of 218 (a closed thread, clean, unlocked, no live lease)"
+    ? "tidy-up: nothing to take — no '<role>@<thread>' tree is dead by the criterion (a closed thread, clean, unlocked, no live lease)"
     : `tidy-up: taking ${plan.take.length} tree(s) this tick (ceiling ${perTick} per tick, a constant in the code): ${plan.take
         .map((row) => row.key)
         .join(", ")}${

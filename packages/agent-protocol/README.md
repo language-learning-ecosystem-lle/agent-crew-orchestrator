@@ -2650,8 +2650,10 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [
                             # so every tree under the workspaces is listed by the pair it belongs to,
                             # a role with no tree is still named, a name that is no role's place is
                             # named and judged by nothing, and a tree the ceiling left behind says so
-                            # with thread 218-orphan-service-branches-and-dead-worktrees as the home
-                            # of the RULE for clearing it. Nothing here removes a checkout)
+                            # and names the NORM that holds the rule for clearing it ('Уборка мёртвых
+                            # деревьев пары' in PROTOCOL.md) rather than a thread — a thread closes,
+                            # and a pointer at a closed one sends its reader nowhere. Nothing here
+                            # removes a checkout)
                             # AND, under every tree, THE DRY INVENTORY of that thread (package 1):
                             # 'tidy-up:' with a verdict and the ONE sign that decided it — DEAD (the
                             # name is '<role>@<thread>', the thread is CLOSED, the tree is clean,
@@ -4220,7 +4222,14 @@ construction:
   Every removed pair is logged with the local branch it stood on — that branch STAYS,
   and without the line it would slide silently out of the inventory's named list into a
   count. `.worktrees/comms`, a role-keyed tree, a dirty tree, a locked one and one
-  holding a lease are none of them reachable by this step.
+  holding a lease are none of them reachable by this step. **And the step speaks when
+  it cannot run at all**: with no `orchestrator.workdir.worktrees` declared it prints
+  `tidy-up: NOT RUN — nothing declares where the roles work
+  (orchestrator.workdir.worktrees); no tree was judged and none was taken`, and when
+  the directory is there but cannot be listed, `tidy-up: NOT READ — '<path>' could not
+  be listed; nothing was taken`. Both are refusals BY NAME, because otherwise a tick on
+  which the step is structurally impossible prints nothing at all and reads exactly like
+  a tick on which it ran and took nothing.
 
 - **Nothing drops out silently.** Every candidate the tick declines to raise is
   named in the stream with its reason (`candidate dev-core×016-protocol-roadmap
