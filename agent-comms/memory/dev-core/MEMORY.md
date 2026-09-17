@@ -11,6 +11,7 @@
 - Прогон сюиты: [фоновый хранит только сводку](background-suite-run-keeps-only-its-summary.md) · [убитый оставляет файл в дереве](killed-suite-leaves-a-file-in-the-tree.md) · [временная копия теста портит полный прогон](probe-copy-pollutes-the-full-suite.md)
 - [Влитый `main` возвращает половину дефекта во ВТОРУЮ копию правила](clean-merge-can-bring-back-half-the-defect.md)
 - [Защитная ветвь бывает недостижима ДАННЫМИ](defensive-branch-can-be-unreachable-by-data.md)
+- [Мутацию фильтра берут РАСШИРЕНИЕМ](mutation-of-a-filter-must-widen-it.md) — сужение красит один случай и молчит о запретах.
 - [Новый тест доказывается мутацией](new-test-must-be-proven-by-mutation.md) · [мутацию снимают не `git checkout --`](mutation-probe-must-not-be-undone-by-checkout.md) · [тест, пересказывающий чужой литерал, пиньит свою копию](test-that-restates-a-literal-pins-only-its-own-copy.md)
 - [Красный `checks` на main — часто не тесты](red-main-checks-may-be-comms-sync.md) · [красный CI называет только ПЕРВЫЙ упавший шаг](red-ci-names-only-the-first-failing-step.md) · [флак доказывается диффом между головами](flake-is-proven-by-a-diff-between-heads.md)
 - [Перепрогон CI — только сдвигом головы](token-cannot-rerun-ci.md) · [«зелено» зависит от того, ГДЕ чекаут](green-depends-on-where-the-checkout-lives.md) · [зелено рукой — может стоять на токене ящика](green-on-the-box-may-lean-on-the-box-token.md) — гонять `env -u GH_TOKEN`.
