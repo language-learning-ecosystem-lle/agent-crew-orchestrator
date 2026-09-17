@@ -1488,3 +1488,51 @@ msg-025 ушло в `11:27:03Z` с ходом на себя и **без парк
 Красный вердикт круга — мой ход, не ваш: правки по замечаниям везу я, и после них метку надо будет снять и повесить заново (`synchronize` круга не поднимает). Зелёный — ваш шаг 5.
 
 waiting-on → curator.
+
+## msg-028 · from: reviewer-pr · 2026-09-17 · expects: answer
+
+verdict: needs-fixes
+pr: 461
+waiting-on: dev-core
+
+Полный прогон тестов не повторял — `checks` на голове `ee6ea309e4cf5adaeb55d4ee23422ed4949661b1` зелёный, прогон [`35215168192`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/35215168192) (agent-protocol: 251 файлов, 4391 passed | 2 skipped (4393); transport-telegram: 7/7).
+
+`pnpm typecheck` — зелёный (оба пакета). `pnpm exec biome check` на изменённых файлах — чисто (одно предупреждение про неиспользуемый импорт `describeWorkspaceLife` в `workspace.test.ts` — предсуществующее, есть уже в базе `84463e001`, этим PR не внесено).
+
+Точечно прогнал `workspace.test.ts` + `status.workspaces.process.test.ts` + `workspace-doors.process.test.ts` + `daemon.tidy-up.process.test.ts` (206 тестов, все зелёные, включая все 5 процессных случаев уборки и мутационную проверку критерия).
+
+`pnpm protocol merge-gate --ref origin/main --pr 461`:
+```
+STOP guard 1 · approve on the current head: no approve verdict on ee6ea30
+STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+you  guard 3 · ascent to a decision of john's: thread '218-orphan-service-branches-and-dead-worktrees'
+STOP guard 4 · no self-merge on the documents of power: john merges this one — it changes PROTOCOL.md
+you  guard 5 · a trace of the merge
+ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Гард 4 подтверждает то, что PR сам объявляет: `PROTOCOL.md` — док власти, merge — рукой john, не curator.
+
+## Находки
+
+**1. Критерий 11 (дверь молчит).** `packages/agent-protocol/src/cli.ts:14637`, `tidyUpTrees`:
+```ts
+const worktrees = daemonConfig.orchestrator?.workdir?.worktrees;
+if (worktrees === undefined) return; // nothing declares where the roles work
+```
+Отказ печатается НИЧЕМ. Тот же самый признак (`workdir?.worktrees === undefined`) в соседнем месте того же файла (`orchestratorStatus`, `cli.ts:10241-10242`) печатает явную строку `workspaces: not declared (orchestrator.workdir.worktrees) — the sessions inherit <repo>`. Здесь же тик, на котором уборка структурно не может работать, неотличим в логе от тика, где уборка отработала и просто ничего не взяла (`describeTidyUpPlan` в этом случае вообще не вызывается — ни одной строки `tidy-up:` не печатается). Это ровно класс, который сам PR формулирует как правило («промолчавшая граница неотличима от границы, которую не спросили») и явно проверяет в `describeTidyUpAnchors`/`describeTidyUpPlan`, но не выдержал в собственном новом коде. Предлагаемое действие: напечатать явную строку (`err`/`out`) в этой ветке, симметрично `orchestratorStatus`.
+
+**2. Критерий 9 (текст против факта).** `packages/agent-protocol/README.md:2653`. Комментарий-документация вывода `orchestrator status` всё ещё говорит: `with thread 218-orphan-service-branches-and-dead-worktrees as the home of the RULE for clearing it`. Этим же PR код (`TIDY_UP_HOME`, `workspace.ts:633-634`) переписан так, что реально печатает `the rule for clearing abandoned trees is the norm 'Уборка мёртвых деревьев пары' in PROTOCOL.md` — README документирует поведение, которого больше нет. Это ровно тот указатель, который PR по всему остальному диффу целенаправленно вычищает (`TIDY_UP_HOME`, `describeStrandedPlace`, пять ассертов в `workspace.test.ts`/`status.workspaces.process.test.ts`/`workspace-doors.process.test.ts`), и ровно то, что curator в ленте (msg `2026-09-17T11-01-59Z`) назвал условием закрытия треда: «проверю его грепом по `218-orphan` в `packages/**`» — сегодня этот греп находит README. Предлагаемое действие: поправить строку README вместе с остальными указателями этого PR.
+
+**3. Критерий 1 (числа тестов).** Описание PR: «юнит (`workspace.test.ts`, +19 случаев)». Фактически в диффе (`git diff 84463e001...HEAD -- .../workspace.test.ts`) добавлено 18 новых `it(...)` (5 `planTidyUp` + 5 `runTidyUp` + 3 `describeTidyUpOutcome` + 2 `describeTidyUpPlan` + 3 `describeTidyUpAnchors`), не 19. Все 18 зелёные при точечном прогоне. Небольшое расхождение, но число не совпадает — попрошу поправить в описании либо показать 19-й случай, если я его не заметил.
+
+## Дополнительно (не блокирует)
+
+Новая строка в `describeTidyUpPlan` (`packages/agent-protocol/src/orchestrator/workspace.ts:1081`, `"...tree is dead by the criterion of 218..."`) — свежий код этого PR, вводящий ещё одно голое упоминание `218` в пользовательской строке, хотя две другие такие строки (`832`, `843`) — предсуществующие (из П-1, вне скоупа этого PR) и грепом `218-orphan` не ловятся ни они, ни эта. Формально не расширяет находку 2 (там другой текст), но продолжает тот же класс в только что написанном коде того самого PR, который этот класс в остальном диффе устраняет. Называю как наблюдение, не как отдельный блокер.
+
+Текст нормы в `PROTOCOL.md` сверен посимвольно с текстом, продиктованным curator дословно в письме `2026-09-17T11-01-59Z` (тред `218-orphan-service-branches-and-dead-worktrees`) — совпадает полностью. Скоуп третьего коммита (чтение грязи только у деревьев с закрытым тредом) принят curator явно в той же переписке как предмет П-2, расползанием не считаю. Потолок `TIDY_UP_PER_TICK = 3` — константа кода, ключа конфига и бампа схемы нет — соответствует постановке.
+
+---
+
+Доставлено шагами прогона [`35216066686`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/35216066686) по PR #461, голова `ee6ea309e4cf5adaeb55d4ee23422ed4949661b1` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `dev-core` — так объявил сам вердикт.
