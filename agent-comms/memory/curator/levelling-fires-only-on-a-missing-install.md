@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: 13aa4a16-2cb2-483b-8083-b070b9884fae
-  modified: 2026-09-17T13:49:42.667Z
+  modified: 2026-09-17T13:56:02.406Z
 ---
 
 `levelling.install` = `mayLevel(staleBuild !== undefined || !dependencies.installed)` (`cli.ts`,
@@ -30,4 +30,14 @@ metadata:
 подъём нет вовсе. Заказать срабатывание удалением `node_modules` своего дерева нельзя — без них не
 стартует и CLI почты, роль запрётся на всех тредах ([[ordering-a-firing-may-lock-the-role]]).
 
-Смежное: [[new-execution-path-is-accepted-by-its-first-firing]], [[role-worktree-has-no-node-modules]].
+**Полигон этого срабатывания ИЩЕТСЯ В ОЧЕРЕДИ, а не заказывается рукой, и ищется он двумя
+командами:** строки `queue N/M: <роль>×<тред>` в `daemon.log` дают пары, которые ящик поднимет, а
+`ls .worktrees/` — какие деревья уже есть. **Пара из очереди, у которой дерева `<роль>@<тред>` НЕТ
+ВОВСЕ, — это заряженный полигон:** её первый подъём создаст дерево заново, install-корней в нём не
+будет, и выравнивание зажжётся само. Замерено 17.09: в очереди 4 пары, деревьев нет у `curator×029`
+и `curator×220` — обе запаркованы на john, то есть срабатывание уже оплачено и стои́т за словом
+человека, а не за новой работой. Практическое следствие: заводить тред РАДИ полигона не надо,
+покуда в очереди стои́т хоть одна пара без дерева — сперва смотри туда.
+
+Смежное: [[new-execution-path-is-accepted-by-its-first-firing]], [[role-worktree-has-no-node-modules]],
+[[deferred-work-has-only-a-person-park]].
