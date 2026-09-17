@@ -269,6 +269,31 @@ describe("`orchestrator status` — the workspaces this box actually has (thread
     expect(result.code).toBe(0);
   });
 
+  /**
+   * THE THIRD PILE, NAMED BEFORE IT CAN BECOME ONE (thread 218, package 2). `refs/tidy/*`
+   * is invisible to `git branch` and to the `wip/` inventory both, so the anchors the
+   * tidy-up leaves are listed by exactly one surface — this one — or they are the same
+   * silence this thread was opened about.
+   */
+  it("lists the tidy-up anchors, and says 'none' differently from 'nobody asked'", () => {
+    const repo = contour(1, [["001-done", "closed"]]);
+    workspace(repo, "dev-core@001-done");
+
+    const empty = status(repo);
+    expect(empty.out).toContain("tidy-up anchors: none — no tree has been taken");
+
+    // An anchor exactly as the removal writes it, on a real ref of a real repository.
+    git(repo, "update-ref", "refs/tidy/dev-core@001-done", "HEAD");
+    const after = status(repo);
+
+    expect(after.out).toContain("tidy-up anchors (1)");
+    expect(after.out).toContain("refs/tidy/dev-core@001-done");
+    // The ref is NOT a branch, and no surface that walks branches may have picked it up.
+    expect(git(repo, "branch", "--list", "*tidy*")).toBe("");
+    expect(after.out).toContain("git worktree add <path> <ref>");
+    expect(after.code).toBe(0);
+  });
+
   it("a tree under the workspaces that is no role's is named and judged by nothing", () => {
     const repo = contour(1);
     workspace(repo, "dev-core");

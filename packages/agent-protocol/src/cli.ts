@@ -660,6 +660,7 @@ import {
   describeServiceBranches,
   describeStrandedPlace,
   describeStrandedWorkspace,
+  describeTidyUpAnchors,
   describeWorkspaceIdentity,
   describeWorkspaceLife,
   describeWorkspacePlan,
@@ -672,6 +673,7 @@ import {
   planWorkspace,
   planWorkspaceIdentity,
   splitLocalOnlyBranches,
+  TIDY_UP_ANCHORS,
   type TidyUpTotal,
   WORKSPACE_PAIR_SEPARATOR,
   type WorkspaceCheckout,
@@ -10408,6 +10410,19 @@ const orchestratorStatus = async (rawArgv: readonly string[]): Promise<void> => 
           out(line);
         }
       }
+      // AND THE PILE THE TIDY-UP ITSELF PRODUCES (thread 218, package 2). `refs/tidy/*`
+      // is seen by neither `git branch` nor the `wip/` inventory below, so a tree the
+      // circuit took would be held by a ref that no surface of this contour lists —
+      // which is the silence this whole thread was opened about, one level quieter.
+      // It prints today, before anything writes into that namespace, because "none" and
+      // "nobody asked" have to read differently from the first tick (discipline 4).
+      const anchors = gitAsk(["-C", repo, "for-each-ref", "--format=%(refname)", TIDY_UP_ANCHORS]);
+      out(
+        describeTidyUpAnchors({
+          anchors:
+            anchors === undefined ? undefined : anchors.split("\n").filter((ref) => ref !== ""),
+        }),
+      );
     }
   }
 

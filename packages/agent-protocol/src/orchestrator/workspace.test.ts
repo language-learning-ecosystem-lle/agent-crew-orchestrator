@@ -19,6 +19,9 @@ import {
   describeServiceBranches,
   describeStrandedPlace,
   describeStrandedWorkspace,
+  describeTidyUpAnchors,
+  describeTidyUpOutcome,
+  describeTidyUpPlan,
   describeWorkspaceDirt,
   describeWorkspaceIdentity,
   describeWorkspaceLife,
@@ -29,12 +32,17 @@ import {
   lockHolderPid,
   lockReason,
   mainCheckoutVerdict,
+  planTidyUp,
   planWorkspace,
   planWorkspaceIdentity,
   readServiceBranchName,
+  runTidyUp,
   serviceBranchAge,
   serviceBranchName,
   splitLocalOnlyBranches,
+  type TidyUpGit,
+  type TidyUpOutcome,
+  type TidyUpPlan,
   type WorkspaceLifeRow,
   type WorkspacePlace,
   workspaceInventoryOf,
@@ -2182,5 +2190,247 @@ describe("describeStrandedPlace — where the question of clearing a tree lives"
     });
     expect(line).toContain("218-orphan-service-branches-and-dead-worktrees");
     expect(line).not.toContain("174-workspace-tidy-up");
+  });
+});
+
+describe("planTidyUp — what a tick would take, and everything it must not", () => {
+  const row = (
+    verdict: "dead" | "alive" | "unknown" | "not-a-pair",
+    thread: string | undefined,
+    role = "dev-core",
+  ): WorkspaceLifeRow => ({
+    place: {
+      role,
+      ...(thread === undefined ? {} : { thread }),
+      path: `/r/.worktrees/${role}${thread === undefined ? "" : `@${thread}`}`,
+      current: true,
+    },
+    life: { verdict, because: `because ${verdict}` },
+  });
+
+  // EVERY PROHIBITION OF THE STATEMENT IN ONE CASE, because in the code they are one
+  // filter and not a list of exceptions: a role-keyed tree, a dirty/locked/leased tree
+  // and an unread one all arrive here as a verdict that is not `dead`, and the mail
+  // checkout never arrives at all (it is `unowned`, so it has no row to be filtered).
+  it("takes the dead and NOTHING else — role-keyed, alive and NOT READ all stand", () => {
+    const plan = planTidyUp({
+      rows: [
+        row("not-a-pair", undefined),
+        row("alive", "100-open"),
+        row("unknown", "101-unread"),
+        row("dead", "102-done"),
+      ],
+      perTick: 10,
+    });
+    expect(plan.take.map((take) => take.key)).toEqual(["dev-core@102-done"]);
+    expect(plan.heldBack).toEqual([]);
+  });
+
+  it("anchors every tree it takes at 'refs/tidy/<role>@<thread>' and carries the reason", () => {
+    const plan = planTidyUp({ rows: [row("dead", "102-done")], perTick: 1 });
+    expect(plan.take[0]?.anchor).toBe("refs/tidy/dev-core@102-done");
+    expect(plan.take[0]?.because).toBe("because dead");
+  });
+
+  // THE CEILING IS THE WHOLE POINT OF THE FIRST TICK: sixty-eight dead trees on the box
+  // this was written for, and what is left standing is named rather than counted.
+  it("stops at the ceiling and NAMES what it left standing", () => {
+    const plan = planTidyUp({
+      rows: [row("dead", "101-a"), row("dead", "102-b"), row("dead", "103-c")],
+      perTick: 2,
+    });
+    expect(plan.take.map((take) => take.key)).toEqual(["dev-core@101-a", "dev-core@102-b"]);
+    expect(plan.heldBack).toEqual(["dev-core@103-c"]);
+  });
+
+  it("takes nothing at all at a ceiling of zero, and still names the dead", () => {
+    const plan = planTidyUp({ rows: [row("dead", "101-a")], perTick: 0 });
+    expect(plan.take).toEqual([]);
+    expect(plan.heldBack).toEqual(["dev-core@101-a"]);
+  });
+
+  // A CHOICE BETWEEN TREES TAKEN IN LISTING ORDER IS A DIFFERENT THREE EVERY TICK.
+  it("chooses in path order, so two ticks on the same disk agree about which three", () => {
+    const plan = planTidyUp({
+      rows: [row("dead", "103-c", "curator"), row("dead", "101-a"), row("dead", "102-b")],
+      perTick: 2,
+    });
+    expect(plan.take.map((take) => take.key)).toEqual(["curator@103-c", "dev-core@101-a"]);
+  });
+});
+
+describe("runTidyUp — anchor first, remove second, and no removal without an anchor", () => {
+  const plan = (thread = "100-done"): TidyUpPlan =>
+    planTidyUp({
+      rows: [
+        {
+          place: {
+            role: "dev-core",
+            thread,
+            path: `/r/.worktrees/dev-core@${thread}`,
+            current: true,
+          },
+          life: { verdict: "dead", because: `thread ${thread} is closed` },
+        },
+      ],
+      perTick: 1,
+    });
+
+  const git = (over: Partial<TidyUpGit> = {}): TidyUpGit & { readonly calls: string[] } => {
+    const calls: string[] = [];
+    return {
+      calls,
+      head: (input) => {
+        calls.push(`head ${input.path}`);
+        return "a".repeat(40);
+      },
+      branch: () => "dev-core/100-work",
+      anchor: (input) => {
+        calls.push(`anchor ${input.ref} ${input.commit}`);
+        return undefined;
+      },
+      remove: (input) => {
+        calls.push(`remove ${input.path}`);
+        return undefined;
+      },
+      ...over,
+    };
+  };
+
+  it("reads the HEAD, writes the anchor, THEN removes — in that order", () => {
+    const fake = git();
+    const outcomes = runTidyUp({ repo: "/r", plan: plan(), git: fake });
+    expect(fake.calls).toEqual([
+      "head /r/.worktrees/dev-core@100-done",
+      `anchor refs/tidy/dev-core@100-done ${"a".repeat(40)}`,
+      "remove /r/.worktrees/dev-core@100-done",
+    ]);
+    expect(outcomes[0]?.done).toBe(true);
+  });
+
+  // THE ONE CASE THIS PACKAGE EXISTS TO MAKE IMPOSSIBLE: an undo that failed to record
+  // must leave the tree standing, not become a removal nobody can reverse.
+  it("REMOVES NOTHING when the anchor refuses, and says so under its own name", () => {
+    const fake = git({ anchor: () => "fatal: cannot lock ref" });
+    const outcomes = runTidyUp({ repo: "/r", plan: plan(), git: fake });
+    expect(fake.calls).not.toContain("remove /r/.worktrees/dev-core@100-done");
+    expect(outcomes[0]).toMatchObject({ done: false, step: "anchor" });
+    expect(describeTidyUpOutcome(outcomes[0] as TidyUpOutcome)).toContain("NOTHING was removed");
+  });
+
+  it("leaves a tree standing when its HEAD did not answer — no commit, no anchor", () => {
+    const fake = git({ head: () => undefined });
+    const outcomes = runTidyUp({ repo: "/r", plan: plan(), git: fake });
+    expect(fake.calls).toEqual([]);
+    expect(outcomes[0]).toMatchObject({ done: false, step: "head" });
+  });
+
+  it("names a failed 'worktree remove' as itself — the anchor is already written", () => {
+    const fake = git({ remove: () => "fatal: contains modified files" });
+    const outcomes = runTidyUp({ repo: "/r", plan: plan(), git: fake });
+    expect(outcomes[0]).toMatchObject({ done: false, step: "remove" });
+    expect(describeTidyUpOutcome(outcomes[0] as TidyUpOutcome)).toContain(
+      "contains modified files",
+    );
+  });
+
+  it("one tree's refusal does not stop the next tree of the same tick", () => {
+    let asked = 0;
+    const fake = git({
+      anchor: () => (++asked === 1 ? "fatal: cannot lock ref" : undefined),
+    });
+    const outcomes = runTidyUp({
+      repo: "/r",
+      plan: planTidyUp({
+        rows: ["100-a", "101-b"].map((thread) => ({
+          place: {
+            role: "dev-core",
+            thread,
+            path: `/r/.worktrees/dev-core@${thread}`,
+            current: true,
+          },
+          life: { verdict: "dead" as const, because: "closed" },
+        })),
+        perTick: 2,
+      }),
+      git: fake,
+    });
+    expect(outcomes.map((outcome) => outcome.done)).toEqual([false, true]);
+  });
+});
+
+describe("describeTidyUpOutcome — the record that a tree ever stood there", () => {
+  const removed = (branch?: string): TidyUpOutcome => ({
+    done: true,
+    key: "dev-core@100-done",
+    path: "/r/.worktrees/dev-core@100-done",
+    anchor: "refs/tidy/dev-core@100-done",
+    commit: "b".repeat(40),
+    ...(branch === undefined ? {} : { branch }),
+  });
+
+  // THE HOLE PACKAGE 1 LEFT OPEN IN WRITING: the branch drops out of the inventory's
+  // named line the moment the tree goes, and this is the only place that says so.
+  it("NAMES THE BRANCH the tree stood on, and says the branch stays", () => {
+    const line = describeTidyUpOutcome(removed("dev-core/100-work"));
+    expect(line).toContain("it stood on 'dev-core/100-work'");
+    expect(line).toContain("that branch STAYS");
+  });
+
+  it("says a detached tree leaves nothing behind, rather than saying nothing", () => {
+    expect(describeTidyUpOutcome(removed())).toContain("leaves no branch behind");
+  });
+
+  it("carries the undo with this tree's own path and anchor in it", () => {
+    expect(describeTidyUpOutcome(removed())).toContain(
+      "git worktree add /r/.worktrees/dev-core@100-done refs/tidy/dev-core@100-done",
+    );
+  });
+});
+
+describe("describeTidyUpPlan — what the tick says before it takes anything", () => {
+  it("speaks when it takes none, and says what 'none' means", () => {
+    const line = describeTidyUpPlan({ take: [], heldBack: [] }, 3);
+    expect(line).toContain("nothing to take");
+    expect(line).toContain("218");
+  });
+
+  it("names the ceiling as a constant and names what waits for the next tick", () => {
+    const line = describeTidyUpPlan(
+      planTidyUp({
+        rows: ["100-a", "101-b"].map((thread) => ({
+          place: {
+            role: "dev-core",
+            thread,
+            path: `/r/.worktrees/dev-core@${thread}`,
+            current: true,
+          },
+          life: { verdict: "dead" as const, because: "closed" },
+        })),
+        perTick: 1,
+      }),
+      1,
+    );
+    expect(line).toContain("ceiling 1 per tick, a constant in the code");
+    expect(line).toContain("dev-core@101-b");
+  });
+});
+
+describe("describeTidyUpAnchors — the third pile, named before it becomes one", () => {
+  it("tells 'there are none' apart from 'nobody asked'", () => {
+    expect(describeTidyUpAnchors({ anchors: [] })).toContain("none — no tree has been taken");
+    expect(describeTidyUpAnchors({ anchors: undefined })).toContain("NOT READ");
+  });
+
+  it("names them and carries the undo", () => {
+    const line = describeTidyUpAnchors({ anchors: ["refs/tidy/dev-core@100-done"] });
+    expect(line).toContain("tidy-up anchors (1)");
+    expect(line).toContain("refs/tidy/dev-core@100-done");
+    expect(line).toContain("git worktree add <path> <ref>");
+  });
+
+  it("caps the list the way every other line of this inventory does", () => {
+    const many = Array.from({ length: 12 }, (_, at) => `refs/tidy/dev-core@1${at}-x`);
+    expect(describeTidyUpAnchors({ anchors: many })).toContain("and 2 more not listed here");
   });
 });

@@ -937,6 +937,254 @@ export const describeLocalOnlyBranches = (input: {
 };
 
 /**
+ * HOW MANY TREES ONE TICK MAY TAKE — a CONSTANT and never a config key (statement of 218:
+ * a key is a norm and john's button, and this package was asked to carry neither).
+ *
+ * IT EXISTS FOR THE FIRST TICK AND NOT FOR THE STEADY STATE. On the box this was written
+ * for, the inventory of package 1 found sixty-eight dead trees; an uncapped first tick
+ * would take all sixty-eight in one movement, and the field acceptance of this path is
+ * literally "the first tick takes no more than N". A ceiling turns one irreversible
+ * gesture of sixty-eight into twenty-three ticks anybody can stop after the first.
+ */
+export const TIDY_UP_PER_TICK = 3;
+
+/** The namespace every anchor is written into — invisible to `git branch` by design. */
+export const TIDY_UP_ANCHORS = "refs/tidy/";
+
+/** `refs/tidy/<role>@<thread>` — the anchor of one pair's tree, named by the pair. */
+export const tidyUpAnchor = (input: { readonly role: string; readonly thread: string }): string =>
+  `${TIDY_UP_ANCHORS}${input.role}${WORKSPACE_PAIR_SEPARATOR}${input.thread}`;
+
+/** One tree this tick intends to take, with the anchor it will be held by. */
+export type TidyUpTake = {
+  readonly place: WorkspacePlace;
+  /** `<role>@<thread>` — how the pair is named everywhere else in this file. */
+  readonly key: string;
+  readonly anchor: string;
+  /** The sign that decided, carried through from `workspaceLife` and never re-derived. */
+  readonly because: string;
+};
+
+export type TidyUpPlan = {
+  readonly take: readonly TidyUpTake[];
+  /** Dead trees the ceiling left standing this tick — by name, never as a count alone. */
+  readonly heldBack: readonly string[];
+};
+
+/**
+ * WHAT THIS TICK WOULD TAKE, DECIDED WITHOUT TOUCHING ANYTHING — the whole criterion of
+ * the tidy-up in one pure function, so the cases that cost a checkout are unit cases.
+ *
+ * IT TAKES `dead` AND NOTHING ELSE, and that single line is every prohibition of the
+ * statement at once, which is why it is written as a filter over a verdict somebody else
+ * computed rather than as a list of exceptions here. `.worktrees/comms` never reaches a
+ * verdict at all (`workspaceInventoryOf` puts it in `unowned`); a role-keyed tree is
+ * `not-a-pair`; a dirty one, a locked one and one holding a live lease are `alive`; a
+ * tree whose thread the mail could not answer for is `unknown`. A second copy of those
+ * rules here would be a second thing to keep true — see `workspaceLife` for the order
+ * the signs are asked in, and `describeWorkspaceLife` for how the reader sees them.
+ *
+ * THE ORDER IS THE PATH ORDER AND THAT IS ON PURPOSE: the ceiling makes this a choice
+ * between trees, and a choice taken in the order a directory listing happened to come
+ * back in would take a different three on every tick with no way to say which.
+ */
+export const planTidyUp = (input: {
+  readonly rows: readonly WorkspaceLifeRow[];
+  readonly perTick: number;
+}): TidyUpPlan => {
+  const dead = input.rows
+    .filter((row) => row.life.verdict === "dead" && row.place.thread !== undefined)
+    .sort((left, right) => left.place.path.localeCompare(right.place.path));
+  const take: TidyUpTake[] = [];
+  const heldBack: string[] = [];
+  for (const row of dead) {
+    const key = `${row.place.role}${WORKSPACE_PAIR_SEPARATOR}${row.place.thread}`;
+    if (take.length >= Math.max(0, input.perTick)) {
+      heldBack.push(key);
+      continue;
+    }
+    take.push({
+      place: row.place,
+      key,
+      anchor: tidyUpAnchor({ role: row.place.role, thread: row.place.thread as string }),
+      because: row.life.because,
+    });
+  }
+  return { take, heldBack };
+};
+
+/** Where a removal can stop, named by the gesture that did not happen. */
+export type TidyUpStep = "head" | "anchor" | "remove";
+
+export type TidyUpOutcome =
+  | {
+      readonly done: true;
+      readonly key: string;
+      readonly path: string;
+      readonly anchor: string;
+      /** The commit the anchor holds — the whole of what makes this reversible. */
+      readonly commit: string;
+      /** The local branch the tree stood on; `undefined` when it was detached. */
+      readonly branch?: string | undefined;
+    }
+  | {
+      readonly done: false;
+      readonly key: string;
+      readonly path: string;
+      readonly step: TidyUpStep;
+      readonly detail: string;
+    };
+
+/**
+ * THE LINE THAT MAKES A MACHINE'S IRREVERSIBLE GESTURE READABLE — the log entry of one
+ * removal, and the only record that a tree ever stood there.
+ *
+ * IT NAMES THE BRANCH, and that clause is the hole package 1 left open in writing
+ * (`splitLocalOnlyBranches`): the inventory lists "branches a tidy-up would leave behind"
+ * by the tree that holds them, so the moment this code takes the tree, the branch drops
+ * out of that named line and slides SILENTLY into the count of the other one. Saying it
+ * here is what makes the move audible, and it is the reason this line is not just "removed
+ * `<path>`".
+ *
+ * AND IT CARRIES THE UNDO, spelled out with this tree's own path in it, because a refusal
+ * or a record a reader has to invent gestures from costs the same sixteen minutes the
+ * dirty-tree door cost in the field (see `describeDirtyWorkspaceRepair`).
+ */
+export const describeTidyUpOutcome = (outcome: TidyUpOutcome): string => {
+  if (!outcome.done) {
+    return `tidy-up: REFUSED ${outcome.key} — ${
+      outcome.step === "head"
+        ? `the HEAD of '${outcome.path}' was not read`
+        : outcome.step === "anchor"
+          ? `the anchor was not written; NOTHING was removed`
+          : `'git worktree remove' failed on '${outcome.path}'`
+    }: ${outcome.detail}`;
+  }
+  const where =
+    outcome.branch === undefined
+      ? "it was DETACHED, so it leaves no branch behind"
+      : `it stood on '${outcome.branch}', and that branch STAYS (nothing here removes it)`;
+  return `tidy-up: REMOVED ${outcome.key} — '${outcome.path}' · anchored at ${outcome.anchor} = ${outcome.commit} · ${where} · put it back: git worktree add ${outcome.path} ${outcome.anchor}`;
+};
+
+/** What the tick says before it takes anything — and what it says when it takes none. */
+export const describeTidyUpPlan = (plan: TidyUpPlan, perTick: number): string =>
+  plan.take.length === 0
+    ? "tidy-up: nothing to take — no '<role>@<thread>' tree is dead by the criterion of 218 (a closed thread, clean, unlocked, no live lease)"
+    : `tidy-up: taking ${plan.take.length} tree(s) this tick (ceiling ${perTick} per tick, a constant in the code): ${plan.take
+        .map((row) => row.key)
+        .join(", ")}${
+        plan.heldBack.length === 0
+          ? ""
+          : ` — ${plan.heldBack.length} more dead tree(s) stand until the next tick: ${plan.heldBack.join(", ")}`
+      }`;
+
+/**
+ * THE GIT THIS PATH NEEDS, AND NOT ONE CALL MORE. Injected rather than imported for the
+ * reason every irreversible path in this file is: the ORDER of these three gestures is
+ * the safety, and an order is a unit case only while the gestures are substitutable.
+ */
+export type TidyUpGit = {
+  /** `git -C <path> rev-parse HEAD` — `undefined` when it did not answer. */
+  readonly head: (input: { readonly path: string }) => string | undefined;
+  /** The local branch the tree stands on; `undefined` for a detached tree. */
+  readonly branch: (input: { readonly path: string }) => string | undefined;
+  /** `git -C <repo> update-ref <ref> <commit>` — the refusal text, or `undefined` on ok. */
+  readonly anchor: (input: {
+    readonly repo: string;
+    readonly ref: string;
+    readonly commit: string;
+  }) => string | undefined;
+  /** `git -C <repo> worktree remove <path>` — the refusal text, or `undefined` on ok. */
+  readonly remove: (input: { readonly repo: string; readonly path: string }) => string | undefined;
+};
+
+/**
+ * ANCHOR FIRST, REMOVE SECOND, AND NO REMOVAL WITHOUT AN ANCHOR — the rule john's
+ * condition for this package reduces to, executed in the only order that can honour it.
+ *
+ * THE ANCHOR IS WRITTEN ON EVERY TREE AND NOT ON THE SUSPICIOUS ONES (statement of 218):
+ * three things are irreversible today, but which three they are tomorrow is not knowable
+ * in advance, and the price of an anchor is one ref. If `update-ref` refuses, the tree is
+ * NOT touched and the refusal is printed under its own name — a removal whose undo failed
+ * to record is precisely the silent deletion this thread was opened to prevent.
+ *
+ * THE HEAD IS READ BEFORE ANYTHING, because after `worktree remove` there is nothing left
+ * to read it from. A tree whose HEAD does not answer is left standing: an anchor on a
+ * commit nobody measured is not an anchor.
+ *
+ * ONE FAILURE DOES NOT STOP THE TICK. Each tree is its own three gestures against its own
+ * disk, and a refusal on one says nothing about the next; what a failure must never do is
+ * be silent, and it is not.
+ */
+export const runTidyUp = (input: {
+  readonly repo: string;
+  readonly plan: TidyUpPlan;
+  readonly git: TidyUpGit;
+}): readonly TidyUpOutcome[] => {
+  const outcomes: TidyUpOutcome[] = [];
+  for (const take of input.plan.take) {
+    const path = take.place.path;
+    const commit = input.git.head({ path });
+    if (commit === undefined || commit === "") {
+      outcomes.push({
+        done: false,
+        key: take.key,
+        path,
+        step: "head",
+        detail: "'git rev-parse HEAD' did not answer, and a commit nobody read is no anchor",
+      });
+      continue;
+    }
+    const branch = input.git.branch({ path });
+    const refused = input.git.anchor({ repo: input.repo, ref: take.anchor, commit });
+    if (refused !== undefined) {
+      outcomes.push({ done: false, key: take.key, path, step: "anchor", detail: refused });
+      continue;
+    }
+    const failed = input.git.remove({ repo: input.repo, path });
+    if (failed !== undefined) {
+      outcomes.push({ done: false, key: take.key, path, step: "remove", detail: failed });
+      continue;
+    }
+    outcomes.push({
+      done: true,
+      key: take.key,
+      path,
+      anchor: take.anchor,
+      commit,
+      ...(branch === undefined || branch === "HEAD" ? {} : { branch }),
+    });
+  }
+  return outcomes;
+};
+
+/**
+ * THE THIRD PILE, NAMED BEFORE IT CAN BECOME ONE. `refs/tidy/*` is seen by neither `git
+ * branch` nor the `wip/` inventory, so without a line of its own it would accumulate
+ * exactly the way the sixty-eight trees and the three service branches accumulated — which
+ * is the whole subject of this thread, one level quieter (statement of 218).
+ *
+ * IT SPEAKS WHEN EMPTY and it speaks when the read FAILED, and those two read differently.
+ */
+export const describeTidyUpAnchors = (input: {
+  /** `undefined` — `git for-each-ref` did not answer; nobody asked, nothing is claimed. */
+  readonly anchors: readonly string[] | undefined;
+}): string => {
+  if (input.anchors === undefined) {
+    return `  tidy-up anchors: NOT READ — 'git for-each-ref ${TIDY_UP_ANCHORS}' did not answer; a tree this circuit removed may be held by a ref nobody is listing`;
+  }
+  if (input.anchors.length === 0) {
+    return `  tidy-up anchors: none — no tree has been taken by the tidy-up on this disk (${TIDY_UP_ANCHORS} is empty)`;
+  }
+  const shown = [...input.anchors].slice(0, LOCAL_BRANCHES_SHOWN);
+  const more = input.anchors.length - shown.length;
+  return `  tidy-up anchors (${input.anchors.length}) — one per tree the tidy-up has taken; each holds that tree's HEAD and nothing here removes them (put one back: git worktree add <path> <ref>): ${shown.join(
+    ", ",
+  )}${more > 0 ? `, and ${more} more not listed here` : ""}`;
+};
+
+/**
  * THE REFUSAL THAT CAN BE ACTED ON WITHOUT GOING TO THE BOX (thread 099) — the second
  * half of "a door that stays silent is worse than none" (role card, discipline 4), and
  * the half this door was missing: it named the fault correctly and left the reader with

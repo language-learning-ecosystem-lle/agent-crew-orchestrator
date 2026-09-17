@@ -2668,8 +2668,16 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [
                             # (a local-only branch a pair tree stands on right now) by name with
                             # their tree, and the rest of this box's local-only branches by count
                             # and the command that lists them. Branches are never removed — a branch
-                            # is its own anchor and costs no disk. The inventory removes nothing,
-                            # renames nothing, creates no ref, and has no flag that would
+                            # is its own anchor and costs no disk. LAST, THE TIDY-UP ANCHORS
+                            # (package 2): every 'refs/tidy/<role>@<thread>' this repository holds —
+                            # one per tree the tidy-up has taken, each holding that tree's HEAD, and
+                            # each the whole of what makes the removal reversible ('git worktree add
+                            # <path> <ref>' puts it back). They are listed HERE and nowhere else:
+                            # 'git branch' does not see them and the 'wip/' inventory does not
+                            # either, so without this line they would be a third silent pile. It too
+                            # speaks when empty, and 'none' reads differently from 'NOT READ'. The
+                            # inventory removes nothing, renames nothing, creates no ref, and has no
+                            # flag that would
                             # AND, beside the workspaces, THE SERVICE BRANCHES AND HOW OLD THEY ARE (B.3,
                             # thread 099): every 'wip/<role>/<thread>-<YYYYMMDDTHHMMZ>' this repository holds —
                             # what the circuit committed for a run that ended without committing it. One
