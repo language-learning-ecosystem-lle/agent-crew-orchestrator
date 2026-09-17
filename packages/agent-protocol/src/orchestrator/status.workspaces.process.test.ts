@@ -165,7 +165,7 @@ describe("`orchestrator status` — the workspaces this box actually has (thread
     expect(result.code).toBe(0);
   });
 
-  it("a tree the ceiling left behind is named as stranded, with thread 218 as its home", () => {
+  it("a tree the ceiling left behind is named as stranded, and its home is the NORM", () => {
     const repo = contour(2);
     workspace(repo, "dev-core");
     workspace(repo, "dev-core@177-workspace-per-pair");
@@ -177,7 +177,15 @@ describe("`orchestrator status` — the workspaces this box actually has (thread
     expect(result.out).toContain("dev-core×177-workspace-per-pair: ");
     expect(result.out).toContain("'parallelism.pairsPerRole' is 2");
     expect(result.out).toContain("no run will be seated in it again");
-    expect(result.out).toContain("218-orphan-service-branches-and-dead-worktrees");
+    expect(result.out).toContain("Уборка мёртвых деревьев пары");
+    // AND THE POINTER IS READ OFF ITS OWN LINE, not off the whole report: `status` names
+    // threads all over (a pair IS a role × thread), so a report-wide match would be about
+    // everything except the sentence under test.
+    const stranded = result.out
+      .split("\n")
+      .find((line) => line.includes("no run will be seated in it again"));
+    expect(stranded).toBeDefined();
+    expect(stranded).not.toMatch(/thread \d{3}-/);
     expect(result.code).toBe(0);
   });
 
@@ -267,6 +275,31 @@ describe("`orchestrator status` — the workspaces this box actually has (thread
     // nor completeness.
     expect(result.out).not.toContain("old/history-of-this-box");
     expect(result.code).toBe(0);
+  });
+
+  /**
+   * THE THIRD PILE, NAMED BEFORE IT CAN BECOME ONE (thread 218, package 2). `refs/tidy/*`
+   * is invisible to `git branch` and to the `wip/` inventory both, so the anchors the
+   * tidy-up leaves are listed by exactly one surface — this one — or they are the same
+   * silence this thread was opened about.
+   */
+  it("lists the tidy-up anchors, and says 'none' differently from 'nobody asked'", () => {
+    const repo = contour(1, [["001-done", "closed"]]);
+    workspace(repo, "dev-core@001-done");
+
+    const empty = status(repo);
+    expect(empty.out).toContain("tidy-up anchors: none — no tree has been taken");
+
+    // An anchor exactly as the removal writes it, on a real ref of a real repository.
+    git(repo, "update-ref", "refs/tidy/dev-core@001-done", "HEAD");
+    const after = status(repo);
+
+    expect(after.out).toContain("tidy-up anchors (1)");
+    expect(after.out).toContain("refs/tidy/dev-core@001-done");
+    // The ref is NOT a branch, and no surface that walks branches may have picked it up.
+    expect(git(repo, "branch", "--list", "*tidy*")).toBe("");
+    expect(after.out).toContain("git worktree add <path> <ref>");
+    expect(after.code).toBe(0);
   });
 
   it("a tree under the workspaces that is no role's is named and judged by nothing", () => {

@@ -2650,8 +2650,10 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [
                             # so every tree under the workspaces is listed by the pair it belongs to,
                             # a role with no tree is still named, a name that is no role's place is
                             # named and judged by nothing, and a tree the ceiling left behind says so
-                            # with thread 218-orphan-service-branches-and-dead-worktrees as the home
-                            # of the RULE for clearing it. Nothing here removes a checkout)
+                            # and names the NORM that holds the rule for clearing it ('Уборка мёртвых
+                            # деревьев пары' in PROTOCOL.md) rather than a thread — a thread closes,
+                            # and a pointer at a closed one sends its reader nowhere. Nothing here
+                            # removes a checkout)
                             # AND, under every tree, THE DRY INVENTORY of that thread (package 1):
                             # 'tidy-up:' with a verdict and the ONE sign that decided it — DEAD (the
                             # name is '<role>@<thread>', the thread is CLOSED, the tree is clean,
@@ -2668,8 +2670,16 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [
                             # (a local-only branch a pair tree stands on right now) by name with
                             # their tree, and the rest of this box's local-only branches by count
                             # and the command that lists them. Branches are never removed — a branch
-                            # is its own anchor and costs no disk. The inventory removes nothing,
-                            # renames nothing, creates no ref, and has no flag that would
+                            # is its own anchor and costs no disk. LAST, THE TIDY-UP ANCHORS
+                            # (package 2): every 'refs/tidy/<role>@<thread>' this repository holds —
+                            # one per tree the tidy-up has taken, each holding that tree's HEAD, and
+                            # each the whole of what makes the removal reversible ('git worktree add
+                            # <path> <ref>' puts it back). They are listed HERE and nowhere else:
+                            # 'git branch' does not see them and the 'wip/' inventory does not
+                            # either, so without this line they would be a third silent pile. It too
+                            # speaks when empty, and 'none' reads differently from 'NOT READ'. The
+                            # inventory removes nothing, renames nothing, creates no ref, and has no
+                            # flag that would
                             # AND, beside the workspaces, THE SERVICE BRANCHES AND HOW OLD THEY ARE (B.3,
                             # thread 099): every 'wip/<role>/<thread>-<YYYYMMDDTHHMMZ>' this repository holds —
                             # what the circuit committed for a run that ended without committing it. One
@@ -4197,6 +4207,29 @@ construction:
   without a single delivery → the daemon writes `launch-refused` (reason
   `run-budget`) and does NOT launch. The "launch → break → launch" loop hits the
   ceiling and leaves a record instead of burning the quota silently.
+
+- **The tidy-up is the one step of the tick that DELETES, and it is bounded, anchored
+  and audible** (thread 218, package 2). At the END of every tick — after the launch,
+  so a pair raised by this very tick is live by both readings — the daemon takes the
+  trees the dry inventory of `orchestrator status` already calls DEAD: the name is
+  `<role>@<thread>`, the thread is CLOSED in the mail, the tree is clean, unlocked and
+  the pair holds no live lease. Age is not a sign. Before a tree is removed its HEAD is
+  written to `refs/tidy/<role>@<thread>`, and **a tree whose anchor did not record is
+  not touched** — that ref is the whole of what makes the removal reversible (`git
+  worktree add <path> <ref>` puts the tree back, and the log line carries that command
+  with the tree's own path in it). At most `TIDY_UP_PER_TICK` (3) trees per tick, a
+  constant in the code and named in the line; what the ceiling held back is named too.
+  Every removed pair is logged with the local branch it stood on — that branch STAYS,
+  and without the line it would slide silently out of the inventory's named list into a
+  count. `.worktrees/comms`, a role-keyed tree, a dirty tree, a locked one and one
+  holding a lease are none of them reachable by this step. **And the step speaks when
+  it cannot run at all**: with no `orchestrator.workdir.worktrees` declared it prints
+  `tidy-up: NOT RUN — nothing declares where the roles work
+  (orchestrator.workdir.worktrees); no tree was judged and none was taken`, and when
+  the directory is there but cannot be listed, `tidy-up: NOT READ — '<path>' could not
+  be listed; nothing was taken`. Both are refusals BY NAME, because otherwise a tick on
+  which the step is structurally impossible prints nothing at all and reads exactly like
+  a tick on which it ran and took nothing.
 
 - **Nothing drops out silently.** Every candidate the tick declines to raise is
   named in the stream with its reason (`candidate dev-core×016-protocol-roadmap
