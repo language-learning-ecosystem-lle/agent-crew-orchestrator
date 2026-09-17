@@ -362,7 +362,10 @@ describe("the workspaces this box has on the disk (thread 177)", () => {
     expect(said).toContain("/repo/.worktrees/dev-core");
     expect(said).toContain("'parallelism.pairsPerRole' is 2");
     expect(said).toContain("nothing here removes it");
-    expect(said).toContain("218-orphan-service-branches-and-dead-worktrees");
+    // THE POINTER NAMES THE NORM, never a thread: a thread closes, and a closed one is
+    // where this line would be sending its reader for a rule that lives in PROTOCOL.md.
+    expect(said).toContain("Уборка мёртвых деревьев пары");
+    expect(said).not.toMatch(/thread \d{3}-/);
   });
 });
 
@@ -2048,7 +2051,8 @@ describe("describeWorkspaceTidyUp — the totals the decision is taken on", () =
     expect(lines[0]).toContain("dead pair trees (2)");
     expect(lines[0]).toContain("dev-core@100-done, dev-core@101-done");
     expect(lines[0]).toContain("20M would be freed");
-    expect(lines[0]).toContain("218-orphan-service-branches-and-dead-worktrees");
+    expect(lines[0]).toContain("Уборка мёртвых деревьев пары");
+    expect(lines[0]).not.toMatch(/thread \d{3}-/);
   });
 
   // THE TOTAL IS NEVER THE SUM OF THE ROWS, and this is the case that pins it: two rows of
@@ -2188,8 +2192,9 @@ describe("describeStrandedPlace — where the question of clearing a tree lives"
       place: { role: "dev-core", path: "/r/.worktrees/dev-core", current: false },
       pairsPerRole: 2,
     });
-    expect(line).toContain("218-orphan-service-branches-and-dead-worktrees");
+    expect(line).toContain("Уборка мёртвых деревьев пары");
     expect(line).not.toContain("174-workspace-tidy-up");
+    expect(line).not.toMatch(/thread \d{3}-/);
   });
 });
 

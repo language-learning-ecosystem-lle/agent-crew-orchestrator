@@ -165,7 +165,7 @@ describe("`orchestrator status` — the workspaces this box actually has (thread
     expect(result.code).toBe(0);
   });
 
-  it("a tree the ceiling left behind is named as stranded, with thread 218 as its home", () => {
+  it("a tree the ceiling left behind is named as stranded, and its home is the NORM", () => {
     const repo = contour(2);
     workspace(repo, "dev-core");
     workspace(repo, "dev-core@177-workspace-per-pair");
@@ -177,7 +177,15 @@ describe("`orchestrator status` — the workspaces this box actually has (thread
     expect(result.out).toContain("dev-core×177-workspace-per-pair: ");
     expect(result.out).toContain("'parallelism.pairsPerRole' is 2");
     expect(result.out).toContain("no run will be seated in it again");
-    expect(result.out).toContain("218-orphan-service-branches-and-dead-worktrees");
+    expect(result.out).toContain("Уборка мёртвых деревьев пары");
+    // AND THE POINTER IS READ OFF ITS OWN LINE, not off the whole report: `status` names
+    // threads all over (a pair IS a role × thread), so a report-wide match would be about
+    // everything except the sentence under test.
+    const stranded = result.out
+      .split("\n")
+      .find((line) => line.includes("no run will be seated in it again"));
+    expect(stranded).toBeDefined();
+    expect(stranded).not.toMatch(/thread \d{3}-/);
     expect(result.code).toBe(0);
   });
 

@@ -600,7 +600,7 @@ export const workspaceInventoryOf = (input: {
  *
  * IT NAMES THREE THINGS AND PERFORMS NONE. What the tree is (a place keyed by the other
  * form), that nothing is going to happen to it here, and WHERE the question of clearing it
- * lives — thread `218-orphan-service-branches-and-dead-worktrees` (see `TIDY_UP_HOME`).
+ * lives — the norm of the tidy-up in `PROTOCOL.md` (see `TIDY_UP_HOME`).
  * Deleting a checkout is irreversible and belongs
  * to a human (role card: "any irreversible action → john"); a line that says so is the
  * whole of what this package owes the reader.
@@ -620,10 +620,18 @@ export const describeStrandedPlace = (input: {
  * IT USED TO SAY `174-workspace-tidy-up`, AND THAT WAS A POINTER AT A DOOR, NOT AT A
  * DECISION: `174` is the standing address letters about a tree go to, while the rule this
  * inventory is the first half of was decided in `218` (john, 2026-09-17). A reader sent to
- * `174` finds the desk that receives the complaint; the rule is in `218`.
+ * `174` finds the desk that receives the complaint; the rule was in `218`.
+ *
+ * AND IT NO LONGER SAYS `218` EITHER, FOR THE REASON THAT KILLS EVERY POINTER AT A THREAD:
+ * a thread CLOSES. `218` was the right address while the rule was being decided in it, and
+ * the day it is closed every dead row of this inventory would send its reader to a closed
+ * conversation to look for a rule that by then lives somewhere permanent. So the pointer
+ * names the NORM and the section of it — `PROTOCOL.md` is not going to close — and the
+ * thread survives only in the decision line inside that section, where it belongs as
+ * provenance rather than as an address.
  */
 export const TIDY_UP_HOME =
-  "the rule for clearing abandoned trees is thread 218-orphan-service-branches-and-dead-worktrees";
+  "the rule for clearing abandoned trees is the norm 'Уборка мёртвых деревьев пары' in PROTOCOL.md";
 
 /**
  * IS THIS PAIR'S TREE STILL WORKING GROUND — the question the tidy-up of `218` will act
