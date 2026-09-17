@@ -1,5 +1,5 @@
 - Парк: [`pr:N`/`run:N` — N всегда номер PR](park-pr-vs-run-choice.md) · [нужен ЖИВОЙ прогон; без парка поднимает впустую](do-not-park-on-a-green-ci-run.md) · [не на конфликтующий PR](park-door-refuses-a-conflicting-pr.md) · [стоячий адрес не паркуют](do-not-park-a-standing-address.md) · [`--park-ground` — три машинных формы](park-ground-takes-three-machine-forms-only.md)
-- Парк `pr:N`: [нужен `--park-mover`; за своим тредом запирает изнутри](park-on-a-pr-needs-a-mover.md)
+- Парк `pr:N`: [нужен `--park-mover`; за своим тредом запирает изнутри — но это НЕ «парка не надо»: ждёшь зелени ради своей метки → `run:N`](park-on-a-pr-needs-a-mover.md)
 - Мерить парк: [сухим `new-message`](measure-a-standing-park-with-a-dry-new-message.md) · [пустая строка ≠ тишина](missing-park-row-does-not-prove-silence.md)
 - Парк `run:N`: [снимает `run-outcome`; лифт бьёт по УЕХАВШЕЙ голове](run-park-under-checks-has-no-lifter.md) · [мёртвый отказывает вердикту](dead-run-park-refuses-an-incoming-verdict.md) · [свой убивает ЧУЖОЙ вердикт](own-park-can-kill-an-incoming-verdict.md) · [перенос не заводит потолок заново](carrying-a-park-forward-does-not-restart-its-ceiling.md)
 - [«Зелено» ≠ «ещё мержабельно»](green-letter-does-not-mean-still-mergeable.md) · [вердикт про текст голову не двигает](verdict-about-text-does-not-move-the-head.md)
