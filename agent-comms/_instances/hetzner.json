@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-17T13:38:06.300Z",
+  "writtenAt": "2026-09-17T13:43:35.933Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "221-workspace-install-calls-pnpm-by-name",
-      "state": "running",
-      "deadline": "2026-09-17T14:18:02Z"
-    }
-  ]
+  "leases": []
 }
