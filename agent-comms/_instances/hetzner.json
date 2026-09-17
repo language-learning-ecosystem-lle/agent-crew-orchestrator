@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-17T10:57:17.230Z",
+  "writtenAt": "2026-09-17T11:01:24.130Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "218-orphan-service-branches-and-dead-worktrees",
+      "state": "running",
+      "deadline": "2026-09-17T12:01:20Z"
+    },
     {
       "role": "curator",
       "thread": "218-orphan-service-branches-and-dead-worktrees",
