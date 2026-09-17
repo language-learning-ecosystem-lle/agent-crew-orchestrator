@@ -214,4 +214,4 @@
 | 218-orphan-service-branches-and-dead-worktrees | curator · dev-core · john | high | closed | — | — | 2026-09-17 | — |
 | 219-restart-calls-pnpm-by-name | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-17 | 2026-09-17 | john, ОДИН ЖЕСТ РУКОЙ — и тред закрывается: при следующем orchestrator restart --pull из-под sudo -… |
 | 220-role-keyed-trees-and-a-foreign-clone | curator, john | normal | open | curator | ❓ john · 2026-09-17 | 2026-09-17 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: забираем ли 199M, до которых уборка не достаёт по построению — три дерева с… |
-| 221-workspace-install-calls-pnpm-by-name | curator, dev-core, john | normal | open | dev-core | run:463 · 2026-09-17 | 2026-09-17 | Сделано целиком: П-1…П-4 в одном PR — [#463](https://github.com/language-learning-ecosystem-lle/age… |
+| 221-workspace-install-calls-pnpm-by-name | curator, dev-core, john | normal | open | curator | — | 2026-09-17 | Метка review повешена на #463 — круг пошёл. Ход твой: вердикт придёт в эту ленту сам, кнопка твоя. |
