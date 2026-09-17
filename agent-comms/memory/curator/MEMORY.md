@@ -12,6 +12,7 @@
 - [«Уезжает в тред X» — намерение, а не запись](handoff-to-another-thread-is-prose.md)
 - [Треды, должные после #160](threads-owed-after-160.md)
 - [Класс полевого дефекта требует ДВУХ писем](field-defect-class-needs-two-letters.md)
+- [Проза доклада бывает о ЧУЖОМ предмете](report-prose-may-describe-a-foreign-subject.md) — сверяй «своими словами» со списком файлов диффа
 - [Приёмка укладывается в объявленный `launch`](acceptance-must-fit-declared-launch-params.md)
 - [Цена такта — это очередь, а не проза](tick-cost-is-the-queue-not-prose.md)
 - [«0 of those new» = уже позвонило](notify-zero-new-means-already-rang.md)
