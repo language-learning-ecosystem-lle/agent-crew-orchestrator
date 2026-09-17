@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-17T13:45:19.852Z",
+  "writtenAt": "2026-09-17T13:46:05.446Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "161-daemon-self-restart",
+      "state": "running",
+      "deadline": "2026-09-17T14:26:01Z"
+    },
     {
       "role": "curator",
       "thread": "221-workspace-install-calls-pnpm-by-name",
