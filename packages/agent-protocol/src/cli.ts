@@ -661,6 +661,8 @@ import {
   describeStrandedPlace,
   describeStrandedWorkspace,
   describeTidyUpAnchors,
+  describeTidyUpOutcome,
+  describeTidyUpPlan,
   describeWorkspaceIdentity,
   describeWorkspaceLife,
   describeWorkspacePlan,
@@ -670,10 +672,13 @@ import {
   lockHolderPid,
   lockReason,
   mainCheckoutVerdict,
+  planTidyUp,
   planWorkspace,
   planWorkspaceIdentity,
+  runTidyUp,
   splitLocalOnlyBranches,
   TIDY_UP_ANCHORS,
+  TIDY_UP_PER_TICK,
   type TidyUpTotal,
   WORKSPACE_PAIR_SEPARATOR,
   type WorkspaceCheckout,
@@ -14604,6 +14609,95 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
   };
 
   /**
+   * THE TIDY-UP OF THREAD 218, PACKAGE 2 — the one step of this tick that DELETES, and
+   * the only place in this daemon that does.
+   *
+   * IT DECIDES NOTHING HERE. What a tree is was decided by `workspaceLife` a package ago
+   * and is printed by `orchestrator status` every time a human looks; this function reads
+   * the same facts with the same functions, hands them to `planTidyUp`, and executes what
+   * comes back. Two readings of one criterion — one for the human, one for the machine —
+   * is how a dry inventory and a removal begin to disagree, and the disagreement would be
+   * discovered by a missing checkout.
+   *
+   * WHY THE END OF THE TICK: a pair raised by THIS tick is already in `runningPairs()` and
+   * its supervisor has already written the lease, so the tree a session is being seated in
+   * is live by both readings before this line is reached. Both are asked, because they
+   * fail in different directions — the fold is the box's memory and `live` is this
+   * process's own hand.
+   *
+   * WHAT MAKES IT SAFE IS NOT THIS FUNCTION. It is `runTidyUp`: HEAD, then the anchor,
+   * then the removal, and no removal whose anchor did not record. This code only supplies
+   * git and prints what came back.
+   */
+  const tidyUpTrees = (input: {
+    readonly threads: readonly Parameters<typeof closedThreads>[0][number][];
+    readonly liveKeys: ReadonlySet<string>;
+  }): void => {
+    const worktrees = daemonConfig.orchestrator?.workdir?.worktrees;
+    if (worktrees === undefined) return; // nothing declares where the roles work
+    const seen = workspacesOnDisk({
+      repo,
+      worktrees,
+      roles: ids,
+      pairsPerRole: pairCeilings(daemonConfig).pairsPerRole,
+    });
+    if (seen === undefined) {
+      err(
+        `agent-protocol: daemon — tidy-up: NOT READ — '${join(repo, worktrees)}' could not be listed; nothing was taken`,
+      );
+      return;
+    }
+    const closed = closedThreads(input.threads);
+    const factsOf = new Map(
+      seen.places.map((place) => [place.path, workspaceFacts(place.path, { dirt: true })]),
+    );
+    const rows: WorkspaceLifeRow[] = seen.places.map((place) => {
+      const facts = factsOf.get(place.path);
+      return {
+        place,
+        life: workspaceLife({
+          place,
+          // A THREAD NOBODY COULD ANSWER FOR IS NOT A CLOSED ONE — the same reading the
+          // inventory takes: absent from the mail read here is `unknown`, never `dead`.
+          ...(place.thread === undefined || !existsSync(join(mailRoot, place.thread))
+            ? {}
+            : { threadClosed: closed.has(place.thread) }),
+          ...(facts?.dirty === undefined ? {} : { dirty: facts.dirty }),
+          ...(facts?.locked === undefined ? {} : { locked: facts.locked }),
+          leaseAlive: input.liveKeys.has(`${place.role}${WORKSPACE_PAIR_SEPARATOR}${place.thread}`),
+        }),
+      };
+    });
+    const plan = planTidyUp({ rows, perTick: TIDY_UP_PER_TICK });
+    out(`agent-protocol: daemon — ${describeTidyUpPlan(plan, TIDY_UP_PER_TICK)}`);
+    if (plan.take.length === 0) return;
+    // THE REFUSAL TEXT IS THE POINT of not using `gitAsk` here: "it did not work" on an
+    // irreversible path is the refusal a reader cannot act on (discipline 4).
+    const gitOr = (args: readonly string[]): string | undefined => {
+      const said = spawnSync("git", args, { encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
+      if (said.error !== undefined) return said.error.message;
+      if (said.status === 0) return undefined;
+      return said.stderr?.trim() !== "" && said.stderr !== undefined
+        ? said.stderr.trim()
+        : `git exited ${String(said.status)}`;
+    };
+    for (const outcome of runTidyUp({
+      repo,
+      plan,
+      git: {
+        head: ({ path }) => gitAsk(["-C", path, "rev-parse", "HEAD"]),
+        branch: ({ path }) => factsOf.get(path)?.branch,
+        anchor: ({ repo: at, ref, commit }) => gitOr(["-C", at, "update-ref", ref, commit]),
+        remove: ({ repo: at, path }) => gitOr(["-C", at, "worktree", "remove", path]),
+      },
+    })) {
+      const line = `agent-protocol: daemon — ${describeTidyUpOutcome(outcome)}`;
+      if (outcome.done) out(line);
+      else err(line);
+    }
+  };
+
+  /**
    * WAIT FOR ALL THE CHILDREN — not the first and not the last (D-2, curator's point 2).
    *
    * Called on both stops and on `--once`. The loop re-reads the registry after each
@@ -15291,6 +15385,20 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
           : `agent-protocol: daemon — no candidate is launchable: all ${candidates.length} were skipped (see the lines above), ${next}`,
       );
     }
+
+    // THE TIDY-UP (thread 218, package 2). Last of the tick and after the launch, so a
+    // pair this very tick raised is live by BOTH readings before a tree can be judged:
+    // the fold of the journal (what the box remembers) and `runningPairs` (what this
+    // process is holding right now). See `tidyUpTrees`.
+    tidyUpTrees({
+      threads,
+      liveKeys: new Set([
+        ...foldLeases(events, now, gates.maxAttempts.value, marks)
+          .filter((view) => isLeaseAlive(view.state))
+          .map((view) => `${view.role}${WORKSPACE_PAIR_SEPARATOR}${view.thread}`),
+        ...runningPairs().map((pair) => `${pair.role}${WORKSPACE_PAIR_SEPARATOR}${pair.thread}`),
+      ]),
+    });
 
     // R13, second half: THE STATE OF THIS BOX AT THE END OF THE TICK. This call is no
     // longer the only one — the run above announces its own lease as it takes and

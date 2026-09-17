@@ -4206,6 +4206,22 @@ construction:
   `run-budget`) and does NOT launch. The "launch → break → launch" loop hits the
   ceiling and leaves a record instead of burning the quota silently.
 
+- **The tidy-up is the one step of the tick that DELETES, and it is bounded, anchored
+  and audible** (thread 218, package 2). At the END of every tick — after the launch,
+  so a pair raised by this very tick is live by both readings — the daemon takes the
+  trees the dry inventory of `orchestrator status` already calls DEAD: the name is
+  `<role>@<thread>`, the thread is CLOSED in the mail, the tree is clean, unlocked and
+  the pair holds no live lease. Age is not a sign. Before a tree is removed its HEAD is
+  written to `refs/tidy/<role>@<thread>`, and **a tree whose anchor did not record is
+  not touched** — that ref is the whole of what makes the removal reversible (`git
+  worktree add <path> <ref>` puts the tree back, and the log line carries that command
+  with the tree's own path in it). At most `TIDY_UP_PER_TICK` (3) trees per tick, a
+  constant in the code and named in the line; what the ceiling held back is named too.
+  Every removed pair is logged with the local branch it stood on — that branch STAYS,
+  and without the line it would slide silently out of the inventory's named list into a
+  count. `.worktrees/comms`, a role-keyed tree, a dirty tree, a locked one and one
+  holding a lease are none of them reachable by this step.
+
 - **Nothing drops out silently.** Every candidate the tick declines to raise is
   named in the stream with its reason (`candidate dev-core×016-protocol-roadmap
   skipped: exhausted — '13' failed attempts since its last delivery, ceiling '3'
