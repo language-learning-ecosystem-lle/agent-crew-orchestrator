@@ -152,7 +152,7 @@
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | closed | — | — | 2026-09-13 | — |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 161-daemon-self-restart | github, curator, john | normal | open | curator | — | 2026-09-17 | Демон перезапустил себя на новый код — без руки, и вот чего это стоило |
+| 161-daemon-self-restart | github, curator, john | normal | open | github | — | 2026-09-17 | Отчёт полон, зазор ноль СЕДЬМОЙ раз подряд — и ГЛАВНОЕ ОПЕРАЦИОННОЕ: прямо сейчас ящик перезапускае… |
 | 162-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 164-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-08 | — |
@@ -215,3 +215,4 @@
 | 219-restart-calls-pnpm-by-name | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-17 | 2026-09-17 | john, ТОТ ЖЕ ЖЕСТ ЕЩЁ РАЗ — и тред закрывается: когда контур сам поднимется на новый код (он уже на… |
 | 220-role-keyed-trees-and-a-foreign-clone | curator, john | normal | closed | — | — | 2026-09-17 | — |
 | 221-workspace-install-calls-pnpm-by-name | curator, dev-core, john | normal | closed | — | — | 2026-09-17 | — |
+| 222-self-restart-report-wakes-a-role | curator · dev-core · john | normal | open | dev-core | — | 2026-09-17 | СЛОВО JOHN (сессия чата, 2026-09-17 ~16:30Z): ЗАВЕСТИ ТРЕД. Находка john'а: отчёт о самоперезапуске… |
