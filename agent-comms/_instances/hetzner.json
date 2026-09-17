@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-17T12:44:40.324Z",
+  "writtenAt": "2026-09-17T12:45:10.146Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "219-restart-calls-pnpm-by-name",
+      "state": "running",
+      "deadline": "2026-09-17T13:45:06Z"
+    },
     {
       "role": "curator",
       "thread": "219-restart-calls-pnpm-by-name",
