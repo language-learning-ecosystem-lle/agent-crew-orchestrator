@@ -14648,8 +14648,22 @@ const orchestratorDaemonLoop = async (argv: readonly string[]): Promise<void> =>
       return;
     }
     const closed = closedThreads(input.threads);
+    // THE DIRT IS READ ONLY WHERE THE ANSWER CAN CHANGE ANYTHING, and this is arithmetic
+    // rather than taste: `workspaceLife` asks the thread FIRST, so an open or unanswered
+    // thread decides the verdict before dirt is looked at. `status` is typed by a human
+    // and may read all of them; this runs every tick, and on the box of this circuit that
+    // is eighty-seven `git status --porcelain` calls a tick against a question already
+    // answered. Restricting the read to CLOSED threads is exactly equivalent — see the
+    // order of the signs in `workspaceLife`, which is the thing that makes it so.
     const factsOf = new Map(
-      seen.places.map((place) => [place.path, workspaceFacts(place.path, { dirt: true })]),
+      seen.places
+        .filter(
+          (place) =>
+            place.thread !== undefined &&
+            existsSync(join(mailRoot, place.thread)) &&
+            closed.has(place.thread),
+        )
+        .map((place) => [place.path, workspaceFacts(place.path, { dirt: true })]),
     );
     const rows: WorkspaceLifeRow[] = seen.places.map((place) => {
       const facts = factsOf.get(place.path);
