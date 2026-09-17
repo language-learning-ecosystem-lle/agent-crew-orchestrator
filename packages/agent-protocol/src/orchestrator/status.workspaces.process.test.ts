@@ -228,7 +228,10 @@ describe("`orchestrator status` — the workspaces this box actually has (thread
     // The totals: one dead tree, priced MARGINALLY and against a named remainder.
     expect(result.out).toContain("dead pair trees (1)");
     expect(result.out).toContain("dev-core@001-done");
-    expect(result.out).toMatch(/would be freed while the other \d+ registered place\(s\) stand/);
+    // FOUR, and the number is the assertion: three other registered places plus the
+    // UNOWNED `comms`. A remainder that left the unowned trees out would put their share
+    // of the shared pool back into the figure as a saving.
+    expect(result.out).toContain("would be freed while the other 4 registered place(s) stand");
     expect(result.out).toContain("role-keyed trees (1)");
 
     // AND NOTHING MOVED.
