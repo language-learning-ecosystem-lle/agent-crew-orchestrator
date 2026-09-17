@@ -46,21 +46,51 @@ export const SELF_RESTART_TITLE = "Стоячий адрес: демон пер�
  * participants, and it refuses at the door rather than on the day a receiver closes — so
  * the list is built for every letter, not only for the opening one.
  *
- * `github` because that is the sender; `curator` because the turn goes there; `john`
- * because the requirement this letter answers is his and the account is addressed to him.
+ * `github` because that is the sender; `curator` and `john` because this receiver is where
+ * the account of a restart is read — by whoever comes to it, since {@link SELF_RESTART_TURN}
+ * raises nobody for it.
  */
 const PARTICIPANTS: readonly string[] = ["github", "curator", "john"];
 
 /**
- * WHOSE TURN IT IS. Curator, and not a person: a turn is what makes a letter arrive at all,
- * and `john` is not a role a tick can raise — a letter addressed to him stands in an open
- * receiver that nobody is woken for. The account goes to john THROUGH curator, which is the
- * same route every other statement of this circuit takes.
+ * NOBODY. NOT A ROLE, NOT EVER, AND WITH NO EXCEPTION (decision of john 2026-09-17, delivered
+ * by curator in thread `222-self-restart-report-wakes-a-role`, msg-002: «НИКТО НЕ ПОДНИМАЕТСЯ
+ * НА ТАКУЮ МЕЛОЧЬ»).
+ *
+ * THE LETTER USED TO NAME `curator`, and the reasoning over that constant was sound in
+ * isolation: a turn is what makes a letter ARRIVE, and the account was meant to reach john
+ * through the role that carries questions to him. What it left out is what a turn COSTS in
+ * this circuit — a raised session — and what that session does with a report it can do
+ * nothing about. Both halves were measured in the field on 2026-09-17:
+ *   - THE LOOP. `16:24:15Z` the daemon restarted itself and posted here; the turn made the
+ *     pair `curator × 161` a candidate; at `16:30Z` that lease was still `running` with a
+ *     ceiling of `17:04:53Z`; and the restart john started at `~16:26Z` stood printing
+ *     `still waiting for pid … — 180s so far`, because a graceful stop leaves only after the
+ *     live sessions close. A restart raised a session that delayed the NEXT restart. Five
+ *     restarts that day;
+ *   - WHAT THE SESSION DID. Seven minutes and ten sections of measurement (the box's code
+ *     epochs, `/proc` of the live process, `who -u`, the ssh scope, three state files) ending
+ *     in "no repair is needed, there is no call for john, I hand the turn to nobody". A raised
+ *     role does not skim a report — it investigates it, faithfully and at full price.
+ *
+ * AND THE SPLIT ("ordinary report silently, special case with an addressee") WAS PROPOSED AND
+ * REFUSED — by john, the same day, in the same thread. Neither a drift of more than one
+ * commit, nor a moved install footprint, nor a restart with no repair recorded brings an
+ * addressee back: the box's report ABOUT ITSELF is a record in a standing address and nothing
+ * else. What does not lose its addressee is everything the narrowing does not touch — letters
+ * about PRs, verdicts, run outcomes, statements of work — where the turn carries actual work
+ * (`tidy-letter.ts`, `thread-number-collision.ts` are both of that kind and are unchanged).
+ *
+ * THE VALUE IS THE DASH ITSELF, the form `new-message` parses as "nobody holds this turn"
+ * (`parseWaitingOn`), and it is passed EXPLICITLY rather than by omitting the flag: an
+ * omitted `--waiting-on` leaves the turn wherever it already stood and would raise that
+ * holder on a thread where nothing happened — the very defect of thread 042.
  */
-export const SELF_RESTART_WAITING_ON = "curator";
+export const SELF_RESTART_TURN = "—";
 
 export type SelfRestartLetter = {
-  readonly waitingOn: string;
+  /** `null` — the letter releases the turn; the value is never a role (see {@link SELF_RESTART_TURN}). */
+  readonly waitingOn: null;
   /** The message body, markdown, as it lands in the feed. */
   readonly body: string;
   /**
@@ -407,7 +437,7 @@ export const planSelfRestartLetter = (input: {
       : `## Демон перезапустил себя на новый код — без руки, и вот чего это стоило`,
     "",
     unrecorded
-      ? `${drainSentence(event)} Ход нужен для ПРОВЕРКИ, а не для ремонта: дрейф закрыт — код сошёлся с ref, — но чем именно он закрыт, ящик не знает.`
+      ? `${drainSentence(event)} Проверка возможна, но ход отсюда уходит: дрейф закрыт — код сошёлся с ref, — а чем именно он закрыт, ящик не знает.`
       : `${drainSentence(event)} Ход никому не нужен для ремонта — он уже сделан; это отчёт о нём, потому что тихий самоперезапуск ничем не лучше тихого дрейфа.`,
     "",
     ...(input.served === undefined ? [] : [`- **контур:** \`${input.served}\``]),
@@ -438,12 +468,17 @@ export const planSelfRestartLetter = (input: {
       : `- **когда пошёл:** ${event.wentAt}`,
     executableLine(input.change),
     "",
+    // THE CLOSING LINE IS THE CAPTION OF THE HEADER, so it moved with it (thread 222): it named
+    // a turn for curator, and with `waiting-on: —` that sentence would be the one false claim in
+    // a letter written to be checkable. The SUBSTANCE of both branches is kept word for word —
+    // what is to be read, and where the unrecorded branch is checked — and only the addressee
+    // is taken out of it: this is a record, read by whoever comes to the address.
     unrecorded
-      ? "**Ход curator — ровно на одно действие:** прочитать это и донести john ВМЕСТЕ С ТЕМ, ЧЕГО ЗДЕСЬ НЕТ. Ремонтировать нечего: дрейф закрыт и звонок о дрейфе (тред 141, #301) на этот ящик больше не придёт. Чем он закрыт — вопрос к `.orchestrator/daemon.log` за окно между двумя эпохами: строки `SELF-RESTART: git pull --ff-only` и `leaving with code 75` есть у состоявшегося ремонта и нет ни у чего другого."
-      : "**Ход curator — ровно на одно действие:** прочитать это и, если отчёт полон, донести john. Ремонта здесь нет: дрейф уже закрыт, а звонок о дрейфе (тред 141, #301) на этот ящик больше не придёт.",
+      ? "**Хода отсюда нет — это ЗАПИСЬ, и ради неё никто не поднимается.** Ремонтировать нечего: дрейф закрыт и звонок о дрейфе (тред 141, #301) на этот ящик больше не придёт. Чем он закрыт — вопрос к `.orchestrator/daemon.log` за окно между двумя эпохами: строки `SELF-RESTART: git pull --ff-only` и `leaving with code 75` есть у состоявшегося ремонта и нет ни у чего другого; читает это тот, кто придёт в этот адрес."
+      : "**Хода отсюда нет — это ЗАПИСЬ, и ради неё никто не поднимается.** Ремонта здесь нет: дрейф уже закрыт, а звонок о дрейфе (тред 141, #301) на этот ящик больше не придёт.",
   ].join("\n");
   return {
-    waitingOn: SELF_RESTART_WAITING_ON,
+    waitingOn: null,
     body,
     argv: [
       "new-message",
@@ -462,7 +497,7 @@ export const planSelfRestartLetter = (input: {
       "--expects",
       "none",
       "--waiting-on",
-      SELF_RESTART_WAITING_ON,
+      SELF_RESTART_TURN,
       "--worker",
       "agent-protocol",
       "--write",
@@ -615,7 +650,7 @@ const postedAt = (memo: SelfRestartMemo): string =>
 export const describeSuppressedSelfRestartLetter = (input: {
   readonly memo: SelfRestartMemo;
 }): string =>
-  `letter — SUPPRESSED, nothing new to say: this very self-restart was already posted to the standing address '${SELF_RESTART_SLUG}' ${postedAt(input.memo)}, turn for '${SELF_RESTART_WAITING_ON}' — read it there. This line is said in full once and then every ${SELF_RESTART_QUIET_CADENCE} ticks, so the log of a standing box does not drown in it`;
+  `letter — SUPPRESSED, nothing new to say: this very self-restart was already posted to the standing address '${SELF_RESTART_SLUG}' ${postedAt(input.memo)}, raising nobody — read it there. This line is said in full once and then every ${SELF_RESTART_QUIET_CADENCE} ticks, so the log of a standing box does not drown in it`;
 
 /**
  * THE SAME SUPPRESSION, SAID AGAIN AFTER {@link SELF_RESTART_QUIET_CADENCE} TICKS — and it
@@ -632,7 +667,7 @@ export const describeSuppressedSelfRestartLetterStill = (input: {
   readonly memo: SelfRestartMemo;
   readonly ticks: number;
 }): string =>
-  `letter — SUPPRESSED still, ${input.ticks - 1} tick(s) now since this was last said in full: the self-restart posted to the standing address '${SELF_RESTART_SLUG}' ${postedAt(input.memo)} is still the newest one, turn for '${SELF_RESTART_WAITING_ON}' — read it there. Every ${SELF_RESTART_QUIET_CADENCE}th tick says this; the ticks between it are the same fact, unchanged`;
+  `letter — SUPPRESSED still, ${input.ticks - 1} tick(s) now since this was last said in full: the self-restart posted to the standing address '${SELF_RESTART_SLUG}' ${postedAt(input.memo)} is still the newest one, and it raised nobody — read it there. Every ${SELF_RESTART_QUIET_CADENCE}th tick says this; the ticks between it are the same fact, unchanged`;
 
 /**
  * THE SAME WITHHOLDING, SAID AGAIN AT THE SAME CADENCE — and on this branch the count is the
@@ -648,7 +683,7 @@ export const describeWithheldSelfRestartLetterStill = (input: {
     input.event.from === undefined
       ? "from the code it came from"
       : `from ${shortSha(input.event.from)}`
-  } to ${shortSha(input.event.to)}, stamped ${input.event.at}, still moves no path of this daemon's footprint, so no letter is spent and no turn of '${SELF_RESTART_WAITING_ON}' is. Every ${SELF_RESTART_QUIET_CADENCE}th tick says this; the full line, with both shas and the footprint it measured, was said on the first tick of this run`;
+  } to ${shortSha(input.event.to)}, stamped ${input.event.at}, still moves no path of this daemon's footprint, so no letter is spent on it. Every ${SELF_RESTART_QUIET_CADENCE}th tick says this; the full line, with both shas and the footprint it measured, was said on the first tick of this run`;
 
 /**
  * THE DELIVERY THAT DID NOT GO, as one line of the same journal. It is a SEPARATE fact from
@@ -660,7 +695,7 @@ export const describeUndeliveredSelfRestartLetter = (input: {
   readonly event: SelfRestartEvent;
   readonly cause: string;
 }): string =>
-  `letter — NOT DELIVERED to the standing address '${SELF_RESTART_SLUG}' (turn for '${SELF_RESTART_WAITING_ON}'): ${input.cause}. The restart itself STANDS — the box is running ${shortSha(input.event.to)}${
+  `letter — NOT DELIVERED to the standing address '${SELF_RESTART_SLUG}' (a record there, raising nobody): ${input.cause}. The restart itself STANDS — the box is running ${shortSha(input.event.to)}${
     // THE LOG LINE CARRIES THE SAME CAUTION THE LETTER DOES (thread 173): this is the only
     // trace of an event nobody was told about, and "since <at>" over an unrecorded go would
     // date the restart by the start of a drain — the defect, reproduced in the log where it
@@ -672,7 +707,7 @@ export const describeUndeliveredSelfRestartLetter = (input: {
 
 /** The delivered letter, as one line of the same journal — the counterpart of the above. */
 export const describeDeliveredSelfRestartLetter = (): string =>
-  `letter — the self-restart is posted to the standing address '${SELF_RESTART_SLUG}', turn for '${SELF_RESTART_WAITING_ON}'`;
+  `letter — the self-restart is posted to the standing address '${SELF_RESTART_SLUG}', turn released ('${SELF_RESTART_TURN}'): it is a record and raises nobody`;
 
 /**
  * THE RESTART THAT MOVED NOTHING THIS BOX RUNS, as one line of the same journal (thread
@@ -688,7 +723,7 @@ export const describeWithheldSelfRestartLetter = (input: {
 }): string =>
   `letter — WITHHELD, the restart changed NOTHING THIS DAEMON EXECUTES: ${
     input.event.from === undefined ? "the code it came from" : shortSha(input.event.from)
-  }..${shortSha(input.event.to)} moves no path of the footprint (${input.footprint.means}), so the box is running the same program under a new sha. The restart itself STANDS and is not undone; what is not spent is the LETTER, and with it the turn of '${SELF_RESTART_WAITING_ON}' — a raised session is what a letter costs (john, 2026-09-07: деньги тратит письмо, а не перезапуск)`;
+  }..${shortSha(input.event.to)} moves no path of the footprint (${input.footprint.means}), so the box is running the same program under a new sha. The restart itself STANDS and is not undone; what is not spent is the LETTER — a line in the standing address about a program that did not change (john, 2026-09-07: деньги тратит письмо, а не перезапуск). A TURN is no longer part of that price and the narrowing does not rest on it: since thread 222 this letter raises nobody whatever it carries`;
 
 /**
  * THE DECISION, as a pure function over the signature, what was remembered and how long this
