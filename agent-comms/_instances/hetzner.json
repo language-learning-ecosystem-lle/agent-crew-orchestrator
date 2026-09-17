@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-17T16:11:33.305Z",
+  "writtenAt": "2026-09-17T16:13:40.020Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "219-restart-calls-pnpm-by-name",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-17T17:11:29Z"
     }
   ]
