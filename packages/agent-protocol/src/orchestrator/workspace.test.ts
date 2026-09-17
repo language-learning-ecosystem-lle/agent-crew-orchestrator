@@ -11,16 +11,21 @@ import {
   classifyWorkspaceHead,
   createWorkspaceLocks,
   describeDirtyWorkspaceRepair,
+  describeDiskSize,
   describeFailedTidyUp,
   describeFailedTidyUpOnItsBranch,
   describeFinishDirt,
+  describeLocalOnlyBranches,
   describeServiceBranches,
   describeStrandedPlace,
   describeStrandedWorkspace,
   describeWorkspaceDirt,
   describeWorkspaceIdentity,
+  describeWorkspaceLife,
   describeWorkspacePlan,
+  describeWorkspaceTidyUp,
   dirtLeftByFinish,
+  localOnlyBranches,
   lockHolderPid,
   lockReason,
   mainCheckoutVerdict,
@@ -29,8 +34,11 @@ import {
   readServiceBranchName,
   serviceBranchAge,
   serviceBranchName,
+  type WorkspaceLifeRow,
+  type WorkspacePlace,
   workspaceInventoryOf,
   workspaceKeyOf,
+  workspaceLife,
   workspacePairOf,
   workspacePath,
   workspaceRoleOf,
@@ -335,7 +343,7 @@ describe("the workspaces this box has on the disk (thread 177)", () => {
     ).toEqual([true, false]);
   });
 
-  it("what is said about a stranded tree names the path, the cause and thread 174", () => {
+  it("what is said about a stranded tree names the path, the cause and the thread that owns the rule", () => {
     const stranded = take(["dev-core"], 2).places[0];
     expect(stranded).toBeDefined();
     const said = describeStrandedPlace({
@@ -345,7 +353,7 @@ describe("the workspaces this box has on the disk (thread 177)", () => {
     expect(said).toContain("/repo/.worktrees/dev-core");
     expect(said).toContain("'parallelism.pairsPerRole' is 2");
     expect(said).toContain("nothing here removes it");
-    expect(said).toContain("174-workspace-tidy-up");
+    expect(said).toContain("218-orphan-service-branches-and-dead-worktrees");
   });
 });
 
@@ -1906,5 +1914,197 @@ describe("describeStrandedWorkspace — the commit went, the step after it did n
       }),
     ).toContain("NOT pushed (git push -q -u origin … — could not read Username)");
     expect(text).toContain("and pushed");
+  });
+});
+
+/**
+ * THE DRY INVENTORY OF THREAD 218 — the half that decides, away from the disk. Every
+ * refusal of the tidy-up rule (john, msg-004 of that thread) is a case here, because the
+ * cost of getting one of them wrong is an irreversible `git worktree remove`.
+ */
+describe("workspaceLife — what the tidy-up of 218 would take, and why", () => {
+  const pair = (thread?: string): WorkspacePlace => ({
+    role: "dev-core",
+    ...(thread === undefined ? {} : { thread }),
+    path: `/r/.worktrees/dev-core${thread === undefined ? "" : `@${thread}`}`,
+    current: true,
+  });
+
+  it("calls a pair tree DEAD only on the full conjunction, and names all of it", () => {
+    const life = workspaceLife({ place: pair("100-done"), threadClosed: true, dirty: false });
+    expect(life.verdict).toBe("dead");
+    expect(life.because).toContain("thread 100-done is closed");
+    expect(life.because).toContain("clean");
+    expect(life.because).toContain("unlocked");
+    expect(life.because).toContain("no live lease");
+  });
+
+  it("an OPEN thread is alive, and the reason is the thread rather than a mood", () => {
+    expect(workspaceLife({ place: pair("100-x"), threadClosed: false, dirty: false })).toEqual({
+      verdict: "alive",
+      because: "thread 100-x is OPEN",
+    });
+  });
+
+  it("a thread nobody answered for is NOT READ, never dead — the difference is a deletion", () => {
+    const life = workspaceLife({ place: pair("999-gone"), dirty: false });
+    expect(life.verdict).toBe("unknown");
+    expect(life.because).toContain("NOT READ");
+  });
+
+  it("a tree whose dirt was not read is NOT READ, even under a closed thread", () => {
+    const life = workspaceLife({ place: pair("100-done"), threadClosed: true });
+    expect(life.verdict).toBe("unknown");
+    expect(life.because).toContain("NOT READ for uncommitted changes");
+  });
+
+  it("DIRT outranks a closed thread — john's boundary of 12.09 is not narrowed by this rule", () => {
+    const life = workspaceLife({ place: pair("100-done"), threadClosed: true, dirty: true });
+    expect(life.verdict).toBe("alive");
+    expect(life.because).toContain("UNCOMMITTED CHANGES");
+  });
+
+  it("a LOCK is alive and quotes the lock's own reason", () => {
+    const life = workspaceLife({
+      place: pair("100-done"),
+      threadClosed: true,
+      dirty: false,
+      locked: "run 4242 of dev-core",
+    });
+    expect(life.verdict).toBe("alive");
+    expect(life.because).toContain("run 4242 of dev-core");
+  });
+
+  it("a LIVE LEASE is alive — a session is seated there whatever the thread says", () => {
+    const life = workspaceLife({
+      place: pair("100-done"),
+      threadClosed: true,
+      dirty: false,
+      leaseAlive: true,
+    });
+    expect(life.verdict).toBe("alive");
+    expect(life.because).toContain("LIVE LEASE");
+  });
+
+  it("a ROLE-KEYED tree is out of the criterion's reach, not alive and not dead", () => {
+    const life = workspaceLife({ place: pair(), threadClosed: true, dirty: false });
+    expect(life.verdict).toBe("not-a-pair");
+    expect(life.because).toContain("no thread to close");
+  });
+
+  it("the MAIL CHECKOUT never reaches this function at all — it is nobody's place", () => {
+    const seen = workspaceInventoryOf({
+      repo: "/r",
+      worktrees: ".worktrees",
+      roles: ["dev-core", "curator"],
+      entries: ["comms", "dev-core@100-done"],
+      pairsPerRole: 2,
+    });
+    expect(seen.unowned).toEqual(["comms"]);
+    expect(seen.places.map((place) => place.path)).toEqual(["/r/.worktrees/dev-core@100-done"]);
+  });
+});
+
+describe("describeWorkspaceTidyUp — the totals the decision is taken on", () => {
+  const row = (
+    verdict: "dead" | "alive" | "unknown" | "not-a-pair",
+    thread: string | undefined,
+    kib: number,
+  ): WorkspaceLifeRow => ({
+    place: {
+      role: "dev-core",
+      ...(thread === undefined ? {} : { thread }),
+      path: `/r/.worktrees/dev-core${thread === undefined ? "" : `@${thread}`}`,
+      current: true,
+    },
+    life: { verdict, because: "because" },
+    kib,
+  });
+
+  it("SPEAKS WHEN THERE ARE NONE, and says how many were judged — the silence this thread is about", () => {
+    const lines = describeWorkspaceTidyUp({ rows: [row("alive", "100-x", 10)], deadKib: 0 });
+    expect(lines[0]).toContain("dead pair trees: none");
+    expect(lines[0]).toContain("1 tree(s) were judged");
+    expect(lines.join("\n")).toContain("role-keyed trees: none");
+  });
+
+  it("names the dead by name, prices them, and points at the thread that owns the rule", () => {
+    const lines = describeWorkspaceTidyUp({
+      rows: [row("dead", "100-done", 15_000), row("dead", "101-done", 15_000)],
+      deadKib: 20_000,
+    });
+    expect(lines[0]).toContain("dead pair trees (2)");
+    expect(lines[0]).toContain("dev-core@100-done, dev-core@101-done");
+    // THE TOTAL IS NOT THE SUM OF THE ROWS: the trees share hard links, and the caller
+    // measures the dead set in one pass so the reader is told what is actually freed.
+    expect(lines[0]).toContain("20M would be freed");
+    expect(lines[0]).toContain("218-orphan-service-branches-and-dead-worktrees");
+  });
+
+  it("an unmeasured disk says so instead of printing a zero", () => {
+    const lines = describeWorkspaceTidyUp({ rows: [row("dead", "100-done", 10)] });
+    expect(lines[0]).toContain("size NOT MEASURED");
+    expect(lines[0]).not.toContain("0K would be freed");
+  });
+
+  it("role-keyed trees are their OWN line with their own price, never mixed into the dead", () => {
+    const lines = describeWorkspaceTidyUp({
+      rows: [row("not-a-pair", undefined, 191_488), row("dead", "100-done", 10)],
+      deadKib: 10,
+    });
+    expect(lines[0]).toContain("dead pair trees (1)");
+    expect(lines[0]).not.toContain("dev-core,");
+    const old = lines.find((line) => line.includes("role-keyed trees")) as string;
+    expect(old).toContain("187M");
+    expect(old).toContain("does not reach them");
+  });
+
+  it("the NOT READ trees are counted neither way and are named", () => {
+    const lines = describeWorkspaceTidyUp({ rows: [row("unknown", "100-x", 10)], deadKib: 0 });
+    expect(lines.join("\n")).toContain("NOT READ (1): dev-core@100-x");
+    expect(lines[0]).toContain("dead pair trees: none");
+  });
+});
+
+describe("localOnlyBranches — the pile the tidy-up deliberately does not take", () => {
+  it("keeps the branches 'origin' has never heard of, and only those", () => {
+    expect(
+      localOnlyBranches({
+        local: ["main", "wip/418-rebase", "feat/x"],
+        remote: ["origin/main", "origin/feat/x", "origin/HEAD"],
+      }),
+    ).toEqual(["wip/418-rebase"]);
+  });
+
+  it("says so when there are none — an empty inventory is not a silent one", () => {
+    expect(describeLocalOnlyBranches([])).toContain("none");
+  });
+
+  it("names every one of them and says nothing removes them", () => {
+    const line = describeLocalOnlyBranches(["wip/189-rebase", "wip/418-rebase"]);
+    expect(line).toContain("(2)");
+    expect(line).toContain("wip/189-rebase, wip/418-rebase");
+    expect(line).toContain("nothing here removes them");
+  });
+});
+
+describe("describeDiskSize", () => {
+  it("is coarse on purpose and never prints a fake precision", () => {
+    expect(describeDiskSize(512)).toBe("512K");
+    expect(describeDiskSize(15_360)).toBe("15M");
+    expect(describeDiskSize(5_120)).toBe("5.0M");
+    expect(describeDiskSize(191_488)).toBe("187M");
+    expect(describeDiskSize(1_572_864)).toBe("1.5G");
+  });
+});
+
+describe("describeStrandedPlace — where the question of clearing a tree lives", () => {
+  it("points at 218, the thread the RULE was decided in, not at 174's standing desk", () => {
+    const line = describeStrandedPlace({
+      place: { role: "dev-core", path: "/r/.worktrees/dev-core", current: false },
+      pairsPerRole: 2,
+    });
+    expect(line).toContain("218-orphan-service-branches-and-dead-worktrees");
+    expect(line).not.toContain("174-workspace-tidy-up");
   });
 });

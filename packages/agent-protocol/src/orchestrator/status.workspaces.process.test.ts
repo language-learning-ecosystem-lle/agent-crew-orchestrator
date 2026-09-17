@@ -152,7 +152,7 @@ describe("`orchestrator status` — the workspaces this box actually has (thread
     expect(result.out).toContain("dev-core×177-workspace-per-pair: ");
     expect(result.out).toContain("'parallelism.pairsPerRole' is 2");
     expect(result.out).toContain("no run will be seated in it again");
-    expect(result.out).toContain("174-workspace-tidy-up");
+    expect(result.out).toContain("218-orphan-service-branches-and-dead-worktrees");
     expect(result.code).toBe(0);
   });
 

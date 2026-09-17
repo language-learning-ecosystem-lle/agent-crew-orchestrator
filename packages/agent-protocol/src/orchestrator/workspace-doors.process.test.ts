@@ -152,7 +152,7 @@ describe("`orchestrator preflight` — the workspaces this box actually has (thr
     expect(said).toContain(join(".worktrees", "dev-core@177-workspace-per-pair"));
     expect(said).toContain("'parallelism.pairsPerRole' is 2");
     expect(said).toContain("no run will be seated in it again");
-    expect(said).toContain("174-workspace-tidy-up");
+    expect(said).toContain("218-orphan-service-branches-and-dead-worktrees");
   });
 
   it("an unreadable '.worktrees' is a NAMED failure, not an empty list judged green", () => {
