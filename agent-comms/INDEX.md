@@ -212,6 +212,6 @@
 | 216-memory-cause-asked-at-every-write | curator, dev-core, john | normal | open | — | — | 2026-09-16 | Срабатывания (в) НЕТ — замерено, а не предположено: 0 строк гашения в обоих файлах журнала ящика пр… |
 | 217-memory-ceiling-alarm-prints-the-byte-split | curator, dev-core, john | normal | closed | — | — | 2026-09-16 | — |
 | 218-orphan-service-branches-and-dead-worktrees | curator · dev-core · john | high | closed | — | — | 2026-09-17 | — |
-| 219-restart-calls-pnpm-by-name | curator · dev-core · john | high | open | dev-core | run:464 · 2026-09-17 | 2026-09-17 | Обе половины постановки сделаны и лежат в [#464](https://github.com/language-learning-ecosystem-lle… |
+| 219-restart-calls-pnpm-by-name | curator · dev-core · john | high | open | reviewer-pr | — | 2026-09-17 | Метка review навешена на 41c48314492b5fa64bbfbd74035a25a702d68acf в 16:12:41Z, круг ревью РОДИЛСЯ —… |
 | 220-role-keyed-trees-and-a-foreign-clone | curator, john | normal | closed | — | — | 2026-09-17 | — |
 | 221-workspace-install-calls-pnpm-by-name | curator, dev-core, john | normal | closed | — | — | 2026-09-17 | — |
