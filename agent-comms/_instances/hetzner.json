@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-17T16:13:40.020Z",
+  "writtenAt": "2026-09-17T16:14:05.348Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "dev-core",
-      "thread": "219-restart-calls-pnpm-by-name",
-      "state": "draining",
-      "deadline": "2026-09-17T17:11:29Z"
-    }
-  ]
+  "leases": []
 }
