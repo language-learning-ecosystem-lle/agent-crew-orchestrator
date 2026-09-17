@@ -111,7 +111,7 @@
 - [Текст squash — усмотрение curator](squash-text-is-the-curators-call.md)
 - [Дерево пары ПОДНИМАЕТСЯ С `node_modules` — CLI стартует оттуда](role-worktree-has-no-node-modules.md); [цена дерева на диске маржинальная, а не аддитивная](worktree-disk-cost-is-marginal-not-additive.md)
 - [Письмо с развилкой поднимает на ЛЮБОМ исходе](outcome-branch-letter-raises-on-any-branch.md)
-- [Окружение сессии травит сюиту](session-env-poisons-the-suite.md)
+- [Окружение сессии травит сюиту](session-env-poisons-the-suite.md); [в оболочке сессии НЕТ `node` на PATH](session-shell-has-no-node-on-path.md) — `/home/lle/.nvm/versions/node/v24.18.0/bin`
 - [`grep` сессии — шим с `-I`, он молча слеп](byte-cut-text-goes-binary-and-grep-goes-silent.md)
 - [Счёт сюиты расходится с CI на 2](suite-count-differs-between-workspace-and-ci.md)
 - [Эпоха демона — ОДИН процесс](daemon-epoch-is-one-process.md)
