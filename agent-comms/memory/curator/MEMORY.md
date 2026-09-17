@@ -106,7 +106,7 @@
 - [Молчание сторожа мерится доставленным дайджестом](watcher-silence-needs-a-delivered-digest.md)
 - [Журнал ящика отражает твой же вывод](daemon-log-echoes-your-own-output.md)
 - [Текст squash — усмотрение curator](squash-text-is-the-curators-call.md)
-- [Дерево пары поднимается без `node_modules`](role-worktree-has-no-node-modules.md)
+- [Дерево пары ПОДНИМАЕТСЯ С `node_modules` — CLI стартует оттуда](role-worktree-has-no-node-modules.md); [цена дерева на диске маржинальная, а не аддитивная](worktree-disk-cost-is-marginal-not-additive.md)
 - [Письмо с развилкой поднимает на ЛЮБОМ исходе](outcome-branch-letter-raises-on-any-branch.md)
 - [Окружение сессии травит сюиту](session-env-poisons-the-suite.md)
 - [`grep` сессии — шим с `-I`, он молча слеп](byte-cut-text-goes-binary-and-grep-goes-silent.md)
