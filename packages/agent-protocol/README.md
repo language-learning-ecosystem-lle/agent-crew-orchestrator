@@ -2650,8 +2650,26 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [
                             # so every tree under the workspaces is listed by the pair it belongs to,
                             # a role with no tree is still named, a name that is no role's place is
                             # named and judged by nothing, and a tree the ceiling left behind says so
-                            # with thread 174-workspace-tidy-up as the home of clearing it. Nothing
-                            # here removes a checkout)
+                            # with thread 218-orphan-service-branches-and-dead-worktrees as the home
+                            # of the RULE for clearing it. Nothing here removes a checkout)
+                            # AND, under every tree, THE DRY INVENTORY of that thread (package 1):
+                            # 'tidy-up:' with a verdict and the ONE sign that decided it — DEAD (the
+                            # name is '<role>@<thread>', the thread is CLOSED, the tree is clean,
+                            # unlocked and holds no live lease), 'alive' naming the sign that keeps it
+                            # (open thread / uncommitted changes / a git lock / a live lease),
+                            # 'NOT READ' when a sign did not answer, 'not a pair' for a role-keyed
+                            # tree the criterion does not reach. Age is NOT a sign. Then the totals,
+                            # each of which SPEAKS WHEN EMPTY: the dead set and the role-keyed set,
+                            # each priced MARGINALLY — du(all registered places) minus du(all of them
+                            # but that set), so the hard links running out to trees that STAY are not
+                            # counted as a saving — and each naming the remainder it was measured
+                            # against. The per-tree size is that tree's own full size and must never
+                            # be summed. Then the branches: the ones a removal would LEAVE BEHIND
+                            # (a local-only branch a pair tree stands on right now) by name with
+                            # their tree, and the rest of this box's local-only branches by count
+                            # and the command that lists them. Branches are never removed — a branch
+                            # is its own anchor and costs no disk. The inventory removes nothing,
+                            # renames nothing, creates no ref, and has no flag that would
                             # AND, beside the workspaces, THE SERVICE BRANCHES AND HOW OLD THEY ARE (B.3,
                             # thread 099): every 'wip/<role>/<thread>-<YYYYMMDDTHHMMZ>' this repository holds —
                             # what the circuit committed for a run that ended without committing it. One

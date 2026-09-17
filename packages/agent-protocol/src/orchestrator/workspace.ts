@@ -752,6 +752,35 @@ export const describeWorkspaceLife = (row: WorkspaceLifeRow): string => {
 };
 
 /**
+ * WHAT A SET COSTS IS WHAT REMOVING IT WOULD FREE, AND NOTHING ELSE — the measurement
+ * every total of this inventory is taken by, because it is the only one that answers the
+ * question the total is read for.
+ *
+ * MEASURED ON THIS BOX, 2026-09-17, ON THE SAME THREE TREES, THREE WAYS: the sum of the
+ * per-row sizes said 524M; one `du` pass over the three said 187M; what removing them
+ * actually frees is 35M. A FACTOR OF FIFTEEN on the number a decision is taken by. pnpm
+ * hard-links `node_modules`, so a pool of ~153M is held by ANY of the neighbours — and a
+ * `du` over the set deduplicates INSIDE the set while still counting every link that runs
+ * out to a tree which STAYS.
+ *
+ * So the total is `du(all registered places)` − `du(all of them except this set)`, and it
+ * carries the remainder it was measured against: without those words the number gets added
+ * up again by the next reader. Two `du` passes, 0.3s each on a warm cache — measured.
+ */
+export type TidyUpTotal = {
+  /** `du(all registered places)` − `du(all of them but this set)`, in kibibytes. */
+  readonly kib: number;
+  /** How many registered places stay standing — what the number is relative to. */
+  readonly standing: number;
+};
+
+/** The marginal figure, or the refusal, in the words both forms of the line share. */
+const describeTidyUpTotal = (total: TidyUpTotal | undefined): string =>
+  total === undefined
+    ? "size NOT MEASURED"
+    : `${describeDiskSize(total.kib)} would be freed while the other ${total.standing} registered place(s) stand`;
+
+/**
  * THE THREE TOTALS THE DECISION IS ACTUALLY TAKEN ON, and every one of them SPEAKS WHEN
  * IT IS EMPTY. This whole thread exists because three service branches and sixty-eight
  * trees were invisible to every summary; an inventory that prints nothing when it finds
@@ -759,14 +788,22 @@ export const describeWorkspaceLife = (row: WorkspaceLifeRow): string => {
  * alike, which is the silence itself, one level quieter.
  *
  * `dead` is the number john judges the tidy-up by: what it would take, and what that
- * frees. THE TOTAL IS NOT THE SUM OF THE ROWS and says so — linked worktrees share `.git`
- * through hard links, so the sum over-counts what is actually freed; the caller measures
- * the dead set in ONE `du` pass, which is where the deduplication happens.
+ * frees. THE TOTAL IS NEVER THE SUM OF THE ROWS and says so — see `TidyUpTotal` for the
+ * measurement and for what the additive form got wrong by a factor of fifteen. The rows
+ * keep their own full sizes (`--count-links`) because "how big is this one tree" is an
+ * honest question with an order-independent answer; the single prohibition is adding them.
+ *
+ * AND IT CLAIMS THE DISK NOWHERE. Every count and every size here is about the places the
+ * contour has REGISTERED as workspaces; a directory under `.worktrees` that no role and no
+ * pair is keyed by is outside this block entirely, and the line says "registered" so that
+ * a reader never takes it for a statement about the disk.
  */
 export const describeWorkspaceTidyUp = (input: {
   readonly rows: readonly WorkspaceLifeRow[];
-  /** `du` over ALL the dead paths at once, in kibibytes; `undefined` when not measured. */
-  readonly deadKib?: number | undefined;
+  /** What removing the dead set would free; `undefined` when the disk was not measured. */
+  readonly dead?: TidyUpTotal | undefined;
+  /** The same measurement for the role-keyed trees, which are a set of their own. */
+  readonly old?: TidyUpTotal | undefined;
 }): readonly string[] => {
   const of = (verdict: WorkspaceLifeVerdict) =>
     input.rows.filter((row) => row.life.verdict === verdict);
@@ -785,7 +822,7 @@ export const describeWorkspaceTidyUp = (input: {
   lines.push(
     dead.length === 0
       ? `  dead pair trees: none — every '<role>@<thread>' tree here is alive by the criterion of 218 (nothing was skipped: ${input.rows.length} tree(s) were judged)`
-      : `  dead pair trees (${dead.length}): ${input.deadKib === undefined ? "size NOT MEASURED" : `${describeDiskSize(input.deadKib)} would be freed`} — ${names(dead)}. Nothing here removes them; ${TIDY_UP_HOME}`,
+      : `  dead pair trees (${dead.length}): ${describeTidyUpTotal(input.dead)} — ${names(dead)}. The figure is MARGINAL, never the sum of the rows above. Nothing here removes them; ${TIDY_UP_HOME}`,
   );
   if (unread.length > 0) {
     lines.push(
@@ -795,7 +832,7 @@ export const describeWorkspaceTidyUp = (input: {
   lines.push(
     old.length === 0
       ? "  role-keyed trees: none — every tree here is keyed by a pair"
-      : `  role-keyed trees (${old.length}): ${input.rows.some((row) => row.life.verdict === "not-a-pair" && row.kib === undefined) ? "size NOT MEASURED" : describeDiskSize(old.reduce((sum, row) => sum + (row.kib ?? 0), 0))} — ${names(old)}. The criterion of 218 does not reach them: no thread in the name, so nothing to close`,
+      : `  role-keyed trees (${old.length}): ${describeTidyUpTotal(input.old)} — ${names(old)}. The criterion of 218 does not reach them: no thread in the name, so nothing to close`,
   );
   return lines;
 };
@@ -821,23 +858,82 @@ export const localOnlyBranches = (input: {
   return [...input.local].filter((name) => !onOrigin.has(name)).sort();
 };
 
-/** How many of them the line spells out before it starts counting. */
+/** How many of the branches a tidy-up would leave behind the line spells out by name. */
 export const LOCAL_BRANCHES_SHOWN = 10;
 
+/** A local-only branch a pair tree is standing on right now, and the tree that stands. */
+export type HeldLocalBranch = {
+  readonly branch: string;
+  /** The pair key of the tree — `<role>@<thread>`. */
+  readonly by: string;
+};
+
 /**
- * THE LIST IS CAPPED AND SAYS SO — the same shape `describeWorkspaceDirt` has, and for the
- * reason measured here on 2026-09-17: this box has 466 of them, and a line that printed
- * all 466 pushes every other row of the summary off the screen. A cap that printed ten and
- * fell silent would read as "there are ten", which is the silence of this thread one level
- * quieter, so the remainder is counted out loud and the command that has all of them is in
- * the line.
+ * WHICH OF THEM THE TIDY-UP ITSELF WOULD PRODUCE — the split that makes this a signal and
+ * not a dump, and the answer to "those nine or all 466" (curator, 2026-09-17).
+ *
+ * THE NINE ARE NOT A DIFFERENT RULE, THEY ARE A DIFFERENT QUESTION. The line was ordered
+ * as the answer to what STEP 2 LEAVES BEHIND: take the tree away and the branch it stood
+ * on survives the removal, unheard of on `origin`, which is precisely the pile this thread
+ * was opened about. The rest — 456 on this box — is the accumulated history of feature
+ * branches, which the tidy-up neither produces nor touches. One capped, arbitrary list of
+ * both piles gives neither the signal nor the completeness, so they are two lines: the
+ * held ones by name, the rest by count and a command.
+ *
+ * THE HOLE THIS PAIR OF LINES HAS TO CLOSE, and it is the reason it is written down here:
+ * once step 2 removes a tree, its branch DROPS OUT of the named line (there is no tree
+ * holding it any more) and moves SILENTLY into the count of the other. So the requirement
+ * of package 2 that every removed pair be named in the tick log includes the branch it
+ * stood on — that log line is what makes the move audible. No code for it is needed here.
  */
-export const describeLocalOnlyBranches = (branches: readonly string[]): string => {
-  if (branches.length === 0)
-    return "  local-only branches: none — every branch here is on 'origin' as well";
-  const shown = [...branches].slice(0, LOCAL_BRANCHES_SHOWN);
-  const rest = branches.length - shown.length;
-  return `  local-only branches (${branches.length}) — they exist on this disk and nowhere else, and nothing here removes them (a branch is its own anchor and costs no disk): ${shown.join(", ")}${rest > 0 ? `, and ${rest} more not listed here ('git branch --format=%(refname:short) | grep -vxF "$(git branch -r --format=%(refname:lstrip=3))"' has all of them)` : ""}`;
+export const splitLocalOnlyBranches = (input: {
+  readonly branches: readonly string[];
+  /** Branch name → the pair key of the tree whose HEAD is on it right now. */
+  readonly heldBy: ReadonlyMap<string, string>;
+}): {
+  readonly held: readonly HeldLocalBranch[];
+  readonly rest: readonly string[];
+} => {
+  const held: HeldLocalBranch[] = [];
+  const rest: string[] = [];
+  for (const branch of input.branches) {
+    const by = input.heldBy.get(branch);
+    if (by === undefined) rest.push(branch);
+    else held.push({ branch, by });
+  }
+  return { held, rest };
+};
+
+/**
+ * TWO LINES, BECAUSE THEY HAVE TWO DIFFERENT READERS (see `splitLocalOnlyBranches`), and
+ * both of them SPEAK WHEN EMPTY.
+ *
+ * Line A is capped all the same — the nine are units today and the cap costs nothing, but
+ * a list that grew and printed silently would read as "there are ten", which is the
+ * silence of this thread one level quieter. Line B never lists: an arbitrary ten out of
+ * 456 is neither signal nor completeness, so it gives the count and the command that has
+ * them all.
+ */
+export const describeLocalOnlyBranches = (input: {
+  readonly held: readonly HeldLocalBranch[];
+  readonly rest: readonly string[];
+}): readonly string[] => {
+  const shown = [...input.held].slice(0, LOCAL_BRANCHES_SHOWN);
+  const more = input.held.length - shown.length;
+  const lines: string[] = [];
+  lines.push(
+    input.held.length === 0
+      ? "  branches a tidy-up would leave behind: none — no registered pair tree stands on a branch that 'origin' has never heard of"
+      : `  branches a tidy-up would leave behind (${input.held.length}) — the tree goes, the branch stays and nothing here removes it (a branch is its own anchor and costs no disk): ${shown
+          .map((row) => `${row.by} → ${row.branch}`)
+          .join(", ")}${more > 0 ? `, and ${more} more not listed here` : ""}`,
+  );
+  lines.push(
+    input.rest.length === 0
+      ? "  other local-only branches: none — every other branch here is on 'origin' as well"
+      : `  other local-only branches (${input.rest.length}) — they exist on this disk and nowhere else, no tidy-up produces them and none of this touches them; 'git branch --format=%(refname:short) | grep -vxF "$(git branch -r --format=%(refname:lstrip=3))"' has all of them`,
+  );
+  return lines;
 };
 
 /**

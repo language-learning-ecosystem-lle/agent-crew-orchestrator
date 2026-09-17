@@ -671,6 +671,8 @@ import {
   mainCheckoutVerdict,
   planWorkspace,
   planWorkspaceIdentity,
+  splitLocalOnlyBranches,
+  type TidyUpTotal,
   WORKSPACE_PAIR_SEPARATOR,
   type WorkspaceCheckout,
   type WorkspaceDirt,
@@ -10322,22 +10324,42 @@ const orchestratorStatus = async (rawArgv: readonly string[]): Promise<void> => 
       for (const name of seen.unowned) {
         out(`  ${name}: not any role's workspace — nothing here is claimed about it`);
       }
-      // THE TOTAL IS ITS OWN MEASUREMENT (thread 218): one `du` over the dead set, so the
-      // hard links the worktrees share with `.git` are counted once — which is what a
-      // reader asking "and how much does this free" is actually asking.
-      const deadPaths = rows
-        .filter((row) => row.life.verdict === "dead")
-        .map((row) => row.place.path);
-      const deadSizes = deadPaths.length === 0 ? undefined : diskKib(deadPaths, {});
-      const deadKib =
-        deadPaths.length === 0
-          ? 0
-          : deadSizes === undefined || deadSizes.size === 0
-            ? undefined
-            : [...deadSizes.values()].reduce((sum, kib) => sum + kib, 0);
+      // EVERY TOTAL IS MARGINAL (thread 218, curator's measurement of 2026-09-17): what
+      // removing a set frees is `du(all registered places)` − `du(all of them but the
+      // set)`, and NOT one `du` over the set. A pass over the set alone deduplicates
+      // INSIDE it while still counting every hard link that runs out to a tree which
+      // STAYS — on this box that was 1173M against 1023M for the dead set, and 524M
+      // against 35M for the three role-keyed ones. `TidyUpTotal` carries the arithmetic.
+      //
+      // THE REMAINDER IS EVERY OTHER REGISTERED PLACE, the unowned ones included: the mail
+      // checkout and a probe tree made by hand hold the same shared pool, and leaving them
+      // out of the remainder would put their share back into the number as a saving.
+      const worktreesDir = join(repo, workdirSection.worktrees);
+      const universe = [
+        ...seen.places.map((place) => place.path),
+        ...seen.unowned.map((name) => join(worktreesDir, name)),
+      ];
+      const wholeKib = diskKib(universe, {});
+      const sumOf = (measured: ReadonlyMap<string, number>) =>
+        [...measured.values()].reduce((sum, kib) => sum + kib, 0);
+      const marginal = (set: readonly string[]): TidyUpTotal | undefined => {
+        const standing = universe.length - set.length;
+        if (set.length === 0) return { kib: 0, standing };
+        if (wholeKib.size === 0) return undefined;
+        const remainder = universe.filter((path) => !set.includes(path));
+        if (remainder.length === 0) return { kib: sumOf(wholeKib), standing };
+        const restKib = diskKib(remainder, {});
+        if (restKib.size === 0) return undefined;
+        return { kib: Math.max(0, sumOf(wholeKib) - sumOf(restKib)), standing };
+      };
+      const pathsOf = (verdict: string) =>
+        rows.filter((row) => row.life.verdict === verdict).map((row) => row.place.path);
+      const dead = marginal(pathsOf("dead"));
+      const old = marginal(pathsOf("not-a-pair"));
       for (const line of describeWorkspaceTidyUp({
         rows,
-        ...(deadKib === undefined ? {} : { deadKib }),
+        ...(dead === undefined ? {} : { dead }),
+        ...(old === undefined ? {} : { old }),
       })) {
         out(line);
       }
@@ -10362,11 +10384,29 @@ const orchestratorStatus = async (rawArgv: readonly string[]): Promise<void> => 
         );
       } else {
         const lines = (raw: string) => raw.split("\n").filter((name) => name !== "");
-        out(
-          describeLocalOnlyBranches(
-            localOnlyBranches({ local: lines(heads), remote: lines(remotes) }),
-          ),
-        );
+        // WHICH OF THEM A TIDY-UP WOULD ITSELF PRODUCE: the branch a pair tree is standing
+        // on right now survives `git worktree remove` and becomes exactly the pile this
+        // thread was opened about. `facts.branch` is `HEAD` for a detached tree, and a
+        // detached tree leaves nothing behind.
+        const heldBy = new Map<string, string>();
+        for (const place of seen.places) {
+          const branch = factsOf.get(place.path)?.branch;
+          if (branch === undefined || branch === "HEAD") continue;
+          heldBy.set(
+            branch,
+            place.thread === undefined
+              ? place.role
+              : `${place.role}${WORKSPACE_PAIR_SEPARATOR}${place.thread}`,
+          );
+        }
+        for (const line of describeLocalOnlyBranches(
+          splitLocalOnlyBranches({
+            branches: localOnlyBranches({ local: lines(heads), remote: lines(remotes) }),
+            heldBy,
+          }),
+        )) {
+          out(line);
+        }
       }
     }
   }

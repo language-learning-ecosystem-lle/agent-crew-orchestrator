@@ -34,6 +34,7 @@ import {
   readServiceBranchName,
   serviceBranchAge,
   serviceBranchName,
+  splitLocalOnlyBranches,
   type WorkspaceLifeRow,
   type WorkspacePlace,
   workspaceInventoryOf,
@@ -2022,7 +2023,10 @@ describe("describeWorkspaceTidyUp — the totals the decision is taken on", () =
   });
 
   it("SPEAKS WHEN THERE ARE NONE, and says how many were judged — the silence this thread is about", () => {
-    const lines = describeWorkspaceTidyUp({ rows: [row("alive", "100-x", 10)], deadKib: 0 });
+    const lines = describeWorkspaceTidyUp({
+      rows: [row("alive", "100-x", 10)],
+      dead: { kib: 0, standing: 1 },
+    });
     expect(lines[0]).toContain("dead pair trees: none");
     expect(lines[0]).toContain("1 tree(s) were judged");
     expect(lines.join("\n")).toContain("role-keyed trees: none");
@@ -2031,14 +2035,25 @@ describe("describeWorkspaceTidyUp — the totals the decision is taken on", () =
   it("names the dead by name, prices them, and points at the thread that owns the rule", () => {
     const lines = describeWorkspaceTidyUp({
       rows: [row("dead", "100-done", 15_000), row("dead", "101-done", 15_000)],
-      deadKib: 20_000,
+      dead: { kib: 20_000, standing: 7 },
     });
     expect(lines[0]).toContain("dead pair trees (2)");
     expect(lines[0]).toContain("dev-core@100-done, dev-core@101-done");
-    // THE TOTAL IS NOT THE SUM OF THE ROWS: the trees share hard links, and the caller
-    // measures the dead set in one pass so the reader is told what is actually freed.
     expect(lines[0]).toContain("20M would be freed");
     expect(lines[0]).toContain("218-orphan-service-branches-and-dead-worktrees");
+  });
+
+  // THE TOTAL IS NEVER THE SUM OF THE ROWS, and this is the case that pins it: two rows of
+  // 15_000K each, a marginal total of 20_000K, and the additive answer (30M) must appear
+  // nowhere in the line. On this box the additive form was wrong by a factor of fifteen.
+  it("prints the MARGINAL figure and names the remainder it is relative to", () => {
+    const lines = describeWorkspaceTidyUp({
+      rows: [row("dead", "100-done", 15_000), row("dead", "101-done", 15_000)],
+      dead: { kib: 20_000, standing: 7 },
+    });
+    expect(lines[0]).toContain("while the other 7 registered place(s) stand");
+    expect(lines[0]).toContain("MARGINAL, never the sum of the rows above");
+    expect(lines[0]).not.toContain("30M");
   });
 
   it("an unmeasured disk says so instead of printing a zero", () => {
@@ -2047,26 +2062,46 @@ describe("describeWorkspaceTidyUp — the totals the decision is taken on", () =
     expect(lines[0]).not.toContain("0K would be freed");
   });
 
-  it("role-keyed trees are their OWN line with their own price, never mixed into the dead", () => {
+  it("role-keyed trees are their OWN line, priced the SAME marginal way", () => {
     const lines = describeWorkspaceTidyUp({
       rows: [row("not-a-pair", undefined, 191_488), row("dead", "100-done", 10)],
-      deadKib: 10,
+      dead: { kib: 10, standing: 1 },
+      old: { kib: 35_956, standing: 1 },
     });
     expect(lines[0]).toContain("dead pair trees (1)");
     expect(lines[0]).not.toContain("dev-core,");
     const old = lines.find((line) => line.includes("role-keyed trees")) as string;
-    expect(old).toContain("187M");
+    // 191_488K is what the tree WEIGHS (187M); 35_956K is what removing it FREES.
+    expect(old).toContain("35M would be freed");
+    expect(old).not.toContain("187M");
+    expect(old).toContain("while the other 1 registered place(s) stand");
     expect(old).toContain("does not reach them");
   });
 
+  it("an unmeasured role-keyed set says so too, and does not fall back to the rows", () => {
+    const lines = describeWorkspaceTidyUp({
+      rows: [row("not-a-pair", undefined, 191_488)],
+      dead: { kib: 0, standing: 1 },
+    });
+    const old = lines.find((line) => line.includes("role-keyed trees")) as string;
+    expect(old).toContain("size NOT MEASURED");
+    expect(old).not.toContain("187M");
+  });
+
   it("the NOT READ trees are counted neither way and are named", () => {
-    const lines = describeWorkspaceTidyUp({ rows: [row("unknown", "100-x", 10)], deadKib: 0 });
+    const lines = describeWorkspaceTidyUp({
+      rows: [row("unknown", "100-x", 10)],
+      dead: { kib: 0, standing: 1 },
+    });
     expect(lines.join("\n")).toContain("NOT READ (1): dev-core@100-x");
     expect(lines[0]).toContain("dead pair trees: none");
   });
 });
 
 describe("localOnlyBranches — the pile the tidy-up deliberately does not take", () => {
+  const split = (branches: readonly string[], heldBy: ReadonlyMap<string, string>) =>
+    describeLocalOnlyBranches(splitLocalOnlyBranches({ branches, heldBy }));
+
   it("keeps the branches 'origin' has never heard of, and only those", () => {
     expect(
       localOnlyBranches({
@@ -2076,24 +2111,56 @@ describe("localOnlyBranches — the pile the tidy-up deliberately does not take"
     ).toEqual(["wip/418-rebase"]);
   });
 
-  it("says so when there are none — an empty inventory is not a silent one", () => {
-    expect(describeLocalOnlyBranches([])).toContain("none");
+  // THE TWO LINES ARE TWO QUESTIONS: what step 2 would LEAVE BEHIND (a branch a tree is
+  // standing on right now) against the accumulated history of the box, which no tidy-up
+  // produces and none of this touches.
+  it("SPLITS the held ones out of the pile, by the tree that holds them", () => {
+    const { held, rest } = splitLocalOnlyBranches({
+      branches: ["feat/206-journal-write", "old/whatever", "fix/217-x"],
+      heldBy: new Map([
+        ["feat/206-journal-write", "dev-core@206-journal-writes-without-a-pr"],
+        ["fix/217-x", "dev-core@217-memory-ceiling"],
+        ["some/branch/with/no/tree", "dev-core@100-x"],
+      ]),
+    });
+    expect(held.map((row) => row.branch)).toEqual(["feat/206-journal-write", "fix/217-x"]);
+    expect(held[0]?.by).toBe("dev-core@206-journal-writes-without-a-pr");
+    expect(rest).toEqual(["old/whatever"]);
   });
 
-  it("names every one of them and says nothing removes them", () => {
-    const line = describeLocalOnlyBranches(["wip/189-rebase", "wip/418-rebase"]);
-    expect(line).toContain("(2)");
-    expect(line).toContain("wip/189-rebase, wip/418-rebase");
-    expect(line).toContain("nothing here removes them");
+  it("names the held ones with their tree and says the branch stays", () => {
+    const lines = split(
+      ["feat/206-journal-write"],
+      new Map([["feat/206-journal-write", "dev-core@206-journal-writes-without-a-pr"]]),
+    );
+    expect(lines[0]).toContain("branches a tidy-up would leave behind (1)");
+    expect(lines[0]).toContain("dev-core@206-journal-writes-without-a-pr → feat/206-journal-write");
+    expect(lines[0]).toContain("the tree goes, the branch stays");
   });
 
-  it("CAPS the list and counts the rest out loud — 466 of them measured on this box", () => {
-    const many = Array.from({ length: 466 }, (_, index) => `b${String(index).padStart(3, "0")}`);
-    const line = describeLocalOnlyBranches(many);
-    expect(line).toContain("(466)");
-    expect(line).toContain("b000, b001");
-    expect(line).not.toContain("b011");
-    expect(line).toContain("456 more not listed here");
+  // 456 of them on this box on 2026-09-17. An arbitrary ten out of those is neither signal
+  // nor completeness, so line B counts and hands over the command instead of listing.
+  it("counts the rest WITHOUT listing them, and gives the command that has them all", () => {
+    const many = Array.from({ length: 456 }, (_, index) => `b${String(index).padStart(3, "0")}`);
+    const lines = split(many, new Map());
+    expect(lines[1]).toContain("other local-only branches (456)");
+    expect(lines[1]).not.toContain("b000");
+    expect(lines[1]).toContain("git branch --format=%(refname:short)");
+  });
+
+  it("BOTH lines speak when they are empty — an empty inventory is not a silent one", () => {
+    const lines = split([], new Map());
+    expect(lines[0]).toContain("branches a tidy-up would leave behind: none");
+    expect(lines[1]).toContain("other local-only branches: none");
+  });
+
+  it("CAPS the named line and counts the remainder out loud", () => {
+    const many = Array.from({ length: 14 }, (_, index) => `b${String(index).padStart(3, "0")}`);
+    const lines = split(many, new Map(many.map((branch) => [branch, `dev-core@${branch}`])));
+    expect(lines[0]).toContain("(14)");
+    expect(lines[0]).toContain("b000");
+    expect(lines[0]).not.toContain("b011");
+    expect(lines[0]).toContain("4 more not listed here");
   });
 });
 

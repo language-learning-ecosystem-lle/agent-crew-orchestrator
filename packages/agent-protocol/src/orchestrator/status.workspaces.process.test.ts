@@ -59,8 +59,14 @@ const configOf = (pairsPerRole: number) => ({
   ],
 });
 
+const threadMeta = (status: "open" | "closed"): string =>
+  `---\ntitle: T\nparticipants: dev-core, curator\nstatus: ${status}\n---\n`;
+
 /** A contour whose repository is the only thing under test. */
-const contour = (pairsPerRole: number): string => {
+const contour = (
+  pairsPerRole: number,
+  threads: readonly (readonly [string, "open" | "closed"])[] = [],
+): string => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-places-"));
   const origin = join(base, "origin.git");
   execFileSync("git", ["init", "--bare", "-q", "-b", "main", origin]);
@@ -81,6 +87,25 @@ const contour = (pairsPerRole: number): string => {
   git(mail, "checkout", "-q", "--orphan", "comms");
   mkdirSync(join(mail, "agent-comms"), { recursive: true });
   writeFileSync(join(mail, "agent-comms", "README.md"), "the mail\n");
+  for (const [thread, state] of threads) {
+    const dir = join(mail, "agent-comms", thread);
+    mkdirSync(join(dir, "messages"), { recursive: true });
+    writeFileSync(join(dir, "_meta.md"), threadMeta(state));
+    writeFileSync(
+      join(dir, "messages", "2026-09-09T05-20-10Z-curator.md"),
+      [
+        "---",
+        "from: curator",
+        "date: 2026-09-09T05:20:10Z",
+        "expects: none",
+        "waiting-on: dev-core",
+        "---",
+        "",
+        "Carry on.",
+        "",
+      ].join("\n"),
+    );
+  }
   git(mail, "add", ".");
   git(mail, "commit", "-qm", "mail");
   git(mail, "push", "-q", "-u", "origin", "comms");
@@ -153,6 +178,91 @@ describe("`orchestrator status` — the workspaces this box actually has (thread
     expect(result.out).toContain("'parallelism.pairsPerRole' is 2");
     expect(result.out).toContain("no run will be seated in it again");
     expect(result.out).toContain("218-orphan-service-branches-and-dead-worktrees");
+    expect(result.code).toBe(0);
+  });
+
+  /**
+   * THE DRY INVENTORY OF THREAD 218, ON REAL TREES — and a process test because every sign
+   * it judges by is read from somewhere else: the thread from a fold of the MAIL, the dirt
+   * from `git status` in the tree, the price from `du` on the disk. A unit hands itself all
+   * three and would stay green with the wiring crossed; the one thing that can say
+   * otherwise is a `.worktrees` with a dead tree, a live one and a dirty one in it.
+   *
+   * AND THE ASSERTION THIS PACKAGE IS REALLY BOUGHT FOR IS THE LAST ONE: the count of
+   * `git worktree list` before and after. The inventory is the package that runs a whole
+   * release BEFORE anything may remove a tree, so "it removed nothing" is not a remark
+   * about it — it is its specification.
+   */
+  it("prices the dead, spares the living, and REMOVES NOTHING", () => {
+    const repo = contour(2, [
+      ["001-done", "closed"],
+      ["002-open", "open"],
+    ]);
+    workspace(repo, "dev-core@001-done");
+    workspace(repo, "dev-core@002-open");
+    workspace(repo, "curator@001-done");
+    workspace(repo, "dev-core");
+    // The trap of this whole rule: a tree whose name carries no thread, which is what the
+    // mail checkout looks like. It must not reach a verdict at all.
+    workspace(repo, "comms");
+    writeFileSync(join(repo, ".worktrees", "curator@001-done", "left-behind.txt"), "mine\n");
+    const before = git(repo, "worktree", "list");
+
+    const result = status(repo);
+
+    // The dead one: the thread is closed and every other sign says the tree is idle.
+    expect(result.out).toContain("tidy-up: DEAD — thread 001-done is closed");
+    // The living one, and the reason is the ONE sign that decided, not a general word.
+    expect(result.out).toContain("tidy-up: alive — thread 002-open is OPEN");
+    // The dirty one has a CLOSED thread and lives anyway — john's boundary of 12.09.
+    expect(result.out).toContain("UNCOMMITTED CHANGES");
+    // The role-keyed tree is out of the criterion's reach, neither dead nor alive.
+    expect(result.out).toContain("tidy-up: not a pair");
+    // `comms` is judged by nothing at all — it never reaches `workspaceLife`.
+    const commsLine = result.out
+      .split("\n")
+      .find((line) => line.includes("comms: not any role's workspace")) as string;
+    expect(commsLine).not.toContain("tidy-up:");
+    expect(result.out).not.toContain("comms. Nothing here removes them");
+
+    // The totals: one dead tree, priced MARGINALLY and against a named remainder.
+    expect(result.out).toContain("dead pair trees (1)");
+    expect(result.out).toContain("dev-core@001-done");
+    expect(result.out).toMatch(/would be freed while the other \d+ registered place\(s\) stand/);
+    expect(result.out).toContain("role-keyed trees (1)");
+
+    // AND NOTHING MOVED.
+    expect(git(repo, "worktree", "list")).toBe(before);
+    expect(result.code).toBe(0);
+  });
+
+  /**
+   * THE SECOND PILE, SPLIT THE WAY IT IS READ (curator, 2026-09-17): what the tidy-up would
+   * LEAVE BEHIND is a branch a tree is standing on right now, by name; the rest of the
+   * box's local-only history is a count and a command.
+   */
+  it("names the branch a removal would leave behind, and only counts the rest", () => {
+    const repo = contour(2, [["002-open", "open"]]);
+    git(
+      repo,
+      "worktree",
+      "add",
+      "-q",
+      "-b",
+      "feat/left-behind",
+      join(repo, ".worktrees", "dev-core@002-open"),
+      "HEAD",
+    );
+    git(repo, "branch", "old/history-of-this-box");
+
+    const result = status(repo);
+
+    expect(result.out).toContain("branches a tidy-up would leave behind (1)");
+    expect(result.out).toContain("dev-core@002-open → feat/left-behind");
+    expect(result.out).toContain("other local-only branches (1)");
+    // The rest is COUNTED, never listed: an arbitrary ten of hundreds is neither signal
+    // nor completeness.
+    expect(result.out).not.toContain("old/history-of-this-box");
     expect(result.code).toBe(0);
   });
 
