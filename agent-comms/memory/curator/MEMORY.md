@@ -97,7 +97,7 @@
 - [Отказ доступа не принимается на своём репозитории](access-refusal-class-cannot-be-accepted-here.md)
 - [Незавершённость чека — это `bucket`](check-state-is-read-from-bucket.md)
 - [Разрыв цепи «был → стал» — чаще рука](chain-break-may-be-a-hand-not-a-lost-letter.md) — мерь строками `SELF-RESTART:`; [стоп-флаг без них — живая рука в `ps`, и ждёт она твою сессию](stop-flag-without-self-restart-lines-is-a-live-hand.md)
-- [Самоперезапуск ящика одной строкой](self-restart-ack-is-not-asked-twice.md); [запись однослотовая](self-restart-record-is-single-slot.md); [история поля числа: подпись и якорь чинились РАЗНЫМИ PR](self-restart-waited-field-understates-the-standstill.md); [письмо называет ОТПЕЧАТОК](self-restart-letter-names-the-footprint.md); [последовательность исполняет СТАРЫЙ бинарь](self-restart-runs-the-old-binary.md)
+- [Самоперезапуск ящика одной строкой](self-restart-ack-is-not-asked-twice.md); [запись однослотовая](self-restart-record-is-single-slot.md); [история поля числа: подпись и якорь чинились РАЗНЫМИ PR](self-restart-waited-field-understates-the-standstill.md); [письмо называет ОТПЕЧАТОК](self-restart-letter-names-the-footprint.md); [последовательность исполняет СТАРЫЙ бинарь, а ОТЧЁТ пишет преемник — новым](self-restart-runs-the-old-binary.md)
 - [Гард 3 у бампа версии — слово john о приёмке](version-bump-ascends-to-johns-acceptance.md)
 - [Бамп схемы — кнопка john](schema-version-bump-is-johns-button.md)
 - [Новая коробочная тревога — норма без схемы](new-box-alarm-is-a-norm-without-a-schema-bump.md)
