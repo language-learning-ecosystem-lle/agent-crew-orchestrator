@@ -267,6 +267,19 @@ const lettersIn = (repo: string): number =>
  * bad header, a sender the registry does not know, a thread that never got its `_meta.md` —
  * is a file and not an arrival.
  */
+/**
+ * THE LETTERS OF THAT RECEIVER AS THEY LIE ON THE DISK — raw, because the HEADER is what
+ * decides whether a session is raised, and `thread show` renders the feed for a reader
+ * rather than reproducing the file: a released turn prints as no line at all there. The
+ * assertion of thread 222 is about the header, so it is made over the header.
+ */
+const rawLettersOf = (repo: string, thread: string): readonly string[] => {
+  const dir = join(repo, "mailco", "agent-comms", thread, "messages");
+  return readdirSync(dir)
+    .filter((name) => name.endsWith(".md"))
+    .map((name) => readFileSync(join(dir, name), "utf8"));
+};
+
 const readBack = (repo: string, thread: string): string =>
   execFileSync(
     TSX,
@@ -317,7 +330,7 @@ const ledgerOf = (repo: string): string | undefined => {
 
 describe("the successor tells the standing address what the restart cost — through the real door", () => {
   it(
-    "the tick RECOGNISES the restart: the receiver is opened, the four facts are in it, the turn is curator's",
+    "the tick RECOGNISES the restart: the receiver is opened, the four facts are in it, and the turn is RELEASED",
     () => {
       const { repo, cli } = contour([DEV_CORE, GITHUB, CURATOR, JOHN]);
       // Nothing of this address exists before the tick: the receiver below is opened BY THE
@@ -335,7 +348,7 @@ describe("the successor tells the standing address what the restart cost — thr
 
       // THE JOURNAL SAYS IT WENT — and says nothing that could be read as a failure.
       expect(said).toContain(
-        `letter — the self-restart is posted to the standing address '${SELF_RESTART_SLUG}', turn for 'curator'`,
+        `letter — the self-restart is posted to the standing address '${SELF_RESTART_SLUG}', turn released ('—')`,
       );
       expect(said).not.toContain("NOT DELIVERED");
       expect(said).not.toContain("SUPPRESSED");
@@ -357,13 +370,25 @@ describe("the successor tells the standing address what the restart cost — thr
       // …and never the words that stand in when a fact is missing from the memory.
       expect(shown).not.toContain("не записано");
       expect(shown).toContain("from: github");
+      // THE HEADER RELEASES THE TURN, THROUGH THE REAL DOOR (thread 222, П-1) — and this is
+      // the half no unit over the argv can reach: what `new-message` WROTE into the feed.
+      // A header naming a role here is a raised session per restart, and the loop john
+      // measured on 2026-09-17: the raised pair held the lease the next restart waited on.
+      const letters = rawLettersOf(repo, receiver as string);
+      expect(letters).toHaveLength(1);
+      expect(letters[0]).toContain("waiting-on: —");
+      expect(letters[0]).not.toContain("waiting-on: curator");
+      expect(shown).not.toContain("Ход curator");
 
-      // WHOSE TURN IT IS, taken from the QUEUE and not from the prose — this is how curator
-      // is raised on an address it has never written into. And NOT john's: a turn on a human
-      // stands in a receiver no tick wakes anybody for.
-      expect(turnsOf(repo, "curator")).toContain(receiver as string);
-      expect(turnsOf(repo, "dev-core")).not.toContain(receiver as string);
-      expect(turnsOf(repo, "john")).not.toContain(receiver as string);
+      // WHOSE TURN IT IS, TAKEN FROM THE QUEUE AND NOT FROM THE PROSE — and the answer is
+      // NOBODY'S (thread 222). `mail` is the same fold the scheduler raises a pair from, so
+      // this is the closest a suite gets to П-4's field acceptance: the letter lands, and no
+      // role has anything to answer on it. Asked of every participant of the receiver — a
+      // release that only held for the role that used to be named would be no release.
+      for (const role of ["curator", "dev-core", "john"])
+        expect(turnsOf(repo, role), `'${role}' is raised on the self-restart report`).not.toContain(
+          receiver as string,
+        );
 
       // THE LEDGER IS WRITTEN — and written only now, after an exit code of 0.
       expect(ledgerOf(repo)).toContain("2026-09-06T12:34:56Z");
@@ -492,7 +517,7 @@ describe("the successor tells the standing address what the restart cost — thr
       // reason this package exists.
       expect(second).toContain("letter — SUPPRESSED, nothing new to say");
       expect(second).toContain(SELF_RESTART_SLUG);
-      expect(second).toContain("turn for 'curator'");
+      expect(second).toContain("raising nobody");
       // R3 — AND IT SAYS WHERE THE LETTER IS. The stamp in that line is WHEN THE LETTER
       // WENT and not when the restart was decided — those are two different instants, and
       // the one a reader needs to find the message in the receiver is the first. It is
@@ -552,7 +577,7 @@ describe("the successor tells the standing address what the restart cost — thr
       expect(said).toContain(
         `letter — NOT DELIVERED to the standing address '${SELF_RESTART_SLUG}'`,
       );
-      expect(said).toContain("turn for 'curator'");
+      expect(said).toContain("a record there, raising nobody");
       // WHAT EXACTLY REFUSED — the door's own sentence, carried out through the exit code, so
       // a reader can fix the config without re-running anything.
       expect(said).toContain("'new-message' exited");

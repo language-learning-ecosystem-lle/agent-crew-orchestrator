@@ -19,7 +19,7 @@ import {
   planSelfRestartLetter,
   SELF_RESTART_QUIET_CADENCE,
   SELF_RESTART_SLUG,
-  SELF_RESTART_WAITING_ON,
+  SELF_RESTART_TURN,
   type SelfRestartMemo,
   type SelfRestartQuietRun,
   selfRestartSignature,
@@ -167,18 +167,46 @@ describe("planSelfRestartLetter — the delivery it asks for", () => {
     expect(participants?.split(",")).toContain("github");
   });
 
-  it("is sent from the system, expects nothing back, and still CARRIES A TURN", () => {
+  it("is sent from the system, expects nothing back, and RELEASES THE TURN", () => {
     const { argv, waitingOn } = planSelfRestartLetter({ change: changed, event: full, root });
     expect(flagValue(argv, "--from")).toBe("github");
     expect(flagValue(argv, "--expects")).toBe("none");
-    expect(flagValue(argv, "--waiting-on")).toBe(SELF_RESTART_WAITING_ON);
-    expect(waitingOn).toBe("curator");
+    expect(flagValue(argv, "--waiting-on")).toBe(SELF_RESTART_TURN);
+    expect(SELF_RESTART_TURN).toBe("—");
+    expect(waitingOn).toBeNull();
   });
 
-  it("hands the turn to a ROLE and not to a person: a turn on `john` raises nobody", () => {
-    expect(planSelfRestartLetter({ change: changed, event: full, root }).waitingOn).not.toBe(
-      "john",
-    );
+  /**
+   * THE RULE IS "NOBODY, WITH NO EXCEPTION" (john, 2026-09-17, thread 222) — so it is pinned
+   * over the CASES the refused split would have carved out, and not over one happy event.
+   * Each of these was a candidate addressee in the statement of work that john narrowed: a
+   * drift of many commits, a restart with no repair recorded, a footprint that could not be
+   * measured. The flag is asserted on the argv rather than on `waitingOn`, because the argv
+   * is what the child is actually run with.
+   */
+  it("names NOBODY on any branch — not on a long drift, an unrecorded repair or an unmeasured footprint", () => {
+    const unrecorded: SelfRestartEvent = {
+      to: full.to,
+      at: full.at,
+      repair: "unrecorded",
+      drainSince: "2026-09-06T15:49:30Z",
+    };
+    const cases: readonly Parameters<typeof planSelfRestartLetter>[0][] = [
+      { change: changed, event: full, root },
+      { change: changed, event: { ...full, behind: 42 }, root },
+      { change: changed, event: unrecorded, root },
+      { change: { kind: "unmeasured", why: "git would not read the diff" }, event: full, root },
+    ];
+    for (const input of cases) {
+      const letter = planSelfRestartLetter(input);
+      expect(flagValue(letter.argv, "--waiting-on")).toBe("—");
+      expect(letter.waitingOn).toBeNull();
+      // AND THE BODY MUST NOT CLAIM ONE EITHER: a header that lets the turn go under prose
+      // that hands it to curator is the caption left behind its own anchor — and the door of
+      // `new-message` reads the body for exactly this kind of claim.
+      expect(letter.body).not.toContain("Ход curator");
+      expect(letter.body).toContain("это ЗАПИСЬ");
+    }
   });
 
   it("carries the mail's own location through to the child, and omits what it was not given", () => {
@@ -476,7 +504,9 @@ describe("planSelfRestartDelivery — the narrowing, and what it must not swallo
       expect(plan.said).toContain("fd1c14a67121");
       expect(plan.said).toContain("7db145ba901a");
       expect(plan.said).toContain("packages/agent-protocol");
-      expect(plan.said).toContain(SELF_RESTART_WAITING_ON);
+      // AND IT NO LONGER PRICES THE WITHHOLDING IN SOMEBODY'S TURN (thread 222): the letter
+      // raises nobody whatever it carries, so a saved turn is not what the narrowing buys.
+      expect(plan.said).not.toContain("turn of 'curator'");
     }
   });
 
