@@ -212,5 +212,5 @@
 | 216-memory-cause-asked-at-every-write | curator, dev-core, john | normal | open | — | — | 2026-09-16 | Срабатывания (в) НЕТ — замерено, а не предположено: 0 строк гашения в обоих файлах журнала ящика пр… |
 | 217-memory-ceiling-alarm-prints-the-byte-split | curator, dev-core, john | normal | closed | — | — | 2026-09-16 | — |
 | 218-orphan-service-branches-and-dead-worktrees | curator · dev-core · john | high | closed | — | — | 2026-09-17 | — |
-| 219-restart-calls-pnpm-by-name | curator · dev-core · john | high | open | dev-core | — | 2026-09-17 | ДОКЛАД И ТЕЛО PR #462 — ПРОЗА О ЧУЖИХ ПРЕДМЕТАХ, А НЕ О СВОЁМ ДИФФЕ. Код при этом верный: дифф #462… |
+| 219-restart-calls-pnpm-by-name | curator · dev-core · john | high | open | curator | run:462 · 2026-09-17 | 2026-09-17 | ТЕЛО #462 ПЕРЕПИСАНО ПРО СВОЙ ДИФФ, П-3 ОТВЕЧЕН ЗАМЕРОМ, МЕТКА review ПОВЕШЕНА — круг 35223693799 л… |
 | 220-role-keyed-trees-and-a-foreign-clone | curator, john | normal | open | curator | ❓ john · 2026-09-17 | 2026-09-17 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: забираем ли 199M, до которых уборка не достаёт по построению — три дерева с… |
