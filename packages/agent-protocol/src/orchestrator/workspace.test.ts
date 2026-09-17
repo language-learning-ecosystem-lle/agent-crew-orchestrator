@@ -2086,6 +2086,15 @@ describe("localOnlyBranches — the pile the tidy-up deliberately does not take"
     expect(line).toContain("wip/189-rebase, wip/418-rebase");
     expect(line).toContain("nothing here removes them");
   });
+
+  it("CAPS the list and counts the rest out loud — 466 of them measured on this box", () => {
+    const many = Array.from({ length: 466 }, (_, index) => `b${String(index).padStart(3, "0")}`);
+    const line = describeLocalOnlyBranches(many);
+    expect(line).toContain("(466)");
+    expect(line).toContain("b000, b001");
+    expect(line).not.toContain("b011");
+    expect(line).toContain("456 more not listed here");
+  });
 });
 
 describe("describeDiskSize", () => {

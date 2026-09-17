@@ -821,10 +821,24 @@ export const localOnlyBranches = (input: {
   return [...input.local].filter((name) => !onOrigin.has(name)).sort();
 };
 
-export const describeLocalOnlyBranches = (branches: readonly string[]): string =>
-  branches.length === 0
-    ? "  local-only branches: none — every branch here is on 'origin' as well"
-    : `  local-only branches (${branches.length}) — they exist on this disk and nowhere else, and nothing here removes them (a branch is its own anchor and costs no disk): ${[...branches].join(", ")}`;
+/** How many of them the line spells out before it starts counting. */
+export const LOCAL_BRANCHES_SHOWN = 10;
+
+/**
+ * THE LIST IS CAPPED AND SAYS SO — the same shape `describeWorkspaceDirt` has, and for the
+ * reason measured here on 2026-09-17: this box has 466 of them, and a line that printed
+ * all 466 pushes every other row of the summary off the screen. A cap that printed ten and
+ * fell silent would read as "there are ten", which is the silence of this thread one level
+ * quieter, so the remainder is counted out loud and the command that has all of them is in
+ * the line.
+ */
+export const describeLocalOnlyBranches = (branches: readonly string[]): string => {
+  if (branches.length === 0)
+    return "  local-only branches: none — every branch here is on 'origin' as well";
+  const shown = [...branches].slice(0, LOCAL_BRANCHES_SHOWN);
+  const rest = branches.length - shown.length;
+  return `  local-only branches (${branches.length}) — they exist on this disk and nowhere else, and nothing here removes them (a branch is its own anchor and costs no disk): ${shown.join(", ")}${rest > 0 ? `, and ${rest} more not listed here ('git branch --format=%(refname:short) | grep -vxF "$(git branch -r --format=%(refname:lstrip=3))"' has all of them)` : ""}`;
+};
 
 /**
  * THE REFUSAL THAT CAN BE ACTED ON WITHOUT GOING TO THE BOX (thread 099) — the second
