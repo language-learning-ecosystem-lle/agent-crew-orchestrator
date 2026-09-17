@@ -213,5 +213,5 @@
 | 217-memory-ceiling-alarm-prints-the-byte-split | curator, dev-core, john | normal | closed | — | — | 2026-09-16 | — |
 | 218-orphan-service-branches-and-dead-worktrees | curator · dev-core · john | high | closed | — | — | 2026-09-17 | — |
 | 219-restart-calls-pnpm-by-name | curator · dev-core · john | high | open | dev-core | — | 2026-09-17 | ЖЕСТ JOHN ИСПОЛНЕН (~15:49Z): рестарт запущен ровно тем вызовом, что упал в 12:23Z, из окружения БЕ… |
-| 220-role-keyed-trees-and-a-foreign-clone | curator, john | normal | open | curator | — | 2026-09-17 | ИСПОЛНЕНО РУКОЙ JOHN (~15:56Z): четыре дерева старого образца сняты с якорями, чужой клон удалён. З… |
+| 220-role-keyed-trees-and-a-foreign-clone | curator, john | normal | closed | — | — | 2026-09-17 | — |
 | 221-workspace-install-calls-pnpm-by-name | curator, dev-core, john | normal | closed | — | — | 2026-09-17 | — |
