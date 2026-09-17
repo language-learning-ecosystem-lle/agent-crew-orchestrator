@@ -274,3 +274,55 @@ lease`) либо называют норму: строка лога, прочи�
 якорь с событием `pull_request`.
 
 Прогонов на голове ровно два: зелёный `checks` `35217078872` (`success`, 9 мин 11 с) и идущий круг.
+
+## Такт 12:04–12:30Z — вердикт `approve` по #461 принят, своей работы не осталось; два замера про приёмку П-2
+
+Короткий такт: единственным новым письмом был вердикт второго круга (`35218060464`, голова
+`d02fbedf5`) — `approve`, `waiting-on: dev-core`. Правок по нему нет, поэтому весь такт — замеры
+состояния и передача хода на шаг 5 curator. Записываю то, что не выводится из ленты.
+
+### 1. Дверь merge ПОСЛЕ доставки вердикта — гарды 1 и 2 зелены на той же голове
+
+`merge-gate --ref origin/main --pr 461 --review-workflow 'Claude PR Review'` в `12:14Z`:
+
+```
+ok   guard 1 · approved on d02fbed by github-actions — inside the round 35218060464
+                of 'Claude PR Review' on this head (11:53:12Z…11:56:38Z)
+ok   guard 2 · 2 check(s) green: review=SUCCESS, checks=SUCCESS
+you  guard 3 · thread '218-orphan-service-branches-and-dead-worktrees'
+STOP guard 4 · john merges this one — it changes PROTOCOL.md
+ok   mergeability · mergeable=MERGEABLE (mergeStateStatus CLEAN)
+```
+
+Тот же PR, та же голова, но блок `merge-gate`, процитированный ВНУТРИ самого вердикта, показывал по
+гардам 1 и 2 `STOP` (`no approve verdict on d02fbed`, `not green: review=IN_PROGRESS`): ревьюер
+меряет дверь, стоя́ внутри своего же круга, и его вердикт ещё не доставлен. Третий независимый замер
+того же зазора — вывод двери из тела вердикта нельзя читать как состояние PR после вердикта.
+`mergeStateStatus` прошёл `UNSTABLE` → `BLOCKED` → `CLEAN` без единой правки дерева: голова
+`d02fbedf5` все три раза, `origin/main` — `84463e001` все три раза.
+
+### 2. Живая приёмка П-2: эпоху кода двигает `pull`, а не рестарт
+
+Замерено этим тактом, до merge:
+
+- живой демон `hetzner` (pid 1295552) идёт `…/agent-crew-orchestrator/packages/agent-protocol/src/cli.ts`,
+  то есть исходником ГЛАВНОГО чекаута; `daemon.log` датирует свою эпоху сам:
+  `daemon — code: 84463e00 loaded from /home/lle/projects/agent-crew-orchestrator, up since 2026-09-17T10:34:41Z`;
+- главный чекаут: ветка `main`, `84463e001`, чисто; `grep -c 'tidy-up: NOT RUN' packages/agent-protocol/src/cli.ts`
+  → **0**, то есть кода уборки в исполняемом исходнике сейчас нет;
+- `git reflog show main` в нём: **каждая** запись за неделю — `pull --ff-only: Fast-forward`.
+  За `origin/main` эта локальная ветка сама не едет, других движителей у неё нет.
+
+И сразу поправка к собственному первому выводу, потому что он был бы неверен: ловушки «рестартнули, а
+код прежний» тут нет по умолчанию — **`pull` везёт сам пакет внутри своего пути рестарта**
+(`orchestrator/restart.ts`, `cli.ts:1132`: stop → `git pull --ff-only` → `pnpm install` → старт), и в
+reflog это видно парой pull `12:34:18` → старт процесса `12:34:28`. Ту же тройку печатает и
+`merge-gate` при диффе, трогающем конфиг (`merge/gate.ts:522`). Опасен только рестарт ГОЛОЙ рукой
+(`systemctl restart` без `pull`). Отсюда форма заказа, которую я и назвал curator для её письма
+john: тройка целиком, а приёмка — не факт рестарта, а НОВАЯ строка `daemon — code: <sha после merge>`
+в `daemon.log`; только после неё имеет смысл искать строки `tidy-up:` первого тика.
+
+Сам класс урока — про отказ двери, на котором я это и поймал: `journal write` отказался брать тело из
+`$TMPDIR` сессии («lies inside the git checkout … the box's self-restart runs `git pull --ff-only`»),
+и в тексте его отказа лежал факт, опровергающий мою черновую формулировку. Отказ двери — источник о
+поведении контура наравне с `ps` и reflog.
