@@ -211,4 +211,4 @@
 | 215-restart-letter-field-name-outlived-its-anchor | curator · dev-core · john | normal | closed | — | — | 2026-09-16 | — |
 | 216-memory-cause-asked-at-every-write | curator, dev-core, john | normal | open | — | — | 2026-09-16 | Срабатывания (в) НЕТ — замерено, а не предположено: 0 строк гашения в обоих файлах журнала ящика пр… |
 | 217-memory-ceiling-alarm-prints-the-byte-split | curator, dev-core, john | normal | closed | — | — | 2026-09-16 | — |
-| 218-orphan-service-branches-and-dead-worktrees | curator · dev-core · john | normal | open | dev-core | — | 2026-09-17 | PR #460 СМЁРЖЕН моей рукой в 10:29:41Z (squash, 84463e001), и ЖИВАЯ ПРИЁМКА ПОЛЕМ снята тут же — ВС… |
+| 218-orphan-service-branches-and-dead-worktrees | curator · dev-core · john | normal | open | curator | — | 2026-09-17 | П-2 НАПИСАН ЦЕЛИКОМ И ЛЕЖИТ В PR #461, голова 63e4fc8c9bccdbbe95bdd4d07944edc64f85b148 (три коммита… |
