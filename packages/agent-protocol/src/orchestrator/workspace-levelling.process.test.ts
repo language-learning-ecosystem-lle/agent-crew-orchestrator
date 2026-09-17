@@ -14,6 +14,37 @@
  * argv and — in the case that must go through — repairs the tree the way a real install
  * would, so that the RE-MEASUREMENT after it (which is the other half of the change) is
  * exercised against a disk that actually changed.
+ *
+ * AND THE SHIM IS NO LONGER REACHED THROUGH `PATH` (thread 221, П-3). Until this diff the
+ * stand put its directory first on `PATH` and that was the whole of the interception — which
+ * held only while the code under it asked `PATH` for the package manager. The moment the
+ * levelling started resolving `pnpm` beside its own interpreter (thread 219's cure, in its
+ * second call site), a `PATH`-shim stopped catching anything: the run went past it to the
+ * real `pnpm` and two cases of this file would have become a genuine install inside a test.
+ * A stand that catches the call only through the premise the code has just stopped standing
+ * on is not a weaker stand — it is a stand that measures something else.
+ *
+ * SO THE INTERCEPTION IS MOVED TO WHERE THE RESOLUTION LOOKS. `resolveTool` forms its first
+ * candidate from `dirname(process.execPath)`, so the stand gives the spawned CLI an
+ * interpreter whose directory it owns: a `node` SYMLINK to the real binary (so every
+ * `process.execPath` spawn the CLI makes — the background child among them — still runs a
+ * real node) beside the recording `pnpm`, with `process.execPath` pointed at it through a
+ * preloaded module. Nothing is copied and nothing is installed for real: what the box is
+ * asked for is a symlink and a shell script.
+ *
+ * WHY A PRELOAD AND NOT A HARDLINK OF `node`. `process.execPath` is `/proc/self/exe`
+ * resolved, so a symlinked interpreter reports the REAL directory and the shim would be
+ * bypassed again; a hardlink beside the shim is refused on this box (`ln: Operation not
+ * permitted` — the binary belongs to another user and `fs.protected_hardlinks` is on) and a
+ * 118 MB copy per file is a price this suite should not pay. The one thing that is faked is
+ * the WHEREABOUTS of the interpreter, which is the fact the stand is reproducing: a box
+ * whose package manager lives beside its node. Everything else — the door, the borders, the
+ * argv, the re-measurement — is the real code on a real disk.
+ *
+ * AND `PATH` NO LONGER CARRIES `pnpm` AT ALL, on purpose: every assertion in this file about
+ * a call that DID happen is therefore an assertion about a call the caller's environment
+ * could not have made, and every assertion about a call that did not happen cannot be
+ * satisfied by the box's own `pnpm` being out of reach.
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import {
@@ -22,11 +53,12 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
@@ -171,9 +203,15 @@ const staleWorkspace = (repo: string): string => {
 const ARGV = "pnpm-argv.txt";
 
 /**
- * THE PACKAGE MANAGER, RECORDED. `repair` is what a real `pnpm install` would leave behind
- * — without it the door re-measures the same stale build and refuses, which is the OTHER
- * case this file tests on purpose.
+ * THE PACKAGE MANAGER, RECORDED — and it is found the way the code finds it: BESIDE THE
+ * INTERPRETER (thread 221). `repair` is what a real `pnpm install` would leave behind —
+ * without it the door re-measures the same stale build and refuses, which is the OTHER case
+ * this file tests on purpose.
+ *
+ * The directory holds three things and each is load-bearing: the recording `pnpm`, a `node`
+ * symlink (the interpreter this directory is the directory OF — and a real one, because the
+ * CLI spawns `process.execPath` for its background child), and the preload that points
+ * `process.execPath` at that symlink.
  */
 const pnpmShim = (repo: string, repair: boolean): string => {
   const dir = join(repo, "shim");
@@ -188,6 +226,14 @@ const pnpmShim = (repo: string, repair: boolean): string => {
       "exit 0\n",
   );
   chmodSync(path, 0o755);
+  symlinkSync(process.execPath, join(dir, "node"));
+  // `process.execPath` is a plain writable property, so the whereabouts of the interpreter
+  // are stated before the CLI's first line runs. The variable travels into every node the
+  // run spawns, which is what the background child needs: it levels the tree itself.
+  writeFileSync(
+    join(dir, "execpath.mjs"),
+    `process.execPath = ${JSON.stringify(join(dir, "node"))};\n`,
+  );
   return dir;
 };
 
@@ -202,6 +248,20 @@ const stub = (repo: string): string => {
   writeFileSync(path, `#!/bin/sh\npwd > ${join(repo, "cwd.txt")}\n`);
   chmodSync(path, 0o755);
   return path;
+};
+
+/**
+ * THE `PATH` OF THE RUN, AND WHAT IS DELIBERATELY NOT ON IT (thread 221). `node` is here
+ * because `tsx` is started through `#!/usr/bin/env node` and a `PATH` with no node at all
+ * would never reach the CLI; `git` is here because the run is a real git operation. `pnpm`
+ * is on it NOWHERE — neither the box's own nor the shim — so an install this file records
+ * is one the environment could not have produced.
+ */
+const pathWithoutPnpm = (repo: string): string => {
+  const dir = join(repo, "path");
+  mkdirSync(dir, { recursive: true });
+  if (!existsSync(join(dir, "node"))) symlinkSync(process.execPath, join(dir, "node"));
+  return `${dir}:/usr/bin:/bin`;
 };
 
 const run = (
@@ -236,7 +296,14 @@ const run = (
       cwd: repo,
       encoding: "utf8",
       stdio: "pipe",
-      env: { ...sandbox(configHome(repo)), PATH: `${shim}:${process.env.PATH ?? ""}` },
+      env: {
+        ...sandbox(configHome(repo)),
+        PATH: pathWithoutPnpm(repo),
+        // WHERE THE INTERPRETER SAYS IT LIVES — the one fact the stand fakes, and the one
+        // the resolution under test reads. It reaches the background child too, which is
+        // the process that levels the tree in the `--detach` cases.
+        NODE_OPTIONS: `--import ${pathToFileURL(join(shim, "execpath.mjs")).href}`,
+      },
     },
   );
   return { code: result.status ?? 1, out: `${result.stdout ?? ""}${result.stderr ?? ""}` };
@@ -246,13 +313,19 @@ describe("the box levels the workspace it issued (thread 180, john 2026-09-12)",
   it("detached, clean, behind → the circuit installs INTO THAT TREE and the launch goes through", () => {
     const repo = contour();
     const tree = staleWorkspace(repo);
+    const shim = pnpmShim(repo, true);
 
-    const result = run(repo, pnpmShim(repo, true));
+    const result = run(repo, shim);
 
     // The command was actually run, against that tree, in the form the doors have been
     // printing for a hand since thread 085.
     expect(pnpmCalls(repo)).toEqual(["--dir", tree, "install", "--frozen-lockfile"]);
     expect(result.out).toContain("levelling");
+    // П-1 (thread 221): the package manager it started is the one BESIDE ITS OWN NODE, and
+    // the premise is said out loud — the `PATH` this ran with carries no `pnpm` at all, so
+    // the field failure of 17.09 has no second call site left here.
+    expect(result.out).toContain(`running '${join(shim, "pnpm")}' (beside this node binary)`);
+    expect(result.out).not.toContain("(from PATH");
     // And the launch is no longer refused: the session was started in the tree that was
     // repaired a moment earlier. This is the standstill of 2026-09-09, ended.
     expect(result.out).not.toContain("DIFFERENT BUILD");

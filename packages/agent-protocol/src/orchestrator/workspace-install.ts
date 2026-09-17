@@ -48,6 +48,7 @@
  * by the launch door alone, and the launch door already had the right to write into the tree
  * it issues (it creates it, it moves its head, it commits its dirt).
  */
+import { classifyToolFailure, describeToolFailure, type ResolvedTool } from "./tool-path.js";
 
 /** What the circuit is about to do to somebody's tree — or the named reason it will not. */
 export type WorkspaceInstallPlan =
@@ -153,6 +154,54 @@ export const describePlannedWorkspaceInstall = (input: {
 export type WorkspaceInstallOutcome =
   | { readonly ok: true }
   | { readonly ok: false; readonly cause: string };
+
+/**
+ * HOW A SPAWN THAT DID NOT WORK BECOMES A SENTENCE (thread 221, П-2) — the same reading as
+ * the restart's, because it is the same two endings and the same repairs.
+ *
+ * WHY THIS IS A FUNCTION AND NOT FOUR LINES AT THE CALL SITE. The call site owns a disk and
+ * a package manager, so the one thing that could not be measured there was the thing that
+ * actually mattered: WHICH sentence a given ending produces. `pnpm did not run — spawnSync
+ * ENOENT` — the text this replaces — put the blame on a spawn, named no path, and read
+ * exactly like a project that failed to install; the reader of that line then re-derived
+ * from scratch what thread 219 had already established, that a tool asked for by name is
+ * not the same fault as a tool that answered.
+ *
+ * IT DECIDES NOTHING ABOUT `PATH`: the resolution is handed in, already made by the caller
+ * out of `process.execPath`, and what is added here is only the reading of the spawn's own
+ * answer — `status` is a number exactly when a process existed to choose it.
+ */
+export const workspaceInstallOutcome = (input: {
+  /** The tool as it is typed today — `pnpm`. */
+  readonly name: string;
+  /** Where the caller resolved it, which is what the failure line prints. */
+  readonly resolution: ResolvedTool;
+  /** `spawnSync`'s own answer, unread and unjudged. */
+  readonly said: {
+    readonly status: number | null;
+    readonly signal: string | null;
+    readonly error?: { readonly code?: string | undefined; readonly message?: string } | undefined;
+    readonly stdout?: string | undefined;
+    readonly stderr?: string | undefined;
+  };
+}): WorkspaceInstallOutcome => {
+  if (input.said.error === undefined && input.said.status === 0) return { ok: true };
+  return {
+    ok: false,
+    cause: describeToolFailure({
+      name: input.name,
+      resolution: input.resolution,
+      failure: classifyToolFailure({
+        status: input.said.status,
+        signal: input.said.signal,
+        ...(input.said.error?.code === undefined ? {} : { code: input.said.error.code }),
+        ...(input.said.error?.message === undefined ? {} : { message: input.said.error.message }),
+        ...(input.said.stdout === undefined ? {} : { stdout: input.said.stdout }),
+        ...(input.said.stderr === undefined ? {} : { stderr: input.said.stderr }),
+      }),
+    }),
+  };
+};
 
 /**
  * THE LINE THAT IS PRINTED AFTER, and it says the OUTCOME rather than the intention. An

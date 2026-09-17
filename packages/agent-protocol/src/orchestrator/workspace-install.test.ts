@@ -11,6 +11,7 @@ import {
   describePlannedWorkspaceInstall,
   describeWorkspaceInstall,
   planWorkspaceInstall,
+  workspaceInstallOutcome,
 } from "./workspace-install.js";
 
 const at = {
@@ -144,5 +145,105 @@ describe("what a PLAN says where the real launch would have levelled (john 2026-
     // The plan's own words are absent: they would say nobody is going to touch that tree.
     expect(line).not.toContain("this is a plan");
     expect(line).not.toContain("a real launch would level");
+  });
+});
+
+/**
+ * THE TWO ENDINGS OF THE INSTALL, TOLD APART (thread 221, П-2) — the class thread 212 closed
+ * and thread 219 closed on the restart path, in the third place it was still conflated. The
+ * text this replaces was `pnpm did not run — spawnSync pnpm ENOENT`: it named no path, it
+ * put the blame on a spawn, and a levelling that failed because the daemon's environment
+ * could not see a package manager read exactly like a project that will not install.
+ *
+ * The resolutions below are the two the field produces: a box where the package manager sits
+ * beside node, and a box where it is nowhere this process can see.
+ */
+describe("a levelling that failed says WHICH failure it was (thread 221)", () => {
+  const BESIDE = {
+    command: "/opt/node/bin/pnpm",
+    source: "beside-node",
+    looked: ["/opt/node/bin/pnpm"],
+  } as const;
+  const NOWHERE = {
+    command: "pnpm",
+    source: "unresolved",
+    looked: ["/opt/node/bin/pnpm", "/usr/bin/pnpm", "/bin/pnpm"],
+  } as const;
+
+  it("no process ran → it says so, names the places looked at, and says it is NOT the project", () => {
+    const outcome = workspaceInstallOutcome({
+      name: "pnpm",
+      resolution: NOWHERE,
+      said: {
+        status: null,
+        signal: null,
+        error: { code: "ENOENT", message: "spawnSync pnpm ENOENT" },
+      },
+    });
+
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.cause).toContain("NO PROCESS RAN");
+    expect(outcome.cause).toContain("there is no executable 'pnpm' to start (ENOENT");
+    // The diagnosis the old line cost a reader from scratch: where it was looked for, and
+    // that the repair is on the box rather than in the repository.
+    expect(outcome.cause).toContain("/opt/node/bin/pnpm");
+    expect(outcome.cause).toContain("/usr/bin/pnpm");
+    expect(outcome.cause).toContain("This is NOT a failure of the project");
+    // And the line that made the two endings one word is gone.
+    expect(outcome.cause).not.toContain("did not run");
+    // The whole point of the sentence is that it reaches a human: it is the journal's line
+    // through the door's own text.
+    expect(describeWorkspaceInstall({ ...at, outcome })).toContain("NO PROCESS RAN");
+  });
+
+  it("a process ran and refused → the exit code and what it printed, with no talk of paths", () => {
+    const outcome = workspaceInstallOutcome({
+      name: "pnpm",
+      resolution: BESIDE,
+      said: {
+        status: 1,
+        signal: null,
+        stderr: " ERR_PNPM_OUTDATED_LOCKFILE  Cannot install with frozen-lockfile\n",
+      },
+    });
+
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.cause).toContain("'/opt/node/bin/pnpm' ran and exited 1");
+    expect(outcome.cause).toContain("ERR_PNPM_OUTDATED_LOCKFILE");
+    // The repair here is the project's, so the sentence about installing a tool — which is
+    // the other ending's — must not be anywhere in it.
+    expect(outcome.cause).not.toContain("NO PROCESS RAN");
+    expect(outcome.cause).not.toContain("Looked beside this node binary");
+  });
+
+  it("the ceiling killed it → a process that RAN and was killed, not a missing tool", () => {
+    const outcome = workspaceInstallOutcome({
+      name: "pnpm",
+      resolution: BESIDE,
+      said: {
+        status: null,
+        signal: "SIGTERM",
+        error: { code: "ETIMEDOUT", message: "spawnSync ETIMEDOUT" },
+      },
+    });
+
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    // `spawnSync` reports a timeout as an error too, and reading that error first is how a
+    // hung install gets reported as "there is no pnpm on this box".
+    expect(outcome.cause).toContain("ran and was killed by SIGTERM");
+    expect(outcome.cause).not.toContain("NO PROCESS RAN");
+  });
+
+  it("exit 0 is the only ending that is not a failure", () => {
+    expect(
+      workspaceInstallOutcome({
+        name: "pnpm",
+        resolution: BESIDE,
+        said: { status: 0, signal: null, stdout: "Already up to date" },
+      }),
+    ).toEqual({ ok: true });
   });
 });

@@ -714,6 +714,7 @@ import {
   planWorkspaceInstall,
   type WorkspaceInstallOutcome,
   type WorkspaceInstallPlan,
+  workspaceInstallOutcome,
 } from "./orchestrator/workspace-install.js";
 import {
   checkWorkspacePackage,
@@ -7352,39 +7353,61 @@ const workspacePackageFacts = (input: {
  */
 const WORKSPACE_INSTALL_TIMEOUT_MS = 240_000;
 
-/** How much of a package manager's complaint is carried into the journal line. */
-const INSTALL_CAUSE_CHARS = 400;
+/** The package manager of this workspace, named once — it is resolved, then spawned. */
+const WORKSPACE_INSTALL_TOOL = "pnpm";
 
 /**
  * THE IO HALF OF THE LEVELLING (thread 180) — the one command the two doors have been
  * printing for a human since thread 085, run by the circuit itself inside the borders
  * `planWorkspaceInstall` has already checked. It decides NOTHING: it is given a tree it may
  * write into and it says how the package manager answered.
+ *
+ * AND IT DOES NOT ASK THE CALLER'S `PATH` FOR THE PACKAGE MANAGER (thread 221, from the
+ * field failure of 2026-09-17 12:23Z measured in thread 219). This is the same premise that
+ * took the contour down on the restart path, in a second call site: the process that runs
+ * this line is the DAEMON, whose environment is systemd's and not a login shell's, and a
+ * `pnpm` that is only findable through `PATH` is findable here by accident — the live box
+ * carries the nvm directory in that variable solely because the daemon was once started by
+ * hand out of a login shell. What the tool is resolved by is `process.execPath`, which this
+ * process cannot be wrong about; `PATH` stays as the fallback rather than the premise, and
+ * when neither answers, the bare name is still handed to the spawn (`tool-path.ts`).
  */
 const runWorkspaceInstall = (input: {
   /** The tree being levelled, absolute. */
   readonly path: string;
   /** The home checkout — the cwd the command is started from. */
   readonly repo: string;
+  /** Where `pnpm` was resolved — read by the caller, which also printed the premise. */
+  readonly tool: ResolvedTool;
 }): WorkspaceInstallOutcome => {
-  const done = spawnSync("pnpm", ["--dir", input.path, "install", "--frozen-lockfile"], {
-    encoding: "utf8",
-    timeout: WORKSPACE_INSTALL_TIMEOUT_MS,
-    // The tree is named by `--dir`, so the cwd is deliberately the home checkout: a cwd
-    // inside a tree that may not have an install yet is how a package manager ends up
-    // resolving its own workspace root somewhere nobody meant.
-    cwd: input.repo,
+  const done = spawnSync(
+    input.tool.command,
+    ["--dir", input.path, "install", "--frozen-lockfile"],
+    {
+      encoding: "utf8",
+      timeout: WORKSPACE_INSTALL_TIMEOUT_MS,
+      // The tree is named by `--dir`, so the cwd is deliberately the home checkout: a cwd
+      // inside a tree that may not have an install yet is how a package manager ends up
+      // resolving its own workspace root somewhere nobody meant.
+      cwd: input.repo,
+    },
+  );
+  // ONE READING FOR BOTH ENDINGS, and it is the module's (П-2): "no process ran" and "a
+  // process exited N" want opposite repairs, and the line that conflated them is what bought
+  // the two minutes of 17.09 over again.
+  return workspaceInstallOutcome({
+    name: WORKSPACE_INSTALL_TOOL,
+    resolution: input.tool,
+    said: {
+      status: done.status,
+      signal: done.signal,
+      ...(done.error === undefined
+        ? {}
+        : { error: done.error as NodeJS.ErrnoException & { message: string } }),
+      ...(done.stdout === undefined ? {} : { stdout: done.stdout }),
+      ...(done.stderr === undefined ? {} : { stderr: done.stderr }),
+    },
   });
-  if (done.error !== undefined)
-    return { ok: false, cause: `pnpm did not run — ${done.error.message}` };
-  if (done.status === 0) return { ok: true };
-  const said = `${done.stderr ?? ""}${done.stdout ?? ""}`.trim().replaceAll(/\s+/g, " ");
-  return {
-    ok: false,
-    cause: `pnpm exited ${done.status === null ? `on signal ${done.signal ?? "?"}` : done.status}${
-      said === "" ? "" : ` — ${said.slice(-INSTALL_CAUSE_CHARS)}`
-    }`,
-  };
 };
 
 const installRootsOf = (root: string): readonly string[] => {
@@ -12933,8 +12956,13 @@ const settleRun = (input: {
       })}`,
     );
   } else if (levelling.install) {
-    lines.push(`levelling — ${levelling.note}`);
-    const outcome = runWorkspaceInstall({ path, repo });
+    // THE PREMISE IS SAID BEFORE THE COMMAND, NOT AFTER IT FAILS (thread 221, П-1/П-2). A
+    // levelling that worked because the daemon happened to inherit the right `PATH` and one
+    // that works by construction read identically in a journal otherwise — and the field
+    // failure of 17.09 is what the difference between them costs.
+    const tool = toolFor(WORKSPACE_INSTALL_TOOL);
+    lines.push(`levelling — ${levelling.note}, running ${describeToolChoice(tool)}`);
+    const outcome = runWorkspaceInstall({ path, repo, tool });
     lines.push(`levelling — ${describeWorkspaceInstall({ role: role.id, path, outcome })}`);
     // AND THEN IT IS MEASURED AGAIN, never assumed: what is judged is what the disk says
     // after the command, exactly as the identity readback of thread 052 judges what git
@@ -16679,8 +16707,31 @@ const capabilityRun = (argv: readonly string[]): void => {
     },
     write: argv.includes("--write"),
     run: (step) => {
-      const said = spawnSync(step.command, [...step.argv], { stdio: "inherit" });
-      if (said.error !== undefined) return { code: -1, error: said.error.message };
+      // THE SECOND SHORT-NAMED `pnpm` OF THIS PACKAGE (thread 221, П-4): `repo-refresh` is
+      // `git pull --ff-only` + `pnpm install`, and it is carried by a session the daemon
+      // raised — the same environment, the same asymmetry. The DECLARED verb is untouched
+      // (the trace and every refusal keep printing what the card says, which is what a
+      // reader checks the card against); what is resolved is only what gets spawned.
+      const tool = toolFor(step.command);
+      const said = spawnSync(tool.command, [...step.argv], { stdio: "inherit" });
+      // And a step that never started says so, with the places it was looked for — the
+      // refusal above renders it as "it could not be run at all — <this>".
+      if (said.error !== undefined)
+        return {
+          code: -1,
+          error: describeToolFailure({
+            name: step.command,
+            resolution: tool,
+            failure: classifyToolFailure({
+              status: said.status,
+              signal: said.signal,
+              ...((said.error as NodeJS.ErrnoException).code === undefined
+                ? {}
+                : { code: (said.error as NodeJS.ErrnoException).code }),
+              message: said.error.message,
+            }),
+          }),
+        };
       return { code: said.status ?? -1 };
     },
     checkoutState: (checkout): CheckoutState => {
