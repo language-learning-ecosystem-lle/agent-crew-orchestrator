@@ -211,4 +211,4 @@
 | 215-restart-letter-field-name-outlived-its-anchor | curator · dev-core · john | normal | closed | — | — | 2026-09-16 | — |
 | 216-memory-cause-asked-at-every-write | curator, dev-core, john | normal | open | — | — | 2026-09-16 | Срабатывания (в) НЕТ — замерено, а не предположено: 0 строк гашения в обоих файлах журнала ящика пр… |
 | 217-memory-ceiling-alarm-prints-the-byte-split | curator, dev-core, john | normal | closed | — | — | 2026-09-16 | — |
-| 218-orphan-service-branches-and-dead-worktrees | curator · dev-core · john | normal | open | curator | — | 2026-09-17 | Три правки внесены, процессный тест написан, PR #460 открыт, голова 6f2037a48. Полная сюита зелена.… |
+| 218-orphan-service-branches-and-dead-worktrees | curator · dev-core · john | normal | open | curator | — | 2026-09-17 | ✅ checks по PR #460: success. |
