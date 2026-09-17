@@ -129,7 +129,7 @@
 - [Дом находки может уже стоять открытым PR](finding-may-already-have-an-open-pr.md)
 - [Эскалация может быть ЧАСТЬЮ уже стоящей](escalation-may-be-part-of-a-wider-one.md)
 - [Приёмка ЧАСТОЙ ветви закрывает регрессию, а не предмет PR](frequent-branch-acceptance-closes-regression-not-the-subject.md)
-- [Новый путь исполнения принимается ПЕРВЫМ срабатыванием](new-execution-path-is-accepted-by-its-first-firing.md); [смёрженный PR — даровой полигон срабатывания](merged-pr-is-a-free-firing-polygon.md); [`continue-on-error` прячет исход шага](continue-on-error-hides-the-step-outcome.md); [заказ через порчу своего рабочего места запирает роль на ВСЕХ тредах](ordering-a-firing-may-lock-the-role.md)
+- [Новый путь исполнения принимается ПЕРВЫМ срабатыванием](new-execution-path-is-accepted-by-its-first-firing.md); [смёрженный PR — даровой полигон срабатывания](merged-pr-is-a-free-firing-polygon.md); [`continue-on-error` прячет исход шага](continue-on-error-hides-the-step-outcome.md); [заказ через порчу своего рабочего места запирает роль на ВСЕХ тредах](ordering-a-firing-may-lock-the-role.md); [починку пути ПОДЪЁМА зажигает твой же следующий подъём](raise-path-fix-fires-on-your-own-next-raise.md)
 - [Свежая норма может отменить предмет открытого PR](fresh-norm-may-void-an-open-prs-subject.md)
 - [«Не связанный такт» не наступает](unbound-tick-never-comes.md)
 - [Кнопка merge не передаётся письмом](directive-letter-cannot-hand-over-the-button.md)
