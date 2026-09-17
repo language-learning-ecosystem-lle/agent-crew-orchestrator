@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-17T17:08:48.966Z",
+  "writtenAt": "2026-09-17T17:10:18.143Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "222-self-restart-report-wakes-a-role",
+      "state": "running",
+      "deadline": "2026-09-17T17:50:14Z"
+    }
+  ]
 }
