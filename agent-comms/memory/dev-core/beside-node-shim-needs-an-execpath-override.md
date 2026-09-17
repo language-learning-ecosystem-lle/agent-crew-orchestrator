@@ -26,3 +26,11 @@ metadata:
 
 Образец в коде: `workspace-levelling.process.test.ts` (тред 221). Родня: [[git-shim-in-a-process-test-hits-every-git]],
 [[gh-stub-dispatch-on-argv-position-misroutes]], [[daemon-process-test-must-name-the-binary-with-exec]].
+
+**И проба внутри такого стенда читает `/proc/self/environ`, а не `process.env`** (замер 17.09,
+тред 219): `NODE_OPTIONS` доезжает и до самого шима, если тот — node-скрипт, поэтому преload
+переписывает `process.env.PATH` ПЕРЕД первой строкой пробы, и `process.env.PATH` в ней — это
+последнее слово стенда, а не среда, с которой её спавнили. `/proc/self/environ` несёт исходный
+envp процесса и подменой не задевается. Тем же приёмом (`process.env.PATH = "<каталог только с
+git>"` в преloadе) стенд заявляет «у процесса нет node в PATH» изнутри процесса — снаружи так
+не получится, потому что шелл, стартующий `tsx`, сам ищет node по `PATH`.
