@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-17T13:32:08.332Z",
+  "writtenAt": "2026-09-17T13:33:38.879Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "221-workspace-install-calls-pnpm-by-name",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-17T14:32:04Z"
     }
   ]
