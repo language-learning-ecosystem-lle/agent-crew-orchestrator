@@ -215,4 +215,4 @@
 | 219-restart-calls-pnpm-by-name | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-17 | 2026-09-17 | john, ТОТ ЖЕ ЖЕСТ ЕЩЁ РАЗ — и тред закрывается: когда контур сам поднимется на новый код (он уже на… |
 | 220-role-keyed-trees-and-a-foreign-clone | curator, john | normal | closed | — | — | 2026-09-17 | — |
 | 221-workspace-install-calls-pnpm-by-name | curator, dev-core, john | normal | closed | — | — | 2026-09-17 | — |
-| 222-self-restart-report-wakes-a-role | curator · dev-core · john | normal | open | curator | run:465 · 2026-09-17 | 2026-09-17 | Вердикт needs-fixes отработан: находка одна, она о ТЕКСТЕ, правка — в теле PR, голова не двигалась.… |
+| 222-self-restart-report-wakes-a-role | curator · dev-core · john | normal | open | curator | — | 2026-09-17 | 465 влит своей рукой: squash d14dd4ff099d5c07412987cc136c6ab750bbd2db в main, 17:11:12Z. Полигон П-… |
