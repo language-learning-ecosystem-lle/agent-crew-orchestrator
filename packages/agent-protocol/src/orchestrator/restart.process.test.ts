@@ -9,9 +9,17 @@
  * prevent: a restart that reports success over a circuit that is not running.
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -203,6 +211,75 @@ describe("a refusal in the middle leaves the circuit down", () => {
     // code, report success".
     expect(existsSync(state(repo, "daemon.pid"))).toBe(false);
     expect(readFileSync(state(repo, "daemon.log"), "utf8")).toContain("git pull --ff-only FAILED");
+  }, 60_000);
+});
+
+/**
+ * THE TOOLS OF `--pull` ARE NOT ASKED OF THE CALLER'S `PATH` (thread 219, from the field
+ * failure of 2026-09-17 12:23Z: `pnpm install FAILED (code ?)`, the daemon already
+ * stopped, the contour down for two minutes — `pnpm` was simply not on the `PATH` of the
+ * shell the restart was typed in, while `node` was called through a path the profile
+ * knew).
+ *
+ * WHY THIS IS A PROCESS TEST AND NOT A UNIT. The decision lives in `tool-path.ts` and is
+ * measured there; what cannot be measured there is the one thing that failed in the field
+ * — that the REAL command forms its first candidate from the REAL interpreter. The stand
+ * is the field environment reproduced: a `PATH` that carries `git` and no `pnpm` at all.
+ *
+ * AND THE ASSERTION HOLDS IN BOTH LAYOUTS THIS SUITE RUNS IN, deliberately: on a box
+ * where the package manager sits beside node (nvm + corepack — this contour) the step
+ * runs it from there, and on the runner (where `pnpm/action-setup` puts it elsewhere) the
+ * same line says it looked there first and found nothing. Either way the path printed is
+ * the one derived from `process.execPath`, and either way the word `PATH` is not what
+ * `pnpm` was found by.
+ */
+describe("--pull does not depend on the PATH of whoever typed it", () => {
+  it("looks for pnpm beside its own node binary, and says which premise it stands on", () => {
+    const { repo } = contour();
+    // A manifest with no dependencies: what makes the install phase reach an ending of
+    // its own rather than fail for a reason this test is not about.
+    writeFileSync(
+      join(repo, "package.json"),
+      `${JSON.stringify({ name: "restart-contour", version: "0.0.0", private: true })}\n`,
+    );
+    git(repo, "add", "package.json");
+    git(repo, "commit", "-qm", "a manifest");
+    // THE SHIM EXISTS FOR ONE REASON: `tsx` is started through `#!/usr/bin/env node`, so
+    // a `PATH` with no node at all would never reach the CLI. It is a symlink, and node
+    // resolves it (`/proc/self/exe`) — `process.execPath` inside the child is therefore
+    // the REAL binary, which is exactly the fact under test.
+    const shim = mkdtempSync(join(tmpdir(), "agent-protocol-restart-path-"));
+    symlinkSync(process.execPath, join(shim, "node"));
+    const done = spawnSync(TSX, [CLI, "orchestrator", "restart", "--pull", "--wait", "5"], {
+      cwd: repo,
+      encoding: "utf8",
+      env: sandbox(configHome(repo), {
+        GIT_AUTHOR_NAME: "t",
+        GIT_AUTHOR_EMAIL: "t@e",
+        GIT_COMMITTER_NAME: "t",
+        GIT_COMMITTER_EMAIL: "t@e",
+        // git is here, pnpm is nowhere on it — the field environment, reproduced.
+        PATH: `${shim}:/usr/bin:/bin`,
+      }),
+    });
+    const stdout = done.stdout ?? "";
+
+    expect(stdout).toContain(`pnpm install in '${repo}'`);
+    // The candidate the field failure never formed: beside the interpreter that is
+    // running, not beside the shell that called it.
+    expect(stdout).toContain(join(dirname(process.execPath), "pnpm"));
+    // And it was not found by the caller's PATH, because this PATH does not have it —
+    // the premise is said out loud precisely so a restart that worked by accident and a
+    // restart that works by construction cannot read the same.
+    expect(stdout).not.toContain("'pnpm' (from PATH");
+    // git is resolved by the same rule and reaches the step as an absolute path: the
+    // second short-named call of this chain (П-3), not a second finding for later.
+    expect(stdout).toMatch(new RegExp(`git pull --ff-only in '${repo}', running '/`));
+    expect(stdout).toContain("git pull --ff-only — ok");
+
+    rmSync(shim, { recursive: true, force: true });
+    if (existsSync(state(repo, "daemon.pid")))
+      leftovers.push(Number(readFileSync(state(repo, "daemon.pid"), "utf8").trim()));
   }, 60_000);
 });
 
