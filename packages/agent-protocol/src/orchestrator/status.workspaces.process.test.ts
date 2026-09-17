@@ -165,7 +165,7 @@ describe("`orchestrator status` — the workspaces this box actually has (thread
     expect(result.code).toBe(0);
   });
 
-  it("a tree the ceiling left behind is named as stranded, with thread 174 as its home", () => {
+  it("a tree the ceiling left behind is named as stranded, with thread 218 as its home", () => {
     const repo = contour(2);
     workspace(repo, "dev-core");
     workspace(repo, "dev-core@177-workspace-per-pair");
