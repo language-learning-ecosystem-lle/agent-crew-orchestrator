@@ -13,7 +13,7 @@
  * SO THE ASSERTIONS ARE ABOUT THE DISK AFTER THE TICK, never only about the log.
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -104,6 +104,22 @@ const workspace = (repo: string, name: string): void => {
   git(repo, "worktree", "add", "-q", "--detach", join(repo, ".worktrees", name), "HEAD");
 };
 
+/**
+ * A BINARY THAT EXISTS, and it is never spawned: this contour has no `.orchestrator/enabled`,
+ * so no launch is planned at all. It is here for PREFLIGHT, which probes the agent binary
+ * BEFORE the first tick and refuses to start the daemon when it cannot resolve it. Without
+ * `--exec` the probe falls through to the vendor name on the PATH of whoever runs the suite
+ * — present in a role's session, absent on the CI runner — and the daemon then dies at
+ * `preflight failed — not starting`, before the step under test has run. A tick that never
+ * happened is not an observation about the tidy-up, so the fixture names the path itself.
+ */
+const stub = (repo: string): string => {
+  const path = join(repo, "stub.sh");
+  writeFileSync(path, "#!/bin/sh\nexit 0\n");
+  chmodSync(path, 0o755);
+  return path;
+};
+
 /** ONE TICK, WITH LAUNCHES DISABLED: the tidy-up is not a consequence of a launch. */
 const tick = (repo: string): { code: number; out: string } => {
   const result = spawnSync(
@@ -118,6 +134,8 @@ const tick = (repo: string): { code: number; out: string } => {
       "--repo",
       repo,
       "--once",
+      "--exec",
+      stub(repo),
       "--poll",
       "1",
     ],
