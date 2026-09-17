@@ -626,6 +626,7 @@ import {
   classifyToolFailure,
   describeToolChoice,
   describeToolFailure,
+  environmentForSpawnedTool,
   type ResolvedTool,
   resolveTool,
 } from "./orchestrator/tool-path.js";
@@ -1124,6 +1125,20 @@ const toolFor = (name: string): ResolvedTool =>
     },
   });
 
+/**
+ * AND WHAT THAT TOOL IS SPAWNED WITH (thread 219, П-1 of 2026-09-17 15:49Z) — the same
+ * interpreter, this time as the child's own `PATH`. The rule and the second field failure
+ * behind it are in `orchestrator/tool-path.ts`; here is only the impure half: this
+ * process's environment, copied, never written.
+ *
+ * ONE FUNCTION FOR EVERY SPAWN OF A RESOLVED TOOL, deliberately. Four call sites resolve a
+ * package manager today and each of them would otherwise carry its own opinion about the
+ * environment — which is exactly how the restart path came to be fixed while the levelling
+ * path was still broken.
+ */
+const toolEnv = (): NodeJS.ProcessEnv =>
+  environmentForSpawnedTool({ nodePath: process.execPath, env: process.env });
+
 const repairCheckoutInPlace = (input: {
   readonly checkout: string;
   readonly ref: string;
@@ -1149,6 +1164,9 @@ const repairCheckoutInPlace = (input: {
       const said = execFileSync(tool.command, [...run[1]], {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
+        // AND THE CHILD IS GIVEN THE INTERPRETER (thread 219, П-1): `pnpm` here is a script
+        // asking for `node` by name, and the daemon's environment is systemd's.
+        env: toolEnv(),
       });
       err(
         `agent-protocol: daemon — ${describeSelfRestartStepOk(what, said.trim().split("\n").slice(-3).join(" · "))}`,
@@ -7390,6 +7408,10 @@ const runWorkspaceInstall = (input: {
       // inside a tree that may not have an install yet is how a package manager ends up
       // resolving its own workspace root somewhere nobody meant.
       cwd: input.repo,
+      // AND THE INTERPRETER TRAVELS WITH IT (thread 219, П-1). This spawn is the daemon's,
+      // whose environment is systemd's: resolving the path to a `pnpm` whose shebang then
+      // fails to find `node` is the levelling stopping one step later than it used to.
+      env: toolEnv(),
     },
   );
   // ONE READING FOR BOTH ENDINGS, and it is the module's (П-2): "no process ran" and "a
@@ -16420,6 +16442,10 @@ const orchestratorRestart = async (argv: readonly string[]): Promise<void> => {
         const said = execFileSync(tool.command, [...step.run[1]], {
           encoding: "utf8",
           stdio: ["ignore", "pipe", "pipe"],
+          // THE FIELD FAILURE OF 15:49Z, IN ONE OPTION (thread 219, П-1): the tool was
+          // found and started, and died because the `sudo -i` environment it inherited had
+          // no `node` for its own shebang. The child gets the interpreter this process runs.
+          env: toolEnv(),
         });
         const tail = said.trim().split("\n").slice(-3).join(" · ");
         say(`${step.what} — ok${tail === "" ? "" : `: ${tail}`}`);
@@ -16713,7 +16739,10 @@ const capabilityRun = (argv: readonly string[]): void => {
       // (the trace and every refusal keep printing what the card says, which is what a
       // reader checks the card against); what is resolved is only what gets spawned.
       const tool = toolFor(step.command);
-      const said = spawnSync(tool.command, [...step.argv], { stdio: "inherit" });
+      // With the interpreter of this process on the child's `PATH` (thread 219, П-1): the
+      // `pnpm install` half of `repo-refresh` is a script with a `#!/usr/bin/env node`
+      // first line, and the session that carries it inherited the daemon's environment.
+      const said = spawnSync(tool.command, [...step.argv], { stdio: "inherit", env: toolEnv() });
       // And a step that never started says so, with the places it was looked for — the
       // refusal above renders it as "it could not be run at all — <this>".
       if (said.error !== undefined)

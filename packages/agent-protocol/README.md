@@ -5608,6 +5608,24 @@ Three things it decides, and each is a promise:
   '<name>' to start (ENOENT). Looked beside this node binary first, then on PATH: <every candidate
   tried>` (nothing is wrong with the project — install the tool, or put it where the circuit's node
   lives). The line that cost the field case named neither.
+- **And the tool is SPAWNED WITH THAT INTERPRETER ON ITS `PATH`** (thread 219, the second field
+  failure of the same chain, 2026-09-17 15:49Z: the restart ran the right file and the contour
+  still went down — `'<path>/pnpm' ran and exited 127: /usr/bin/env: 'node': No such file or
+  directory`). `pnpm` is not a binary but a SCRIPT whose first line is `#!/usr/bin/env node`, and
+  the interpreter of a script is looked up by name on the `PATH` of the CHILD: resolving the path
+  to the tool settles which file is opened and nothing about whether it can start. So every spawn
+  of a resolved tool — both steps of `restart --pull`, the daemon's in-place repair, the workspace
+  levelling and the `repo-refresh` capability — is handed a copy of this process's environment
+  with the directory of `process.execPath` FIRST on its `PATH`. First rather than last: a `PATH`
+  naming some other node would run the package manager under an interpreter that is not the one
+  the circuit runs. Nothing else in the environment is touched, and the caller's own `PATH` is
+  never written.
+- **A `127` therefore says WHOSE absence it is about.** "The tool exited 127" is true and sends
+  the reader after a path that the line above has just printed in full and that is already right.
+  When the tool's own complaint names the missing interpreter (`env: 'node': No such file or
+  directory`, quoted or not), the failure line says so instead: `'<path>' ran and exited 127, but
+  what was NOT FOUND is its interpreter '<name>', not '<tool>' itself — … the repair is the PATH
+  OF THE SPAWNED PROCESS`. A `127` the tool chose for itself keeps the plain sentence.
 - **But the STOP FLAG does not outlive that refusal** (thread 003, 2026-08-18). A `--pull` that
   fails in phase 3 has already stopped the daemon in phase 1, and the flag that stopped it is
   from then on aimed at whoever types `up` next: one failed repair becomes a box that stays dark
