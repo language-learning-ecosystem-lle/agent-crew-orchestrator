@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-17T09:59:01.408Z",
+  "writtenAt": "2026-09-17T09:59:17.657Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "218-orphan-service-branches-and-dead-worktrees",
       "state": "running",
       "deadline": "2026-09-17T10:58:57Z"
-    },
-    {
-      "role": "curator",
-      "thread": "218-orphan-service-branches-and-dead-worktrees",
-      "state": "draining",
-      "deadline": "2026-09-17T10:32:51Z"
     }
   ]
 }
