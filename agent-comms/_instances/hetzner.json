@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-17T12:27:22.125Z",
+  "writtenAt": "2026-09-17T12:28:10.260Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "218-orphan-service-branches-and-dead-worktrees",
       "state": "running",
       "deadline": "2026-09-17T13:07:17Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "219-restart-calls-pnpm-by-name",
+      "state": "running",
+      "deadline": "2026-09-17T13:28:06Z"
     }
   ]
 }
