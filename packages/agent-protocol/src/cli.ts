@@ -25,10 +25,12 @@
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  accessSync,
   appendFileSync,
   closeSync,
   type Dirent,
   existsSync,
+  constants as fsConstants,
   mkdirSync,
   mkdtempSync,
   openSync,
@@ -621,6 +623,13 @@ import {
   tidyUpSignature,
 } from "./orchestrator/tidy-letter.js";
 import {
+  classifyToolFailure,
+  describeToolChoice,
+  describeToolFailure,
+  type ResolvedTool,
+  resolveTool,
+} from "./orchestrator/tool-path.js";
+import {
   isAssistantStep,
   modelOf,
   type RunUsage,
@@ -1090,6 +1099,30 @@ const throwVersionVerdicts = (): void => {
  * function, so the one caller with a courier behind it had nothing to hand over. What that
  * cause READS LIKE is {@link describeRepairRefusal}; here it is only carried out.
  */
+/**
+ * THE ONE PLACE A RESTART TURNS A TOOL'S NAME INTO SOMETHING TO SPAWN (thread 219).
+ *
+ * The rule and the field case behind it are in `orchestrator/tool-path.ts`; here is only
+ * the disk half of it. `accessSync(X_OK)` rather than `existsSync`: a directory named
+ * `pnpm` and a file nobody may execute both "exist", and either of them would send the
+ * resolution past a `PATH` entry that has the real one. `statSync` follows the symlink,
+ * which is what a corepack shim is.
+ */
+const toolFor = (name: string): ResolvedTool =>
+  resolveTool({
+    name,
+    nodePath: process.execPath,
+    path: process.env.PATH,
+    isExecutable: (candidate) => {
+      try {
+        accessSync(candidate, fsConstants.X_OK);
+        return statSync(candidate).isFile();
+      } catch {
+        return false;
+      }
+    },
+  });
+
 const repairCheckoutInPlace = (input: {
   readonly checkout: string;
   readonly ref: string;
@@ -1104,9 +1137,15 @@ const repairCheckoutInPlace = (input: {
     what: string,
     run: readonly [string, readonly string[]],
   ): RepairFailure | undefined => {
-    err(`agent-protocol: daemon — ${describeSelfRestartStep(what, checkout)}`);
+    // NOT BY NAME (thread 219): this repair runs inside a daemon whose environment is
+    // systemd's, not a login shell's, and the field case proved what a missing `PATH`
+    // entry costs here — the stop has already happened when the step refuses.
+    const tool = toolFor(run[0]);
+    err(
+      `agent-protocol: daemon — ${describeSelfRestartStep(what, checkout)}, running ${describeToolChoice(tool)}`,
+    );
     try {
-      const said = execFileSync(run[0], [...run[1]], {
+      const said = execFileSync(tool.command, [...run[1]], {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
       });
@@ -1115,12 +1154,15 @@ const repairCheckoutInPlace = (input: {
       );
       return undefined;
     } catch (error) {
-      const failure = error as { stderr?: string; stdout?: string; status?: number };
-      const said = ((failure.stderr ?? failure.stdout ?? "") as string).replace(/\s+/g, " ").trim();
       // ONE RESOLVED CAUSE FOR BOTH READERS: the log and the standoff must not be able to
-      // say different things about one failure, so the fallback to the exit code is taken
-      // once, here, and the line and the published sentence are built from the same string.
-      const why = said === "" ? `code ${failure.status ?? "?"}` : said;
+      // say different things about one failure, so the two endings ("no process ran" and
+      // "a process exited N") are told apart once, here, and the line and the published
+      // sentence are built from the same string.
+      const why = describeToolFailure({
+        name: run[0],
+        resolution: tool,
+        failure: classifyToolFailure(error as Parameters<typeof classifyToolFailure>[0]),
+      });
       err(`agent-protocol: daemon — ${describeSelfRestartStepFailed(what, why)}`);
       return { kind: "step", step: what, why };
     }
@@ -16341,19 +16383,26 @@ const orchestratorRestart = async (argv: readonly string[]): Promise<void> => {
       { what: "git pull --ff-only", run: ["git", ["-C", repo, "pull", "--ff-only"]] as const },
       { what: "pnpm install", run: ["pnpm", ["--dir", repo, "install"]] as const },
     ]) {
-      say(`${step.what} in '${repo}'`);
+      // THE TOOL IS NOT ASKED OF THE CALLER'S PATH (thread 219, the field failure of
+      // 2026-09-17): this is the step that ran after the daemon was already stopped, so
+      // "not found" here is not a failed command — it is a contour on the floor.
+      const tool = toolFor(step.run[0]);
+      say(`${step.what} in '${repo}', running ${describeToolChoice(tool)}`);
       try {
-        const said = execFileSync(step.run[0], [...step.run[1]], {
+        const said = execFileSync(tool.command, [...step.run[1]], {
           encoding: "utf8",
           stdio: ["ignore", "pipe", "pipe"],
         });
         const tail = said.trim().split("\n").slice(-3).join(" · ");
         say(`${step.what} — ok${tail === "" ? "" : `: ${tail}`}`);
       } catch (error) {
-        const failure = error as { stderr?: string; stdout?: string; status?: number };
-        const why = (failure.stderr ?? failure.stdout ?? "").trim();
+        const why = describeToolFailure({
+          name: step.run[0],
+          resolution: tool,
+          failure: classifyToolFailure(error as Parameters<typeof classifyToolFailure>[0]),
+        });
         say(
-          `${step.what} FAILED (code ${failure.status ?? "?"})${why === "" ? "" : `: ${why}`} — nothing was raised, the circuit stays down until this is dealt with`,
+          `${step.what} FAILED — ${why} — nothing was raised, the circuit stays down until this is dealt with`,
         );
         // AND THE FLAG DOES NOT OUTLIVE THE FAILURE (thread 003, 2026-08-18). The stop
         // flag was put down by phase 1 of THIS command, the daemon it was aimed at is

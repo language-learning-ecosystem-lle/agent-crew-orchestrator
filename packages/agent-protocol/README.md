@@ -5588,6 +5588,26 @@ Three things it decides, and each is a promise:
   circuit stays down, the reason goes to the terminal AND to `daemon.log` (a restart that refused
   at 04:00 has to be readable at 09:00), and `up` by hand is one word away. Raising the OLD code
   instead would answer a question nobody asked while looking exactly like success.
+- **`git` and `pnpm` are NOT asked of the caller's `PATH`** (thread 219, from the field failure of
+  2026-09-17 12:23Z: `pnpm install FAILED (code ?)` after the daemon was already stopped, and the
+  contour lay down for two minutes — `pnpm` was simply not on the `PATH` of the shell the restart
+  was typed in, while `node` was called through a path the launch profile named). Each tool of the
+  chain is now looked for BESIDE THE NODE BINARY RUNNING THE COMMAND (`process.execPath` — nvm and
+  corepack put `pnpm` there, and a box cannot be wrong about which interpreter it is running)
+  first, and only then on `PATH`; the step prints which of the two it stands on, so a restart that
+  worked because the caller happened to have the right environment and one that works by
+  construction do not read the same. Finding neither is NOT a refusal — the bare name is still
+  handed to the spawn, because a resolver that vetoed an unusual-but-working box would be a new
+  door where a repair was asked for. The same rule covers the in-place repair a supervised daemon
+  does for itself (`SELF-RESTART: …`), which runs under systemd's environment rather than a login
+  shell's.
+- **And a step that fails says WHICH failure it was.** `FAILED (code ?)` conflated the two endings
+  that want opposite repairs, and the `?` was not an exit code at all but the absence of one: no
+  process had started. They are two sentences now — `'<path>' ran and exited <n>: <its own output>`
+  (read that output, the project is what is broken) and `NO PROCESS RAN — there is no executable
+  '<name>' to start (ENOENT). Looked beside this node binary first, then on PATH: <every candidate
+  tried>` (nothing is wrong with the project — install the tool, or put it where the circuit's node
+  lives). The line that cost the field case named neither.
 - **But the STOP FLAG does not outlive that refusal** (thread 003, 2026-08-18). A `--pull` that
   fails in phase 3 has already stopped the daemon in phase 1, and the flag that stopped it is
   from then on aimed at whoever types `up` next: one failed repair becomes a box that stays dark
