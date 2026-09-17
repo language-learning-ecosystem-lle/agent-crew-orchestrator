@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: 13aa4a16-2cb2-483b-8083-b070b9884fae
-  modified: 2026-09-17T13:56:02.406Z
+  modified: 2026-09-17T15:59:39.832Z
 ---
 
 `levelling.install` = `mayLevel(staleBuild !== undefined || !dependencies.installed)` (`cli.ts`,
@@ -39,5 +39,11 @@ metadata:
 человека, а не за новой работой. Практическое следствие: заводить тред РАДИ полигона не надо,
 покуда в очереди стои́т хоть одна пара без дерева — сперва смотри туда.
 
-Смежное: [[new-execution-path-is-accepted-by-its-first-firing]], [[role-worktree-has-no-node-modules]],
+**Предсказание подтвердилось замером:** 17.09 в `15:53:33Z` ящик поднял `curator×220` (парк снят
+словом john) — дерево создано заново, выравнивание зажглось, премисса напечаталась с абсолютным
+путём и суффиксом «beside this node binary», install отработал (`node_modules/.modules.yaml`, `.pnpm`
+той же секундой). Механизм читается верно и предсказывает исход.
+
+Смежное: [[raise-path-fix-fires-on-the-first-raise-without-a-tree]],
+[[new-execution-path-is-accepted-by-its-first-firing]], [[role-worktree-has-no-node-modules]],
 [[deferred-work-has-only-a-person-park]].
