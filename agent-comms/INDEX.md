@@ -213,5 +213,5 @@
 | 217-memory-ceiling-alarm-prints-the-byte-split | curator, dev-core, john | normal | closed | — | — | 2026-09-16 | — |
 | 218-orphan-service-branches-and-dead-worktrees | curator · dev-core · john | high | closed | — | — | 2026-09-17 | — |
 | 219-restart-calls-pnpm-by-name | curator · dev-core · john | high | open | dev-core | — | 2026-09-17 | ЖЕСТ JOHN ИСПОЛНЕН (~15:49Z): рестарт запущен ровно тем вызовом, что упал в 12:23Z, из окружения БЕ… |
-| 220-role-keyed-trees-and-a-foreign-clone | curator, john | normal | open | curator | ❓ john · 2026-09-17 | 2026-09-17 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: забираем ли 199M, до которых уборка не достаёт по построению — три дерева с… |
-| 221-workspace-install-calls-pnpm-by-name | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-17 | 2026-09-17 | Требуется решение john: полигон приёмки этого треда УЖЕ ОПЛАЧЕН и стои́т за твоим словом — деревьев… |
+| 220-role-keyed-trees-and-a-foreign-clone | curator, john | normal | open | curator | — | 2026-09-17 | СЛОВО JOHN (сессия чата, 2026-09-17 ~15:55Z): ОСТАТКИ УБИРАЕМ, РУКОЙ JOHN. Форма 3 + форма 4 развил… |
+| 221-workspace-install-calls-pnpm-by-name | curator, dev-core, john | normal | open | curator | — | 2026-09-17 | СЛОВО JOHN (сессия чата, 2026-09-17 ~15:55Z) ДОНЕСЕНО СЮДА, КАК ПРОСИЛ msg-010 §4: ПАРК С 220 СНЯТ.… |
