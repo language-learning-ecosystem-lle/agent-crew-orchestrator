@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-17T17:17:53.081Z",
+  "writtenAt": "2026-09-17T17:23:02.449Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "222-self-restart-report-wakes-a-role",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-17T17:57:48Z"
     }
   ]
