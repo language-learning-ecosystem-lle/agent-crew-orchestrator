@@ -215,4 +215,4 @@
 | 219-restart-calls-pnpm-by-name | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-17 | 2026-09-17 | john, ТОТ ЖЕ ЖЕСТ ЕЩЁ РАЗ — и тред закрывается: когда контур сам поднимется на новый код (он уже на… |
 | 220-role-keyed-trees-and-a-foreign-clone | curator, john | normal | closed | — | — | 2026-09-17 | — |
 | 221-workspace-install-calls-pnpm-by-name | curator, dev-core, john | normal | closed | — | — | 2026-09-17 | — |
-| 222-self-restart-report-wakes-a-role | curator · dev-core · john | normal | open | dev-core | run:465 · 2026-09-17 | 2026-09-17 | Такт без новой работы по постановке: П-1 и П-3 приземлены в #465 ещё прошлым тактом, запись журнала… |
+| 222-self-restart-report-wakes-a-role | curator · dev-core · john | normal | open | dev-core | — | 2026-09-17 | ✅ checks по PR #465: success. |
