@@ -93,6 +93,75 @@ export const resolveTool = (input: {
   return { command: input.name, source: "unresolved", looked };
 };
 
+/**
+ * THE SECOND HALF OF THE SAME PREMISE, AND THE FIELD MEASURED IT (thread 219, П-1 of the
+ * statement of 2026-09-17 15:49Z). The resolution above got the restart as far as running
+ * the right file and no further:
+ *
+ *     pnpm install …, running '/home/…/v24.18.0/bin/pnpm' (beside this node binary)
+ *     pnpm install FAILED — '…/pnpm' ran and exited 127:
+ *       /usr/bin/env: 'node': No such file or directory
+ *
+ * `pnpm` in every layout this circuit is installed in is not a binary — it is a SCRIPT
+ * whose first line is `#!/usr/bin/env node`. Resolving the path to it settles which file
+ * the kernel opens; it settles nothing about whether that file's INTERPRETER can be found,
+ * and the interpreter is looked up by name on the `PATH` OF THE SPAWNED PROCESS. Inherit
+ * the environment of a caller with no node on it — a systemd unit, `sudo -i` without nvm —
+ * and the tool starts and dies at once. The contour went down for the second time this way.
+ *
+ * SO THE CHILD IS GIVEN THE INTERPRETER IT NEEDS, from the same fact the resolution stands
+ * on: the directory of `process.execPath` goes FIRST on the `PATH` the tool is spawned
+ * with. Not "if it is missing" — first, because a `PATH` that already names some other node
+ * would make the script run under an interpreter that is not the one running the circuit,
+ * and a package manager under a foreign node is the skew this package spends its doors on.
+ *
+ * WHAT IT IS NOT. Not a new door (nothing is refused), not a machine-config key (the same
+ * argument as above — a key is a power document and the box that has not set it is the box
+ * this defect kills), and not a change of `PATH` anywhere but in the environment handed to
+ * one spawn: the caller's own `process.env` is never written.
+ */
+export const pathForSpawnedTool = (input: {
+  /** `process.execPath` — the node binary running this process. */
+  readonly nodePath: string;
+  /** The `PATH` the caller inherited; empty or absent is a legitimate answer. */
+  readonly path?: string | undefined;
+}): string => {
+  const beside = dirname(input.nodePath);
+  const rest = (input.path ?? "").split(":").filter((entry) => entry !== "" && entry !== beside);
+  return [beside, ...rest].join(":");
+};
+
+/**
+ * The same, as the environment a spawn is actually given. The caller hands in its own
+ * environment verbatim and receives a copy — every other variable travels untouched,
+ * because a tool that suddenly loses `HOME` or the store's own settings would be a second
+ * defect bought with the cure for the first.
+ */
+export const environmentForSpawnedTool = <T extends Record<string, string | undefined>>(input: {
+  readonly nodePath: string;
+  readonly env: T;
+}): T & { readonly PATH: string } => ({
+  ...input.env,
+  PATH: pathForSpawnedTool({ nodePath: input.nodePath, path: input.env["PATH"] }),
+});
+
+/**
+ * WHOSE ABSENCE THE 127 IS ABOUT (thread 219, П-2). `127` from a shell means "command not
+ * found", and a reader who has just been told the tool's full path reads it as a lie about
+ * that path — they then go and check a path that is already right. The line that says which
+ * name was actually missing is the difference between that dead end and the repair, and the
+ * name is in the tool's own complaint: `/usr/bin/env: 'node': No such file or directory`.
+ *
+ * Read as TEXT and nothing more: `undefined` when the complaint does not say it, so the
+ * general sentence stands. Both spellings are matched because both are in the field — GNU
+ * coreutils quotes the name, busybox does not.
+ */
+export const missingInterpreter = (said: string): string | undefined =>
+  /(?:^|[\s/])env: (?:'([^']+)'|([^\s:]+)): No such file or directory/
+    .exec(said)
+    ?.slice(1)
+    .find((group) => group !== undefined);
+
 /** How many candidates the failure line prints before it stops counting them out. */
 const LOOKED_SHOWN = 6;
 
@@ -153,8 +222,17 @@ export const describeToolFailure = (input: {
 }): string => {
   const tail = (said: string): string =>
     said === "" ? " — it printed nothing" : `: ${said.slice(-SAID_CHARS)}`;
-  if (input.failure.kind === "exited")
+  if (input.failure.kind === "exited") {
+    // THE THIRD ENDING, AND IT WANTS A THIRD REPAIR (thread 219, П-2). "The tool exited
+    // 127" is true and sends the reader after the path to the tool, which the line above it
+    // has just printed in full and which is already right. What is missing is the
+    // interpreter of a script, and it is missing from the environment of the CHILD.
+    const interpreter =
+      input.failure.status === 127 ? missingInterpreter(input.failure.said) : undefined;
+    if (interpreter !== undefined)
+      return `'${input.resolution.command}' ran and exited 127, but what was NOT FOUND is its interpreter '${interpreter}', not '${input.name}' itself — the path above is already right. '${input.name}' is a script whose first line asks for '${interpreter}' by name, and the environment it was spawned with has no '${interpreter}' on its PATH. The repair is the PATH OF THE SPAWNED PROCESS (put the directory of '${interpreter}' first on it), never the path to '${input.name}'${tail(input.failure.said)}`;
     return `'${input.resolution.command}' ran and exited ${input.failure.status}${tail(input.failure.said)}`;
+  }
   if (input.failure.kind === "signalled")
     return `'${input.resolution.command}' ran and was killed by ${input.failure.signal}${tail(input.failure.said)}`;
   return `NO PROCESS RAN — there is no executable '${input.name}' to start (${input.failure.code}${

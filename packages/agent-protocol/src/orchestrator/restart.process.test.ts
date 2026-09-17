@@ -10,6 +10,7 @@
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -20,7 +21,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -278,6 +279,106 @@ describe("--pull does not depend on the PATH of whoever typed it", () => {
     expect(stdout).toContain("git pull --ff-only — ok");
 
     rmSync(shim, { recursive: true, force: true });
+    if (existsSync(state(repo, "daemon.pid")))
+      leftovers.push(Number(readFileSync(state(repo, "daemon.pid"), "utf8").trim()));
+  }, 60_000);
+});
+
+/**
+ * AND THE TOOL IT FOUND IS GIVEN AN INTERPRETER (thread 219, П-1 of the statement of
+ * 2026-09-17 15:49Z — the SECOND field failure of this chain, measured after the first cure
+ * was live on the box):
+ *
+ *     pnpm install …, running '/home/…/bin/pnpm' (beside this node binary)
+ *     pnpm install FAILED — '…/pnpm' ran and exited 127:
+ *       /usr/bin/env: 'node': No such file or directory
+ *
+ * The path was right and the contour went down anyway: `pnpm` is a SCRIPT whose first line
+ * is `#!/usr/bin/env node`, and the interpreter of a script is looked up by name on the
+ * `PATH` OF THE CHILD. The restart was typed through `sudo -u … -i`, whose environment has
+ * no nvm — so the tool started and died on its own first line.
+ *
+ * WHAT THE STAND REPRODUCES, AND WHY EACH PIECE IS LOAD-BEARING. A `pnpm` beside the
+ * interpreter that is a REAL node script (it cannot run unless a `node` is findable from
+ * its own environment), a `PATH` for the CLI process that has git and NO node at all — the
+ * `sudo -i` environment, reproduced — and `process.execPath` pointed at a directory the
+ * stand owns, through the preload of thread 221: a symlinked node reports the REAL
+ * directory through `/proc/self/exe`, and a hardlink or a 118 MB copy of the binary is not
+ * a price this suite pays.
+ *
+ * THE ASSERTION IS THE CHILD'S OWN `PATH`, recorded by the child. What the field failure
+ * had is what this stand has: nothing on the caller's `PATH` can start that script.
+ */
+describe("--pull hands the tool the interpreter it is written for", () => {
+  it("spawns pnpm with the directory of this node first on its PATH", () => {
+    const { repo } = contour();
+    writeFileSync(
+      join(repo, "package.json"),
+      `${JSON.stringify({ name: "restart-contour", version: "0.0.0", private: true })}\n`,
+    );
+    git(repo, "add", "package.json");
+    git(repo, "commit", "-qm", "a manifest");
+
+    // WHERE THE INTERPRETER SAYS IT LIVES — and what lives beside it: a real `node`
+    // (a symlink: every `process.execPath` spawn of the run, the daemon among them, must
+    // still reach a real binary) and a `pnpm` that is a node script, exactly as the box's
+    // own is.
+    const beside = mkdtempSync(join(tmpdir(), "agent-protocol-restart-beside-"));
+    symlinkSync(process.execPath, join(beside, "node"));
+    const probe = join(beside, "path.txt");
+    // IT RECORDS THE `PATH` IT WAS SPAWNED WITH, read off `/proc/self/environ` and not off
+    // `process.env`: the preload below travels into every node this run starts, this script
+    // among them, and a probe that read the mutable copy would be recording the stand's own
+    // last word instead of the environment the spawn actually handed over.
+    writeFileSync(
+      join(beside, "pnpm"),
+      "#!/usr/bin/env node\n" +
+        'const fs = require("node:fs");\n' +
+        'const spawnedWith = fs.readFileSync("/proc/self/environ", "utf8").split("\\0")\n' +
+        '  .find((entry) => entry.startsWith("PATH=")) ?? "";\n' +
+        `fs.writeFileSync(${JSON.stringify(probe)}, spawnedWith.slice("PATH=".length));\n`,
+    );
+    chmodSync(join(beside, "pnpm"), 0o755);
+    // The `sudo -i` environment: git and nothing else. The preload states it from INSIDE
+    // the CLI process, because the shell that starts `tsx` needs a node on its own `PATH`
+    // and the process under test must not have one.
+    const onlyGit = join(beside, "path");
+    mkdirSync(onlyGit, { recursive: true });
+    symlinkSync(
+      execFileSync("sh", ["-c", "command -v git"], { encoding: "utf8" }).trim(),
+      join(onlyGit, "git"),
+    );
+    writeFileSync(
+      join(beside, "execpath.mjs"),
+      `process.execPath = ${JSON.stringify(join(beside, "node"))};\n` +
+        `process.env.PATH = ${JSON.stringify(onlyGit)};\n`,
+    );
+
+    const done = spawnSync(TSX, [CLI, "orchestrator", "restart", "--pull", "--wait", "5"], {
+      cwd: repo,
+      encoding: "utf8",
+      env: sandbox(configHome(repo), {
+        GIT_AUTHOR_NAME: "t",
+        GIT_AUTHOR_EMAIL: "t@e",
+        GIT_COMMITTER_NAME: "t",
+        GIT_COMMITTER_EMAIL: "t@e",
+        PATH: `${beside}:${onlyGit}:/usr/bin:/bin`,
+        NODE_OPTIONS: `--import ${pathToFileURL(join(beside, "execpath.mjs")).href}`,
+      }),
+    });
+    const stdout = done.stdout ?? "";
+
+    // THE PROOF THE FIELD CASE COULD NOT PRODUCE: the script RAN. It cannot have run
+    // unless a `node` was findable from the environment it was handed, and the only `node`
+    // in this stand is the one beside the interpreter.
+    expect(readFileSync(probe, "utf8").split(":")[0]).toBe(beside);
+    expect(stdout).toContain("pnpm install — ok");
+    // ...and not the ending of 15:49Z, which is what this stand produces without the cure.
+    expect(stdout).not.toContain("No such file or directory");
+    expect(stdout).not.toContain("pnpm install FAILED");
+    expect(done.status).toBe(0);
+
+    rmSync(beside, { recursive: true, force: true });
     if (existsSync(state(repo, "daemon.pid")))
       leftovers.push(Number(readFileSync(state(repo, "daemon.pid"), "utf8").trim()));
   }, 60_000);

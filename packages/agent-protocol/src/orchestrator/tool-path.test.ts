@@ -11,6 +11,9 @@ import {
   classifyToolFailure,
   describeToolChoice,
   describeToolFailure,
+  environmentForSpawnedTool,
+  missingInterpreter,
+  pathForSpawnedTool,
   resolveTool,
 } from "./tool-path.js";
 
@@ -182,6 +185,108 @@ describe("describeToolFailure", () => {
     });
     expect(said).toContain("(and 4 more)");
     expect(said).not.toContain("/p8/pnpm");
+  });
+});
+
+/**
+ * THE SECOND FIELD FAILURE, AS A DECISION (thread 219, П-1 of 15:49Z). The restart ran the
+ * right file and it died on its own first line: `pnpm` is a script asking for `node` by
+ * name, and the `PATH` it inherited had none.
+ */
+describe("pathForSpawnedTool", () => {
+  it("puts the directory of THIS interpreter first, keeping everything the caller had", () => {
+    expect(pathForSpawnedTool({ nodePath: NODE, path: "/usr/bin:/bin" })).toBe(
+      "/home/lle/.nvm/versions/node/v24.18.0/bin:/usr/bin:/bin",
+    );
+  });
+
+  it("an environment with no PATH at all still gets the interpreter", () => {
+    expect(pathForSpawnedTool({ nodePath: NODE })).toBe(
+      "/home/lle/.nvm/versions/node/v24.18.0/bin",
+    );
+  });
+
+  it("a PATH that already names the directory is not made to carry it twice", () => {
+    expect(
+      pathForSpawnedTool({
+        nodePath: NODE,
+        path: "/usr/bin:/home/lle/.nvm/versions/node/v24.18.0/bin:/bin",
+      }),
+    ).toBe("/home/lle/.nvm/versions/node/v24.18.0/bin:/usr/bin:/bin");
+  });
+
+  it("and a foreign node earlier on PATH does not get to interpret this circuit's tools", () => {
+    // The entry order is the whole assertion: a `PATH` whose first node is somebody
+    // else's would run the package manager under an interpreter that is not the one the
+    // circuit runs, which is the skew the version doors of this package exist against.
+    expect(
+      pathForSpawnedTool({ nodePath: NODE, path: "/opt/other-node/bin:/usr/bin" }).split(":")[0],
+    ).toBe("/home/lle/.nvm/versions/node/v24.18.0/bin");
+  });
+});
+
+describe("environmentForSpawnedTool", () => {
+  it("copies the caller's environment and touches nothing but PATH", () => {
+    const env = { PATH: "/usr/bin", HOME: "/home/lle", PNPM_HOME: "/home/lle/.local/share/pnpm" };
+
+    const spawned = environmentForSpawnedTool({ nodePath: NODE, env });
+
+    expect(spawned).toEqual({
+      PATH: "/home/lle/.nvm/versions/node/v24.18.0/bin:/usr/bin",
+      HOME: "/home/lle",
+      PNPM_HOME: "/home/lle/.local/share/pnpm",
+    });
+    // The caller's own environment is never written — this process goes on being whatever
+    // it was, and only the child is given the interpreter.
+    expect(env.PATH).toBe("/usr/bin");
+  });
+});
+
+describe("missingInterpreter", () => {
+  it("names what the shebang could not find, in the tool's own words", () => {
+    expect(missingInterpreter("/usr/bin/env: 'node': No such file or directory")).toBe("node");
+    // busybox does not quote it.
+    expect(missingInterpreter("env: node: No such file or directory")).toBe("node");
+  });
+
+  it("says nothing about a complaint that is not about an interpreter", () => {
+    expect(missingInterpreter("ERR_PNPM_NO_LOCKFILE  Cannot install with frozen-lockfile")).toBe(
+      undefined,
+    );
+    expect(missingInterpreter("")).toBe(undefined);
+  });
+});
+
+describe("describeToolFailure tells an unfindable interpreter from an unfindable tool", () => {
+  it("a 127 whose cause is the shebang sends the reader to the child's PATH", () => {
+    const said = describeToolFailure({
+      name: "pnpm",
+      resolution: {
+        command: "/home/lle/.nvm/versions/node/v24.18.0/bin/pnpm",
+        source: "beside-node",
+        looked: ["/home/lle/.nvm/versions/node/v24.18.0/bin/pnpm"],
+      },
+      failure: {
+        kind: "exited",
+        status: 127,
+        said: "/usr/bin/env: 'node': No such file or directory",
+      },
+    });
+    // The repair is named, and the repair the reader would otherwise have gone after is
+    // named as the WRONG one: the path printed a line above is already right.
+    expect(said).toContain("its interpreter 'node'");
+    expect(said).toContain("the path above is already right");
+    expect(said).toContain("PATH OF THE SPAWNED PROCESS");
+  });
+
+  it("but a 127 the tool itself chose keeps the plain sentence", () => {
+    expect(
+      describeToolFailure({
+        name: "pnpm",
+        resolution: { command: "/n/bin/pnpm", source: "beside-node", looked: [] },
+        failure: { kind: "exited", status: 127, said: "ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL" },
+      }),
+    ).toBe("'/n/bin/pnpm' ran and exited 127: ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL");
   });
 });
 
