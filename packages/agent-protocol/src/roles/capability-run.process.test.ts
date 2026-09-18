@@ -25,6 +25,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
+import { besideNodeCalls, besideNodeStand } from "../testing/beside-node.js";
 import { configHomeInside, sandbox } from "../testing/process-sandbox.js";
 import { resolveCapabilityCall } from "./capability-call.js";
 import { type Role, roleSchema } from "./schema.js";
@@ -44,7 +45,9 @@ const git = (repo: string, ...args: string[]): string =>
  * targets are TEMPORARY ABSOLUTE PATHS, so the config is written per test rather than kept as a
  * constant — a closed list is a list of values, and the values here are what the box has.
  */
-const box = (): { repo: string; checkout: string; log: string; trace: string } => {
+const box = (
+  input: { readonly pullable?: boolean } = {},
+): { repo: string; checkout: string; log: string; trace: string } => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-capability-"));
   const repo = join(base, "work");
   const checkout = join(base, "checkout");
@@ -56,10 +59,24 @@ const box = (): { repo: string; checkout: string; log: string; trace: string } =
   // The checkout is a git repository with a commit and NO REMOTE: `git pull --ff-only` there
   // fails by the box's own words, which is how the failed-step branch is reached without a
   // network and without a second step that would install a tree of packages into a temp dir.
-  execFileSync("git", ["init", "-q", "-b", "main", checkout]);
-  writeFileSync(join(checkout, "a.txt"), "a\n", "utf8");
-  git(checkout, "add", "-A");
-  git(checkout, "commit", "-qm", "base");
+  //
+  // `pullable` is the other half of the same fixture: an origin on this disk, so step 1 goes
+  // through and step 2 — the `pnpm install` — is actually reached. The install itself is a
+  // shim, never a real one (see `besideNodeStand`).
+  if (input.pullable === true) {
+    const origin = join(base, "origin.git");
+    execFileSync("git", ["init", "--bare", "-q", "-b", "main", origin]);
+    execFileSync("git", ["clone", "-q", origin, checkout]);
+    writeFileSync(join(checkout, "a.txt"), "a\n", "utf8");
+    git(checkout, "add", "-A");
+    git(checkout, "commit", "-qm", "base");
+    git(checkout, "push", "-q", "-u", "origin", "main");
+  } else {
+    execFileSync("git", ["init", "-q", "-b", "main", checkout]);
+    writeFileSync(join(checkout, "a.txt"), "a\n", "utf8");
+    git(checkout, "add", "-A");
+    git(checkout, "commit", "-qm", "base");
+  }
 
   writeFileSync(
     join(repo, "agent-protocol.json"),
@@ -290,5 +307,40 @@ describe("capability run — the surface as a process", () => {
     expect(line).toContain(`capability repo-refresh · role devops · target ${checkout}`);
     expect(line).toContain(`by ${userInfo().username}`);
     expect(line).not.toContain("not-the-one-who-ran-it");
+  });
+
+  /**
+   * THE STEP IS SPAWNED WITH THE INTERPRETER THIS PROCESS RUNS (thread 219, П-1; the stand
+   * john ordered on 2026-09-18). `repo-refresh` is carried by a session the daemon raised,
+   * which means systemd's environment: the `pnpm` half of it is a script asking for `node`
+   * by name, and a spawn that hands the child that environment unchanged dies with `127`
+   * before it does anything at all. The field took the contour down twice this way, on the
+   * restart path — this call site was repaired by reading, and until now nothing here could
+   * tell the repair from its absence: the old stand's `pnpm` was a shell script.
+   *
+   * SO THE SHIM NEEDS AN INTERPRETER AND THE PROCESS UNDER TEST HAS NONE ON ITS `PATH`.
+   * Take `env: toolEnv()` off the spawn in `cli.ts` and this case goes red twice over: no
+   * record is written (the script never got past its first line) and the step fails.
+   */
+  it("the pnpm step runs under the node of THIS process, not the one the caller's PATH has", () => {
+    const { repo, checkout, trace } = box({ pullable: true });
+    const records = join(repo, "pnpm-argv.txt");
+    const stand = besideNodeStand({ dir: join(repo, "shim"), records });
+
+    const result = run(
+      repo,
+      ["--role", "devops", "--capability", "repo-refresh", "--target", checkout, "--write"],
+      stand.env,
+    );
+
+    // IT RAN — and it could only have run if a `node` was findable from the environment the
+    // spawn handed it, which in this stand exists in exactly one directory: the one the
+    // interpreter of this process says it lives in.
+    expect(besideNodeCalls(records)).toEqual(["--dir", checkout, "install"]);
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("step 2 ok: pnpm --dir");
+    // And not the ending of 2026-09-17 15:49Z, which is what this stand produces without it.
+    expect(`${result.out}${result.err}`).not.toContain("No such file or directory");
+    expect(readFileSync(trace, "utf8")).toContain("capability repo-refresh");
   });
 });
