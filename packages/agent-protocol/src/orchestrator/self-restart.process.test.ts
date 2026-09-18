@@ -52,6 +52,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
+import { besideNodeCalls, besideNodeStand } from "../testing/beside-node.js";
 import { configHome, sandbox } from "../testing/process-sandbox.js";
 import { HANG_CEILING_MS, waitFor } from "../testing/wait-for.js";
 import { parseDriftStandoff, renderDriftStandoff } from "./code-age.js";
@@ -194,6 +195,16 @@ const homeContour = (options?: {
    * 13 commits and 23 hours of drift, twice in three days.
    */
   readonly litter?: string;
+  /**
+   * THE REF MOVES A MANIFEST (thread 219, john 2026-09-18) — the one shape in which the
+   * repair reaches its SECOND command at all. `installNeeded` asks whether any of
+   * `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` differs across the span, and
+   * every other fixture here answers no, which is why the cases above all read `pnpm
+   * install skipped`. The lockfile is the member chosen deliberately: a `package.json` at
+   * the root of this fixture would also be a manifest node itself reads while loading the
+   * sources from `src/`.
+   */
+  readonly manifestOnRef?: boolean;
 }): { readonly repo: string; readonly cli: string } => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-selfrestart-home-"));
   const origin = join(base, "origin.git");
@@ -217,6 +228,10 @@ const homeContour = (options?: {
       `${JSON.stringify({ ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION + 1 }, null, 2)}\n`,
     );
     git(repo, "commit", "-qam", "the ref bumps the schema");
+  } else if (options?.manifestOnRef === true) {
+    writeFileSync(join(repo, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
+    git(repo, "add", "pnpm-lock.yaml");
+    git(repo, "commit", "-qm", "the ref moves the lockfile");
   } else git(repo, "commit", "-qm", "the ref", "--allow-empty");
   git(repo, "push", "-q", "origin", "main");
   // THE TWO SHAPES OF THE SAME DRIFT, and which one a case needs is the whole difference
@@ -1183,6 +1198,47 @@ describe("a supervised daemon that finds itself behind its ref", () => {
       expect(second.said).not.toContain("the LOADED CODE is not the ref");
       expect(second.said).not.toContain("SELF-RESTART");
       expect(second.said).toContain("agent-protocol: daemon —");
+    },
+    3 * HANG_CEILING_MS,
+  );
+
+  /**
+   * THE INSTALL IS SPAWNED WITH THE INTERPRETER THIS DAEMON RUNS (thread 219, П-1; the stand
+   * john ordered on 2026-09-18). The repair above never reaches its second command — no
+   * fixture here moved a manifest, so every case of this file reads `pnpm install skipped`,
+   * and the `env: toolEnv()` on that spawn had no witness at all. This one moves the
+   * lockfile on the ref, so the install runs, and it runs where the field failure lives: a
+   * daemon whose environment is systemd's, with no node anywhere on its `PATH`.
+   *
+   * WHAT GOES RED WITHOUT THE CURE: `pnpm` here is a script asking for `node` by name, so it
+   * dies with `127` before its first line — no record, `pnpm install FAILED`, the repair
+   * reported as failed and the daemon staying put instead of leaving for a supervisor.
+   */
+  it(
+    "moves a manifest → the install RUNS, under the node of this process and not the caller's",
+    () => {
+      const home = homeContour({ pullable: true, manifestOnRef: true });
+      const records = join(home.repo, "pnpm-argv.txt");
+      const stand = besideNodeStand({ dir: join(home.repo, "shim"), records });
+
+      const ran = tickRun(home.cli, home.repo, {
+        INVOCATION_ID: "test-invocation",
+        ...stand.env,
+      });
+
+      // The step was reached — the premise of the case, said by the daemon itself — and the
+      // package manager it started is the one beside its own interpreter, not one the
+      // environment supplied: this daemon's `PATH` has no `pnpm` and no node on it at all.
+      expect(ran.said).not.toContain("pnpm install skipped");
+      expect(ran.said).toContain(`running '${stand.pnpm}' (beside this node binary)`);
+      // AND IT RAN. It cannot have run unless the spawn carried the interpreter with it,
+      // which is the whole of П-1 — the ending of 2026-09-17 15:49Z, refuted by a record.
+      expect(besideNodeCalls(records)).toEqual(["--dir", home.repo, "install"]);
+      expect(ran.said).toContain("pnpm install — ok");
+      expect(ran.said).not.toContain("pnpm install FAILED");
+      expect(ran.said).not.toContain("No such file or directory");
+      // The repair completed, so the daemon leaves with the code a supervisor answers.
+      expect(ran.status).toBe(SELF_RESTART_EXIT_CODE);
     },
     3 * HANG_CEILING_MS,
   );

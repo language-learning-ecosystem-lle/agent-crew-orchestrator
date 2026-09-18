@@ -30,7 +30,8 @@
  * `process.execPath` spawn the CLI makes — the background child among them — still runs a
  * real node) beside the recording `pnpm`, with `process.execPath` pointed at it through a
  * preloaded module. Nothing is copied and nothing is installed for real: what the box is
- * asked for is a symlink and a shell script.
+ * asked for is a symlink and a script (a node one since thread 219 — see `besideNodeStand`,
+ * and the shim comment below for why the shell one measured less than it looked like).
  *
  * WHY A PRELOAD AND NOT A HARDLINK OF `node`. `process.execPath` is `/proc/self/exe`
  * resolved, so a symlinked interpreter reports the REAL directory and the shim would be
@@ -58,11 +59,12 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
+import { type BesideNodeStand, besideNodeCalls, besideNodeStand } from "../testing/beside-node.js";
 import { configHome, sandbox } from "../testing/process-sandbox.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
@@ -208,39 +210,32 @@ const ARGV = "pnpm-argv.txt";
  * without it the door re-measures the same stale build and refuses, which is the OTHER case
  * this file tests on purpose.
  *
- * The directory holds three things and each is load-bearing: the recording `pnpm`, a `node`
- * symlink (the interpreter this directory is the directory OF — and a real one, because the
- * CLI spawns `process.execPath` for its background child), and the preload that points
- * `process.execPath` at that symlink.
+ * AND IT IS A NODE SCRIPT, NOT A SHELL ONE (thread 219, john 2026-09-18). The shim the stand
+ * used to write was `#!/bin/sh`, which needs no interpreter from anywhere — so these cases
+ * went green with `env: toolEnv()` on the levelling spawn and equally green without it, and
+ * the second half of thread 219's cure had no witness here at all. With a `#!/usr/bin/env
+ * node` first line and a node-free `PATH` inside the CLI under test (both stated by
+ * `besideNodeStand`), the shim runs only if the spawn carried the interpreter with it: take
+ * the cure out and `pnpmCalls` is empty, which is what every case below reads.
  */
-const pnpmShim = (repo: string, repair: boolean): string => {
-  const dir = join(repo, "shim");
-  mkdirSync(dir, { recursive: true });
-  const path = join(dir, "pnpm");
-  writeFileSync(
-    path,
-    `#!/bin/sh\nprintf '%s\\n' "$@" >> ${join(repo, ARGV)}\n` +
-      (repair
-        ? `mkdir -p "$2/node_modules/agent-protocol"\nprintf '{"name":"agent-protocol","version":"${CIRCUIT}"}\\n' > "$2/node_modules/agent-protocol/package.json"\n`
-        : "") +
-      "exit 0\n",
-  );
-  chmodSync(path, 0o755);
-  symlinkSync(process.execPath, join(dir, "node"));
-  // `process.execPath` is a plain writable property, so the whereabouts of the interpreter
-  // are stated before the CLI's first line runs. The variable travels into every node the
-  // run spawns, which is what the background child needs: it levels the tree itself.
-  writeFileSync(
-    join(dir, "execpath.mjs"),
-    `process.execPath = ${JSON.stringify(join(dir, "node"))};\n`,
-  );
-  return dir;
-};
+const pnpmShim = (repo: string, repair: boolean): BesideNodeStand =>
+  besideNodeStand({
+    dir: join(repo, "shim"),
+    records: join(repo, ARGV),
+    ...(repair
+      ? {
+          leaves: [
+            'const tree = args[1] + "/node_modules/agent-protocol";',
+            "fs.mkdirSync(tree, { recursive: true });",
+            `fs.writeFileSync(tree + "/package.json", ${JSON.stringify(
+              `{"name":"agent-protocol","version":"${CIRCUIT}"}\n`,
+            )});`,
+          ].join("\n"),
+        }
+      : {}),
+  });
 
-const pnpmCalls = (repo: string): string[] => {
-  const path = join(repo, ARGV);
-  return existsSync(path) ? readFileSync(path, "utf8").split("\n").filter(Boolean) : [];
-};
+const pnpmCalls = (repo: string): string[] => besideNodeCalls(join(repo, ARGV));
 
 /** The "session": it only records that it was started at all. */
 const stub = (repo: string): string => {
@@ -266,7 +261,7 @@ const pathWithoutPnpm = (repo: string): string => {
 
 const run = (
   repo: string,
-  shim: string,
+  shim: BesideNodeStand,
   argv: readonly string[] = ["--write"],
 ): { code: number; out: string } => {
   const result = spawnSync(
@@ -299,10 +294,11 @@ const run = (
       env: {
         ...sandbox(configHome(repo)),
         PATH: pathWithoutPnpm(repo),
-        // WHERE THE INTERPRETER SAYS IT LIVES — the one fact the stand fakes, and the one
-        // the resolution under test reads. It reaches the background child too, which is
-        // the process that levels the tree in the `--detach` cases.
-        NODE_OPTIONS: `--import ${pathToFileURL(join(shim, "execpath.mjs")).href}`,
+        // WHERE THE INTERPRETER SAYS IT LIVES, and what the CLI is left to hand its own
+        // children — the two facts the stand fakes, and the two the spawn under test reads.
+        // They reach the background child too, which is the process that levels the tree in
+        // the `--detach` cases.
+        ...shim.env,
       },
     },
   );
@@ -324,7 +320,7 @@ describe("the box levels the workspace it issued (thread 180, john 2026-09-12)",
     // П-1 (thread 221): the package manager it started is the one BESIDE ITS OWN NODE, and
     // the premise is said out loud — the `PATH` this ran with carries no `pnpm` at all, so
     // the field failure of 17.09 has no second call site left here.
-    expect(result.out).toContain(`running '${join(shim, "pnpm")}' (beside this node binary)`);
+    expect(result.out).toContain(`running '${shim.pnpm}' (beside this node binary)`);
     expect(result.out).not.toContain("(from PATH");
     // And the launch is no longer refused: the session was started in the tree that was
     // repaired a moment earlier. This is the standstill of 2026-09-09, ended.
