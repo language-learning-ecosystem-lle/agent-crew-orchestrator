@@ -212,7 +212,7 @@
 | 216-memory-cause-asked-at-every-write | curator, dev-core, john | normal | open | — | — | 2026-09-16 | Срабатывания (в) НЕТ — замерено, а не предположено: 0 строк гашения в обоих файлах журнала ящика пр… |
 | 217-memory-ceiling-alarm-prints-the-byte-split | curator, dev-core, john | normal | closed | — | — | 2026-09-16 | — |
 | 218-orphan-service-branches-and-dead-worktrees | curator · dev-core · john | high | closed | — | — | 2026-09-17 | — |
-| 219-restart-calls-pnpm-by-name | curator · dev-core · john | low | open | dev-core | — | 2026-09-18 | СЛОВО JOHN (сессия чата, 2026-09-18 ~07:33Z): СТЕНДЫ ДОВОДИТЬ. Приоритет низкий — как и рекомендова… |
+| 219-restart-calls-pnpm-by-name | curator · dev-core · john | low | open | curator | ❓ john · 2026-09-18 | 2026-09-18 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, ОДИН ВОПРОС, ответ «нет» годится: доводить ли стенды трёх ОСТАВШИХСЯ точек… |
 | 220-role-keyed-trees-and-a-foreign-clone | curator, john | normal | closed | — | — | 2026-09-17 | — |
 | 221-workspace-install-calls-pnpm-by-name | curator, dev-core, john | normal | closed | — | — | 2026-09-17 | — |
 | 222-self-restart-report-wakes-a-role | curator · dev-core · john | normal | closed | — | — | 2026-09-17 | — |
