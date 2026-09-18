@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: e0dc6045-e2a2-43b8-8e8f-802b84f487d2
-  modified: 2026-09-17T13:23:28.660Z
+  modified: 2026-09-18T07:47:00.726Z
 ---
 
 Код, резолвящий инструмент через `dirname(process.execPath)` (`orchestrator/tool-path.ts`),
@@ -24,7 +24,8 @@ metadata:
 хардлинк node рядом с шимом на этом ящике запрещён (`ln: Operation not permitted` —
 `fs.protected_hardlinks`, бинарь чужого пользователя), а копия — 118 МБ на файл.
 
-Образец в коде: `workspace-levelling.process.test.ts` (тред 221). Родня: [[git-shim-in-a-process-test-hits-every-git]],
+Образец в коде: общий помощник `packages/agent-protocol/src/testing/beside-node.ts` (тред 219,
+18.09) — он ставит ОБЕ половины разом: узловой шим и безузловой `PATH` из преloada. Родня: [[git-shim-in-a-process-test-hits-every-git]],
 [[gh-stub-dispatch-on-argv-position-misroutes]], [[daemon-process-test-must-name-the-binary-with-exec]].
 
 **И проба внутри такого стенда читает `/proc/self/environ`, а не `process.env`** (замер 17.09,
